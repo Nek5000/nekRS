@@ -47,25 +47,36 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
 
+  elliptic->mgLevel = true;
+
   mesh_t* mesh = elliptic->mesh;
   ellipticBuildPreconditionerKernels(elliptic);
 
   elliptic->coeffField = baseElliptic->coeffField;
   elliptic->coeffFieldPreco = baseElliptic->coeffFieldPreco;
 
+  elliptic->o_lambda = platform->device.malloc(mesh->Nlocal, sizeof(pfloat));
+  platform->copyDfloatToPfloatKernel(mesh->Nlocal, baseElliptic->o_lambda, elliptic->o_lambda);
+
+  pfloat *tmp = (pfloat*) calloc(mesh->Nlocal, sizeof(pfloat));
+  for(int i = 0; i < mesh->Nlocal; i++) {
+     tmp[i] = (pfloat) baseElliptic->ogs->invDegree[i];
+  }
+  elliptic->o_invDegree = platform->device.malloc(mesh->Nlocal * sizeof(pfloat), tmp);
+  free(tmp);
 
   if(!strstr(pfloatString,dfloatString)) {
     mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo ,  sizeof(pfloat));
     mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
     mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq ,  sizeof(pfloat));
 
-    elliptic->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
+    platform->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
                                        mesh->o_ggeo,
                                        elliptic->mesh->o_ggeoPfloat);
-    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+    platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
                                        mesh->o_D,
                                        elliptic->mesh->o_DPfloat);
-    elliptic->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
+    platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
                                        mesh->o_DT,
                                        elliptic->mesh->o_DTPfloat);
   }

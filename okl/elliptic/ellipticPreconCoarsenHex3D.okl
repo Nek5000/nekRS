@@ -24,9 +24,9 @@
 
  */
 @kernel void ellipticPreconCoarsenHex3D(const dlong Nelements,
-                                            @restrict const dfloat*  R,
-                                            @restrict const dfloat*  qf,
-                                            @restrict dfloat*  qc)
+                                            @restrict const pfloat*  R,
+                                            @restrict const pfloat*  qf,
+                                            @restrict pfloat*  qc)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @exclusive dfloat r_q[p_NqCoarse];

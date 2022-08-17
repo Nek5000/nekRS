@@ -46,24 +46,6 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
 
     mesh->maskPfloatKernel =
       platform->kernels.get(kernelName + orderSuffix + "pfloat");
-                                 kernelName = "fusedCopyDfloatToPfloat";
-    elliptic->fusedCopyDfloatToPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
-    kernelName = "copyDfloatToPfloat";
-    elliptic->copyDfloatToPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
-
-    kernelName = "copyPfloatToDfloat";
-    elliptic->copyPfloatToDPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
-
-    kernelName = "scaledAdd";
-    elliptic->scaledAddPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
-
-    kernelName = "dotMultiply";
-    elliptic->dotMultiplyPfloatKernel =
-      platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "updateSmoothedSolutionVec";
     elliptic->updateSmoothedSolutionVecKernel =
@@ -82,7 +64,10 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
     elliptic->ellipticBlockBuildDiagonalKernel =
         platform->kernels.get(poissonPrefix + kernelName + orderSuffix);
 
+    kernelName = "ellipticBlockBuildDiagonalPfloatHex3D";
+    elliptic->ellipticBlockBuildDiagonalPfloatKernel =
+        platform->kernels.get(poissonPrefix + kernelName + orderSuffix);
+
     elliptic->axmyzManyPfloatKernel = platform->kernels.get("axmyzManyPfloat");
-    elliptic->adyManyPfloatKernel = platform->kernels.get("adyManyPfloat");
   }
 }

@@ -27,21 +27,11 @@ SOFTWARE.
 #ifndef PARALMOND_DEFINES_HPP
 #define PARALMOND_DEFINES_HPP
 
-#define NBLOCKS 128
-
-#define MAX_LEVELS 100
-#define GPU_CPU_SWITCH_SIZE 0 //host-device switch threshold
-
-#define NUMKCYCLES 3
-#define COARSENTHREASHOLD 0.2
-#define KCYCLETOL 0.2
+#define MAX_LEVELS 10
 
 namespace parAlmond {
 
-extern int ChebyshevIterations;
-
-typedef enum {VCYCLE=0,KCYCLE=1,EXACT=3} CycleType;
-typedef enum {PCG=0,GMRES=1} KrylovType;
+typedef enum {VCYCLE=0} CycleType;
 typedef enum {JACOBI=0,DAMPED_JACOBI=1,CHEBYSHEV=2} SmoothType;
 
 } //namespace parAlmond

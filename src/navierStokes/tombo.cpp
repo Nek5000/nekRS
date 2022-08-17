@@ -12,7 +12,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
   mesh_t* mesh = nrs->meshV;
   
   nrs->curlKernel(mesh->Nelements,
-		  1,
+		          1,
                   mesh->o_vgeo,
                   mesh->o_D,
                   nrs->fieldOffset,
@@ -64,10 +64,12 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     flopCount += static_cast<double>(mesh->Nelements) * (18 * mesh->Nq * mesh->Np + 100 * mesh->Np);
   }
 
+  const int viscContribution = (nrs->nBDF > 1) ? 1 : 0; 
   occa::memory o_irho = nrs->o_ellipticCoeff;
   nrs->pressureRhsKernel(
     mesh->Nelements * mesh->Np,
     nrs->fieldOffset,
+    viscContribution,
     nrs->o_mue,
     o_irho,
     nrs->o_BF,

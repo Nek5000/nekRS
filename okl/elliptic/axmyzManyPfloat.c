@@ -2,7 +2,7 @@
 extern "C" void FUNC(axmyzManyPfloat)(const dlong & N,
                    const dlong & Nfields,
                    const dlong & offset,
-                   const dfloat & alpha,
+                   const pfloat & alpha,
                    const dfloat * __restrict__ x,
                    const pfloat * __restrict__ y,
                    dfloat * __restrict__ z){

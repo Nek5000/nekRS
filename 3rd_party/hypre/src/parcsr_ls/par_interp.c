@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -13,18 +13,17 @@
 
 HYPRE_Int
 hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
-                         HYPRE_Int               *CF_marker,
-                         hypre_ParCSRMatrix      *S,
-                         HYPRE_BigInt            *num_cpts_global,
-                         HYPRE_Int                num_functions,
-                         HYPRE_Int               *dof_func,
-                         HYPRE_Int                debug_flag,
-                         HYPRE_Real               trunc_factor,
-                         HYPRE_Int                max_elmts,
-                         HYPRE_Int               *col_offd_S_to_A,
-                         hypre_ParCSRMatrix     **P_ptr)
+                            HYPRE_Int               *CF_marker,
+                            hypre_ParCSRMatrix      *S,
+                            HYPRE_BigInt            *num_cpts_global,
+                            HYPRE_Int                num_functions,
+                            HYPRE_Int               *dof_func,
+                            HYPRE_Int                debug_flag,
+                            HYPRE_Real               trunc_factor,
+                            HYPRE_Int                max_elmts,
+                            hypre_ParCSRMatrix     **P_ptr)
 {
-   MPI_Comm      comm = hypre_ParCSRMatrixComm(A);
+   MPI_Comm           comm = hypre_ParCSRMatrixComm(A);
    hypre_ParCSRCommPkg     *comm_pkg = hypre_ParCSRMatrixCommPkg(A);
    hypre_ParCSRCommHandle  *comm_handle;
 
@@ -49,8 +48,8 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
    HYPRE_Int         *S_offd_j = hypre_CSRMatrixJ(S_offd);
 
    hypre_ParCSRMatrix *P;
-   HYPRE_BigInt     *col_map_offd_P;
-   HYPRE_Int     *tmp_map_offd = NULL;
+   HYPRE_BigInt       *col_map_offd_P;
+   HYPRE_Int          *tmp_map_offd = NULL;
 
    HYPRE_Int         *CF_marker_offd = NULL;
    HYPRE_Int         *dof_func_offd = NULL;
@@ -75,10 +74,10 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
 
    HYPRE_Int         *P_marker, *P_marker_offd;
 
-   HYPRE_Int          jj_counter,jj_counter_offd;
+   HYPRE_Int          jj_counter, jj_counter_offd;
    HYPRE_Int         *jj_count, *jj_count_offd;
-   HYPRE_Int          jj_begin_row,jj_begin_row_offd;
-   HYPRE_Int          jj_end_row,jj_end_row_offd;
+   HYPRE_Int          jj_begin_row, jj_begin_row_offd;
+   HYPRE_Int          jj_end_row, jj_end_row_offd;
 
    HYPRE_Int          start_indexing = 0; /* start indexing for P_data at 0 */
 
@@ -94,8 +93,8 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
    //HYPRE_BigInt       my_first_cpt;
    HYPRE_Int          num_cols_P_offd;
 
-   HYPRE_Int          i,i1,i2;
-   HYPRE_Int          j,jl,jj,jj1;
+   HYPRE_Int          i, i1, i2;
+   HYPRE_Int          j, jl, jj, jj1;
    HYPRE_Int          kc;
    HYPRE_BigInt       big_k;
    HYPRE_Int          start;
@@ -125,17 +124,12 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
    HYPRE_Real       wall_time;  /* for debugging instrumentation  */
 
    hypre_MPI_Comm_size(comm, &num_procs);
-   hypre_MPI_Comm_rank(comm,&my_id);
+   hypre_MPI_Comm_rank(comm, &my_id);
    num_threads = hypre_NumThreads();
 
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    //my_first_cpt = num_cpts_global[0];
-   if (my_id == (num_procs -1)) total_global_cpts = num_cpts_global[1];
-   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs-1, comm);
-#else
-   //my_first_cpt = num_cpts_global[my_id];
-   total_global_cpts = num_cpts_global[num_procs];
-#endif
+   if (my_id == (num_procs - 1)) { total_global_cpts = num_cpts_global[1]; }
+   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs - 1, comm);
 
    /*-------------------------------------------------------------------
     * Get the CF_marker data for the off-processor columns
@@ -147,9 +141,9 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
       print_level = 1;
    }
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
-   if (num_cols_A_offd) CF_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+   if (num_cols_A_offd) { CF_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST); }
    if (num_functions > 1 && num_cols_A_offd)
    {
       dof_func_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
@@ -169,9 +163,9 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
    for (i = 0; i < num_sends; i++)
    {
       start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
       {
-         int_buf_data[index++] = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+         int_buf_data[index++] = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
       }
    }
 
@@ -184,8 +178,10 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
       for (i = 0; i < num_sends; i++)
       {
          start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-         for (j=start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
-            int_buf_data[index++] = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+         for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
+         {
+            int_buf_data[index++] = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
+         }
       }
 
       comm_handle = hypre_ParCSRCommHandleCreate( 11, comm_pkg, int_buf_data, dof_func_offd);
@@ -193,11 +189,11 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
       hypre_ParCSRCommHandleDestroy(comm_handle);
    }
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d     Interp: Comm 1 CF_marker =    %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -205,20 +201,20 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
     * Get the ghost rows of A
     *---------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    if (num_procs > 1)
    {
-      A_ext      = hypre_ParCSRMatrixExtractBExt(A,A,1);
+      A_ext      = hypre_ParCSRMatrixExtractBExt(A, A, 1);
       A_ext_i    = hypre_CSRMatrixI(A_ext);
       A_ext_j    = hypre_CSRMatrixBigJ(A_ext);
       A_ext_data = hypre_CSRMatrixData(A_ext);
    }
 
    index = 0;
-   for (i=0; i < num_cols_A_offd; i++)
+   for (i = 0; i < num_cols_A_offd; i++)
    {
-      for (j=A_ext_i[i]; j < A_ext_i[i+1]; j++)
+      for (j = A_ext_i[i]; j < A_ext_i[i + 1]; j++)
       {
          big_k = A_ext_j[j];
          if (big_k >= col_1 && big_k < col_n)
@@ -228,10 +224,10 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
          }
          else
          {
-            kc = hypre_BigBinarySearch(col_map_offd,big_k,num_cols_A_offd);
+            kc = hypre_BigBinarySearch(col_map_offd, big_k, num_cols_A_offd);
             if (kc > -1)
             {
-               A_ext_j[index] = (HYPRE_BigInt)(-kc-1);
+               A_ext_j[index] = (HYPRE_BigInt)(-kc - 1);
                A_ext_data[index++] = A_ext_data[j];
             }
          }
@@ -239,14 +235,16 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
       A_ext_i[i] = index;
    }
    for (i = num_cols_A_offd; i > 0; i--)
-      A_ext_i[i] = A_ext_i[i-1];
-   if (num_procs > 1) A_ext_i[0] = 0;
+   {
+      A_ext_i[i] = A_ext_i[i - 1];
+   }
+   if (num_procs > 1) { A_ext_i[0] = 0; }
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d  Interp: Comm 2   Get A_ext =  %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -265,9 +263,9 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
 
    fine_to_coarse = hypre_CTAlloc(HYPRE_Int,  n_fine, HYPRE_MEMORY_HOST);
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-   for (i = 0; i < n_fine; i++) fine_to_coarse[i] = -1;
+   for (i = 0; i < n_fine; i++) { fine_to_coarse[i] = -1; }
 
    jj_counter = start_indexing;
    jj_counter_offd = start_indexing;
@@ -278,21 +276,21 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
 
    /* RDF: this looks a little tricky, but doable */
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,i1,jj,ns,ne,size,rest) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,i1,jj,ns,ne,size,rest) HYPRE_SMP_SCHEDULE
 #endif
    for (j = 0; j < num_threads; j++)
    {
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (j < rest)
       {
-         ns = j*size+j;
-         ne = (j+1)*size+j+1;
+         ns = j * size + j;
+         ne = (j + 1) * size + j + 1;
       }
       else
       {
-         ns = j*size+rest;
-         ne = (j+1)*size+rest;
+         ns = j * size + rest;
+         ne = (j + 1) * size + rest;
       }
       for (i = ns; i < ne; i++)
       {
@@ -316,7 +314,7 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
 
          else
          {
-            for (jj = S_diag_i[i]; jj < S_diag_i[i+1]; jj++)
+            for (jj = S_diag_i[i]; jj < S_diag_i[i + 1]; jj++)
             {
                i1 = S_diag_j[jj];
                if (CF_marker[i1] >= 0)
@@ -327,26 +325,12 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
 
             if (num_procs > 1)
             {
-               if (col_offd_S_to_A)
+               for (jj = S_offd_i[i]; jj < S_offd_i[i + 1]; jj++)
                {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+                  i1 = S_offd_j[jj];
+                  if (CF_marker_offd[i1] >= 0)
                   {
-                     i1 = col_offd_S_to_A[S_offd_j[jj]];
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        jj_count_offd[j]++;
-                     }
-                  }
-               }
-               else
-               {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
-                  {
-                     i1 = S_offd_j[jj];
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        jj_count_offd[j]++;
-                     }
+                     jj_count_offd[j]++;
                   }
                }
             }
@@ -358,30 +342,30 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
     *  Allocate  arrays.
     *-----------------------------------------------------------------------*/
 
-   for (i=0; i < num_threads-1; i++)
+   for (i = 0; i < num_threads - 1; i++)
    {
-      coarse_counter[i+1] += coarse_counter[i];
-      jj_count[i+1] += jj_count[i];
-      jj_count_offd[i+1] += jj_count_offd[i];
+      coarse_counter[i + 1] += coarse_counter[i];
+      jj_count[i + 1] += jj_count[i];
+      jj_count_offd[i + 1] += jj_count_offd[i];
    }
-   i = num_threads-1;
+   i = num_threads - 1;
    jj_counter = jj_count[i];
    jj_counter_offd = jj_count_offd[i];
 
    P_diag_size = jj_counter;
 
-   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1, HYPRE_MEMORY_SHARED);
-   P_diag_j    = hypre_CTAlloc(HYPRE_Int,  P_diag_size, HYPRE_MEMORY_SHARED);
-   P_diag_data = hypre_CTAlloc(HYPRE_Real,  P_diag_size, HYPRE_MEMORY_SHARED);
+   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1,    HYPRE_MEMORY_DEVICE);
+   P_diag_j    = hypre_CTAlloc(HYPRE_Int,  P_diag_size, HYPRE_MEMORY_DEVICE);
+   P_diag_data = hypre_CTAlloc(HYPRE_Real, P_diag_size, HYPRE_MEMORY_DEVICE);
 
    P_diag_i[n_fine] = jj_counter;
 
 
    P_offd_size = jj_counter_offd;
 
-   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1, HYPRE_MEMORY_SHARED);
-   P_offd_j    = hypre_CTAlloc(HYPRE_Int,  P_offd_size, HYPRE_MEMORY_SHARED);
-   P_offd_data = hypre_CTAlloc(HYPRE_Real,  P_offd_size, HYPRE_MEMORY_SHARED);
+   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1,    HYPRE_MEMORY_DEVICE);
+   P_offd_j    = hypre_CTAlloc(HYPRE_Int,  P_offd_size, HYPRE_MEMORY_DEVICE);
+   P_offd_data = hypre_CTAlloc(HYPRE_Real, P_offd_size, HYPRE_MEMORY_DEVICE);
 
    /*-----------------------------------------------------------------------
     *  Intialize some stuff.
@@ -390,11 +374,11 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
    jj_counter = start_indexing;
    jj_counter_offd = start_indexing;
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d     Interp: Internal work 1 =     %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -402,28 +386,28 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
     *  Send and receive fine_to_coarse info.
     *-----------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    //fine_to_coarse_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,ns,ne,size,rest,coarse_shift) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,ns,ne,size,rest,coarse_shift) HYPRE_SMP_SCHEDULE
 #endif
    for (j = 0; j < num_threads; j++)
    {
       coarse_shift = 0;
-      if (j > 0) coarse_shift = coarse_counter[j-1];
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      if (j > 0) { coarse_shift = coarse_counter[j - 1]; }
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (j < rest)
       {
-         ns = j*size+j;
-         ne = (j+1)*size+j+1;
+         ns = j * size + j;
+         ne = (j + 1) * size + j + 1;
       }
       else
       {
-         ns = j*size+rest;
-         ne = (j+1)*size+rest;
+         ns = j * size + rest;
+         ne = (j + 1) * size + rest;
       }
       for (i = ns; i < ne; i++)
       {
@@ -452,44 +436,48 @@ hypre_BoomerAMGBuildInterp( hypre_ParCSRMatrix   *A,
      fflush(NULL);
      }*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    /*#ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
-#endif
-for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
+   #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+   #endif
+   for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
 
    /*-----------------------------------------------------------------------
     *  Loop over fine grid points.
     *-----------------------------------------------------------------------*/
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,jl,i1,i2,jj,jj1,ns,ne,size,rest,sum,diagonal,distribute,P_marker,P_marker_offd,strong_f_marker,jj_counter,jj_counter_offd,sgn,c_num,jj_begin_row,jj_end_row,jj_begin_row_offd,jj_end_row_offd) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,jl,i1,i2,jj,jj1,ns,ne,size,rest,sum,diagonal,distribute,P_marker,P_marker_offd,strong_f_marker,jj_counter,jj_counter_offd,sgn,c_num,jj_begin_row,jj_end_row,jj_begin_row_offd,jj_end_row_offd) HYPRE_SMP_SCHEDULE
 #endif
    for (jl = 0; jl < num_threads; jl++)
    {
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (jl < rest)
       {
-         ns = jl*size+jl;
-         ne = (jl+1)*size+jl+1;
+         ns = jl * size + jl;
+         ne = (jl + 1) * size + jl + 1;
       }
       else
       {
-         ns = jl*size+rest;
-         ne = (jl+1)*size+rest;
+         ns = jl * size + rest;
+         ne = (jl + 1) * size + rest;
       }
       jj_counter = 0;
-      if (jl > 0) jj_counter = jj_count[jl-1];
+      if (jl > 0) { jj_counter = jj_count[jl - 1]; }
       jj_counter_offd = 0;
-      if (jl > 0) jj_counter_offd = jj_count_offd[jl-1];
+      if (jl > 0) { jj_counter_offd = jj_count_offd[jl - 1]; }
 
       P_marker = hypre_CTAlloc(HYPRE_Int,  n_fine, HYPRE_MEMORY_HOST);
       if (num_cols_A_offd)
+      {
          P_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+      }
       else
+      {
          P_marker_offd = NULL;
+      }
 
       for (i = 0; i < n_fine; i++)
       {
@@ -526,7 +514,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
             P_diag_i[i] = jj_counter;
             jj_begin_row = jj_counter;
 
-            for (jj = S_diag_i[i]; jj < S_diag_i[i+1]; jj++)
+            for (jj = S_diag_i[i]; jj < S_diag_i[i + 1]; jj++)
             {
                i1 = S_diag_j[jj];
 
@@ -562,66 +550,32 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
 
             if (num_procs > 1)
             {
-               if (col_offd_S_to_A)
+               for (jj = S_offd_i[i]; jj < S_offd_i[i + 1]; jj++)
                {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+                  i1 = S_offd_j[jj];
+
+                  /*-----------------------------------------------------------
+                   * If neighbor i1 is a C-point, set column number in P_offd_j
+                   * and initialize interpolation weight to zero.
+                   *-----------------------------------------------------------*/
+
+                  if (CF_marker_offd[i1] >= 0)
                   {
-                     i1 = col_offd_S_to_A[S_offd_j[jj]];
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is a C-point, set column number in P_offd_j
-                      * and initialize interpolation weight to zero.
-                      *-----------------------------------------------------------*/
-
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        P_marker_offd[i1] = jj_counter_offd;
-                        /*P_offd_j[jj_counter_offd]  = fine_to_coarse_offd[i1];*/
-                        P_offd_j[jj_counter_offd]  = i1;
-                        P_offd_data[jj_counter_offd] = zero;
-                        jj_counter_offd++;
-                     }
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is an F-point, mark it as a strong F-point
-                      * whose connection needs to be distributed.
-                      *-----------------------------------------------------------*/
-
-                     else if (CF_marker_offd[i1] != -3)
-                     {
-                        P_marker_offd[i1] = strong_f_marker;
-                     }
+                     P_marker_offd[i1] = jj_counter_offd;
+                     /*P_offd_j[jj_counter_offd]  = fine_to_coarse_offd[i1];*/
+                     P_offd_j[jj_counter_offd]  = i1;
+                     P_offd_data[jj_counter_offd] = zero;
+                     jj_counter_offd++;
                   }
-               }
-               else
-               {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+
+                  /*-----------------------------------------------------------
+                   * If neighbor i1 is an F-point, mark it as a strong F-point
+                   * whose connection needs to be distributed.
+                   *-----------------------------------------------------------*/
+
+                  else if (CF_marker_offd[i1] != -3)
                   {
-                     i1 = S_offd_j[jj];
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is a C-point, set column number in P_offd_j
-                      * and initialize interpolation weight to zero.
-                      *-----------------------------------------------------------*/
-
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        P_marker_offd[i1] = jj_counter_offd;
-                        /*P_offd_j[jj_counter_offd]  = fine_to_coarse_offd[i1];*/
-                        P_offd_j[jj_counter_offd]  = i1;
-                        P_offd_data[jj_counter_offd] = zero;
-                        jj_counter_offd++;
-                     }
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is an F-point, mark it as a strong F-point
-                      * whose connection needs to be distributed.
-                      *-----------------------------------------------------------*/
-
-                     else if (CF_marker_offd[i1] != -3)
-                     {
-                        P_marker_offd[i1] = strong_f_marker;
-                     }
+                     P_marker_offd[i1] = strong_f_marker;
                   }
                }
             }
@@ -633,7 +587,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
 
             /* Loop over ith row of A.  First, the diagonal part of A */
 
-            for (jj = A_diag_i[i]+1; jj < A_diag_i[i+1]; jj++)
+            for (jj = A_diag_i[i] + 1; jj < A_diag_i[i + 1]; jj++)
             {
                i1 = A_diag_j[jj];
 
@@ -662,13 +616,13 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
                    * of the connections to c-points that strongly influence i.
                    *-----------------------------------------------------------*/
                   sgn = 1;
-                  if (A_diag_data[A_diag_i[i1]] < 0) sgn = -1;
+                  if (A_diag_data[A_diag_i[i1]] < 0) { sgn = -1; }
                   /* Diagonal block part of row i1 */
-                  for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1+1]; jj1++)
+                  for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1 + 1]; jj1++)
                   {
                      i2 = A_diag_j[jj1];
                      if (P_marker[i2] >= jj_begin_row &&
-                           (sgn*A_diag_data[jj1]) < 0)
+                         (sgn * A_diag_data[jj1]) < 0)
                      {
                         sum += A_diag_data[jj1];
                      }
@@ -677,11 +631,11 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
                   /* Off-Diagonal block part of row i1 */
                   if (num_procs > 1)
                   {
-                     for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1+1]; jj1++)
+                     for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1 + 1]; jj1++)
                      {
                         i2 = A_offd_j[jj1];
                         if (P_marker_offd[i2] >= jj_begin_row_offd
-                              && (sgn*A_offd_data[jj1]) < 0)
+                            && (sgn * A_offd_data[jj1]) < 0)
                         {
                            sum += A_offd_data[jj1];
                         }
@@ -697,28 +651,28 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
                       *-----------------------------------------------------------*/
 
                      /* Diagonal block part of row i1 */
-                     for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1+1]; jj1++)
+                     for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1 + 1]; jj1++)
                      {
                         i2 = A_diag_j[jj1];
                         if (P_marker[i2] >= jj_begin_row
-                              && (sgn*A_diag_data[jj1]) < 0)
+                            && (sgn * A_diag_data[jj1]) < 0)
                         {
                            P_diag_data[P_marker[i2]]
-                              += distribute * A_diag_data[jj1];
+                           += distribute * A_diag_data[jj1];
                         }
                      }
 
                      /* Off-Diagonal block part of row i1 */
                      if (num_procs > 1)
                      {
-                        for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1+1]; jj1++)
+                        for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1 + 1]; jj1++)
                         {
                            i2 = A_offd_j[jj1];
                            if (P_marker_offd[i2] >= jj_begin_row_offd
-                                 && (sgn*A_offd_data[jj1]) < 0)
+                               && (sgn * A_offd_data[jj1]) < 0)
                            {
                               P_offd_data[P_marker_offd[i2]]
-                                 += distribute * A_offd_data[jj1];
+                              += distribute * A_offd_data[jj1];
                            }
                         }
                      }
@@ -755,7 +709,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
 
             if (num_procs > 1)
             {
-               for (jj = A_offd_i[i]; jj < A_offd_i[i+1]; jj++)
+               for (jj = A_offd_i[i]; jj < A_offd_i[i + 1]; jj++)
                {
                   i1 = A_offd_j[jj];
 
@@ -788,8 +742,8 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
                      c_num = A_offd_j[jj];
 
                      sgn = 1;
-                     if (A_ext_data[A_ext_i[c_num]] < 0) sgn = -1;
-                     for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num+1]; jj1++)
+                     if (A_ext_data[A_ext_i[c_num]] < 0) { sgn = -1; }
+                     for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num + 1]; jj1++)
                      {
                         i2 = (HYPRE_Int)A_ext_j[jj1];
 
@@ -797,7 +751,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
                         {
                            /* in the diagonal block */
                            if (P_marker[i2] >= jj_begin_row
-                                 && (sgn*A_ext_data[jj1]) < 0)
+                               && (sgn * A_ext_data[jj1]) < 0)
                            {
                               sum += A_ext_data[jj1];
                            }
@@ -805,8 +759,8 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
                         else
                         {
                            /* in the off_diagonal block  */
-                           if (P_marker_offd[-i2-1] >= jj_begin_row_offd
-                                 && (sgn*A_ext_data[jj1]) < 0)
+                           if (P_marker_offd[-i2 - 1] >= jj_begin_row_offd
+                               && (sgn * A_ext_data[jj1]) < 0)
                            {
                               sum += A_ext_data[jj1];
                            }
@@ -825,26 +779,26 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
 
                         /* Diagonal block part of row i1 */
 
-                        for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num+1]; jj1++)
+                        for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num + 1]; jj1++)
                         {
                            i2 = (HYPRE_Int)A_ext_j[jj1];
 
                            if (i2 > -1) /* in the diagonal block */
                            {
                               if (P_marker[i2] >= jj_begin_row
-                                    && (sgn*A_ext_data[jj1]) < 0)
+                                  && (sgn * A_ext_data[jj1]) < 0)
                               {
                                  P_diag_data[P_marker[i2]]
-                                    += distribute * A_ext_data[jj1];
+                                 += distribute * A_ext_data[jj1];
                               }
                            }
                            else
                            {
                               /* in the off_diagonal block  */
-                              if (P_marker_offd[-i2-1] >= jj_begin_row_offd
-                                    && (sgn*A_ext_data[jj1]) < 0)
-                                 P_offd_data[P_marker_offd[-i2-1]]
-                                    += distribute * A_ext_data[jj1];
+                              if (P_marker_offd[-i2 - 1] >= jj_begin_row_offd
+                                  && (sgn * A_ext_data[jj1]) < 0)
+                                 P_offd_data[P_marker_offd[-i2 - 1]]
+                                 += distribute * A_ext_data[jj1];
                            }
                         }
                      }
@@ -881,7 +835,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
             {
                if (print_level)
                {
-                  hypre_printf(" Warning! zero diagonal! Proc id %d row %d\n", my_id,i);
+                  hypre_printf(" Warning! zero diagonal! Proc id %d row %d\n", my_id, i);
                }
                for (jj = jj_begin_row; jj < jj_end_row; jj++)
                {
@@ -908,20 +862,20 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
 
          strong_f_marker--;
 
-         P_offd_i[i+1] = jj_counter_offd;
+         P_offd_i[i + 1] = jj_counter_offd;
       }
       hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
       hypre_TFree(P_marker_offd, HYPRE_MEMORY_HOST);
    }
 
    P = hypre_ParCSRMatrixCreate(comm,
-         hypre_ParCSRMatrixGlobalNumRows(A),
-         total_global_cpts,
-         hypre_ParCSRMatrixColStarts(A),
-         num_cpts_global,
-         0,
-         P_diag_i[n_fine],
-         P_offd_i[n_fine]);
+                                hypre_ParCSRMatrixGlobalNumRows(A),
+                                total_global_cpts,
+                                hypre_ParCSRMatrixColStarts(A),
+                                num_cpts_global,
+                                0,
+                                P_diag_i[n_fine],
+                                P_offd_i[n_fine]);
 
    P_diag = hypre_ParCSRMatrixDiag(P);
    hypre_CSRMatrixData(P_diag) = P_diag_data;
@@ -931,7 +885,6 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
    hypre_CSRMatrixData(P_offd) = P_offd_data;
    hypre_CSRMatrixI(P_offd) = P_offd_i;
    hypre_CSRMatrixJ(P_offd) = P_offd_j;
-   hypre_ParCSRMatrixOwnsRowStarts(P) = 0;
 
    /* Compress P, removing coefficients smaller than trunc_factor * Max */
 
@@ -954,15 +907,15 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
       P_marker = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+      #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-      for (i=0; i < num_cols_A_offd; i++)
+      for (i = 0; i < num_cols_A_offd; i++)
       {
          P_marker[i] = 0;
       }
 
       num_cols_P_offd = 0;
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
       {
          index = P_offd_j[i];
          if (!P_marker[index])
@@ -976,25 +929,25 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
       tmp_map_offd = hypre_CTAlloc(HYPRE_Int, num_cols_P_offd, HYPRE_MEMORY_HOST);
 
       index = 0;
-      for (i=0; i < num_cols_P_offd; i++)
+      for (i = 0; i < num_cols_P_offd; i++)
       {
-         while (P_marker[index]==0) index++;
+         while (P_marker[index] == 0) { index++; }
          tmp_map_offd[i] = index++;
       }
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+      #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
          P_offd_j[i] = hypre_BinarySearch(tmp_map_offd,
-               P_offd_j[i],
-               num_cols_P_offd);
+                                          P_offd_j[i],
+                                          num_cols_P_offd);
       hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
    }
 
-   for (i=0; i < n_fine; i++)
+   for (i = 0; i < n_fine; i++)
    {
-      if (CF_marker[i] == -3) CF_marker[i] = -1;
+      if (CF_marker[i] == -3) { CF_marker[i] = -1; }
    }
 
    if (num_cols_P_offd)
@@ -1003,7 +956,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
       hypre_CSRMatrixNumCols(P_offd) = num_cols_P_offd;
    }
 
-   hypre_GetCommPkgRTFromCommPkgA(P,A, fine_to_coarse, tmp_map_offd);
+   hypre_GetCommPkgRTFromCommPkgA(P, A, fine_to_coarse, tmp_map_offd);
 
 
    *P_ptr = P;
@@ -1018,7 +971,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt; */
    hypre_TFree(jj_count, HYPRE_MEMORY_HOST);
    hypre_TFree(jj_count_offd, HYPRE_MEMORY_HOST);
 
-   if (num_procs > 1) hypre_CSRMatrixDestroy(A_ext);
+   if (num_procs > 1) { hypre_CSRMatrixDestroy(A_ext); }
 
    return hypre_error_flag;
 }
@@ -1040,7 +993,6 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
                               HYPRE_Int             debug_flag,
                               HYPRE_Real            trunc_factor,
                               HYPRE_Int             max_elmts,
-                              HYPRE_Int            *col_offd_S_to_A,
                               hypre_ParCSRMatrix  **P_ptr)
 {
 
@@ -1095,10 +1047,10 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
 
    HYPRE_Int       *P_marker, *P_marker_offd;
 
-   HYPRE_Int        jj_counter,jj_counter_offd;
+   HYPRE_Int        jj_counter, jj_counter_offd;
    HYPRE_Int       *jj_count, *jj_count_offd;
-   HYPRE_Int        jj_begin_row,jj_begin_row_offd;
-   HYPRE_Int        jj_end_row,jj_end_row_offd;
+   HYPRE_Int        jj_begin_row, jj_begin_row_offd;
+   HYPRE_Int        jj_end_row, jj_end_row_offd;
 
    HYPRE_Int        start_indexing = 0; /* start indexing for P_data at 0 */
 
@@ -1112,8 +1064,8 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
    //HYPRE_BigInt     my_first_cpt;
    HYPRE_Int        num_cols_P_offd;
 
-   HYPRE_Int        i,i1,i2;
-   HYPRE_Int        j,jl,jj,jj1;
+   HYPRE_Int        i, i1, i2;
+   HYPRE_Int        j, jl, jj, jj1;
    HYPRE_Int        kc;
    HYPRE_BigInt     big_k;
    HYPRE_Int        start;
@@ -1142,28 +1094,25 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
    HYPRE_Real       wall_time;  /* for debugging instrumentation  */
 
    hypre_MPI_Comm_size(comm, &num_procs);
-   hypre_MPI_Comm_rank(comm,&my_id);
+   hypre_MPI_Comm_rank(comm, &my_id);
    num_threads = hypre_NumThreads();
 
 
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    //my_first_cpt = num_cpts_global[0];
-   if (my_id == (num_procs -1)) total_global_cpts = num_cpts_global[1];
-   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs-1, comm);
-#else
-   //my_first_cpt = num_cpts_global[my_id];
-   total_global_cpts = num_cpts_global[num_procs];
-#endif
+   if (my_id == (num_procs - 1)) { total_global_cpts = num_cpts_global[1]; }
+   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs - 1, comm);
 
    /*-------------------------------------------------------------------
     * Get the CF_marker data for the off-processor columns
     *-------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
-   if (num_cols_A_offd) CF_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+   if (num_cols_A_offd) { CF_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST); }
    if (num_functions > 1 && num_cols_A_offd)
+   {
       dof_func_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+   }
 
    if (!comm_pkg)
    {
@@ -1179,9 +1128,9 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
    for (i = 0; i < num_sends; i++)
    {
       start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
          int_buf_data[index++]
-            = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+            = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
    }
 
    comm_handle = hypre_ParCSRCommHandleCreate( 11, comm_pkg, int_buf_data, CF_marker_offd);
@@ -1193,9 +1142,9 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
       for (i = 0; i < num_sends; i++)
       {
          start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-         for (j=start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+         for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
             int_buf_data[index++]
-               = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+               = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
       }
 
       comm_handle = hypre_ParCSRCommHandleCreate( 11, comm_pkg, int_buf_data, dof_func_offd);
@@ -1203,11 +1152,11 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
       hypre_ParCSRCommHandleDestroy(comm_handle);
    }
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d     Interp: Comm 1 CF_marker =    %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -1215,20 +1164,20 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
     * Get the ghost rows of A
     *---------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    if (num_procs > 1)
    {
-      A_ext      = hypre_ParCSRMatrixExtractBExt(A,A,1);
+      A_ext      = hypre_ParCSRMatrixExtractBExt(A, A, 1);
       A_ext_i    = hypre_CSRMatrixI(A_ext);
       A_ext_j    = hypre_CSRMatrixBigJ(A_ext);
       A_ext_data = hypre_CSRMatrixData(A_ext);
    }
 
    index = 0;
-   for (i=0; i < num_cols_A_offd; i++)
+   for (i = 0; i < num_cols_A_offd; i++)
    {
-      for (j=A_ext_i[i]; j < A_ext_i[i+1]; j++)
+      for (j = A_ext_i[i]; j < A_ext_i[i + 1]; j++)
       {
          big_k = A_ext_j[j];
          if (big_k >= col_1 && big_k < col_n)
@@ -1238,10 +1187,10 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
          }
          else
          {
-            kc = hypre_BigBinarySearch(col_map_offd,big_k,num_cols_A_offd);
+            kc = hypre_BigBinarySearch(col_map_offd, big_k, num_cols_A_offd);
             if (kc > -1)
             {
-               A_ext_j[index] = (HYPRE_BigInt)(-kc-1);
+               A_ext_j[index] = (HYPRE_BigInt)(-kc - 1);
                A_ext_data[index++] = A_ext_data[j];
             }
          }
@@ -1249,14 +1198,16 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
       A_ext_i[i] = index;
    }
    for (i = num_cols_A_offd; i > 0; i--)
-      A_ext_i[i] = A_ext_i[i-1];
-   if (num_procs > 1) A_ext_i[0] = 0;
+   {
+      A_ext_i[i] = A_ext_i[i - 1];
+   }
+   if (num_procs > 1) { A_ext_i[0] = 0; }
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d  Interp: Comm 2   Get A_ext =  %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -1274,9 +1225,9 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
 
    fine_to_coarse = hypre_CTAlloc(HYPRE_Int,  n_fine, HYPRE_MEMORY_HOST);
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-   for (i = 0; i < n_fine; i++) fine_to_coarse[i] = -1;
+   for (i = 0; i < n_fine; i++) { fine_to_coarse[i] = -1; }
 
    jj_counter = start_indexing;
    jj_counter_offd = start_indexing;
@@ -1287,21 +1238,21 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
 
    /* RDF: this looks a little tricky, but doable */
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,i1,jj,ns,ne,size,rest) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,i1,jj,ns,ne,size,rest) HYPRE_SMP_SCHEDULE
 #endif
    for (j = 0; j < num_threads; j++)
    {
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (j < rest)
       {
-         ns = j*size+j;
-         ne = (j+1)*size+j+1;
+         ns = j * size + j;
+         ne = (j + 1) * size + j + 1;
       }
       else
       {
-         ns = j*size+rest;
-         ne = (j+1)*size+rest;
+         ns = j * size + rest;
+         ne = (j + 1) * size + rest;
       }
       for (i = ns; i < ne; i++)
       {
@@ -1325,7 +1276,7 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
 
          else
          {
-            for (jj = S_diag_i[i]; jj < S_diag_i[i+1]; jj++)
+            for (jj = S_diag_i[i]; jj < S_diag_i[i + 1]; jj++)
             {
                i1 = S_diag_j[jj];
                if (CF_marker[i1] >= 0)
@@ -1336,26 +1287,12 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
 
             if (num_procs > 1)
             {
-               if (col_offd_S_to_A)
+               for (jj = S_offd_i[i]; jj < S_offd_i[i + 1]; jj++)
                {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+                  i1 = S_offd_j[jj];
+                  if (CF_marker_offd[i1] >= 0)
                   {
-                     i1 = col_offd_S_to_A[S_offd_j[jj]];
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        jj_count_offd[j]++;
-                     }
-                  }
-               }
-               else
-               {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
-                  {
-                     i1 = S_offd_j[jj];
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        jj_count_offd[j]++;
-                     }
+                     jj_count_offd[j]++;
                   }
                }
             }
@@ -1367,19 +1304,19 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
     *  Allocate  arrays.
     *-----------------------------------------------------------------------*/
 
-   for (i=0; i < num_threads-1; i++)
+   for (i = 0; i < num_threads - 1; i++)
    {
-      coarse_counter[i+1] += coarse_counter[i];
-      jj_count[i+1] += jj_count[i];
-      jj_count_offd[i+1] += jj_count_offd[i];
+      coarse_counter[i + 1] += coarse_counter[i];
+      jj_count[i + 1] += jj_count[i];
+      jj_count_offd[i + 1] += jj_count_offd[i];
    }
-   i = num_threads-1;
+   i = num_threads - 1;
    jj_counter = jj_count[i];
    jj_counter_offd = jj_count_offd[i];
 
    P_diag_size = jj_counter;
 
-   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1, HYPRE_MEMORY_HOST);
+   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1, HYPRE_MEMORY_HOST);
    P_diag_j    = hypre_CTAlloc(HYPRE_Int,  P_diag_size, HYPRE_MEMORY_HOST);
    P_diag_data = hypre_CTAlloc(HYPRE_Real,  P_diag_size, HYPRE_MEMORY_HOST);
 
@@ -1388,7 +1325,7 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
 
    P_offd_size = jj_counter_offd;
 
-   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1, HYPRE_MEMORY_HOST);
+   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1, HYPRE_MEMORY_HOST);
    P_offd_j    = hypre_CTAlloc(HYPRE_Int,  P_offd_size, HYPRE_MEMORY_HOST);
    P_offd_data = hypre_CTAlloc(HYPRE_Real,  P_offd_size, HYPRE_MEMORY_HOST);
 
@@ -1399,11 +1336,11 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
    jj_counter = start_indexing;
    jj_counter_offd = start_indexing;
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d     Interp: Internal work 1 =     %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -1411,31 +1348,33 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
     *  Send and receive fine_to_coarse info.
     *-----------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    //fine_to_coarse_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,ns,ne,size,rest,coarse_shift) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,ns,ne,size,rest,coarse_shift) HYPRE_SMP_SCHEDULE
 #endif
    for (j = 0; j < num_threads; j++)
    {
       coarse_shift = 0;
-      if (j > 0) coarse_shift = coarse_counter[j-1];
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      if (j > 0) { coarse_shift = coarse_counter[j - 1]; }
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (j < rest)
       {
-         ns = j*size+j;
-         ne = (j+1)*size+j+1;
+         ns = j * size + j;
+         ne = (j + 1) * size + j + 1;
       }
       else
       {
-         ns = j*size+rest;
-         ne = (j+1)*size+rest;
+         ns = j * size + rest;
+         ne = (j + 1) * size + rest;
       }
       for (i = ns; i < ne; i++)
+      {
          fine_to_coarse[i] += coarse_shift;
+      }
    }
    /*index = 0;
      for (i = 0; i < num_sends; i++)
@@ -1459,44 +1398,48 @@ hypre_BoomerAMGBuildInterpHE( hypre_ParCSRMatrix   *A,
      fflush(NULL);
      }*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    /*#ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
-#endif
-for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
+   #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+   #endif
+   for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
    /*-----------------------------------------------------------------------
     *  Loop over fine grid points.
     *-----------------------------------------------------------------------*/
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,jl,i1,i2,jj,jj1,ns,ne,size,rest,sum,diagonal,distribute,P_marker,P_marker_offd,jj_counter,jj_counter_offd,sgn,c_num,jj_begin_row,jj_end_row,jj_begin_row_offd,jj_end_row_offd) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,jl,i1,i2,jj,jj1,ns,ne,size,rest,sum,diagonal,distribute,P_marker,P_marker_offd,jj_counter,jj_counter_offd,sgn,c_num,jj_begin_row,jj_end_row,jj_begin_row_offd,jj_end_row_offd) HYPRE_SMP_SCHEDULE
 #endif
    for (jl = 0; jl < num_threads; jl++)
    {
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (jl < rest)
       {
-         ns = jl*size+jl;
-         ne = (jl+1)*size+jl+1;
+         ns = jl * size + jl;
+         ne = (jl + 1) * size + jl + 1;
       }
       else
       {
-         ns = jl*size+rest;
-         ne = (jl+1)*size+rest;
+         ns = jl * size + rest;
+         ne = (jl + 1) * size + rest;
       }
       jj_counter = 0;
-      if (jl > 0) jj_counter = jj_count[jl-1];
+      if (jl > 0) { jj_counter = jj_count[jl - 1]; }
       jj_counter_offd = 0;
-      if (jl > 0) jj_counter_offd = jj_count_offd[jl-1];
+      if (jl > 0) { jj_counter_offd = jj_count_offd[jl - 1]; }
 
       P_marker = hypre_CTAlloc(HYPRE_Int,  n_fine, HYPRE_MEMORY_HOST);
       if (num_cols_A_offd)
+      {
          P_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+      }
       else
+      {
          P_marker_offd = NULL;
+      }
 
       for (i = 0; i < n_fine; i++)
       {
@@ -1532,7 +1475,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
             P_diag_i[i] = jj_counter;
             jj_begin_row = jj_counter;
 
-            for (jj = S_diag_i[i]; jj < S_diag_i[i+1]; jj++)
+            for (jj = S_diag_i[i]; jj < S_diag_i[i + 1]; jj++)
             {
                i1 = S_diag_j[jj];
 
@@ -1559,44 +1502,21 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             if (num_procs > 1)
             {
-               if (col_offd_S_to_A)
+               for (jj = S_offd_i[i]; jj < S_offd_i[i + 1]; jj++)
                {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+                  i1 = S_offd_j[jj];
+
+                  /*-----------------------------------------------------------
+                   * If neighbor i1 is a C-point, set column number in P_offd_j
+                   * and initialize interpolation weight to zero.
+                   *-----------------------------------------------------------*/
+
+                  if (CF_marker_offd[i1] >= 0)
                   {
-                     i1 = col_offd_S_to_A[S_offd_j[jj]];
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is a C-point, set column number in P_offd_j
-                      * and initialize interpolation weight to zero.
-                      *-----------------------------------------------------------*/
-
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        P_marker_offd[i1] = jj_counter_offd;
-                        P_offd_j[jj_counter_offd]  = i1;
-                        P_offd_data[jj_counter_offd] = zero;
-                        jj_counter_offd++;
-                     }
-                  }
-               }
-               else
-               {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
-                  {
-                     i1 = S_offd_j[jj];
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is a C-point, set column number in P_offd_j
-                      * and initialize interpolation weight to zero.
-                      *-----------------------------------------------------------*/
-
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        P_marker_offd[i1] = jj_counter_offd;
-                        P_offd_j[jj_counter_offd]  = i1;
-                        P_offd_data[jj_counter_offd] = zero;
-                        jj_counter_offd++;
-                     }
+                     P_marker_offd[i1] = jj_counter_offd;
+                     P_offd_j[jj_counter_offd]  = i1;
+                     P_offd_data[jj_counter_offd] = zero;
+                     jj_counter_offd++;
                   }
                }
             }
@@ -1608,7 +1528,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             /* Loop over ith row of A.  First, the diagonal part of A */
 
-            for (jj = A_diag_i[i]+1; jj < A_diag_i[i+1]; jj++)
+            for (jj = A_diag_i[i] + 1; jj < A_diag_i[i + 1]; jj++)
             {
                i1 = A_diag_j[jj];
 
@@ -1637,13 +1557,13 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                    * of the connections to c-points that strongly influence i.
                    *-----------------------------------------------------------*/
                   sgn = 1;
-                  if (A_diag_data[A_diag_i[i1]] < 0) sgn = -1;
+                  if (A_diag_data[A_diag_i[i1]] < 0) { sgn = -1; }
                   /* Diagonal block part of row i1 */
-                  for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1+1]; jj1++)
+                  for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1 + 1]; jj1++)
                   {
                      i2 = A_diag_j[jj1];
                      if (P_marker[i2] >= jj_begin_row &&
-                           (sgn*A_diag_data[jj1]) < 0)
+                         (sgn * A_diag_data[jj1]) < 0)
                      {
                         sum += A_diag_data[jj1];
                      }
@@ -1652,11 +1572,11 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                   /* Off-Diagonal block part of row i1 */
                   if (num_procs > 1)
                   {
-                     for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1+1]; jj1++)
+                     for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1 + 1]; jj1++)
                      {
                         i2 = A_offd_j[jj1];
                         if (P_marker_offd[i2] >= jj_begin_row_offd
-                              && (sgn*A_offd_data[jj1]) < 0)
+                            && (sgn * A_offd_data[jj1]) < 0)
                         {
                            sum += A_offd_data[jj1];
                         }
@@ -1672,28 +1592,28 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                       *-----------------------------------------------------------*/
 
                      /* Diagonal block part of row i1 */
-                     for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1+1]; jj1++)
+                     for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1 + 1]; jj1++)
                      {
                         i2 = A_diag_j[jj1];
                         if (P_marker[i2] >= jj_begin_row
-                              && (sgn*A_diag_data[jj1]) < 0)
+                            && (sgn * A_diag_data[jj1]) < 0)
                         {
                            P_diag_data[P_marker[i2]]
-                              += distribute * A_diag_data[jj1];
+                           += distribute * A_diag_data[jj1];
                         }
                      }
 
                      /* Off-Diagonal block part of row i1 */
                      if (num_procs > 1)
                      {
-                        for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1+1]; jj1++)
+                        for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1 + 1]; jj1++)
                         {
                            i2 = A_offd_j[jj1];
                            if (P_marker_offd[i2] >= jj_begin_row_offd
-                                 && (sgn*A_offd_data[jj1]) < 0)
+                               && (sgn * A_offd_data[jj1]) < 0)
                            {
                               P_offd_data[P_marker_offd[i2]]
-                                 += distribute * A_offd_data[jj1];
+                              += distribute * A_offd_data[jj1];
                            }
                         }
                      }
@@ -1701,7 +1621,9 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                   else
                   {
                      if (num_functions == 1 || dof_func[i] == dof_func[i1])
+                     {
                         diagonal += A_diag_data[jj];
+                     }
                   }
                }
 
@@ -1715,7 +1637,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             if (num_procs > 1)
             {
-               for (jj = A_offd_i[i]; jj < A_offd_i[i+1]; jj++)
+               for (jj = A_offd_i[i]; jj < A_offd_i[i + 1]; jj++)
                {
                   i1 = A_offd_j[jj];
 
@@ -1748,8 +1670,8 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                      c_num = A_offd_j[jj];
 
                      sgn = 1;
-                     if (A_ext_data[A_ext_i[c_num]] < 0) sgn = -1;
-                     for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num+1]; jj1++)
+                     if (A_ext_data[A_ext_i[c_num]] < 0) { sgn = -1; }
+                     for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num + 1]; jj1++)
                      {
                         i2 = (HYPRE_Int)A_ext_j[jj1];
 
@@ -1757,7 +1679,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                         {
                            /* in the diagonal block */
                            if (P_marker[i2] >= jj_begin_row
-                                 && (sgn*A_ext_data[jj1]) < 0)
+                               && (sgn * A_ext_data[jj1]) < 0)
                            {
                               sum += A_ext_data[jj1];
                            }
@@ -1765,8 +1687,8 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                         else
                         {
                            /* in the off_diagonal block  */
-                           if (P_marker_offd[-i2-1] >= jj_begin_row_offd
-                                 && (sgn*A_ext_data[jj1]) < 0)
+                           if (P_marker_offd[-i2 - 1] >= jj_begin_row_offd
+                               && (sgn * A_ext_data[jj1]) < 0)
                            {
                               sum += A_ext_data[jj1];
                            }
@@ -1784,33 +1706,35 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                          *--------------------------------------------------------*/
 
                         /* Diagonal block part of row i1 */
-                        for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num+1]; jj1++)
+                        for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num + 1]; jj1++)
                         {
                            i2 = (HYPRE_Int)A_ext_j[jj1];
 
                            if (i2 > -1) /* in the diagonal block */
                            {
                               if (P_marker[i2] >= jj_begin_row
-                                    && (sgn*A_ext_data[jj1]) < 0)
+                                  && (sgn * A_ext_data[jj1]) < 0)
                               {
                                  P_diag_data[P_marker[i2]]
-                                    += distribute * A_ext_data[jj1];
+                                 += distribute * A_ext_data[jj1];
                               }
                            }
                            else
                            {
                               /* in the off_diagonal block  */
-                              if (P_marker_offd[-i2-1] >= jj_begin_row_offd
-                                    && (sgn*A_ext_data[jj1]) < 0)
-                                 P_offd_data[P_marker_offd[-i2-1]]
-                                    += distribute * A_ext_data[jj1];
+                              if (P_marker_offd[-i2 - 1] >= jj_begin_row_offd
+                                  && (sgn * A_ext_data[jj1]) < 0)
+                                 P_offd_data[P_marker_offd[-i2 - 1]]
+                                 += distribute * A_ext_data[jj1];
                            }
                         }
                      }
                      else
                      {
                         if (num_functions == 1 || dof_func[i] == dof_func_offd[i1])
+                        {
                            diagonal += A_offd_data[jj];
+                        }
                      }
                   }
                }
@@ -1831,20 +1755,20 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
             }
          }
 
-         P_offd_i[i+1] = jj_counter_offd;
+         P_offd_i[i + 1] = jj_counter_offd;
       }
       hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
       hypre_TFree(P_marker_offd, HYPRE_MEMORY_HOST);
    }
 
    P = hypre_ParCSRMatrixCreate(comm,
-         hypre_ParCSRMatrixGlobalNumRows(A),
-         total_global_cpts,
-         hypre_ParCSRMatrixColStarts(A),
-         num_cpts_global,
-         0,
-         P_diag_i[n_fine],
-         P_offd_i[n_fine]);
+                                hypre_ParCSRMatrixGlobalNumRows(A),
+                                total_global_cpts,
+                                hypre_ParCSRMatrixColStarts(A),
+                                num_cpts_global,
+                                0,
+                                P_diag_i[n_fine],
+                                P_offd_i[n_fine]);
 
 
    P_diag = hypre_ParCSRMatrixDiag(P);
@@ -1855,7 +1779,6 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
    hypre_CSRMatrixData(P_offd) = P_offd_data;
    hypre_CSRMatrixI(P_offd) = P_offd_i;
    hypre_CSRMatrixJ(P_offd) = P_offd_j;
-   hypre_ParCSRMatrixOwnsRowStarts(P) = 0;
 
    /* Compress P, removing coefficients smaller than trunc_factor * Max */
 
@@ -1878,13 +1801,15 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
       P_marker = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd, HYPRE_MEMORY_HOST);
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+      #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-      for (i=0; i < num_cols_A_offd; i++)
+      for (i = 0; i < num_cols_A_offd; i++)
+      {
          P_marker[i] = 0;
+      }
 
       num_cols_P_offd = 0;
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
       {
          index = P_offd_j[i];
          if (!P_marker[index])
@@ -1898,24 +1823,24 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
       tmp_map_offd = hypre_CTAlloc(HYPRE_Int, num_cols_P_offd, HYPRE_MEMORY_HOST);
 
       index = 0;
-      for (i=0; i < num_cols_P_offd; i++)
+      for (i = 0; i < num_cols_P_offd; i++)
       {
-         while (P_marker[index]==0) index++;
+         while (P_marker[index] == 0) { index++; }
          tmp_map_offd[i] = index++;
       }
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+      #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
          P_offd_j[i] = hypre_BinarySearch(tmp_map_offd,
-               P_offd_j[i],
-               num_cols_P_offd);
+                                          P_offd_j[i],
+                                          num_cols_P_offd);
       hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
    }
 
-   for (i=0; i < n_fine; i++)
-      if (CF_marker[i] == -3) CF_marker[i] = -1;
+   for (i = 0; i < n_fine; i++)
+      if (CF_marker[i] == -3) { CF_marker[i] = -1; }
 
    if (num_cols_P_offd)
    {
@@ -1923,7 +1848,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
       hypre_CSRMatrixNumCols(P_offd) = num_cols_P_offd;
    }
 
-   hypre_GetCommPkgRTFromCommPkgA(P,A,fine_to_coarse, tmp_map_offd);
+   hypre_GetCommPkgRTFromCommPkgA(P, A, fine_to_coarse, tmp_map_offd);
 
    *P_ptr = P;
 
@@ -1951,16 +1876,15 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
 HYPRE_Int
 hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
-                         HYPRE_Int                  *CF_marker,
-                         hypre_ParCSRMatrix         *S,
-                         HYPRE_BigInt               *num_cpts_global,
-                         HYPRE_Int                   num_functions,
-                         HYPRE_Int                  *dof_func,
-                         HYPRE_Int                   debug_flag,
-                         HYPRE_Real                  trunc_factor,
-                         HYPRE_Int                   max_elmts,
-                         HYPRE_Int                  *col_offd_S_to_A,
-                         hypre_ParCSRMatrix        **P_ptr)
+                                   HYPRE_Int            *CF_marker,
+                                   hypre_ParCSRMatrix   *S,
+                                   HYPRE_BigInt         *num_cpts_global,
+                                   HYPRE_Int             num_functions,
+                                   HYPRE_Int            *dof_func,
+                                   HYPRE_Int             debug_flag,
+                                   HYPRE_Real            trunc_factor,
+                                   HYPRE_Int             max_elmts,
+                                   hypre_ParCSRMatrix  **P_ptr)
 {
 
    MPI_Comm      comm = hypre_ParCSRMatrixComm(A);
@@ -2005,10 +1929,10 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
 
    HYPRE_Int        P_diag_size, P_offd_size;
 
-   HYPRE_Int        jj_counter,jj_counter_offd;
+   HYPRE_Int        jj_counter, jj_counter_offd;
    HYPRE_Int       *jj_count, *jj_count_offd;
-   HYPRE_Int        jj_begin_row,jj_begin_row_offd;
-   HYPRE_Int        jj_end_row,jj_end_row_offd;
+   HYPRE_Int        jj_begin_row, jj_begin_row_offd;
+   HYPRE_Int        jj_end_row, jj_end_row_offd;
 
    HYPRE_Int        start_indexing = 0; /* start indexing for P_data at 0 */
 
@@ -2021,8 +1945,8 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
    HYPRE_Int        num_cols_P_offd;
    //HYPRE_BigInt     my_first_cpt;
 
-   HYPRE_Int        i,i1;
-   HYPRE_Int        j,jl,jj;
+   HYPRE_Int        i, i1;
+   HYPRE_Int        j, jl, jj;
    HYPRE_Int        start;
 
    HYPRE_Real       diagonal;
@@ -2045,27 +1969,24 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
    HYPRE_Real       wall_time;  /* for debugging instrumentation  */
 
    hypre_MPI_Comm_size(comm, &num_procs);
-   hypre_MPI_Comm_rank(comm,&my_id);
+   hypre_MPI_Comm_rank(comm, &my_id);
    num_threads = hypre_NumThreads();
 
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    //my_first_cpt = num_cpts_global[0];
-   if (my_id == (num_procs -1)) total_global_cpts = num_cpts_global[1];
-   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs-1, comm);
-#else
-   //my_first_cpt = num_cpts_global[my_id];
-   total_global_cpts = num_cpts_global[num_procs];
-#endif
+   if (my_id == (num_procs - 1)) { total_global_cpts = num_cpts_global[1]; }
+   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs - 1, comm);
 
    /*-------------------------------------------------------------------
     * Get the CF_marker data for the off-processor columns
     *-------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
-   if (num_cols_A_offd) CF_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+   if (num_cols_A_offd) { CF_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST); }
    if (num_functions > 1 && num_cols_A_offd)
+   {
       dof_func_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+   }
 
    if (!comm_pkg)
    {
@@ -2075,19 +1996,19 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
 
    num_sends = hypre_ParCSRCommPkgNumSends(comm_pkg);
    int_buf_data = hypre_CTAlloc(HYPRE_Int,  hypre_ParCSRCommPkgSendMapStart(comm_pkg,
-            num_sends), HYPRE_MEMORY_HOST);
+                                                                            num_sends), HYPRE_MEMORY_HOST);
 
    index = 0;
    for (i = 0; i < num_sends; i++)
    {
       start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
          int_buf_data[index++]
-            = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+            = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
    }
 
    comm_handle = hypre_ParCSRCommHandleCreate( 11, comm_pkg, int_buf_data,
-         CF_marker_offd);
+                                               CF_marker_offd);
 
    hypre_ParCSRCommHandleDestroy(comm_handle);
    if (num_functions > 1)
@@ -2096,22 +2017,22 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
       for (i = 0; i < num_sends; i++)
       {
          start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-         for (j=start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+         for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
             int_buf_data[index++]
-               = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+               = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
       }
 
       comm_handle = hypre_ParCSRCommHandleCreate( 11, comm_pkg, int_buf_data,
-            dof_func_offd);
+                                                  dof_func_offd);
 
       hypre_ParCSRCommHandleDestroy(comm_handle);
    }
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d     Interp: Comm 1 CF_marker =    %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -2129,9 +2050,9 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
 
    fine_to_coarse = hypre_CTAlloc(HYPRE_Int,  n_fine, HYPRE_MEMORY_HOST);
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-   for (i = 0; i < n_fine; i++) fine_to_coarse[i] = -1;
+   for (i = 0; i < n_fine; i++) { fine_to_coarse[i] = -1; }
 
    jj_counter = start_indexing;
    jj_counter_offd = start_indexing;
@@ -2142,21 +2063,21 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
 
    /* RDF: this looks a little tricky, but doable */
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,i1,jj,ns,ne,size,rest) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,i1,jj,ns,ne,size,rest) HYPRE_SMP_SCHEDULE
 #endif
    for (j = 0; j < num_threads; j++)
    {
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (j < rest)
       {
-         ns = j*size+j;
-         ne = (j+1)*size+j+1;
+         ns = j * size + j;
+         ne = (j + 1) * size + j + 1;
       }
       else
       {
-         ns = j*size+rest;
-         ne = (j+1)*size+rest;
+         ns = j * size + rest;
+         ne = (j + 1) * size + rest;
       }
       for (i = ns; i < ne; i++)
       {
@@ -2180,7 +2101,7 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
 
          else
          {
-            for (jj = S_diag_i[i]; jj < S_diag_i[i+1]; jj++)
+            for (jj = S_diag_i[i]; jj < S_diag_i[i + 1]; jj++)
             {
                i1 = S_diag_j[jj];
                if (CF_marker[i1] > 0)
@@ -2191,26 +2112,12 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
 
             if (num_procs > 1)
             {
-               if (col_offd_S_to_A)
+               for (jj = S_offd_i[i]; jj < S_offd_i[i + 1]; jj++)
                {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+                  i1 = S_offd_j[jj];
+                  if (CF_marker_offd[i1] > 0)
                   {
-                     i1 = col_offd_S_to_A[S_offd_j[jj]];
-                     if (CF_marker_offd[i1] > 0)
-                     {
-                        jj_count_offd[j]++;
-                     }
-                  }
-               }
-               else
-               {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
-                  {
-                     i1 = S_offd_j[jj];
-                     if (CF_marker_offd[i1] > 0)
-                     {
-                        jj_count_offd[j]++;
-                     }
+                     jj_count_offd[j]++;
                   }
                }
             }
@@ -2222,30 +2129,30 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
     *  Allocate  arrays.
     *-----------------------------------------------------------------------*/
 
-   for (i=0; i < num_threads-1; i++)
+   for (i = 0; i < num_threads - 1; i++)
    {
-      coarse_counter[i+1] += coarse_counter[i];
-      jj_count[i+1] += jj_count[i];
-      jj_count_offd[i+1] += jj_count_offd[i];
+      coarse_counter[i + 1] += coarse_counter[i];
+      jj_count[i + 1] += jj_count[i];
+      jj_count_offd[i + 1] += jj_count_offd[i];
    }
-   i = num_threads-1;
+   i = num_threads - 1;
    jj_counter = jj_count[i];
    jj_counter_offd = jj_count_offd[i];
 
    P_diag_size = jj_counter;
 
-   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1, HYPRE_MEMORY_SHARED);
-   P_diag_j    = hypre_CTAlloc(HYPRE_Int,  P_diag_size, HYPRE_MEMORY_SHARED);
-   P_diag_data = hypre_CTAlloc(HYPRE_Real,  P_diag_size, HYPRE_MEMORY_SHARED);
+   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1,    HYPRE_MEMORY_DEVICE);
+   P_diag_j    = hypre_CTAlloc(HYPRE_Int,  P_diag_size, HYPRE_MEMORY_DEVICE);
+   P_diag_data = hypre_CTAlloc(HYPRE_Real, P_diag_size, HYPRE_MEMORY_DEVICE);
 
    P_diag_i[n_fine] = jj_counter;
 
 
    P_offd_size = jj_counter_offd;
 
-   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1, HYPRE_MEMORY_SHARED);
-   P_offd_j    = hypre_CTAlloc(HYPRE_Int,  P_offd_size, HYPRE_MEMORY_SHARED);
-   P_offd_data = hypre_CTAlloc(HYPRE_Real,  P_offd_size, HYPRE_MEMORY_SHARED);
+   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1,    HYPRE_MEMORY_DEVICE);
+   P_offd_j    = hypre_CTAlloc(HYPRE_Int,  P_offd_size, HYPRE_MEMORY_DEVICE);
+   P_offd_data = hypre_CTAlloc(HYPRE_Real, P_offd_size, HYPRE_MEMORY_DEVICE);
 
    /*-----------------------------------------------------------------------
     *  Intialize some stuff.
@@ -2254,11 +2161,11 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
    jj_counter = start_indexing;
    jj_counter_offd = start_indexing;
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d     Interp: Internal work 1 =     %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -2266,28 +2173,28 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
     *  Send and receive fine_to_coarse info.
     *-----------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    //fine_to_coarse_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,ns,ne,size,rest,coarse_shift) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,ns,ne,size,rest,coarse_shift) HYPRE_SMP_SCHEDULE
 #endif
    for (j = 0; j < num_threads; j++)
    {
       coarse_shift = 0;
-      if (j > 0) coarse_shift = coarse_counter[j-1];
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      if (j > 0) { coarse_shift = coarse_counter[j - 1]; }
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (j < rest)
       {
-         ns = j*size+j;
-         ne = (j+1)*size+j+1;
+         ns = j * size + j;
+         ne = (j + 1) * size + j + 1;
       }
       else
       {
-         ns = j*size+rest;
-         ne = (j+1)*size+rest;
+         ns = j * size + rest;
+         ne = (j + 1) * size + rest;
       }
       for (i = ns; i < ne; i++)
       {
@@ -2316,46 +2223,50 @@ hypre_BoomerAMGBuildDirInterpHost( hypre_ParCSRMatrix   *A,
      fflush(NULL);
      }*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    /*#ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
-#endif
-for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
+   #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+   #endif
+   for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
    /*-----------------------------------------------------------------------
     *  Loop over fine grid points.
     *-----------------------------------------------------------------------*/
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,jl,i1,jj,ns,ne,size,rest,diagonal,jj_counter,jj_counter_offd,jj_begin_row,jj_end_row,jj_begin_row_offd,jj_end_row_offd,sum_P_pos,sum_P_neg,sum_N_pos,sum_N_neg,alfa,beta) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,jl,i1,jj,ns,ne,size,rest,diagonal,jj_counter,jj_counter_offd,jj_begin_row,jj_end_row,jj_begin_row_offd,jj_end_row_offd,sum_P_pos,sum_P_neg,sum_N_pos,sum_N_neg,alfa,beta) HYPRE_SMP_SCHEDULE
 #endif
    for (jl = 0; jl < num_threads; jl++)
    {
       HYPRE_Int       *P_marker, *P_marker_offd;
 
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (jl < rest)
       {
-         ns = jl*size+jl;
-         ne = (jl+1)*size+jl+1;
+         ns = jl * size + jl;
+         ne = (jl + 1) * size + jl + 1;
       }
       else
       {
-         ns = jl*size+rest;
-         ne = (jl+1)*size+rest;
+         ns = jl * size + rest;
+         ne = (jl + 1) * size + rest;
       }
       jj_counter = 0;
-      if (jl > 0) jj_counter = jj_count[jl-1];
+      if (jl > 0) { jj_counter = jj_count[jl - 1]; }
       jj_counter_offd = 0;
-      if (jl > 0) jj_counter_offd = jj_count_offd[jl-1];
+      if (jl > 0) { jj_counter_offd = jj_count_offd[jl - 1]; }
 
       P_marker = hypre_CTAlloc(HYPRE_Int,  n_fine, HYPRE_MEMORY_HOST);
       if (num_cols_A_offd)
+      {
          P_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+      }
       else
+      {
          P_marker_offd = NULL;
+      }
 
       for (i = 0; i < n_fine; i++)
       {
@@ -2391,7 +2302,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
             P_diag_i[i] = jj_counter;
             jj_begin_row = jj_counter;
 
-            for (jj = S_diag_i[i]; jj < S_diag_i[i+1]; jj++)
+            for (jj = S_diag_i[i]; jj < S_diag_i[i + 1]; jj++)
             {
                i1 = S_diag_j[jj];
 
@@ -2418,46 +2329,21 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             if (num_procs > 1)
             {
-               if (col_offd_S_to_A)
+               for (jj = S_offd_i[i]; jj < S_offd_i[i + 1]; jj++)
                {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+                  i1 = S_offd_j[jj];
+
+                  /*-----------------------------------------------------------
+                   * If neighbor i1 is a C-point, set column number in P_offd_j
+                   * and initialize interpolation weight to zero.
+                   *-----------------------------------------------------------*/
+
+                  if (CF_marker_offd[i1] >= 0)
                   {
-                     i1 = col_offd_S_to_A[S_offd_j[jj]];
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is a C-point, set column number in P_offd_j
-                      * and initialize interpolation weight to zero.
-                      *-----------------------------------------------------------*/
-
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        P_marker_offd[i1] = jj_counter_offd;
-                        P_offd_j[jj_counter_offd]  = i1;
-                        P_offd_data[jj_counter_offd] = zero;
-                        jj_counter_offd++;
-                     }
-
-                  }
-               }
-               else
-               {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
-                  {
-                     i1 = S_offd_j[jj];
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is a C-point, set column number in P_offd_j
-                      * and initialize interpolation weight to zero.
-                      *-----------------------------------------------------------*/
-
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        P_marker_offd[i1] = jj_counter_offd;
-                        P_offd_j[jj_counter_offd]  = i1;
-                        P_offd_data[jj_counter_offd] = zero;
-                        jj_counter_offd++;
-                     }
-
+                     P_marker_offd[i1] = jj_counter_offd;
+                     P_offd_j[jj_counter_offd]  = i1;
+                     P_offd_data[jj_counter_offd] = zero;
+                     jj_counter_offd++;
                   }
                }
             }
@@ -2473,15 +2359,19 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
             sum_P_pos = 0;
             sum_P_neg = 0;
 
-            for (jj = A_diag_i[i]+1; jj < A_diag_i[i+1]; jj++)
+            for (jj = A_diag_i[i] + 1; jj < A_diag_i[i + 1]; jj++)
             {
                i1 = A_diag_j[jj];
                if (num_functions == 1 || dof_func[i1] == dof_func[i])
                {
                   if (A_diag_data[jj] > 0)
+                  {
                      sum_N_pos += A_diag_data[jj];
+                  }
                   else
+                  {
                      sum_N_neg += A_diag_data[jj];
+                  }
                }
                /*--------------------------------------------------------------
                 * Case 1: neighbor i1 is a C-point and strongly influences i,
@@ -2492,9 +2382,13 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                {
                   P_diag_data[P_marker[i1]] += A_diag_data[jj];
                   if (A_diag_data[jj] > 0)
+                  {
                      sum_P_pos += A_diag_data[jj];
+                  }
                   else
+                  {
                      sum_P_neg += A_diag_data[jj];
+                  }
                }
             }
 
@@ -2505,15 +2399,19 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             if (num_procs > 1)
             {
-               for (jj = A_offd_i[i]; jj < A_offd_i[i+1]; jj++)
+               for (jj = A_offd_i[i]; jj < A_offd_i[i + 1]; jj++)
                {
                   i1 = A_offd_j[jj];
                   if (num_functions == 1 || dof_func_offd[i1] == dof_func[i])
                   {
                      if (A_offd_data[jj] > 0)
+                     {
                         sum_N_pos += A_offd_data[jj];
+                     }
                      else
+                     {
                         sum_N_neg += A_offd_data[jj];
+                     }
                   }
 
                   /*--------------------------------------------------------------
@@ -2525,15 +2423,19 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                   {
                      P_offd_data[P_marker_offd[i1]] += A_offd_data[jj];
                      if (A_offd_data[jj] > 0)
+                     {
                         sum_P_pos += A_offd_data[jj];
+                     }
                      else
+                     {
                         sum_P_neg += A_offd_data[jj];
+                     }
                   }
 
                }
             }
-            if (sum_P_neg) alfa = sum_N_neg/sum_P_neg/diagonal;
-            if (sum_P_pos) beta = sum_N_pos/sum_P_pos/diagonal;
+            if (sum_P_neg) { alfa = sum_N_neg / sum_P_neg / diagonal; }
+            if (sum_P_pos) { beta = sum_N_pos / sum_P_pos / diagonal; }
 
             /*-----------------------------------------------------------------
              * Set interpolation weight by dividing by the diagonal.
@@ -2541,36 +2443,44 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             for (jj = jj_begin_row; jj < jj_end_row; jj++)
             {
-               if (P_diag_data[jj]> 0)
+               if (P_diag_data[jj] > 0)
+               {
                   P_diag_data[jj] *= -beta;
+               }
                else
+               {
                   P_diag_data[jj] *= -alfa;
+               }
             }
 
             for (jj = jj_begin_row_offd; jj < jj_end_row_offd; jj++)
             {
-               if (P_offd_data[jj]> 0)
+               if (P_offd_data[jj] > 0)
+               {
                   P_offd_data[jj] *= -beta;
+               }
                else
+               {
                   P_offd_data[jj] *= -alfa;
+               }
             }
 
          }
 
-         P_offd_i[i+1] = jj_counter_offd;
+         P_offd_i[i + 1] = jj_counter_offd;
       }
       hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
       hypre_TFree(P_marker_offd, HYPRE_MEMORY_HOST);
    }
 
    P = hypre_ParCSRMatrixCreate(comm,
-         hypre_ParCSRMatrixGlobalNumRows(A),
-         total_global_cpts,
-         hypre_ParCSRMatrixColStarts(A),
-         num_cpts_global,
-         0,
-         P_diag_i[n_fine],
-         P_offd_i[n_fine]);
+                                hypre_ParCSRMatrixGlobalNumRows(A),
+                                total_global_cpts,
+                                hypre_ParCSRMatrixColStarts(A),
+                                num_cpts_global,
+                                0,
+                                P_diag_i[n_fine],
+                                P_offd_i[n_fine]);
 
 
    P_diag = hypre_ParCSRMatrixDiag(P);
@@ -2581,7 +2491,6 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
    hypre_CSRMatrixData(P_offd) = P_offd_data;
    hypre_CSRMatrixI(P_offd) = P_offd_i;
    hypre_CSRMatrixJ(P_offd) = P_offd_j;
-   hypre_ParCSRMatrixOwnsRowStarts(P) = 0;
 
    /* Compress P, removing coefficients smaller than trunc_factor * Max */
 
@@ -2604,13 +2513,15 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
       HYPRE_Int *P_marker = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+      #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-      for (i=0; i < num_cols_A_offd; i++)
+      for (i = 0; i < num_cols_A_offd; i++)
+      {
          P_marker[i] = 0;
+      }
 
       num_cols_P_offd = 0;
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
       {
          index = P_offd_j[i];
          if (!P_marker[index])
@@ -2624,26 +2535,26 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
       tmp_map_offd = hypre_CTAlloc(HYPRE_Int, num_cols_P_offd, HYPRE_MEMORY_HOST);
 
       index = 0;
-      for (i=0; i < num_cols_P_offd; i++)
+      for (i = 0; i < num_cols_P_offd; i++)
       {
-         while (P_marker[index]==0) index++;
+         while (P_marker[index] == 0) { index++; }
          tmp_map_offd[i] = index++;
       }
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+      #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
       {
          P_offd_j[i] = hypre_BinarySearch(tmp_map_offd,
-               P_offd_j[i],
-               num_cols_P_offd);
+                                          P_offd_j[i],
+                                          num_cols_P_offd);
       }
       hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
    }
 
-   for (i=0; i < n_fine; i++)
-      if (CF_marker[i] == -3) CF_marker[i] = -1;
+   for (i = 0; i < n_fine; i++)
+      if (CF_marker[i] == -3) { CF_marker[i] = -1; }
 
    if (num_cols_P_offd)
    {
@@ -2669,600 +2580,76 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
 HYPRE_Int
 hypre_BoomerAMGBuildDirInterp( hypre_ParCSRMatrix   *A,
-                         HYPRE_Int                  *CF_marker,
-                         hypre_ParCSRMatrix         *S,
-                         HYPRE_BigInt               *num_cpts_global,
-                         HYPRE_Int                   num_functions,
-                         HYPRE_Int                  *dof_func,
-                         HYPRE_Int                   debug_flag,
-                         HYPRE_Real                  trunc_factor,
-                         HYPRE_Int                   max_elmts,
-                         HYPRE_Int                  *col_offd_S_to_A,
-                         hypre_ParCSRMatrix        **P_ptr)
+                               HYPRE_Int            *CF_marker,
+                               hypre_ParCSRMatrix   *S,
+                               HYPRE_BigInt         *num_cpts_global,
+                               HYPRE_Int             num_functions,
+                               HYPRE_Int            *dof_func,
+                               HYPRE_Int             debug_flag,
+                               HYPRE_Real            trunc_factor,
+                               HYPRE_Int             max_elmts,
+                               HYPRE_Int             interp_type,
+                               hypre_ParCSRMatrix  **P_ptr)
 {
-#if defined(HYPRE_USING_CUDA)
-   //hypre_SetExecPolicy(HYPRE_EXEC_DEVICE);
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   hypre_GpuProfilingPushRange("DirInterp");
 #endif
-
-   HYPRE_Int exec = hypre_GetExecPolicy1( hypre_CSRMatrixMemoryLocation(hypre_ParCSRMatrixDiag(A)) );
-
-   hypre_assert(exec != HYPRE_EXEC_UNSET);
 
    HYPRE_Int ierr = 0;
 
-   if (exec == HYPRE_EXEC_HOST)
-   {
-      /* printf(" dir interp Host\n"); */
-      ierr = hypre_BoomerAMGBuildDirInterpHost(A,CF_marker,S,num_cpts_global,num_functions,dof_func,
-                                               debug_flag,trunc_factor,max_elmts,col_offd_S_to_A, P_ptr);
-      /*      printf(" done dir interp Host\n");*/
-   }
-#if defined(HYPRE_USING_CUDA)
-   else
-   {
-      /*      printf(" dir interp Device\n");*/
-      ierr = hypre_BoomerAMGBuildDirInterpDevice(A,CF_marker,S,num_cpts_global,num_functions,dof_func,
-                                               debug_flag,trunc_factor,max_elmts,col_offd_S_to_A, P_ptr);
-      /*      printf(" done dir interp Device\n");*/
-   }
-#endif
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   HYPRE_ExecutionPolicy exec = hypre_GetExecPolicy1( hypre_ParCSRMatrixMemoryLocation(A) );
 
-#if defined(HYPRE_USING_CUDA)
-   //hypre_SetExecPolicy(HYPRE_EXEC_HOST);
+   if (exec == HYPRE_EXEC_DEVICE)
+   {
+      ierr = hypre_BoomerAMGBuildDirInterpDevice(A, CF_marker, S, num_cpts_global, num_functions,
+                                                 dof_func,
+                                                 debug_flag, trunc_factor, max_elmts,
+                                                 interp_type, P_ptr);
+   }
+   else
+#endif
+   {
+      ierr = hypre_BoomerAMGBuildDirInterpHost(A, CF_marker, S, num_cpts_global, num_functions, dof_func,
+                                               debug_flag, trunc_factor, max_elmts, P_ptr);
+   }
+
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   hypre_GpuProfilingPopRange();
 #endif
 
    return ierr;
 }
 
-
+/*------------------------------------------------
+ * Drop entries in interpolation matrix P
+ * max_elmts == 0 means no limit on rownnz
+ *------------------------------------------------*/
 HYPRE_Int
 hypre_BoomerAMGInterpTruncation( hypre_ParCSRMatrix *P,
                                  HYPRE_Real          trunc_factor,
                                  HYPRE_Int           max_elmts)
 {
-#ifdef HYPRE_PROFILE
-   hypre_profile_times[HYPRE_TIMER_ID_INTERP_TRUNC] -= hypre_MPI_Wtime();
-#endif
-
-   hypre_CSRMatrix *P_diag = hypre_ParCSRMatrixDiag(P);
-   HYPRE_Int *P_diag_i = hypre_CSRMatrixI(P_diag);
-   HYPRE_Int *P_diag_j = hypre_CSRMatrixJ(P_diag);
-   HYPRE_Real *P_diag_data = hypre_CSRMatrixData(P_diag);
-   HYPRE_Int *P_diag_j_new;
-   HYPRE_Real *P_diag_data_new;
-
-   hypre_CSRMatrix *P_offd = hypre_ParCSRMatrixOffd(P);
-   HYPRE_Int *P_offd_i = hypre_CSRMatrixI(P_offd);
-   HYPRE_Int *P_offd_j = hypre_CSRMatrixJ(P_offd);
-   HYPRE_Real *P_offd_data = hypre_CSRMatrixData(P_offd);
-   HYPRE_Int *P_offd_j_new;
-   HYPRE_Real *P_offd_data_new;
-
-   HYPRE_Int n_fine = hypre_CSRMatrixNumRows(P_diag);
-   HYPRE_Int num_cols = hypre_CSRMatrixNumCols(P_diag);
-   HYPRE_Int i, j, start_j;
-   HYPRE_Int ierr = 0;
-   HYPRE_Int next_open;
-   HYPRE_Int now_checking;
-   HYPRE_Int num_lost;
-   HYPRE_Int num_lost_global=0;
-   HYPRE_Int next_open_offd;
-   HYPRE_Int now_checking_offd;
-   HYPRE_Int num_lost_offd;
-   HYPRE_Int num_lost_global_offd;
-   HYPRE_Int P_diag_size;
-   HYPRE_Int P_offd_size;
-   HYPRE_Int num_elmts;
-   HYPRE_Int cnt, cnt_diag, cnt_offd;
-   HYPRE_Real max_coef;
-   HYPRE_Real row_sum;
-   HYPRE_Real scale;
-
-   HYPRE_Int mem_loc_diag = hypre_CSRMatrixMemoryLocation(P_diag);
-   HYPRE_Int mem_loc_offd = hypre_CSRMatrixMemoryLocation(P_offd);
-
-   /* Threading variables.  Entry i of num_lost_(offd_)per_thread  holds the
-    * number of dropped entries over thread i's row range. Cum_lost_per_thread
-    * will temporarily store the cumulative number of dropped entries up to
-    * each thread. */
-   HYPRE_Int my_thread_num, num_threads, start, stop;
-   HYPRE_Int * max_num_threads = hypre_CTAlloc(HYPRE_Int,  1, HYPRE_MEMORY_HOST);
-   HYPRE_Int * cum_lost_per_thread;
-   HYPRE_Int * num_lost_per_thread;
-   HYPRE_Int * num_lost_offd_per_thread;
-
-   /* Initialize threading variables */
-   max_num_threads[0] = hypre_NumThreads();
-   cum_lost_per_thread = hypre_CTAlloc(HYPRE_Int,  max_num_threads[0], HYPRE_MEMORY_HOST);
-   num_lost_per_thread = hypre_CTAlloc(HYPRE_Int,  max_num_threads[0], HYPRE_MEMORY_HOST);
-   num_lost_offd_per_thread = hypre_CTAlloc(HYPRE_Int,  max_num_threads[0], HYPRE_MEMORY_HOST);
-   for (i=0; i < max_num_threads[0]; i++)
+   if (trunc_factor <= 0.0 && max_elmts == 0)
    {
-      num_lost_per_thread[i] = 0;
-      num_lost_offd_per_thread[i] = 0;
+      return 0;
    }
 
-#ifdef HYPRE_USING_OPENMP
-#pragma omp parallel private(i,my_thread_num,num_threads,max_coef,j,start_j,row_sum,scale,num_lost,now_checking,next_open,num_lost_offd,now_checking_offd,next_open_offd,start,stop,cnt_diag,cnt_offd,num_elmts,cnt)
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   HYPRE_ExecutionPolicy exec = hypre_GetExecPolicy1( hypre_ParCSRMatrixMemoryLocation(P) );
+
+   if (exec == HYPRE_EXEC_DEVICE)
+   {
+      return hypre_BoomerAMGInterpTruncationDevice(P, trunc_factor, max_elmts);
+   }
+   else
 #endif
    {
-      my_thread_num = hypre_GetThreadNum();
-      num_threads = hypre_NumActiveThreads();
-
-      /* Compute each thread's range of rows to truncate and compress.  Note,
-       * that i, j and data are all compressed as entries are dropped, but
-       * that the compression only occurs locally over each thread's row
-       * range.  P_diag_i is only made globally consistent at the end of this
-       * routine.  During the dropping phases, P_diag_i[stop] will point to
-       * the start of the next thread's row range.  */
-
-      /* my row range */
-      start = (n_fine/num_threads)*my_thread_num;
-      if (my_thread_num == num_threads-1)
-      {
-         stop = n_fine;
-      }
-      else
-      {
-         stop = (n_fine/num_threads)*(my_thread_num+1);
-      }
-
-      /*
-       * Truncate based on truncation tolerance
-       */
-      if (trunc_factor > 0)
-      {
-         num_lost = 0;
-         num_lost_offd = 0;
-
-         next_open = P_diag_i[start];
-         now_checking = P_diag_i[start];
-         next_open_offd = P_offd_i[start];;
-         now_checking_offd = P_offd_i[start];;
-
-         for (i = start; i < stop; i++)
-         {
-            max_coef = 0;
-            for (j = P_diag_i[i]; j < P_diag_i[i+1]; j++)
-            {
-               max_coef = (max_coef < fabs(P_diag_data[j])) ?
-                  fabs(P_diag_data[j]) : max_coef;
-            }
-            for (j = P_offd_i[i]; j < P_offd_i[i+1]; j++)
-            {
-               max_coef = (max_coef < fabs(P_offd_data[j])) ?
-                  fabs(P_offd_data[j]) : max_coef;
-            }
-            max_coef *= trunc_factor;
-
-            start_j = P_diag_i[i];
-            if (num_lost) P_diag_i[i] -= num_lost;
-            row_sum = 0;
-            scale = 0;
-            for (j = start_j; j < P_diag_i[i+1]; j++)
-            {
-               row_sum += P_diag_data[now_checking];
-               if (fabs(P_diag_data[now_checking]) < max_coef)
-               {
-                  num_lost++;
-                  now_checking++;
-               }
-               else
-               {
-                  scale += P_diag_data[now_checking];
-                  P_diag_data[next_open] = P_diag_data[now_checking];
-                  P_diag_j[next_open] = P_diag_j[now_checking];
-                  now_checking++;
-                  next_open++;
-               }
-            }
-
-            start_j = P_offd_i[i];
-            if (num_lost_offd) P_offd_i[i] -= num_lost_offd;
-            for (j = start_j; j < P_offd_i[i+1]; j++)
-            {
-               row_sum += P_offd_data[now_checking_offd];
-               if (fabs(P_offd_data[now_checking_offd]) < max_coef)
-               {
-                  num_lost_offd++;
-                  now_checking_offd++;
-               }
-               else
-               {
-                  scale += P_offd_data[now_checking_offd];
-                  P_offd_data[next_open_offd] = P_offd_data[now_checking_offd];
-                  P_offd_j[next_open_offd] = P_offd_j[now_checking_offd];
-                  now_checking_offd++;
-                  next_open_offd++;
-               }
-            }
-            /* normalize row of P */
-
-            if (scale != 0.)
-            {
-               if (scale != row_sum)
-               {
-                  scale = row_sum/scale;
-                  for (j = P_diag_i[i]; j < (P_diag_i[i+1]-num_lost); j++)
-                  {
-                     P_diag_data[j] *= scale;
-                  }
-                  for (j = P_offd_i[i]; j < (P_offd_i[i+1]-num_lost_offd); j++)
-                  {
-                     P_offd_data[j] *= scale;
-                  }
-               }
-            }
-         } /* end loop for (i = 0; i < n_fine; i++) */
-
-         /* store number of dropped elements and number of threads */
-         if (my_thread_num == 0)
-         {
-            max_num_threads[0] = num_threads;
-         }
-         num_lost_per_thread[my_thread_num] = num_lost;
-         num_lost_offd_per_thread[my_thread_num] = num_lost_offd;
-
-      } /* end if (trunc_factor > 0) */
-
-      /*
-       * Truncate based on capping the nnz per row
-       *
-       */
-      if (max_elmts > 0)
-      {
-         HYPRE_Int P_mxnum, cnt1, last_index, last_index_offd;
-         HYPRE_Int *P_aux_j;
-         HYPRE_Real *P_aux_data;
-
-         /* find maximum row length locally over this row range */
-         P_mxnum = 0;
-         for (i=start; i<stop; i++)
-         {
-            /* Note P_diag_i[stop] is the starting point for the next thread
-             * in j and data, not the stop point for this thread */
-            last_index = P_diag_i[i+1];
-            last_index_offd = P_offd_i[i+1];
-            if (i == stop-1)
-            {
-               last_index -= num_lost_per_thread[my_thread_num];
-               last_index_offd -= num_lost_offd_per_thread[my_thread_num];
-            }
-            cnt1 = last_index-P_diag_i[i] + last_index_offd-P_offd_i[i];
-            if (cnt1 > P_mxnum)
-            {
-               P_mxnum = cnt1;
-            }
-         }
-
-         /* Some rows exceed max_elmts, and require truncation.  Essentially,
-          * each thread truncates and compresses its range of rows locally. */
-         if (P_mxnum > max_elmts)
-         {
-            num_lost = 0;
-            num_lost_offd = 0;
-
-            /* two temporary arrays to hold row i for temporary operations */
-            P_aux_j = hypre_CTAlloc(HYPRE_Int,  P_mxnum, HYPRE_MEMORY_HOST);
-            P_aux_data = hypre_CTAlloc(HYPRE_Real,  P_mxnum, HYPRE_MEMORY_HOST);
-            cnt_diag = P_diag_i[start];
-            cnt_offd = P_offd_i[start];
-
-            for (i = start; i < stop; i++)
-            {
-               /* Note P_diag_i[stop] is the starting point for the next thread
-                * in j and data, not the stop point for this thread */
-               last_index = P_diag_i[i+1];
-               last_index_offd = P_offd_i[i+1];
-               if (i == stop-1)
-               {
-                  last_index -= num_lost_per_thread[my_thread_num];
-                  last_index_offd -= num_lost_offd_per_thread[my_thread_num];
-               }
-
-               row_sum = 0;
-               num_elmts = last_index-P_diag_i[i] + last_index_offd-P_offd_i[i];
-               if (max_elmts < num_elmts)
-               {
-                  /* copy both diagonal and off-diag parts of row i to _aux_ arrays */
-                  cnt = 0;
-                  for (j = P_diag_i[i]; j < last_index; j++)
-                  {
-                     P_aux_j[cnt] = P_diag_j[j];
-                     P_aux_data[cnt++] = P_diag_data[j];
-                     row_sum += P_diag_data[j];
-                  }
-                  num_lost += cnt;
-                  cnt1 = cnt;
-                  for (j = P_offd_i[i]; j < last_index_offd; j++)
-                  {
-                     P_aux_j[cnt] = P_offd_j[j]+num_cols;
-                     P_aux_data[cnt++] = P_offd_data[j];
-                     row_sum += P_offd_data[j];
-                  }
-                  num_lost_offd += cnt-cnt1;
-
-                  /* sort data */
-                  hypre_qsort2abs(P_aux_j,P_aux_data,0,cnt-1);
-                  scale = 0;
-                  if (i > start)
-                  {
-                     P_diag_i[i] = cnt_diag;
-                     P_offd_i[i] = cnt_offd;
-                  }
-                  for (j = 0; j < max_elmts; j++)
-                  {
-                     scale += P_aux_data[j];
-                     if (P_aux_j[j] < num_cols)
-                     {
-                        P_diag_j[cnt_diag] = P_aux_j[j];
-                        P_diag_data[cnt_diag++] = P_aux_data[j];
-                     }
-                     else
-                     {
-                        P_offd_j[cnt_offd] = P_aux_j[j]-num_cols;
-                        P_offd_data[cnt_offd++] = P_aux_data[j];
-                     }
-                  }
-                  num_lost -= cnt_diag-P_diag_i[i];
-                  num_lost_offd -= cnt_offd-P_offd_i[i];
-
-                  /* normalize row of P */
-                  if (scale != 0.)
-                  {
-                     if (scale != row_sum)
-                     {
-                        scale = row_sum/scale;
-                        for (j = P_diag_i[i]; j < cnt_diag; j++)
-                        {
-                           P_diag_data[j] *= scale;
-                        }
-                        for (j = P_offd_i[i]; j < cnt_offd; j++)
-                        {
-                           P_offd_data[j] *= scale;
-                        }
-                     }
-                  }
-               }  /* end if (max_elmts < num_elmts) */
-               else
-               {
-                  /* nothing dropped from this row, but still have to shift entries back
-                   * by the number dropped so far */
-                  if (P_diag_i[i] != cnt_diag)
-                  {
-                     start_j = P_diag_i[i];
-                     P_diag_i[i] = cnt_diag;
-                     for (j = start_j; j < last_index; j++)
-                     {
-                        P_diag_j[cnt_diag] = P_diag_j[j];
-                        P_diag_data[cnt_diag++] = P_diag_data[j];
-                     }
-                  }
-                  else
-                  {
-                     cnt_diag += last_index-P_diag_i[i];
-                  }
-
-                  if (P_offd_i[i] != cnt_offd)
-                  {
-                     start_j = P_offd_i[i];
-                     P_offd_i[i] = cnt_offd;
-                     for (j = start_j; j < last_index_offd; j++)
-                     {
-                        P_offd_j[cnt_offd] = P_offd_j[j];
-                        P_offd_data[cnt_offd++] = P_offd_data[j];
-                     }
-                  }
-                  else
-                  {
-                     cnt_offd += last_index_offd-P_offd_i[i];
-                  }
-               }
-            } /* end for (i = 0; i < n_fine; i++) */
-
-            num_lost_per_thread[my_thread_num] += num_lost;
-            num_lost_offd_per_thread[my_thread_num] += num_lost_offd;
-            hypre_TFree(P_aux_j, HYPRE_MEMORY_HOST);
-            hypre_TFree(P_aux_data, HYPRE_MEMORY_HOST);
-
-         } /* end if (P_mxnum > max_elmts) */
-      } /* end if (max_elmts > 0) */
-
-
-      /* Sum up num_lost_global */
-#ifdef HYPRE_USING_OPENMP
-#pragma omp barrier
-#endif
-      if (my_thread_num == 0)
-      {
-         num_lost_global = 0;
-         num_lost_global_offd = 0;
-         for (i = 0; i < max_num_threads[0]; i++)
-         {
-            num_lost_global += num_lost_per_thread[i];
-            num_lost_global_offd += num_lost_offd_per_thread[i];
-         }
-      }
-#ifdef HYPRE_USING_OPENMP
-#pragma omp barrier
-#endif
-
-      /*
-       * Synchronize and create new diag data structures
-       */
-      if (num_lost_global)
-      {
-         /* Each thread has it's own locally compressed CSR matrix from rows start
-          * to stop.  Now, we have to copy each thread's chunk into the new
-          * process-wide CSR data structures
-          *
-          * First, we compute the new process-wide number of nonzeros (i.e.,
-          * P_diag_size), and compute cum_lost_per_thread[k] so that this
-          * entry holds the cumulative sum of entries dropped up to and
-          * including thread k. */
-         if (my_thread_num == 0)
-         {
-            P_diag_size = P_diag_i[n_fine];
-
-            for (i = 0; i < max_num_threads[0]; i++)
-            {
-               P_diag_size -= num_lost_per_thread[i];
-               if (i > 0)
-               {
-                  cum_lost_per_thread[i] = num_lost_per_thread[i] + cum_lost_per_thread[i-1];
-               }
-               else
-               {
-                  cum_lost_per_thread[i] = num_lost_per_thread[i];
-               }
-            }
-
-            P_diag_j_new = hypre_CTAlloc(HYPRE_Int, P_diag_size, mem_loc_diag);
-            P_diag_data_new = hypre_CTAlloc(HYPRE_Real, P_diag_size, mem_loc_diag);
-         }
-#ifdef HYPRE_USING_OPENMP
-#pragma omp barrier
-#endif
-
-         /* points to next open spot in new data structures for this thread */
-         if (my_thread_num == 0)
-         {
-            next_open = 0;
-         }
-         else
-         {
-            /* remember, cum_lost_per_thread[k] stores the num dropped up to and
-             * including thread k */
-            next_open = P_diag_i[start] - cum_lost_per_thread[my_thread_num-1];
-         }
-
-         /* copy the j and data arrays over */
-         for (i = P_diag_i[start]; i < P_diag_i[stop] - num_lost_per_thread[my_thread_num]; i++)
-         {
-            P_diag_j_new[next_open] = P_diag_j[i];
-            P_diag_data_new[next_open] = P_diag_data[i];
-            next_open += 1;
-         }
-
-#ifdef HYPRE_USING_OPENMP
-#pragma omp barrier
-#endif
-         /* update P_diag_i with number of dropped entries by all lower ranked
-          * threads */
-         if (my_thread_num > 0)
-         {
-            for (i=start; i<stop; i++)
-            {
-               P_diag_i[i] -= cum_lost_per_thread[my_thread_num-1];
-            }
-         }
-
-         if (my_thread_num == 0)
-         {
-            /* Set last entry */
-            P_diag_i[n_fine] = P_diag_size ;
-
-            hypre_TFree(P_diag_j, mem_loc_diag);
-            hypre_TFree(P_diag_data, mem_loc_diag);
-            hypre_CSRMatrixJ(P_diag) = P_diag_j_new;
-            hypre_CSRMatrixData(P_diag) = P_diag_data_new;
-            hypre_CSRMatrixNumNonzeros(P_diag) = P_diag_size;
-         }
-      }
-
-
-      /*
-       * Synchronize and create new offd data structures
-       */
-#ifdef HYPRE_USING_OPENMP
-#pragma omp barrier
-#endif
-      if (num_lost_global_offd)
-      {
-         /* Repeat process for off-diagonal */
-         if (my_thread_num == 0)
-         {
-            P_offd_size = P_offd_i[n_fine];
-            for (i = 0; i < max_num_threads[0]; i++)
-            {
-               P_offd_size -= num_lost_offd_per_thread[i];
-               if (i > 0)
-               {
-                  cum_lost_per_thread[i] = num_lost_offd_per_thread[i] + cum_lost_per_thread[i-1];
-               }
-               else
-               {
-                  cum_lost_per_thread[i] = num_lost_offd_per_thread[i];
-               }
-            }
-
-            P_offd_j_new = hypre_CTAlloc(HYPRE_Int, P_offd_size, mem_loc_offd);
-            P_offd_data_new = hypre_CTAlloc(HYPRE_Real, P_offd_size, mem_loc_offd);
-         }
-#ifdef HYPRE_USING_OPENMP
-#pragma omp barrier
-#endif
-
-         /* points to next open spot in new data structures for this thread */
-         if (my_thread_num == 0)
-         {
-            next_open = 0;
-         }
-         else
-         {
-            /* remember, cum_lost_per_thread[k] stores the num dropped up to and
-             * including thread k */
-            next_open = P_offd_i[start] - cum_lost_per_thread[my_thread_num-1];
-         }
-
-         /* copy the j and data arrays over */
-         for (i = P_offd_i[start]; i < P_offd_i[stop] - num_lost_offd_per_thread[my_thread_num]; i++)
-         {
-            P_offd_j_new[next_open] = P_offd_j[i];
-            P_offd_data_new[next_open] = P_offd_data[i];
-            next_open += 1;
-         }
-
-#ifdef HYPRE_USING_OPENMP
-#pragma omp barrier
-#endif
-         /* update P_offd_i with number of dropped entries by all lower ranked
-          * threads */
-         if (my_thread_num > 0)
-         {
-            for (i=start; i<stop; i++)
-            {
-               P_offd_i[i] -= cum_lost_per_thread[my_thread_num-1];
-            }
-         }
-
-         if (my_thread_num == 0)
-         {
-            /* Set last entry */
-            P_offd_i[n_fine] = P_offd_size ;
-
-            hypre_TFree(P_offd_j, mem_loc_offd);
-            hypre_TFree(P_offd_data, mem_loc_offd);
-            hypre_CSRMatrixJ(P_offd) = P_offd_j_new;
-            hypre_CSRMatrixData(P_offd) = P_offd_data_new;
-            hypre_CSRMatrixNumNonzeros(P_offd) = P_offd_size;
-         }
-      }
-
-   } /* end parallel region */
-
-   hypre_TFree(max_num_threads, HYPRE_MEMORY_HOST);
-   hypre_TFree(cum_lost_per_thread, HYPRE_MEMORY_HOST);
-   hypre_TFree(num_lost_per_thread, HYPRE_MEMORY_HOST);
-   hypre_TFree(num_lost_offd_per_thread, HYPRE_MEMORY_HOST);
-
-#ifdef HYPRE_PROFILE
-   hypre_profile_times[HYPRE_TIMER_ID_INTERP_TRUNC] += hypre_MPI_Wtime();
-#endif
-
-   return ierr;
+      HYPRE_Int rescale = 1; // rescale P
+      HYPRE_Int nrm_type = 0; // Use infty-norm of row to perform treshold dropping
+      return hypre_ParCSRMatrixTruncate(P, trunc_factor, max_elmts, rescale, nrm_type);
+   }
 }
-
 
 /*---------------------------------------------------------------------------
  * hypre_BoomerAMGBuildInterpModUnk - this is a modified interpolation for the unknown approach.
@@ -3280,7 +2667,6 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
                                   HYPRE_Int             debug_flag,
                                   HYPRE_Real            trunc_factor,
                                   HYPRE_Int             max_elmts,
-                                  HYPRE_Int            *col_offd_S_to_A,
                                   hypre_ParCSRMatrix  **P_ptr)
 {
 
@@ -3309,8 +2695,8 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
    HYPRE_Int       *S_offd_j = hypre_CSRMatrixJ(S_offd);
 
    hypre_ParCSRMatrix *P;
-   HYPRE_BigInt      *col_map_offd_P;
-   HYPRE_Int      *tmp_map_offd;
+   HYPRE_BigInt       *col_map_offd_P;
+   HYPRE_Int          *tmp_map_offd;
 
    HYPRE_Int          *CF_marker_offd = NULL;
    HYPRE_Int          *dof_func_offd = NULL;
@@ -3335,10 +2721,10 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
 
    HYPRE_Int       *P_marker, *P_marker_offd;
 
-   HYPRE_Int        jj_counter,jj_counter_offd;
+   HYPRE_Int        jj_counter, jj_counter_offd;
    HYPRE_Int       *jj_count, *jj_count_offd;
-   HYPRE_Int        jj_begin_row,jj_begin_row_offd;
-   HYPRE_Int        jj_end_row,jj_end_row_offd;
+   HYPRE_Int        jj_begin_row, jj_begin_row_offd;
+   HYPRE_Int        jj_end_row, jj_end_row_offd;
 
    HYPRE_Int        start_indexing = 0; /* start indexing for P_data at 0 */
 
@@ -3354,8 +2740,8 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
    HYPRE_Int        num_cols_P_offd;
    //HYPRE_BigInt     my_first_cpt;
 
-   HYPRE_Int        i,i1,i2;
-   HYPRE_Int        j,jl,jj,jj1;
+   HYPRE_Int        i, i1, i2;
+   HYPRE_Int        j, jl, jj, jj1;
    HYPRE_Int        kc;
    HYPRE_BigInt     big_k;
    HYPRE_Int        start;
@@ -3385,18 +2771,13 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
    HYPRE_Real       wall_time;  /* for debugging instrumentation  */
 
    hypre_MPI_Comm_size(comm, &num_procs);
-   hypre_MPI_Comm_rank(comm,&my_id);
+   hypre_MPI_Comm_rank(comm, &my_id);
    num_threads = hypre_NumThreads();
 
 
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    //my_first_cpt = num_cpts_global[0];
-   if (my_id == (num_procs -1)) total_global_cpts = num_cpts_global[1];
-   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs-1, comm);
-#else
-   //my_first_cpt = num_cpts_global[my_id];
-   total_global_cpts = num_cpts_global[num_procs];
-#endif
+   if (my_id == (num_procs - 1)) { total_global_cpts = num_cpts_global[1]; }
+   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs - 1, comm);
 
    /*-------------------------------------------------------------------
     * Get the CF_marker data for the off-processor columns
@@ -3408,11 +2789,13 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
       print_level = 1;
    }
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
-   if (num_cols_A_offd) CF_marker_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd, HYPRE_MEMORY_HOST);
+   if (num_cols_A_offd) { CF_marker_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd, HYPRE_MEMORY_HOST); }
    if (num_functions > 1 && num_cols_A_offd)
+   {
       dof_func_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd, HYPRE_MEMORY_HOST);
+   }
 
    if (!comm_pkg)
    {
@@ -3422,19 +2805,19 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
 
    num_sends = hypre_ParCSRCommPkgNumSends(comm_pkg);
    int_buf_data = hypre_CTAlloc(HYPRE_Int,  hypre_ParCSRCommPkgSendMapStart(comm_pkg,
-            num_sends), HYPRE_MEMORY_HOST);
+                                                                            num_sends), HYPRE_MEMORY_HOST);
 
    index = 0;
    for (i = 0; i < num_sends; i++)
    {
       start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
          int_buf_data[index++]
-            = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+            = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
    }
 
    comm_handle = hypre_ParCSRCommHandleCreate( 11, comm_pkg, int_buf_data,
-         CF_marker_offd);
+                                               CF_marker_offd);
 
    hypre_ParCSRCommHandleDestroy(comm_handle);
    if (num_functions > 1)
@@ -3443,22 +2826,22 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
       for (i = 0; i < num_sends; i++)
       {
          start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-         for (j=start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+         for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
             int_buf_data[index++]
-               = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+               = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
       }
 
       comm_handle = hypre_ParCSRCommHandleCreate( 11, comm_pkg, int_buf_data,
-            dof_func_offd);
+                                                  dof_func_offd);
 
       hypre_ParCSRCommHandleDestroy(comm_handle);
    }
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d     Interp: Comm 1 CF_marker =    %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -3466,20 +2849,20 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
     * Get the ghost rows of A
     *---------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    if (num_procs > 1)
    {
-      A_ext      = hypre_ParCSRMatrixExtractBExt(A,A,1);
+      A_ext      = hypre_ParCSRMatrixExtractBExt(A, A, 1);
       A_ext_i    = hypre_CSRMatrixI(A_ext);
       A_ext_j    = hypre_CSRMatrixBigJ(A_ext);
       A_ext_data = hypre_CSRMatrixData(A_ext);
    }
 
    index = 0;
-   for (i=0; i < num_cols_A_offd; i++)
+   for (i = 0; i < num_cols_A_offd; i++)
    {
-      for (j=A_ext_i[i]; j < A_ext_i[i+1]; j++)
+      for (j = A_ext_i[i]; j < A_ext_i[i + 1]; j++)
       {
          big_k = A_ext_j[j];
          if (big_k >= col_1 && big_k < col_n)
@@ -3489,10 +2872,10 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
          }
          else
          {
-            kc = hypre_BigBinarySearch(col_map_offd,big_k,num_cols_A_offd);
+            kc = hypre_BigBinarySearch(col_map_offd, big_k, num_cols_A_offd);
             if (kc > -1)
             {
-               A_ext_j[index] = (HYPRE_BigInt)(-kc-1);
+               A_ext_j[index] = (HYPRE_BigInt)(-kc - 1);
                A_ext_data[index++] = A_ext_data[j];
             }
          }
@@ -3500,14 +2883,16 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
       A_ext_i[i] = index;
    }
    for (i = num_cols_A_offd; i > 0; i--)
-      A_ext_i[i] = A_ext_i[i-1];
-   if (num_procs > 1) A_ext_i[0] = 0;
+   {
+      A_ext_i[i] = A_ext_i[i - 1];
+   }
+   if (num_procs > 1) { A_ext_i[0] = 0; }
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d  Interp: Comm 2   Get A_ext =  %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -3526,9 +2911,9 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
 
    fine_to_coarse = hypre_CTAlloc(HYPRE_Int,  n_fine, HYPRE_MEMORY_HOST);
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-   for (i = 0; i < n_fine; i++) fine_to_coarse[i] = -1;
+   for (i = 0; i < n_fine; i++) { fine_to_coarse[i] = -1; }
 
    jj_counter = start_indexing;
    jj_counter_offd = start_indexing;
@@ -3539,21 +2924,21 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
 
    /* RDF: this looks a little tricky, but doable */
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,i1,jj,ns,ne,size,rest) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,i1,jj,ns,ne,size,rest) HYPRE_SMP_SCHEDULE
 #endif
    for (j = 0; j < num_threads; j++)
    {
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (j < rest)
       {
-         ns = j*size+j;
-         ne = (j+1)*size+j+1;
+         ns = j * size + j;
+         ne = (j + 1) * size + j + 1;
       }
       else
       {
-         ns = j*size+rest;
-         ne = (j+1)*size+rest;
+         ns = j * size + rest;
+         ne = (j + 1) * size + rest;
       }
       for (i = ns; i < ne; i++)
       {
@@ -3577,7 +2962,7 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
 
          else
          {
-            for (jj = S_diag_i[i]; jj < S_diag_i[i+1]; jj++)
+            for (jj = S_diag_i[i]; jj < S_diag_i[i + 1]; jj++)
             {
                i1 = S_diag_j[jj];
                if (CF_marker[i1] >= 0)
@@ -3588,26 +2973,12 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
 
             if (num_procs > 1)
             {
-               if (col_offd_S_to_A)
+               for (jj = S_offd_i[i]; jj < S_offd_i[i + 1]; jj++)
                {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+                  i1 = S_offd_j[jj];
+                  if (CF_marker_offd[i1] >= 0)
                   {
-                     i1 = col_offd_S_to_A[S_offd_j[jj]];
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        jj_count_offd[j]++;
-                     }
-                  }
-               }
-               else
-               {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
-                  {
-                     i1 = S_offd_j[jj];
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        jj_count_offd[j]++;
-                     }
+                     jj_count_offd[j]++;
                   }
                }
             }
@@ -3619,19 +2990,19 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
     *  Allocate  arrays.
     *-----------------------------------------------------------------------*/
 
-   for (i=0; i < num_threads-1; i++)
+   for (i = 0; i < num_threads - 1; i++)
    {
-      coarse_counter[i+1] += coarse_counter[i];
-      jj_count[i+1] += jj_count[i];
-      jj_count_offd[i+1] += jj_count_offd[i];
+      coarse_counter[i + 1] += coarse_counter[i];
+      jj_count[i + 1] += jj_count[i];
+      jj_count_offd[i + 1] += jj_count_offd[i];
    }
-   i = num_threads-1;
+   i = num_threads - 1;
    jj_counter = jj_count[i];
    jj_counter_offd = jj_count_offd[i];
 
    P_diag_size = jj_counter;
 
-   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1, HYPRE_MEMORY_HOST);
+   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1, HYPRE_MEMORY_HOST);
    P_diag_j    = hypre_CTAlloc(HYPRE_Int,  P_diag_size, HYPRE_MEMORY_HOST);
    P_diag_data = hypre_CTAlloc(HYPRE_Real,  P_diag_size, HYPRE_MEMORY_HOST);
 
@@ -3639,7 +3010,7 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
 
    P_offd_size = jj_counter_offd;
 
-   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1, HYPRE_MEMORY_HOST);
+   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1, HYPRE_MEMORY_HOST);
    P_offd_j    = hypre_CTAlloc(HYPRE_Int,  P_offd_size, HYPRE_MEMORY_HOST);
    P_offd_data = hypre_CTAlloc(HYPRE_Real,  P_offd_size, HYPRE_MEMORY_HOST);
 
@@ -3650,11 +3021,11 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
    jj_counter = start_indexing;
    jj_counter_offd = start_indexing;
 
-   if (debug_flag==4)
+   if (debug_flag == 4)
    {
       wall_time = time_getWallclockSeconds() - wall_time;
       hypre_printf("Proc = %d     Interp: Internal work 1 =     %f\n",
-            my_id, wall_time);
+                   my_id, wall_time);
       fflush(NULL);
    }
 
@@ -3662,31 +3033,33 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
     *  Send and receive fine_to_coarse info.
     *-----------------------------------------------------------------------*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    //fine_to_coarse_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,ns,ne,size,rest,coarse_shift) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,ns,ne,size,rest,coarse_shift) HYPRE_SMP_SCHEDULE
 #endif
    for (j = 0; j < num_threads; j++)
    {
       coarse_shift = 0;
-      if (j > 0) coarse_shift = coarse_counter[j-1];
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      if (j > 0) { coarse_shift = coarse_counter[j - 1]; }
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (j < rest)
       {
-         ns = j*size+j;
-         ne = (j+1)*size+j+1;
+         ns = j * size + j;
+         ne = (j + 1) * size + j + 1;
       }
       else
       {
-         ns = j*size+rest;
-         ne = (j+1)*size+rest;
+         ns = j * size + rest;
+         ne = (j + 1) * size + rest;
       }
       for (i = ns; i < ne; i++)
+      {
          fine_to_coarse[i] += coarse_shift;
+      }
    }
    /*index = 0;
      for (i = 0; i < num_sends; i++)
@@ -3710,44 +3083,48 @@ hypre_BoomerAMGBuildInterpModUnk( hypre_ParCSRMatrix   *A,
      fflush(NULL);
      }*/
 
-   if (debug_flag==4) wall_time = time_getWallclockSeconds();
+   if (debug_flag == 4) { wall_time = time_getWallclockSeconds(); }
 
    /*#ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
-#endif
-for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
+   #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+   #endif
+   for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
    /*-----------------------------------------------------------------------
     *  Loop over fine grid points.
     *-----------------------------------------------------------------------*/
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i,j,jl,i1,i2,jj,jj1,ns,ne,size,rest,sum,diagonal,distribute,P_marker,P_marker_offd,strong_f_marker,jj_counter,jj_counter_offd,sgn,c_num,jj_begin_row,jj_end_row,jj_begin_row_offd,jj_end_row_offd) HYPRE_SMP_SCHEDULE
+   #pragma omp parallel for private(i,j,jl,i1,i2,jj,jj1,ns,ne,size,rest,sum,diagonal,distribute,P_marker,P_marker_offd,strong_f_marker,jj_counter,jj_counter_offd,sgn,c_num,jj_begin_row,jj_end_row,jj_begin_row_offd,jj_end_row_offd) HYPRE_SMP_SCHEDULE
 #endif
    for (jl = 0; jl < num_threads; jl++)
    {
-      size = n_fine/num_threads;
-      rest = n_fine - size*num_threads;
+      size = n_fine / num_threads;
+      rest = n_fine - size * num_threads;
       if (jl < rest)
       {
-         ns = jl*size+jl;
-         ne = (jl+1)*size+jl+1;
+         ns = jl * size + jl;
+         ne = (jl + 1) * size + jl + 1;
       }
       else
       {
-         ns = jl*size+rest;
-         ne = (jl+1)*size+rest;
+         ns = jl * size + rest;
+         ne = (jl + 1) * size + rest;
       }
       jj_counter = 0;
-      if (jl > 0) jj_counter = jj_count[jl-1];
+      if (jl > 0) { jj_counter = jj_count[jl - 1]; }
       jj_counter_offd = 0;
-      if (jl > 0) jj_counter_offd = jj_count_offd[jl-1];
+      if (jl > 0) { jj_counter_offd = jj_count_offd[jl - 1]; }
 
       P_marker = hypre_CTAlloc(HYPRE_Int,  n_fine, HYPRE_MEMORY_HOST);
       if (num_cols_A_offd)
+      {
          P_marker_offd = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
+      }
       else
+      {
          P_marker_offd = NULL;
+      }
 
       for (i = 0; i < n_fine; i++)
       {
@@ -3784,7 +3161,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
             P_diag_i[i] = jj_counter;
             jj_begin_row = jj_counter;
 
-            for (jj = S_diag_i[i]; jj < S_diag_i[i+1]; jj++)
+            for (jj = S_diag_i[i]; jj < S_diag_i[i + 1]; jj++)
             {
                i1 = S_diag_j[jj];
 
@@ -3820,66 +3197,32 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             if (num_procs > 1)
             {
-               if (col_offd_S_to_A)
+               for (jj = S_offd_i[i]; jj < S_offd_i[i + 1]; jj++)
                {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+                  i1 = S_offd_j[jj];
+
+                  /*-----------------------------------------------------------
+                   * If neighbor i1 is a C-point, set column number in P_offd_j
+                   * and initialize interpolation weight to zero.
+                   *-----------------------------------------------------------*/
+
+                  if (CF_marker_offd[i1] >= 0)
                   {
-                     i1 = col_offd_S_to_A[S_offd_j[jj]];
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is a C-point, set column number in P_offd_j
-                      * and initialize interpolation weight to zero.
-                      *-----------------------------------------------------------*/
-
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        P_marker_offd[i1] = jj_counter_offd;
-                        /*P_offd_j[jj_counter_offd]  = fine_to_coarse_offd[i1];*/
-                        P_offd_j[jj_counter_offd]  = i1;
-                        P_offd_data[jj_counter_offd] = zero;
-                        jj_counter_offd++;
-                     }
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is an F-point, mark it as a strong F-point
-                      * whose connection needs to be distributed.
-                      *-----------------------------------------------------------*/
-
-                     else if (CF_marker_offd[i1] != -3)
-                     {
-                        P_marker_offd[i1] = strong_f_marker;
-                     }
+                     P_marker_offd[i1] = jj_counter_offd;
+                     /*P_offd_j[jj_counter_offd]  = fine_to_coarse_offd[i1];*/
+                     P_offd_j[jj_counter_offd]  = i1;
+                     P_offd_data[jj_counter_offd] = zero;
+                     jj_counter_offd++;
                   }
-               }
-               else
-               {
-                  for (jj = S_offd_i[i]; jj < S_offd_i[i+1]; jj++)
+
+                  /*-----------------------------------------------------------
+                   * If neighbor i1 is an F-point, mark it as a strong F-point
+                   * whose connection needs to be distributed.
+                   *-----------------------------------------------------------*/
+
+                  else if (CF_marker_offd[i1] != -3)
                   {
-                     i1 = S_offd_j[jj];
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is a C-point, set column number in P_offd_j
-                      * and initialize interpolation weight to zero.
-                      *-----------------------------------------------------------*/
-
-                     if (CF_marker_offd[i1] >= 0)
-                     {
-                        P_marker_offd[i1] = jj_counter_offd;
-                        /*P_offd_j[jj_counter_offd]  = fine_to_coarse_offd[i1];*/
-                        P_offd_j[jj_counter_offd]  = i1;
-                        P_offd_data[jj_counter_offd] = zero;
-                        jj_counter_offd++;
-                     }
-
-                     /*-----------------------------------------------------------
-                      * If neighbor i1 is an F-point, mark it as a strong F-point
-                      * whose connection needs to be distributed.
-                      *-----------------------------------------------------------*/
-
-                     else if (CF_marker_offd[i1] != -3)
-                     {
-                        P_marker_offd[i1] = strong_f_marker;
-                     }
+                     P_marker_offd[i1] = strong_f_marker;
                   }
                }
             }
@@ -3891,7 +3234,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             /* Loop over ith row of A.  First, the diagonal part of A */
 
-            for (jj = A_diag_i[i]+1; jj < A_diag_i[i+1]; jj++)
+            for (jj = A_diag_i[i] + 1; jj < A_diag_i[i + 1]; jj++)
             {
                i1 = A_diag_j[jj];
 
@@ -3923,16 +3266,16 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                    * of the connections to c-points that strongly influence i.
                    *-----------------------------------------------------------*/
                   sgn = 1;
-                  if (A_diag_data[A_diag_i[i1]] < 0) sgn = -1;
+                  if (A_diag_data[A_diag_i[i1]] < 0) { sgn = -1; }
                   /* Diagonal block part of row i1 */
-                  for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1+1]; jj1++)
+                  for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1 + 1]; jj1++)
                   {
                      i2 = A_diag_j[jj1];
                      if (num_functions == 1 || dof_func[i1] == dof_func[i2])
                      {
 
                         if (P_marker[i2] >= jj_begin_row &&
-                              (sgn*A_diag_data[jj1]) < 0 )
+                            (sgn * A_diag_data[jj1]) < 0 )
                         {
                            sum += A_diag_data[jj1];
                         }
@@ -3943,13 +3286,13 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                   /* Off-Diagonal block part of row i1 */
                   if (num_procs > 1)
                   {
-                     for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1+1]; jj1++)
+                     for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1 + 1]; jj1++)
                      {
                         i2 = A_offd_j[jj1];
                         if (num_functions == 1 || dof_func[i1] == dof_func[i2])
                         {
                            if (P_marker_offd[i2] >= jj_begin_row_offd
-                                 && (sgn*A_offd_data[jj1]) < 0)
+                               && (sgn * A_offd_data[jj1]) < 0)
                            {
                               sum += A_offd_data[jj1];
                            }
@@ -3966,16 +3309,16 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                       *-----------------------------------------------------------*/
 
                      /* Diagonal block part of row i1 */
-                     for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1+1]; jj1++)
+                     for (jj1 = A_diag_i[i1]; jj1 < A_diag_i[i1 + 1]; jj1++)
                      {
                         i2 = A_diag_j[jj1];
                         if (num_functions == 1 || dof_func[i1] == dof_func[i2])
                         {
                            if (P_marker[i2] >= jj_begin_row
-                                 && (sgn*A_diag_data[jj1]) < 0)
+                               && (sgn * A_diag_data[jj1]) < 0)
                            {
                               P_diag_data[P_marker[i2]]
-                                 += distribute * A_diag_data[jj1];
+                              += distribute * A_diag_data[jj1];
                            }
                         }
 
@@ -3984,16 +3327,16 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                      /* Off-Diagonal block part of row i1 */
                      if (num_procs > 1)
                      {
-                        for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1+1]; jj1++)
+                        for (jj1 = A_offd_i[i1]; jj1 < A_offd_i[i1 + 1]; jj1++)
                         {
                            i2 = A_offd_j[jj1];
                            if (num_functions == 1 || dof_func[i1] == dof_func[i2])
                            {
                               if (P_marker_offd[i2] >= jj_begin_row_offd
-                                    && (sgn*A_offd_data[jj1]) < 0)
+                                  && (sgn * A_offd_data[jj1]) < 0)
                               {
                                  P_offd_data[P_marker_offd[i2]]
-                                    += distribute * A_offd_data[jj1];
+                                 += distribute * A_offd_data[jj1];
                               }
                            }
                         }
@@ -4003,7 +3346,9 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                   else /* sum = 0 - only add to diag if the same function type */
                   {
                      if (num_functions == 1 || dof_func[i] == dof_func[i1])
+                     {
                         diagonal += A_diag_data[jj];
+                     }
                   }
                }
 
@@ -4015,7 +3360,9 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                else if (CF_marker[i1] != -3)
                {
                   if (num_functions == 1 || dof_func[i] == dof_func[i1])
+                  {
                      diagonal += A_diag_data[jj];
+                  }
                }
 
             }
@@ -4028,7 +3375,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
             if (num_procs > 1)
             {
-               for (jj = A_offd_i[i]; jj < A_offd_i[i+1]; jj++)
+               for (jj = A_offd_i[i]; jj < A_offd_i[i + 1]; jj++)
                {
                   i1 = A_offd_j[jj];
 
@@ -4064,8 +3411,8 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                      c_num = A_offd_j[jj];
 
                      sgn = 1;
-                     if (A_ext_data[A_ext_i[c_num]] < 0) sgn = -1;
-                     for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num+1]; jj1++)
+                     if (A_ext_data[A_ext_i[c_num]] < 0) { sgn = -1; }
+                     for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num + 1]; jj1++)
                      {
                         i2 = (HYPRE_Int)A_ext_j[jj1];
                         if (num_functions == 1 || dof_func[i1] == dof_func[i2])
@@ -4074,7 +3421,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                            {
                               /* in the diagonal block */
                               if (P_marker[i2] >= jj_begin_row
-                                    && (sgn*A_ext_data[jj1]) < 0)
+                                  && (sgn * A_ext_data[jj1]) < 0)
                               {
                                  sum += A_ext_data[jj1];
                               }
@@ -4082,8 +3429,8 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                            else
                            {
                               /* in the off_diagonal block  */
-                              if (P_marker_offd[-i2-1] >= jj_begin_row_offd
-                                    && (sgn*A_ext_data[jj1]) < 0)
+                              if (P_marker_offd[-i2 - 1] >= jj_begin_row_offd
+                                  && (sgn * A_ext_data[jj1]) < 0)
                               {
                                  sum += A_ext_data[jj1];
                               }
@@ -4101,7 +3448,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
                         /* Diagonal block part of row i1 */
 
-                        for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num+1]; jj1++)
+                        for (jj1 = A_ext_i[c_num]; jj1 < A_ext_i[c_num + 1]; jj1++)
                         {
                            i2 = (HYPRE_Int)A_ext_j[jj1];
                            if (num_functions == 1 || dof_func[i1] == dof_func[i2])
@@ -4109,19 +3456,19 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                               if (i2 > -1) /* in the diagonal block */
                               {
                                  if (P_marker[i2] >= jj_begin_row
-                                       && (sgn*A_ext_data[jj1]) < 0)
+                                     && (sgn * A_ext_data[jj1]) < 0)
                                  {
                                     P_diag_data[P_marker[i2]]
-                                       += distribute * A_ext_data[jj1];
+                                    += distribute * A_ext_data[jj1];
                                  }
                               }
                               else
                               {
                                  /* in the off_diagonal block  */
-                                 if (P_marker_offd[-i2-1] >= jj_begin_row_offd
-                                       && (sgn*A_ext_data[jj1]) < 0)
-                                    P_offd_data[P_marker_offd[-i2-1]]
-                                       += distribute * A_ext_data[jj1];
+                                 if (P_marker_offd[-i2 - 1] >= jj_begin_row_offd
+                                     && (sgn * A_ext_data[jj1]) < 0)
+                                    P_offd_data[P_marker_offd[-i2 - 1]]
+                                    += distribute * A_ext_data[jj1];
                               }
                            }
                         }
@@ -4129,7 +3476,9 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                      else /* sum = 0 */
                      {
                         if (num_functions == 1 || dof_func[i] == dof_func_offd[i1])
+                        {
                            diagonal += A_offd_data[jj];
+                        }
                      }
                   }
 
@@ -4141,7 +3490,9 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
                   else if (CF_marker_offd[i1] != -3)
                   {
                      if (num_functions == 1 || dof_func[i] == dof_func_offd[i1])
+                     {
                         diagonal += A_offd_data[jj];
+                     }
                   }
 
                }
@@ -4154,7 +3505,9 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
             if (diagonal == 0.0)
             {
                if (print_level)
-                  hypre_printf(" Warning! zero diagonal! Proc id %d row %d\n", my_id,i);
+               {
+                  hypre_printf(" Warning! zero diagonal! Proc id %d row %d\n", my_id, i);
+               }
                for (jj = jj_begin_row; jj < jj_end_row; jj++)
                {
                   P_diag_data[jj] = 0.0;
@@ -4179,20 +3532,20 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
          strong_f_marker--;
 
-         P_offd_i[i+1] = jj_counter_offd;
+         P_offd_i[i + 1] = jj_counter_offd;
       }
       hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
       hypre_TFree(P_marker_offd, HYPRE_MEMORY_HOST);
    }
 
    P = hypre_ParCSRMatrixCreate(comm,
-         hypre_ParCSRMatrixGlobalNumRows(A),
-         total_global_cpts,
-         hypre_ParCSRMatrixColStarts(A),
-         num_cpts_global,
-         0,
-         P_diag_i[n_fine],
-         P_offd_i[n_fine]);
+                                hypre_ParCSRMatrixGlobalNumRows(A),
+                                total_global_cpts,
+                                hypre_ParCSRMatrixColStarts(A),
+                                num_cpts_global,
+                                0,
+                                P_diag_i[n_fine],
+                                P_offd_i[n_fine]);
 
    P_diag = hypre_ParCSRMatrixDiag(P);
    hypre_CSRMatrixData(P_diag) = P_diag_data;
@@ -4202,7 +3555,6 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
    hypre_CSRMatrixData(P_offd) = P_offd_data;
    hypre_CSRMatrixI(P_offd) = P_offd_i;
    hypre_CSRMatrixJ(P_offd) = P_offd_j;
-   hypre_ParCSRMatrixOwnsRowStarts(P) = 0;
 
    /* Compress P, removing coefficients smaller than trunc_factor * Max */
 
@@ -4225,13 +3577,15 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
       P_marker = hypre_CTAlloc(HYPRE_Int,  num_cols_A_offd, HYPRE_MEMORY_HOST);
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+      #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-      for (i=0; i < num_cols_A_offd; i++)
+      for (i = 0; i < num_cols_A_offd; i++)
+      {
          P_marker[i] = 0;
+      }
 
       num_cols_P_offd = 0;
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
       {
          index = P_offd_j[i];
          if (!P_marker[index])
@@ -4245,24 +3599,24 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
       tmp_map_offd = hypre_CTAlloc(HYPRE_Int, num_cols_P_offd, HYPRE_MEMORY_HOST);
 
       index = 0;
-      for (i=0; i < num_cols_P_offd; i++)
+      for (i = 0; i < num_cols_P_offd; i++)
       {
-         while (P_marker[index]==0) index++;
+         while (P_marker[index] == 0) { index++; }
          tmp_map_offd[i] = index++;
       }
 
 #ifdef HYPRE_USING_OPENMP
-#pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
+      #pragma omp parallel for private(i) HYPRE_SMP_SCHEDULE
 #endif
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
          P_offd_j[i] = hypre_BinarySearch(tmp_map_offd,
-               P_offd_j[i],
-               num_cols_P_offd);
+                                          P_offd_j[i],
+                                          num_cols_P_offd);
       hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
    }
 
-   for (i=0; i < n_fine; i++)
-      if (CF_marker[i] == -3) CF_marker[i] = -1;
+   for (i = 0; i < n_fine; i++)
+      if (CF_marker[i] == -3) { CF_marker[i] = -1; }
 
    if (num_cols_P_offd)
    {
@@ -4284,7 +3638,7 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
    hypre_TFree(jj_count, HYPRE_MEMORY_HOST);
    hypre_TFree(jj_count_offd, HYPRE_MEMORY_HOST);
 
-   if (num_procs > 1) hypre_CSRMatrixDestroy(A_ext);
+   if (num_procs > 1) { hypre_CSRMatrixDestroy(A_ext); }
 
    return hypre_error_flag;
 
@@ -4296,8 +3650,8 @@ for (i = 0; i < n_fine; i++) fine_to_coarse[i] -= my_first_cpt;*/
 
 HYPRE_Int
 hypre_BoomerAMGTruncandBuild( hypre_ParCSRMatrix   *P,
-                         HYPRE_Real                trunc_factor,
-                         HYPRE_Int                 max_elmts)
+                              HYPRE_Real                trunc_factor,
+                              HYPRE_Int                 max_elmts)
 {
    hypre_CSRMatrix *P_offd = hypre_ParCSRMatrixOffd(P);
    hypre_ParCSRCommPkg   *commpkg_P = hypre_ParCSRMatrixCommPkg(P);
@@ -4310,7 +3664,7 @@ hypre_BoomerAMGTruncandBuild( hypre_ParCSRMatrix   *P,
    HYPRE_BigInt          *new_col_map_offd;
    HYPRE_Int             *tmp_map_offd = NULL;
 
-   HYPRE_Int              P_offd_size=0, new_num_cols_offd;
+   HYPRE_Int              P_offd_size = 0, new_num_cols_offd;
 
    HYPRE_Int             *P_marker;
 
@@ -4334,11 +3688,13 @@ hypre_BoomerAMGTruncandBuild( hypre_ParCSRMatrix   *P,
       P_marker = hypre_CTAlloc(HYPRE_Int,  num_cols_offd, HYPRE_MEMORY_HOST);
 
       /*#define HYPRE_SMP_PRIVATE i
-#include "../utilities/hypre_smp_forloop.h"*/
-      for (i=0; i < num_cols_offd; i++)
+      #include "../utilities/hypre_smp_forloop.h"*/
+      for (i = 0; i < num_cols_offd; i++)
+      {
          P_marker[i] = 0;
+      }
 
-      for (i=0; i < P_offd_size; i++)
+      for (i = 0; i < P_offd_size; i++)
       {
          index = P_offd_j[i];
          if (!P_marker[index])
@@ -4352,30 +3708,30 @@ hypre_BoomerAMGTruncandBuild( hypre_ParCSRMatrix   *P,
       new_col_map_offd = hypre_CTAlloc(HYPRE_BigInt, new_num_cols_offd, HYPRE_MEMORY_HOST);
 
       index = 0;
-      for (i=0; i < new_num_cols_offd; i++)
+      for (i = 0; i < new_num_cols_offd; i++)
       {
-         while (P_marker[index]==0) index++;
+         while (P_marker[index] == 0) { index++; }
          tmp_map_offd[i] = index++;
       }
 
       /*#define HYPRE_SMP_PRIVATE i
-#include "../utilities/hypre_smp_forloop.h"*/
-      for (i=0; i < P_offd_size; i++)
+      #include "../utilities/hypre_smp_forloop.h"*/
+      for (i = 0; i < P_offd_size; i++)
          P_offd_j[i] = hypre_BinarySearch(tmp_map_offd,
-               P_offd_j[i],
-               new_num_cols_offd);
+                                          P_offd_j[i],
+                                          new_num_cols_offd);
    }
 
    index = 0;
    for (i = 0; i < new_num_cols_offd; i++)
    {
-      while (P_marker[index] == 0) index++;
+      while (P_marker[index] == 0) { index++; }
 
       new_col_map_offd[i] = col_map_offd[index];
       index++;
    }
 
-   if (P_offd_size) hypre_TFree(P_marker, HYPRE_MEMORY_HOST);
+   if (P_offd_size) { hypre_TFree(P_marker, HYPRE_MEMORY_HOST); }
 
    if (new_num_cols_offd)
    {
@@ -4385,7 +3741,7 @@ hypre_BoomerAMGTruncandBuild( hypre_ParCSRMatrix   *P,
       hypre_CSRMatrixNumCols(P_offd) = new_num_cols_offd;
    }
 
-   if (commpkg_P != NULL) hypre_MatvecCommPkgDestroy(commpkg_P);
+   if (commpkg_P != NULL) { hypre_MatvecCommPkgDestroy(commpkg_P); }
    hypre_MatvecCommPkgCreate(P);
 
    return hypre_error_flag;
@@ -4433,7 +3789,7 @@ hypre_ParCSRMatrix *hypre_CreateC( hypre_ParCSRMatrix  *A,
    HYPRE_Real  w_local = w;
 
    C = hypre_ParCSRMatrixCreate(comm, global_num_rows, global_num_rows, row_starts,
-         row_starts, num_cols_offd, A_diag_i[num_rows], A_offd_i[num_rows]);
+                                row_starts, num_cols_offd, A_diag_i[num_rows], A_offd_i[num_rows]);
 
    hypre_ParCSRMatrixInitialize(C);
 
@@ -4450,38 +3806,41 @@ hypre_ParCSRMatrix *hypre_CreateC( hypre_ParCSRMatrix  *A,
 
    col_map_offd_C = hypre_ParCSRMatrixColMapOffd(C);
 
-   hypre_ParCSRMatrixOwnsRowStarts(C) = 0;
-   hypre_ParCSRMatrixOwnsColStarts(C) = 0;
-
-   for (i=0; i < num_cols_offd; i++)
+   for (i = 0; i < num_cols_offd; i++)
+   {
       col_map_offd_C[i] = col_map_offd_A[i];
+   }
 
-   for (i=0; i < num_rows; i++)
+   for (i = 0; i < num_rows; i++)
    {
       index = A_diag_i[i];
-      invdiag = -w/A_diag_data[index];
-      C_diag_data[index] = 1.0-w;
+      invdiag = -w / A_diag_data[index];
+      C_diag_data[index] = 1.0 - w;
       C_diag_j[index] = A_diag_j[index];
       if (w == 0)
       {
          w_local = fabs(A_diag_data[index]);
-         for (j = index+1; j < A_diag_i[i+1]; j++)
+         for (j = index + 1; j < A_diag_i[i + 1]; j++)
+         {
             w_local += fabs(A_diag_data[j]);
-         for (j = A_offd_i[i]; j < A_offd_i[i+1]; j++)
+         }
+         for (j = A_offd_i[i]; j < A_offd_i[i + 1]; j++)
+         {
             w_local += fabs(A_offd_data[j]);
-         invdiag = -1/w_local;
-         C_diag_data[index] = 1.0-A_diag_data[index]/w_local;
+         }
+         invdiag = -1 / w_local;
+         C_diag_data[index] = 1.0 - A_diag_data[index] / w_local;
       }
       C_diag_i[i] = index;
       C_offd_i[i] = A_offd_i[i];
-      for (j = index+1; j < A_diag_i[i+1]; j++)
+      for (j = index + 1; j < A_diag_i[i + 1]; j++)
       {
-         C_diag_data[j] = A_diag_data[j]*invdiag;
+         C_diag_data[j] = A_diag_data[j] * invdiag;
          C_diag_j[j] = A_diag_j[j];
       }
-      for (j = A_offd_i[i]; j < A_offd_i[i+1]; j++)
+      for (j = A_offd_i[i]; j < A_offd_i[i + 1]; j++)
       {
-         C_offd_data[j] = A_offd_data[j]*invdiag;
+         C_offd_data[j] = A_offd_data[j] * invdiag;
          C_offd_j[j] = A_offd_j[j];
       }
    }
@@ -4493,15 +3852,14 @@ hypre_ParCSRMatrix *hypre_CreateC( hypre_ParCSRMatrix  *A,
 
 /* RL */
 HYPRE_Int
-hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
-                                  HYPRE_Int           *CF_marker,
-                                  hypre_ParCSRMatrix  *S,
-                                  HYPRE_BigInt        *num_cpts_global,
-                                  HYPRE_Int            num_functions,
-                                  HYPRE_Int           *dof_func,
-                                  HYPRE_Int            debug_flag,
-                                  HYPRE_Int           *col_offd_S_to_A,
-                                  hypre_ParCSRMatrix **P_ptr)
+hypre_BoomerAMGBuildInterpOnePntHost( hypre_ParCSRMatrix  *A,
+                                      HYPRE_Int           *CF_marker,
+                                      hypre_ParCSRMatrix  *S,
+                                      HYPRE_BigInt        *num_cpts_global,
+                                      HYPRE_Int            num_functions,
+                                      HYPRE_Int           *dof_func,
+                                      HYPRE_Int            debug_flag,
+                                      hypre_ParCSRMatrix **P_ptr)
 {
    MPI_Comm                 comm     = hypre_ParCSRMatrixComm(A);
    hypre_ParCSRCommPkg     *comm_pkg = hypre_ParCSRMatrixCommPkg(A);
@@ -4571,17 +3929,11 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
    HYPRE_Real          max_abs_aij, vv;
 
    hypre_MPI_Comm_size(comm, &num_procs);
-   hypre_MPI_Comm_rank(comm,&my_id);
+   hypre_MPI_Comm_rank(comm, &my_id);
 
-
-#ifdef HYPRE_NO_GLOBAL_PARTITION
    my_first_cpt = num_cpts_global[0];
-   if (my_id == (num_procs -1)) total_global_cpts = num_cpts_global[1];
-   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs-1, comm);
-#else
-   my_first_cpt = num_cpts_global[my_id];
-   total_global_cpts = num_cpts_global[num_procs];
-#endif
+   if (my_id == (num_procs - 1)) { total_global_cpts = num_cpts_global[1]; }
+   hypre_MPI_Bcast(&total_global_cpts, 1, HYPRE_MPI_BIG_INT, num_procs - 1, comm);
 
    /*-------------------------------------------------------------------
     * Get the CF_marker data for the off-processor columns
@@ -4589,12 +3941,12 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
    /* CF marker for the off-diag columns */
    if (num_cols_A_offd)
    {
-      CF_marker_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd,HYPRE_MEMORY_HOST);
+      CF_marker_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd, HYPRE_MEMORY_HOST);
    }
    /* function type indicator for the off-diag columns */
    if (num_functions > 1 && num_cols_A_offd)
    {
-      dof_func_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd,HYPRE_MEMORY_HOST);
+      dof_func_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd, HYPRE_MEMORY_HOST);
    }
    /* if CommPkg of A is not present, create it */
    if (!comm_pkg)
@@ -4606,7 +3958,8 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
    num_sends = hypre_ParCSRCommPkgNumSends(comm_pkg);
    /* send buffer, of size send_map_starts[num_sends]),
     * i.e., number of entries to send */
-   int_buf_data = hypre_CTAlloc(HYPRE_Int, hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),HYPRE_MEMORY_HOST);
+   int_buf_data = hypre_CTAlloc(HYPRE_Int, hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
+                                HYPRE_MEMORY_HOST);
 
    /* copy CF markers of elements to send to buffer
     * RL: why copy them with two for loops? Why not just loop through all in one */
@@ -4616,10 +3969,10 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
       /* start pos of elements sent to send_proc[i] */
       start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
       /* loop through all elems to send_proc[i] */
-      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
       {
          /* CF marker of send_map_elemts[j] */
-         int_buf_data[index++] = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+         int_buf_data[index++] = CF_marker[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
       }
    }
    /* create a handle to start communication. 11: for integer */
@@ -4634,16 +3987,16 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
       for (i = 0; i < num_sends; i++)
       {
          start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-         for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+         for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
          {
-            int_buf_data[index++] = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+            int_buf_data[index++] = dof_func[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
          }
       }
       comm_handle = hypre_ParCSRCommHandleCreate(11, comm_pkg, int_buf_data, dof_func_offd);
       hypre_ParCSRCommHandleDestroy(comm_handle);
    }
 
-   hypre_TFree(int_buf_data,HYPRE_MEMORY_HOST);
+   hypre_TFree(int_buf_data, HYPRE_MEMORY_HOST);
    /*-----------------------------------------------------------------------
     *  First Pass: Determine size of P and fill in fine_to_coarse mapping,
     *  and find the most strongly influencing C-pt for each F-pt
@@ -4651,13 +4004,13 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
    /* nnz in diag and offd parts */
    cnt_diag = 0;
    cnt_offd = 0;
-   max_abs_cij       = hypre_CTAlloc(HYPRE_Int, n_fine,HYPRE_MEMORY_HOST);
-   max_abs_diag_offd = hypre_CTAlloc(char, n_fine,HYPRE_MEMORY_HOST);
-   fine_to_coarse    = hypre_CTAlloc(HYPRE_Int, n_fine,HYPRE_MEMORY_HOST);
+   max_abs_cij       = hypre_CTAlloc(HYPRE_Int, n_fine, HYPRE_MEMORY_HOST);
+   max_abs_diag_offd = hypre_CTAlloc(char, n_fine, HYPRE_MEMORY_HOST);
+   fine_to_coarse    = hypre_CTAlloc(HYPRE_Int, n_fine, HYPRE_MEMORY_HOST);
 
    /* markers initialized as zeros */
-   marker_diag = hypre_CTAlloc(HYPRE_Int, n_fine,HYPRE_MEMORY_HOST);
-   marker_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd,HYPRE_MEMORY_HOST);
+   marker_diag = hypre_CTAlloc(HYPRE_Int, n_fine, HYPRE_MEMORY_HOST);
+   marker_offd = hypre_CTAlloc(HYPRE_Int, num_cols_A_offd, HYPRE_MEMORY_HOST);
 
    for (i = 0; i < n_fine; i++)
    {
@@ -4676,18 +4029,18 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
       /* mark all the strong connections: in S */
       HYPRE_Int MARK = i + 1;
       /* loop through row i of S, diag part  */
-      for (j = S_diag_i[i]; j < S_diag_i[i+1]; j++)
+      for (j = S_diag_i[i]; j < S_diag_i[i + 1]; j++)
       {
          marker_diag[S_diag_j[j]] = MARK;
       }
       /* loop through row i of S, offd part  */
       if (num_procs > 1)
       {
-          for (j = S_offd_i[i]; j < S_offd_i[i+1]; j++)
-          {
-             j1 = col_offd_S_to_A ? col_offd_S_to_A[S_offd_j[j]] : S_offd_j[j];
-             marker_offd[j1] = MARK;
-          }
+         for (j = S_offd_i[i]; j < S_offd_i[i + 1]; j++)
+         {
+            j1 = S_offd_j[j];
+            marker_offd[j1] = MARK;
+         }
       }
 
       fine_to_coarse[i] = -1;
@@ -4700,7 +4053,7 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
       /* max abs val */
       max_abs_aij = -1.0;
       /* loop through row i of A, diag part  */
-      for (j = A_diag_i[i]; j < A_diag_i[i+1]; j++)
+      for (j = A_diag_i[i]; j < A_diag_i[i + 1]; j++)
       {
          i1 = A_diag_j[j];
          vv = fabs(A_diag_data[j]);
@@ -4737,7 +4090,7 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
       /* offd part */
       if (num_procs > 1)
       {
-         for (j = A_offd_i[i]; j < A_offd_i[i+1]; j++)
+         for (j = A_offd_i[i]; j < A_offd_i[i + 1]; j++)
          {
             i1 = A_offd_j[j];
             vv = fabs(A_offd_data[j]);
@@ -4767,15 +4120,15 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
    nnz_offd = cnt_offd;
 
    /*------------- allocate arrays */
-   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1,HYPRE_MEMORY_HOST);
-   P_diag_j    = hypre_CTAlloc(HYPRE_Int,  nnz_diag,HYPRE_MEMORY_HOST);
-   P_diag_data = hypre_CTAlloc(HYPRE_Real, nnz_diag,HYPRE_MEMORY_HOST);
+   P_diag_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1, HYPRE_MEMORY_DEVICE);
+   P_diag_j    = hypre_CTAlloc(HYPRE_Int,  nnz_diag, HYPRE_MEMORY_DEVICE);
+   P_diag_data = hypre_CTAlloc(HYPRE_Real, nnz_diag, HYPRE_MEMORY_DEVICE);
 
    /* not in ``if num_procs > 1'',
     * allocation needed even for empty CSR */
-   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine+1,HYPRE_MEMORY_HOST);
-   P_offd_j    = hypre_CTAlloc(HYPRE_Int,  nnz_offd,HYPRE_MEMORY_HOST);
-   P_offd_data = hypre_CTAlloc(HYPRE_Real, nnz_offd,HYPRE_MEMORY_HOST);
+   P_offd_i    = hypre_CTAlloc(HYPRE_Int,  n_fine + 1, HYPRE_MEMORY_DEVICE);
+   P_offd_j    = hypre_CTAlloc(HYPRE_Int,  nnz_offd, HYPRE_MEMORY_DEVICE);
+   P_offd_data = hypre_CTAlloc(HYPRE_Real, nnz_offd, HYPRE_MEMORY_DEVICE);
 
    /* redundant */
    P_diag_i[0] = 0;
@@ -4788,16 +4141,17 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
    /*-----------------------------------------------------------------------
     *  Send and receive fine_to_coarse info.
     *-----------------------------------------------------------------------*/
-   fine_to_coarse_offd = hypre_CTAlloc(HYPRE_BigInt, num_cols_A_offd,HYPRE_MEMORY_HOST);
-   big_int_buf_data = hypre_CTAlloc(HYPRE_BigInt, hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),HYPRE_MEMORY_HOST);
+   fine_to_coarse_offd = hypre_CTAlloc(HYPRE_BigInt, num_cols_A_offd, HYPRE_MEMORY_HOST);
+   big_int_buf_data = hypre_CTAlloc(HYPRE_BigInt, hypre_ParCSRCommPkgSendMapStart(comm_pkg, num_sends),
+                                    HYPRE_MEMORY_HOST);
    index = 0;
    for (i = 0; i < num_sends; i++)
    {
       start = hypre_ParCSRCommPkgSendMapStart(comm_pkg, i);
-      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i+1); j++)
+      for (j = start; j < hypre_ParCSRCommPkgSendMapStart(comm_pkg, i + 1); j++)
       {
          big_int_buf_data[index++] = my_first_cpt
-               +(HYPRE_BigInt)fine_to_coarse[hypre_ParCSRCommPkgSendMapElmt(comm_pkg,j)];
+                                     + (HYPRE_BigInt)fine_to_coarse[hypre_ParCSRCommPkgSendMapElmt(comm_pkg, j)];
       }
    }
    comm_handle = hypre_ParCSRCommHandleCreate(21, comm_pkg, big_int_buf_data, fine_to_coarse_offd);
@@ -4839,8 +4193,8 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
          }
       }
 
-      P_diag_i[i+1] = cnt_diag;
-      P_offd_i[i+1] = cnt_offd;
+      P_diag_i[i + 1] = cnt_diag;
+      P_offd_i[i + 1] = cnt_offd;
    }
 
    hypre_assert(cnt_diag == nnz_diag);
@@ -4866,8 +4220,8 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
 
    /* col_map_offd_P: the col indices of the offd of P
     * we first keep them be the offd-idx of A */
-   col_map_offd_P = hypre_CTAlloc(HYPRE_BigInt, num_cols_offd_P,HYPRE_MEMORY_HOST);
-   tmp_map_offd = hypre_CTAlloc(HYPRE_Int, num_cols_offd_P,HYPRE_MEMORY_HOST);
+   col_map_offd_P = hypre_CTAlloc(HYPRE_BigInt, num_cols_offd_P, HYPRE_MEMORY_HOST);
+   tmp_map_offd = hypre_CTAlloc(HYPRE_Int, num_cols_offd_P, HYPRE_MEMORY_HOST);
    for (i = 0, i1 = 0; i < num_cols_A_offd; i++)
    {
       if (marker_offd[i] == 1)
@@ -4913,8 +4267,6 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
    hypre_CSRMatrixData(P_offd) = P_offd_data;
    hypre_CSRMatrixI(P_offd)    = P_offd_i;
    hypre_CSRMatrixJ(P_offd)    = P_offd_j;
-   /* P does not own ColStarts, since A does */
-   hypre_ParCSRMatrixOwnsRowStarts(P) = 0;
 
    hypre_ParCSRMatrixColMapOffd(P) = col_map_offd_P;
 
@@ -4924,17 +4276,54 @@ hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
    *P_ptr = P;
 
    /* free workspace */
-   hypre_TFree(CF_marker_offd,HYPRE_MEMORY_HOST);
-   hypre_TFree(dof_func_offd,HYPRE_MEMORY_HOST);
-   hypre_TFree(tmp_map_offd,HYPRE_MEMORY_HOST);
-   hypre_TFree(big_int_buf_data,HYPRE_MEMORY_HOST);
-   hypre_TFree(fine_to_coarse,HYPRE_MEMORY_HOST);
-   hypre_TFree(fine_to_coarse_offd,HYPRE_MEMORY_HOST);
-   hypre_TFree(marker_diag,HYPRE_MEMORY_HOST);
-   hypre_TFree(marker_offd,HYPRE_MEMORY_HOST);
-   hypre_TFree(max_abs_cij,HYPRE_MEMORY_HOST);
-   hypre_TFree(max_abs_diag_offd,HYPRE_MEMORY_HOST);
+   hypre_TFree(CF_marker_offd, HYPRE_MEMORY_HOST);
+   hypre_TFree(dof_func_offd, HYPRE_MEMORY_HOST);
+   hypre_TFree(tmp_map_offd, HYPRE_MEMORY_HOST);
+   hypre_TFree(big_int_buf_data, HYPRE_MEMORY_HOST);
+   hypre_TFree(fine_to_coarse, HYPRE_MEMORY_HOST);
+   hypre_TFree(fine_to_coarse_offd, HYPRE_MEMORY_HOST);
+   hypre_TFree(marker_diag, HYPRE_MEMORY_HOST);
+   hypre_TFree(marker_offd, HYPRE_MEMORY_HOST);
+   hypre_TFree(max_abs_cij, HYPRE_MEMORY_HOST);
+   hypre_TFree(max_abs_diag_offd, HYPRE_MEMORY_HOST);
 
    return hypre_error_flag;
 }
 
+HYPRE_Int
+hypre_BoomerAMGBuildInterpOnePnt( hypre_ParCSRMatrix  *A,
+                                  HYPRE_Int           *CF_marker,
+                                  hypre_ParCSRMatrix  *S,
+                                  HYPRE_BigInt        *num_cpts_global,
+                                  HYPRE_Int            num_functions,
+                                  HYPRE_Int           *dof_func,
+                                  HYPRE_Int            debug_flag,
+                                  hypre_ParCSRMatrix **P_ptr)
+{
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   hypre_GpuProfilingPushRange("OnePntInterp");
+#endif
+
+   HYPRE_Int ierr = 0;
+
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   HYPRE_ExecutionPolicy exec = hypre_GetExecPolicy1( hypre_ParCSRMatrixMemoryLocation(A) );
+
+   if (exec == HYPRE_EXEC_DEVICE)
+   {
+      ierr = hypre_BoomerAMGBuildInterpOnePntDevice(A, CF_marker, S, num_cpts_global, num_functions,
+                                                    dof_func, debug_flag, P_ptr);
+   }
+   else
+#endif
+   {
+      ierr = hypre_BoomerAMGBuildInterpOnePntHost(A, CF_marker, S, num_cpts_global, num_functions,
+                                                  dof_func, debug_flag, P_ptr);
+   }
+
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   hypre_GpuProfilingPopRange();
+#endif
+
+   return ierr;
+}

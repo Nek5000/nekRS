@@ -38,6 +38,7 @@ SOFTWARE.
 {
   for(dlong b = 0; b < Nblock; ++b; @outer(0)) {
     @shared volatile dfloat s_wxy[p_blockSize];
+    @exclusive dfloat wght;
 
     for(int v = 0; v < NVec; ++v) {
       @barrier("local");
@@ -48,7 +49,8 @@ SOFTWARE.
           dfloat sum = 0.0; 
           for(dlong fld = 0; fld < Nfields; ++fld)
             sum += x[id + Nfields * fieldOffset * v + fld * fieldOffset] * y[id + offset + fld * fieldOffset];
-          s_wxy[t] = w[id]*sum;
+          if(v == 0) wght = w[id];
+          s_wxy[t] = wght*sum;
         }
       }
       @barrier("local");

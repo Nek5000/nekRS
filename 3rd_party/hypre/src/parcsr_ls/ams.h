@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -75,7 +75,7 @@ typedef struct
    /* Smoothing options for A */
    HYPRE_Int A_relax_type;
    HYPRE_Int A_relax_times;
-   HYPRE_Real *A_l1_norms;
+   hypre_Vector *A_l1_norms;
    HYPRE_Real A_relax_weight;
    HYPRE_Real A_omega;
    HYPRE_Real A_max_eig_est;
@@ -102,7 +102,7 @@ typedef struct
    HYPRE_Int B_Pi_Pmax;
 
    /* Temporary vectors */
-   hypre_ParVector *r0, *g0, *r1, *g1, *r2, *g2;
+   hypre_ParVector *r0, *g0, *r1, *g1, *r2, *g2, *zz;
 
    /* Output log info */
    HYPRE_Int num_iterations;

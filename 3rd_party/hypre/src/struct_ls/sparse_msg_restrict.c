@@ -1,11 +1,12 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
  ******************************************************************************/
 
 #include "_hypre_struct_ls.h"
+#include "_hypre_struct_mv.hpp"
 
 /*--------------------------------------------------------------------------
  * hypre_SparseMSGRestrictData data structure
@@ -35,7 +36,7 @@ hypre_SparseMSGRestrictCreate( )
    restrict_data = hypre_CTAlloc(hypre_SparseMSGRestrictData,  1, HYPRE_MEMORY_HOST);
 
    (restrict_data -> time_index) = hypre_InitializeTiming("SparseMSGRestrict");
-   
+
    return (void *) restrict_data;
 }
 
@@ -83,9 +84,9 @@ hypre_SparseMSGRestrictSetup( void               *restrict_vdata,
 
    (restrict_data -> R) = hypre_StructMatrixRef(R);
    (restrict_data -> compute_pkg) = compute_pkg;
-   hypre_CopyIndex(cindex ,(restrict_data -> cindex));
-   hypre_CopyIndex(stride ,(restrict_data -> stride));
-   hypre_CopyIndex(strideR ,(restrict_data -> strideR));
+   hypre_CopyIndex(cindex, (restrict_data -> cindex));
+   hypre_CopyIndex(stride, (restrict_data -> stride));
+   hypre_CopyIndex(strideR, (restrict_data -> strideR));
 
    return ierr;
 }
@@ -116,25 +117,25 @@ hypre_SparseMSGRestrict( void               *restrict_vdata,
    HYPRE_Int              *cgrid_ids;
 
    hypre_CommHandle       *comm_handle;
-                       
+
    hypre_BoxArrayArray    *compute_box_aa;
    hypre_BoxArray         *compute_box_a;
    hypre_Box              *compute_box;
-                       
+
    hypre_Box              *R_dbox;
    hypre_Box              *r_dbox;
    hypre_Box              *rc_dbox;
-                         
+
    HYPRE_Real             *Rp0, *Rp1;
    HYPRE_Real             *rp, *rp0, *rp1;
    HYPRE_Real             *rcp;
-                       
+
    hypre_Index             loop_size;
    hypre_IndexRef          start;
    hypre_Index             startc;
    hypre_Index             startR;
    hypre_Index             stridec;
-                       
+
    hypre_StructStencil    *stencil;
    hypre_Index            *stencil_shape;
 
@@ -168,7 +169,7 @@ hypre_SparseMSGRestrict( void               *restrict_vdata,
 
    for (compute_i = 0; compute_i < 2; compute_i++)
    {
-      switch(compute_i)
+      switch (compute_i)
       {
          case 0:
          {
@@ -201,7 +202,7 @@ hypre_SparseMSGRestrict( void               *restrict_vdata,
          rc_dbox = hypre_BoxArrayBox(hypre_StructVectorDataSpace(rc), ci);
 
          Rp0 = hypre_StructMatrixBoxData(R, fi, 1) -
-            hypre_BoxOffsetDistance(R_dbox, stencil_shape[1]);
+               hypre_BoxOffsetDistance(R_dbox, stencil_shape[1]);
          Rp1 = hypre_StructMatrixBoxData(R, fi, 0);
          rp  = hypre_StructVectorBoxData(r, fi);
          rp0 = rp + hypre_BoxOffsetDistance(r_dbox, stencil_shape[0]);
@@ -237,7 +238,7 @@ hypre_SparseMSGRestrict( void               *restrict_vdata,
     * Return
     *-----------------------------------------------------------------------*/
 
-   hypre_IncFLOPCount(4*hypre_StructVectorGlobalSize(rc));
+   hypre_IncFLOPCount(4 * hypre_StructVectorGlobalSize(rc));
    hypre_EndTiming(restrict_data -> time_index);
 
    return ierr;

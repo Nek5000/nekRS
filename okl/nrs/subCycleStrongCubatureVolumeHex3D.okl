@@ -2544,7 +2544,6 @@
 
 #pragma unroll p_Nq
             for (int a = 0; a < p_Nq; ++a) {
-              // const dfloat Iia = s_cubInterpT[a][i];
               const dfloat Iia = s_cubInterp[i][a];
               Ud1 += Iia * s_Ud[b][a];
               Vd1 += Iia * s_Vd[b][a];
@@ -4806,13 +4805,14 @@
 
     @shared dfloat s_c[p_nEXT];
     @exclusive dlong element;
-
+ 
     for (int es = 0; es < p_Nblk; ++es; @inner(2)) {
       for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
         for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
           const int id = i + j * p_cubNq;
           dlong e = es + eo;
           element = (e < Nelements) ? elementList[e] : -1;
+          // element = e;
 
           if (es == 0) {
             if (i == 0 && j == 0) {
@@ -5114,9 +5114,368 @@
 }
 
 #endif
+
 #if p_knl == 14
 
 @kernel void subCycleStrongCubatureVolumeHex3D_v14(const dlong Nelements,
+                                                   @restrict const dlong *elementList,
+                                                   @restrict const dfloat *cubD,
+                                                   @restrict const dfloat *cubInterpT,
+                                                   const dlong offset,
+                                                   const dlong cubatureOffset,
+                                                   const dlong NUoffset,
+                                                   @restrict const dfloat *invLumpedMassMatrix,
+                                                   @restrict const dfloat *BdivW,
+                                                   const dfloat c0,
+                                                   const dfloat c1,
+                                                   const dfloat c2,
+                                                   @restrict const dfloat *conv,
+                                                   @restrict const dfloat *Ud,
+                                                   @restrict dfloat *NU)
+{
+
+#if p_cubNq == 16 || p_cubNq == 8
+#define p_cubPad 1
+#else
+#define p_cubPad 0
+#endif
+
+#if p_Nq == 16 || p_Nq == 8 || p_Nq == 12
+#define p_Pad 1
+#else
+#define p_Pad 0
+#endif
+
+#define p_dim 3
+
+  
+  // (phi, U.grad Ud)
+  for (dlong eo = 0; eo < Nelements; eo++; @outer(0)) {
+    @shared dfloat s_cubD[p_cubNq][p_cubNq + p_cubPad];
+    @exclusive dfloat r_Ud[p_cubNq];
+    @exclusive dfloat r_Vd[p_Nq];
+    @exclusive dfloat r_Wd[p_Nq];
+
+    @shared dfloat s_tmpU[p_dim][p_cubNq][p_cubNq][p_cubNq + p_cubPad];
+
+    @shared dfloat s_c[p_nEXT];
+    @exclusive dlong element;
+ 
+    for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+      for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+        const int id = i + j * p_cubNq;
+        dlong e = eo;
+        element = (e < Nelements) ? elementList[e] : -1;
+        // element = e;
+
+        if (i == 0 && j == 0) {
+          //#pragma unroll p_nEXT
+          for (int s = 0; s < p_nEXT; s++) {
+            dfloat coeff = 0;
+            if (s == 0)
+              coeff = c0;
+            if (s == 1)
+              coeff = c1;
+            if (s == 2)
+              coeff = c2;
+            // r_c[s] = coeff;
+            s_c[s] = coeff;
+          }
+        }
+
+        s_cubD[j][i] = cubD[id];
+      }
+    }
+
+
+    //#pragma unroll p_dim
+#pragma nounroll
+    for (int d = 0; d < p_dim; ++d) {
+
+      @barrier("local");
+
+      for (int b = 0; b < p_cubNq; ++b; @inner(1)) {
+        for (int a = 0; a < p_cubNq; ++a; @inner(0)) {
+          if (a < p_Nq && b < p_Nq && element != -1) {
+
+            for (int c = 0; c < p_Nq; ++c) {
+              const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+              s_tmpU[d][c][b][a] = Ud[id + d * offset];
+            }
+          }
+        }
+      }
+
+      @barrier("local");
+
+      // interpolate in 'a'
+      for (int c = 0; c < p_cubNq; ++c; @inner(1)) {
+        for (int b = 0; b < p_cubNq; ++b; @inner(0)) {
+
+          if (b < p_Nq && c < p_Nq) {
+
+#pragma unroll p_cubNq
+            for (int i = 0; i < p_cubNq; ++i) {
+              r_Ud[i] = 0;
+            }
+#pragma unroll p_Nq
+            for (int a = 0; a < p_Nq; ++a) {
+              dfloat ucba = s_tmpU[d][c][b][a];
+#pragma unroll p_cubNq 
+              for (int i = 0; i < p_cubNq; ++i) {
+                const dfloat Iia = c_I[i][a]; // nice broadcast
+                r_Ud[i] += Iia * ucba;
+              }
+            }
+
+            for (int i = 0; i < p_cubNq; ++i) {
+              s_tmpU[d][c][b][i] = r_Ud[i];
+            }
+          }
+        }
+      }
+
+      @barrier("local");
+
+      // interpolate in 'b'
+      for (int c = 0; c < p_cubNq; ++c; @inner(1)) {
+        for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+          if (c < p_Nq) {
+
+#pragma unroll p_cubNq
+            for (int j = 0; j < p_cubNq; ++j) {
+              r_Ud[j] = 0;
+            }
+#pragma unroll p_Nq
+            for (int b = 0; b < p_Nq; ++b) {
+              dfloat ucbi = s_tmpU[d][c][b][i];
+#pragma unroll p_cubNq
+              for (int j = 0; j < p_cubNq; ++j) {
+                const dfloat Ijb = c_I[j][b]; // nice broadcast
+                r_Ud[j] += Ijb * ucbi;
+              }
+            }
+
+            for (int j = 0; j < p_cubNq; ++j) {
+              s_tmpU[d][c][j][i] = r_Ud[j];
+            }
+          }
+        }
+      }
+
+      @barrier("local");
+
+      // interp in 'c'
+      for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+        for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+
+#pragma unroll p_cubNq
+          for (int k = 0; k < p_cubNq; ++k) {
+            r_Ud[k] = 0;
+          }
+#pragma unroll p_Nq
+          for (int c = 0; c < p_Nq; ++c) {
+            dfloat ucji = s_tmpU[d][c][j][i];
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              const dfloat Ikc = c_I[k][c]; // nice broadcast
+              r_Ud[k] += Ikc * ucji;
+            }
+          }
+
+          for (int k = 0; k < p_cubNq; ++k) {
+            s_tmpU[d][k][j][i] = r_Ud[k];
+          }
+        }
+      }
+
+      @barrier("local");
+    }
+
+    for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+      for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+        if (element != -1) {
+
+#pragma unroll p_Nq          
+          for (int c = 0; c < p_Nq; ++c) {
+            r_Ud[c] = 0;
+            r_Vd[c] = 0;
+            r_Wd[c] = 0;
+          }
+              
+#pragma nounroll
+          for (int k = 0; k < p_cubNq; ++k) {
+            dfloat Udr = 0, Uds = 0, Udt = 0;
+            dfloat Vdr = 0, Vds = 0, Vdt = 0;
+            dfloat Wdr = 0, Wds = 0, Wdt = 0;
+                
+
+#pragma unroll p_cubNq
+            for (int n = 0; n < p_cubNq; ++n) {
+              dfloat Dkn = c_D[k][n];
+              dfloat Din = s_cubD[i][n];
+              dfloat Djn = s_cubD[j][n];
+
+              Udt += Dkn * s_tmpU[0][n][j][i];
+              Udr += Din * s_tmpU[0][k][j][n];
+              Uds += Djn * s_tmpU[0][k][n][i];
+              Vdt += Dkn * s_tmpU[1][n][j][i];
+              Vdr += Din * s_tmpU[1][k][j][n];
+              Vds += Djn * s_tmpU[1][k][n][i];
+              Wdt += Dkn * s_tmpU[2][n][j][i];
+              Wdr += Din * s_tmpU[2][k][j][n];
+              Wds += Djn * s_tmpU[2][k][n][i];                  
+            }
+
+            dfloat Uhat = 0.0;
+            dfloat Vhat = 0.0;
+            dfloat What = 0.0;
+
+            const int id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+
+#pragma unroll p_nEXT
+            for (int s = 0; s < p_nEXT; ++s) {
+              const int s_offset = s * p_NVfields * cubatureOffset;
+              Uhat += s_c[s] * conv[id + 0 * cubatureOffset + s_offset];
+              Vhat += s_c[s] * conv[id + 1 * cubatureOffset + s_offset];
+              What += s_c[s] * conv[id + 2 * cubatureOffset + s_offset];
+            }
+
+            // I_f^t*(J_f*C_f^t)*G_f*\hat{D}_f*I_f*u
+            dfloat foo1 = Uhat * Udr + Vhat * Uds + What * Udt;
+            dfloat foo2 = Uhat * Vdr + Vhat * Vds + What * Vdt;
+            dfloat foo3 = Uhat * Wdr + Vhat * Wds + What * Wdt;                
+#pragma unroll p_Nq
+            for (int c = 0; c < p_Nq; ++c) {
+              dfloat Ikc = c_I[k][c];
+              r_Ud[c] += Ikc * foo1;
+              r_Vd[c] += Ikc * foo2;
+              r_Wd[c] += Ikc * foo3;
+            }
+          }
+        }
+      } // i
+    }   // j
+
+
+    @barrier("local");
+
+    // now project back in 'b'
+    for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+      for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+        #pragma unroll p_Nq
+        for (int c = 0; c < p_Nq; ++c) {
+          s_tmpU[0][c][j][i] = r_Ud[c];
+          s_tmpU[1][c][j][i] = r_Vd[c];
+          s_tmpU[2][c][j][i] = r_Wd[c];              
+        }
+      }
+    }
+
+    @barrier("local");
+#pragma nounroll
+    for (int d = 0; d < p_dim; ++d) {
+    
+      for (int c = 0; c < p_cubNq; ++c; @inner(1)) {
+        for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+          if (c < p_Nq) {
+#pragma unroll p_cubNq
+            for (int b = 0; b < p_Nq; ++b) {
+              r_Ud[b] = 0;
+            }
+
+#pragma unroll p_cubNq
+            for (int j = 0; j < p_cubNq; ++j) {
+              dfloat ucji = s_tmpU[d][c][j][i];
+#pragma unroll p_Nq
+              for (int b = 0; b < p_Nq; ++b) {
+                const dfloat Ijb = c_I[j][b]; // nice broadcast
+                r_Ud[b] += Ijb * ucji;
+              }
+            }
+
+            for (int b = 0; b < p_Nq; ++b) {
+              s_tmpU[d][c][b][i] = r_Ud[b];
+              r_Ud[b] = 0;
+            }
+          }
+        }
+      }
+
+      @barrier("local");
+
+      // project back in 'a'
+
+      for (int c = 0; c < p_cubNq; ++c; @inner(1)) {
+        for (int b = 0; b < p_cubNq; ++b; @inner(0)) {
+
+          if (c < p_Nq && b < p_Nq) {
+#pragma unroll p_cubNq
+            for (int a = 0; a < p_Nq; ++a) {
+              r_Ud[a] = 0;
+            }
+
+#pragma unroll p_cubNq
+            for (int i = 0; i < p_cubNq; ++i) {
+              dfloat ucbi = s_tmpU[d][c][b][i];
+#pragma unroll p_Nq
+              for (int a = 0; a < p_Nq; ++a) {
+                const dfloat Iia = c_I[i][a]; // nice broadcast
+                r_Ud[a] += Iia * ucbi;
+              }
+            }
+
+            for (int a = 0; a < p_Nq; ++a) {
+              s_tmpU[d][c][b][a] = r_Ud[a];
+            }
+          }
+        }
+      }
+
+      @barrier("local");
+    }
+
+    for (int b = 0; b < p_cubNq; ++b; @inner(1)) {
+      for (int a = 0; a < p_cubNq; ++a; @inner(0)) {
+        if (a < p_Nq && b < p_Nq && element != -1) {
+#pragma unroll p_Nq
+          for (int c = 0; c < p_Nq; ++c) {
+
+            const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+
+#if p_MovingMesh
+            // only modify output if mesh is moving
+            dfloat bdivw = 0.0;
+            dfloat invLMM = 0.0;
+#pragma unroll p_nEXT
+            for (int s = 0; s < p_nEXT; s++) {
+              invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
+              bdivw += s_c[s] * BdivW[id + s * offset];
+            }
+            const dfloat Uxd = Ud[id + 0 * offset];
+            const dfloat Uyd = Ud[id + 1 * offset];
+            const dfloat Uzd = Ud[id + 2 * offset];
+            NU[id + 0 * offset + NUoffset] = (s_tmpU[0][c][b][a] - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset + NUoffset] = (s_tmpU[1][c][b][a] - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset + NUoffset] = (s_tmpU[2][c][b][a] - bdivw * Uzd) * invLMM;
+#else
+            dfloat invLMM = invLumpedMassMatrix[id];
+            NU[id + 0 * offset + NUoffset] = (s_tmpU[0][c][b][a]) * invLMM;
+            NU[id + 1 * offset + NUoffset] = (s_tmpU[1][c][b][a]) * invLMM;
+            NU[id + 2 * offset + NUoffset] = (s_tmpU[2][c][b][a]) * invLMM;                
+#endif
+          }
+        }
+      }
+    }
+  }     // eo
+}
+
+#endif
+
+#if p_knl == 15
+
+@kernel void subCycleStrongCubatureVolumeHex3D_v15(const dlong Nelements,
                                                    @restrict const dlong *elementList,
                                                    @restrict const dfloat *cubD,
                                                    @restrict const dfloat *cubInterpT,

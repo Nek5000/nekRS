@@ -11,28 +11,23 @@ solver = pfgmres+nVector=30
 maxIterations = 200
 residualTol = 1e-8+relative
 
-# p-MG, smooth on coarsest level rather than solve
-#preconditioner = multigrid 
-
 # p-MG multiplicative V-cycle, coarse grid solve
-preconditioner = multigrid+coarse
-#coarseSolver = BoomerAMG
-#coarseGridDiscretization = FEM #+Galerkin
-
-# p-MG, solve coarsest level using SEMFEM discretization
-#preconditioner = pmg+coarse
-#coarseSolver = AmgX+FP32
-#coarseGridDiscretization = SEMFEM
-
-# p-MG additive V-cycle, overlapping coarse grid solve
-# requires smootherType = <ASM | RAS>
-#preconditioner = multigrid+additive+overlapCrsSolve+coarse
-
+preconditioner = multigrid
 smootherType = RAS+Chebyshev+degree=2 #+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
+#coarseSolver = boomerAMG+device #AmgX
+#coarseGridDiscretization = FEM #+Galerkin
 #pMultigridCoarsening = 7,5,3,1
 
+# p-MG additive V-cycle, overlapping coarse grid solve
+#preconditioner = multigrid+additive+overlapCrsSolve
+#smootherType = ASM
+
+# p-MG, solve coarsest level using SEMFEM discretization
+#preconditioner = multigrid
+#coarseGridDiscretization = SEMFEM
+
 # SEMFEM
-#preconditioner = semfem+AMGX+FP32 
+#preconditioner = semfem
 
 initialGuess = previous
 
@@ -45,10 +40,11 @@ viscosity = 1.0
 #coarsenType = 8 
 #interpolationType = 6
 #smootherType = 16
+#coarseSmootherType = 9 
 #iterations = 1
 #strongThreshold = 0.25
 #nonGalerkinTol = 0.0
-#aggressiveCoarseningLevels = 1
+#aggressiveCoarseningLevels = 0
 
 #[AMGX]
 #configFile = "amgx.json"

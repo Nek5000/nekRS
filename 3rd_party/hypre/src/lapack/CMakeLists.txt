@@ -1,7 +1,11 @@
-# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
 # HYPRE Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
+
+set(HDRS
+  _hypre_lapack.h
+)
 
 set(SRCS
   dbdsqr.c
@@ -78,10 +82,6 @@ set(SRCS
   lsame.c
   xerbla.c
 )
-  
-convert_filenames_to_full_paths(SRCS)
-
-set(HYPRE_SOURCES ${HYPRE_SOURCES} ${SRCS} PARENT_SCOPE)
 
 # Turn optimization off for this file
 if (MSVC)
@@ -90,3 +90,10 @@ else ()
   set_source_files_properties (dlamch.c PROPERTIES COMPILE_FLAGS -O0)
 endif ()
 
+target_sources(${PROJECT_NAME}
+  PRIVATE ${SRCS}
+          ${HDRS}
+)
+
+convert_filenames_to_full_paths(HDRS)
+set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HDRS} PARENT_SCOPE)

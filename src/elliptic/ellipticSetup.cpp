@@ -29,9 +29,59 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
+void checkConfig(elliptic_t* elliptic)
+{
+  mesh_t* mesh = elliptic->mesh;
+  setupAide& options = elliptic->options;
+
+  int err = 0;
+
+  if (!options.compareArgs("DISCRETIZATION", "CONTINUOUS")) {
+    if(platform->comm.mpiRank == 0)
+      printf("ERROR: Elliptic solver only supports CG\n");
+    err++;
+  } 
+
+  if (elliptic->elementType != HEXAHEDRA) {
+    if(platform->comm.mpiRank == 0)
+      printf("ERROR: Elliptic solver only supports HEX elements\n");
+    err++;
+  } 
+
+  if (elliptic->blockSolver &&  
+      !options.compareArgs("PRECONDITIONER","JACOBI")) {
+    if(platform->comm.mpiRank == 0)
+      printf("ERROR: Block solver is implemented for C0-HEXAHEDRA with Jacobi preconditioner only\n");
+    err++;
+  }
+
+  if (options.compareArgs("COEFFICIENT","VARIABLE")) {
+    if(options.compareArgs("PRECONDITIONER", "MULTIGRID") &&
+       !options.compareArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE")) {
+      if(platform->comm.mpiRank == 0)
+        printf(
+          "ERROR: Multigrid preconditioner does not support varibale coefficients\n");
+      err++;
+
+    }
+  }
+
+  if (options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
+    if (elliptic->poisson == 0) {
+      if(platform->comm.mpiRank == 0)
+        printf("ERROR: No multigrid preconditioner support for Helmholz\n");
+      err++;
+    }
+  }
+
+  if (err) 
+    ABORT(EXIT_FAILURE);
+
+}
+
+
 void ellipticSolveSetup(elliptic_t* elliptic)
 {
-  
   mesh_t* mesh = elliptic->mesh;
   setupAide& options = elliptic->options;
 
@@ -43,34 +93,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   const dlong Nlocal = mesh->Np * mesh->Nelements;
   elliptic->resNormFactor = 1 / (elliptic->Nfields * mesh->volume);
 
-  if (elliptic->blockSolver &&  elliptic->elementType != HEXAHEDRA &&
-      !options.compareArgs("DISCRETIZATION",
-                           "CONTINUOUS") && !options.compareArgs("PRECONDITIONER","JACOBI") ) {
-    if(platform->comm.mpiRank == 0)
-      printf("ERROR: Block solver is implemented for C0-HEXAHEDRA with Jacobi preconditioner only\n");
-
-    ABORT(EXIT_FAILURE);
-  }
-
-  if (options.compareArgs("COEFFICIENT","VARIABLE") &&  elliptic->elementType != HEXAHEDRA &&
-      !options.compareArgs("DISCRETIZATION", "CONTINUOUS")) {
-    if(platform->comm.mpiRank == 0)
-      printf("ERROR: Varibale coefficient solver is implemented for C0-HEXAHEDRA only\n");
-
-    ABORT(EXIT_FAILURE);
-  }
-
-  if (options.compareArgs("COEFFICIENT","VARIABLE")) {
-    if(options.compareArgs("PRECONDITIONER",
-                           "MULTIGRID") &&
-       !options.compareArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE")) {
-      if(platform->comm.mpiRank == 0)
-        printf(
-          "ERROR: Varibale coefficient solver is implemented for constant multigrid preconditioner only\n");
-
-      ABORT(EXIT_FAILURE);
-    }
-  }
+  checkConfig(elliptic);
 
   if(options.compareArgs("KRYLOV SOLVER", "PGMRES")){
     initializeGmresData(elliptic);
@@ -84,22 +107,18 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   }
 
   const size_t offsetBytes = elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat);
+
   if(elliptic->o_wrk.size() < elliptic_t::NScratchFields * offsetBytes) {
     if(platform->comm.mpiRank == 0) printf("ERROR: mempool assigned for elliptic too small!");
     ABORT(EXIT_FAILURE);
   }
 
-#if 0  
-  elliptic->o_p    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  elliptic->o_z    = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  elliptic->o_Ap   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-  elliptic->o_x0   = platform->device.malloc(elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
-#else
-  elliptic->o_p    = elliptic->o_wrk + 0*offsetBytes;
-  elliptic->o_z    = elliptic->o_wrk + 1*offsetBytes; 
-  elliptic->o_Ap   = elliptic->o_wrk + 2*offsetBytes; 
-  elliptic->o_x0   = elliptic->o_wrk + 3*offsetBytes; 
-#endif
+  elliptic->o_p       = elliptic->o_wrk + 0*offsetBytes;
+  elliptic->o_z       = elliptic->o_wrk + 1*offsetBytes; 
+  elliptic->o_Ap      = elliptic->o_wrk + 2*offsetBytes; 
+  elliptic->o_x0      = elliptic->o_wrk + 3*offsetBytes;
+  elliptic->o_rPfloat = elliptic->o_wrk + 4*offsetBytes;
+  elliptic->o_zPfloat = elliptic->o_wrk + 5*offsetBytes; 
 
   const dlong Nblocks = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
   elliptic->tmpNormr = (dfloat*) calloc(Nblocks,sizeof(dfloat));
@@ -175,7 +194,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     ABORT(EXIT_FAILURE);
   }
 
-  { //setup an unmasked gs handle
+  { //setup an masked gs handle
     ogs_t *ogs = NULL;
     if (elliptic->blockSolver) ogs = mesh->ogs;
     ellipticOgs(mesh,
@@ -209,8 +228,11 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       kernelName = "ellipticBlockBuildDiagonal" + suffix;
       elliptic->ellipticBlockBuildDiagonalKernel = platform->kernels.get(sectionIdentifier + kernelName);
       elliptic->axmyzManyPfloatKernel = platform->kernels.get("axmyzManyPfloat");
-      elliptic->adyManyPfloatKernel = platform->kernels.get("adyManyPfloat");
 
+      kernelName = "fusedCopyDfloatToPfloat";
+      elliptic->fusedCopyDfloatToPfloatKernel =
+        platform->kernels.get(kernelName);
+  
       std::string kernelNamePrefix = "";
       if(elliptic->poisson) kernelNamePrefix += "poisson-";
       kernelNamePrefix += "elliptic";

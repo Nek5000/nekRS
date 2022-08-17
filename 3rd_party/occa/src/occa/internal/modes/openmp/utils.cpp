@@ -58,7 +58,10 @@ namespace occa {
            << ' '    << flag
            << ' '    << srcFilename
            << " -o " << binaryFilename
-           << " > /dev/null 2>&1";
+#if 0
+           << " > /dev/null 2>&1"
+#endif
+           ;
 
         const std::string compileLine = ss.str();
         const int compileError = system(compileLine.c_str());

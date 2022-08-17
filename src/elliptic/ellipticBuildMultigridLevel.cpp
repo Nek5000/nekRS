@@ -49,6 +49,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic_t* elliptic = new elliptic_t();
   memcpy(elliptic,baseElliptic,sizeof(elliptic_t));
 
+  elliptic->mgLevel = true;
+
   mesh_t* mesh = createMeshMG(baseElliptic->mesh, Nc);
   elliptic->mesh = mesh;
 
@@ -66,8 +68,14 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
                 elliptic->NmaskedGlobal,
                 elliptic->o_maskIdsGlobal,
                 &ogs);
+
     elliptic->ogs = ogs;
-    elliptic->o_invDegree = elliptic->ogs->o_invDegree;
+    pfloat *tmp = (pfloat*) calloc(elliptic->mesh->Nlocal, sizeof(pfloat));
+    for(int i = 0; i < elliptic->mesh->Nlocal; i++) {
+       tmp[i] = (pfloat) elliptic->ogs->invDegree[i];
+    }
+    elliptic->o_invDegree = platform->device.malloc(elliptic->mesh->Nlocal * sizeof(pfloat), tmp);
+    free(tmp);
   }
 
   const std::string suffix = "Hex3D";
@@ -118,21 +126,21 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   }
 
-  elliptic->o_lambdaPfloat = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(pfloat));
-  elliptic->o_lambda = platform->device.malloc(2 * mesh->Nelements * mesh->Np, sizeof(dfloat));
+  // assumes preconditioner only uses first elliptic coeff field!
+  elliptic->o_lambda = platform->device.malloc(mesh->Nlocal, sizeof(pfloat));
 
   const int Nfq = Nf+1;
   const int Ncq = Nc+1;
   dfloat* fToCInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
   InterpolationMatrix1D(Nf, Nfq, baseElliptic->mesh->r, Ncq, mesh->r, fToCInterp);
-  elliptic->o_interp = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), fToCInterp);
 
-  elliptic->precon->coarsenKernel(2 * mesh->Nelements, elliptic->o_interp, baseElliptic->o_lambda, elliptic->o_lambda);
+  occa::memory o_interp = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), fToCInterp);
+  elliptic->o_interp = platform->device.malloc(Nfq * Ncq * sizeof(pfloat));
+  platform->copyDfloatToPfloatKernel(Nfq * Ncq, o_interp, elliptic->o_interp);
 
-  elliptic->copyDfloatToPfloatKernel(2 * mesh->Nelements * mesh->Np,
-    elliptic->o_lambda,
-    elliptic->o_lambdaPfloat);
-  
+  elliptic->precon->coarsenKernel(mesh->Nelements, elliptic->o_interp, 
+                                  baseElliptic->o_lambda, elliptic->o_lambda);
+
   free(fToCInterp);
 
 

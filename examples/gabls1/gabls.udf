@@ -159,9 +159,14 @@ void average(nrs_t *nrs, occa::memory o_avg)
     o_avg,
     o_ddyAvg);
   oogs::startFinish(o_ddyAvg, 3, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+  {
+    double flopsPerElem = 18 * mesh->Nq * mesh->Np;
+    flopsPerElem += 19 * mesh->Np;
+    const double flops = static_cast<double>(mesh->Nelements) * flopsPerElem;
+    platform->flopCounter->add("user gradY", flops);
+  }
   
-  postProcessing::planarAvg(nrs, "x", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 6, o_avg);
-  postProcessing::planarAvg(nrs, "z", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 6, o_avg);
+  postProcessing::planarAvg(nrs, "xz", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 6, o_avg);
 }
 
 
@@ -178,6 +183,11 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
     nrs->o_U,
     o_divTau,
     o_FU);
+  {
+    const double C_exp = 1.0; // cost of a exp op, in floating point ops
+    const double flops = static_cast<double>(mesh->Nlocal) * (17.0 + C_exp);
+    platform->flopCounter->add("user coriolis", flops);
+  }
 }
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
@@ -323,6 +333,12 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     scale,
     o_ddyAvg,
     platform->o_mempool.slice0);
+
+  {
+    const double C_sqrt = 1.0; // cost of a sqrt op, in floating point ops
+    const double flops = static_cast<double>(mesh->Nlocal) * (4.0 + C_sqrt);
+    platform->flopCounter->add("user visMF", flops);
+  }
 #if 0
     platform->lingAlg->fill(mesh->Nlocal, 0.0, platform->o_mempool.slice0);
 #endif
@@ -339,6 +355,13 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     o_divTau);
   oogs::startFinish(o_divTau, 3, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
+  {
+    double flopsPerElem = 18 * mesh->Nq * mesh->Np;
+    flopsPerElem += 28 * mesh->Np;
+    const double flops = static_cast<double>(mesh->Nelements) * flopsPerElem;
+    platform->flopCounter->add("user divStressKernel", flops);
+  }
+
   if (nrs->isOutputStep) {
     if(platform->comm.mpiRank == 0) {
       printf("uAvgWall: %g  wAvgWall: %g  magUWall: %g  tempAvgWall: %g\n"
@@ -347,7 +370,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
              tauWall[3], tauWall[4], rLength);
     }
 
-    //writeFld("avg", time, 1, 1, &o_NULL, &o_NULL, &o_avg, 6);
+    //writeFld("avg", time, tstep, 1, 1, &o_NULL, &o_NULL, &o_avg, 6);
     nek::ocopyToNek(time, tstep);
     nek::userchk();
     nek::ocopyFromNek(time);

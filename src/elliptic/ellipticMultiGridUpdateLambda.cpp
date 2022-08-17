@@ -10,27 +10,15 @@ ellipticMultiGridUpdateLambda(elliptic_t* elliptic)
   for(int levelIndex = 0; levelIndex < numMGLevels; levelIndex++){
     auto mgLevel = dynamic_cast<MGLevel*>(levels[levelIndex]);
 
-    if(levelIndex == 0){
-      elliptic_t* ellipticFine = mgLevel->elliptic;
-      ellipticFine->copyDfloatToPfloatKernel(2 * mesh->Nelements * mesh->Np,
-        elliptic->o_lambda,
-        ellipticFine->o_lambdaPfloat);
-    }
-    else {
+    if(levelIndex > 0){
       auto prevLevel = dynamic_cast<MGLevel*>(levels[levelIndex-1]);
       elliptic_t* ellipticFine = prevLevel->elliptic;
       elliptic_t* ellipticCoarse = mgLevel->elliptic;
       const int Nfq = ellipticFine->mesh->Nq;
       const int Ncq = ellipticCoarse->mesh->Nq;
-      ellipticCoarse->copyPfloatToDPfloatKernel(2 * ellipticFine->mesh->Nelements * ellipticFine->mesh->Np,
-        ellipticFine->o_lambdaPfloat,
-        ellipticFine->o_lambda);
 
-      ellipticCoarse->precon->coarsenKernel(2 * ellipticCoarse->mesh->Nelements, ellipticCoarse->o_interp, ellipticFine->o_lambda, ellipticCoarse->o_lambda);
-
-      ellipticCoarse->copyDfloatToPfloatKernel(2 * ellipticCoarse->mesh->Nelements * ellipticCoarse->mesh->Np,
-        ellipticCoarse->o_lambda,
-        ellipticCoarse->o_lambdaPfloat);
+      ellipticCoarse->precon->coarsenKernel(ellipticCoarse->mesh->Nelements, ellipticCoarse->o_interp, 
+                                            ellipticFine->o_lambda, ellipticCoarse->o_lambda);
     }
 
     if(elliptic->options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI") ||

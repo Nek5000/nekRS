@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -37,7 +37,7 @@ typedef long long int HYPRE_BigInt;
 typedef long long int HYPRE_Int;
 #define HYPRE_MPI_BIG_INT MPI_LONG_LONG_INT
 #define HYPRE_MPI_INT MPI_LONG_LONG_INT
- 
+
 #elif defined(HYPRE_MIXEDINT)
 typedef long long int HYPRE_BigInt;
 typedef int HYPRE_Int;
@@ -110,6 +110,13 @@ typedef HYPRE_Int MPI_Comm;
 #define HYPRE_ERROR_CONV          256   /* method did not converge as expected */
 
 /*--------------------------------------------------------------------------
+ * HYPRE init/finalize
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int HYPRE_Init();
+HYPRE_Int HYPRE_Finalize();
+
+/*--------------------------------------------------------------------------
  * HYPRE error user functions
  *--------------------------------------------------------------------------*/
 
@@ -131,6 +138,9 @@ HYPRE_Int HYPRE_ClearAllErrors();
 
 /* Clears the given error code from the hypre error flag */
 HYPRE_Int HYPRE_ClearError(HYPRE_Int hypre_error_code);
+
+/* Print GPU information */
+HYPRE_Int HYPRE_PrintDeviceInfo();
 
 /*--------------------------------------------------------------------------
  * HYPRE Version routines
@@ -163,6 +173,68 @@ HYPRE_VersionNumber( HYPRE_Int  *major_ptr,
 /*Checks whether the AP is on */
 HYPRE_Int HYPRE_AssumedPartitionCheck();
 
+/*--------------------------------------------------------------------------
+ * HYPRE memory location
+ *--------------------------------------------------------------------------*/
+
+typedef enum _HYPRE_MemoryLocation
+{
+   HYPRE_MEMORY_UNDEFINED = -1,
+   HYPRE_MEMORY_HOST,
+   HYPRE_MEMORY_DEVICE
+} HYPRE_MemoryLocation;
+
+HYPRE_Int HYPRE_SetMemoryLocation(HYPRE_MemoryLocation memory_location);
+HYPRE_Int HYPRE_GetMemoryLocation(HYPRE_MemoryLocation *memory_location);
+
+#include <stdlib.h>
+
+/*--------------------------------------------------------------------------
+ * HYPRE execution policy
+ *--------------------------------------------------------------------------*/
+
+typedef enum _HYPRE_ExecutionPolicy
+{
+   HYPRE_EXEC_UNDEFINED = -1,
+   HYPRE_EXEC_HOST,
+   HYPRE_EXEC_DEVICE
+} HYPRE_ExecutionPolicy;
+
+HYPRE_Int HYPRE_SetExecutionPolicy(HYPRE_ExecutionPolicy exec_policy);
+HYPRE_Int HYPRE_GetExecutionPolicy(HYPRE_ExecutionPolicy *exec_policy);
+HYPRE_Int HYPRE_SetStructExecutionPolicy(HYPRE_ExecutionPolicy exec_policy);
+HYPRE_Int HYPRE_GetStructExecutionPolicy(HYPRE_ExecutionPolicy *exec_policy);
+
+/*--------------------------------------------------------------------------
+ * HYPRE UMPIRE
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int HYPRE_SetUmpireDevicePoolSize(size_t nbytes);
+HYPRE_Int HYPRE_SetUmpireUMPoolSize(size_t nbytes);
+HYPRE_Int HYPRE_SetUmpireHostPoolSize(size_t nbytes);
+HYPRE_Int HYPRE_SetUmpirePinnedPoolSize(size_t nbytes);
+HYPRE_Int HYPRE_SetUmpireDevicePoolName(const char *pool_name);
+HYPRE_Int HYPRE_SetUmpireUMPoolName(const char *pool_name);
+HYPRE_Int HYPRE_SetUmpireHostPoolName(const char *pool_name);
+HYPRE_Int HYPRE_SetUmpirePinnedPoolName(const char *pool_name);
+
+/*--------------------------------------------------------------------------
+ * HYPRE GPU memory pool
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int HYPRE_SetGPUMemoryPoolSize(HYPRE_Int bin_growth, HYPRE_Int min_bin, HYPRE_Int max_bin,
+                                     size_t max_cached_bytes);
+
+/*--------------------------------------------------------------------------
+ * HYPRE handle
+ *--------------------------------------------------------------------------*/
+
+HYPRE_Int HYPRE_SetSpTransUseVendor( HYPRE_Int use_vendor );
+HYPRE_Int HYPRE_SetSpMVUseVendor( HYPRE_Int use_vendor );
+/* Backwards compatibility with HYPRE_SetSpGemmUseCusparse() */
+#define HYPRE_SetSpGemmUseCusparse(use_vendor) HYPRE_SetSpGemmUseVendor(use_vendor)
+HYPRE_Int HYPRE_SetSpGemmUseVendor( HYPRE_Int use_vendor );
+HYPRE_Int HYPRE_SetUseGpuRand( HYPRE_Int use_curand );
 
 #ifdef __cplusplus
 }

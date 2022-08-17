@@ -6,7 +6,7 @@ endTime = 50
 dt = 2e-02
 timeStepper = tombo2
 
-writeControl = runTime
+writeControl = simulationTime 
 writeInterval = 50
 
 [PROBLEMTYPE]

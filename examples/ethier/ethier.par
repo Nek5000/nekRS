@@ -6,7 +6,7 @@ stopAt = numSteps
 numSteps = 100 
 dt = 2e-03
 timeStepper = tombo3
-writeControl = runTime
+writeControl = simulationTime 
 writeInterval = 0.1
 
 [PRESSURE]

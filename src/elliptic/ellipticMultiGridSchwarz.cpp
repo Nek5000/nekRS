@@ -802,26 +802,18 @@ void MGLevel::generate_weights()
 void MGLevel::build(
   elliptic_t* pSolver)
 {
-  //platform_t* platform = platform_t::getInstance();
   if(elliptic->elementType != HEXAHEDRA) {
     printf("ERROR: Unsupported element type!");
     ABORT(EXIT_FAILURE);
   }
 
   const dlong Nelements = elliptic->mesh->Nelements;
-  const int N = elliptic->mesh->Nq;
   const int Nq = elliptic->mesh->Nq;
   const int Np = elliptic->mesh->Np;
 
-  if(N == 1 && elliptic->options.compareArgs("MULTIGRID COARSE SOLVE", "TRUE")){
+  if(Nq == 2 && elliptic->options.compareArgs("MULTIGRID COARSE SOLVE", "TRUE")){
     return;
   }
-
-  const bool serial = (platform->device.mode() == "Serial" || platform->device.mode() == "OpenMP");
-
-  overlap = false;
-  if (Nq >= (elliptic_t::minNFDMOverlap + 1) && !serial)
-    overlap = true;
 
   hlong* maskedGlobalIdsExt;
   maskedGlobalIdsExt = (hlong*) calloc(Nelements*(Nq+2)*(Nq+2)*(Nq+2),sizeof(hlong));
@@ -831,6 +823,11 @@ void MGLevel::build(
   const int Np_e = extendedMesh->Np;
   const dlong Nlocal_e = Nelements * Np_e;
 
+  overlap = false;
+  if (Nlocal_e * sizeof(pfloat) > elliptic_t::minFDMBytesOverlap && 
+      platform->comm.mpiCommSize)
+    overlap = true;
+
   /** create the element lengths, using the most refined level **/
   ElementLengths* lengths = (ElementLengths*) calloc(1,sizeof(ElementLengths));
   compute_element_lengths(lengths, pSolver);
@@ -839,7 +836,6 @@ void MGLevel::build(
   pfloat* casted_Sy = (pfloat*) calloc(Nq_e * Nq_e * Nelements, sizeof(pfloat));
   pfloat* casted_Sz = (pfloat*) calloc(Nq_e * Nq_e * Nelements, sizeof(pfloat));
   pfloat* casted_D = (pfloat*) calloc(Np_e * Nelements, sizeof(pfloat));
-  pfloat* casted_wts = (pfloat*) calloc(N * N * N * Nelements, sizeof(pfloat));
 
   FDMOperators* op = (FDMOperators*) calloc(1, sizeof(FDMOperators));
   gen_operators(op, lengths, elliptic);
@@ -928,9 +924,7 @@ void MGLevel::build(
 
 void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 {
-  const char* ogsDataTypeString =
-    (strstr(ogsPfloat,"float") && options.compareArgs("ENABLE FLOATCOMMHALF GS SUPPORT","TRUE")) ?
-    ogsFloatCommHalf : ogsPfloat;
+  const char* ogsDataTypeString =  ogsPfloat;
   const dlong Nelements = elliptic->mesh->Nelements;
   preFDMKernel(Nelements, o_u, o_work1);
 
@@ -940,7 +934,7 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
 
   if(options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
     if(!overlap){
-      fusedFDMKernel(Nelements,
+      fusedFDMKernel(Nelements, mesh->o_elementList,
                      o_Su,o_Sx,o_Sy,o_Sz,o_invL,elliptic->o_invDegree,o_work1);
     } else {
       if(mesh->NglobalGatherElements)
@@ -957,7 +951,7 @@ void MGLevel::smoothSchwarz(occa::memory& o_u, occa::memory& o_Su, bool xIsZero)
     oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, (oogs_t*) ogs);
   } else {
     if(!overlap){
-      fusedFDMKernel(Nelements,
+      fusedFDMKernel(Nelements, mesh->o_elementList,
                      o_work2,o_Sx,o_Sy,o_Sz,o_invL,o_work1);
     } else {
       if(mesh->NglobalGatherElements)

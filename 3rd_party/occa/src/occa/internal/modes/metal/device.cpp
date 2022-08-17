@@ -152,9 +152,11 @@ namespace occa {
               << ' ' << sourceFilename
               << " -c -o " << airBinaryFilename;
 
+#if 0
       if (!verbose) {
         command << " > /dev/null 2>&1";
       }
+#endif
       const std::string &airCommand = command.str();
       if (verbose) {
         io::stdout << "Compiling [" << kernelName << "]\n" << airCommand << "\n";
@@ -175,9 +177,11 @@ namespace occa {
               << ' ' << airBinaryFilename
               << " -o " << binaryFilename;
 
+#if 0
       if (!verbose) {
         command << " > /dev/null 2>&1";
       }
+#endif
       const std::string &metallibCommand = command.str();
       if (verbose) {
         io::stdout << metallibCommand << '\n';

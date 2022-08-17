@@ -208,6 +208,20 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       // w := A z
       ellipticOperator(elliptic, o_Mv, o_w, dfloatString);
 
+#if USE_WEIGHTED_INNER_PROD_MULTI_DEVICE 
+      linAlg.weightedInnerProdMulti(
+        mesh->Nlocal,
+        (i+1),
+        elliptic->Nfields,
+        elliptic->Ntotal,
+        o_weight,
+        o_V,
+        o_w,
+        platform->comm.mpiComm,
+        o_y
+      );
+      o_y.copyTo(y, (i+1)*sizeof(dfloat));
+#else
       linAlg.weightedInnerProdMulti(
         mesh->Nlocal,
         (i+1),
@@ -219,10 +233,8 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         platform->comm.mpiComm,
         y
       );
-
-      for(int k = 0 ; k <=i; ++k)
-        H[k + i*(nRestartVectors+1)] = y[k];
       o_y.copyFrom(y, (i+1)*sizeof(dfloat));
+#endif
 
       elliptic->gramSchmidtOrthogonalizationKernel(
         Nblock,
@@ -235,6 +247,8 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         o_w,
         elliptic->gmresData->o_scratch);
       dfloat nw = 0.0;
+
+
       if(serial){
         nw = *((dfloat*) elliptic->gmresData->o_scratch.ptr());
       } else {
@@ -257,11 +271,13 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
       // V(:,i+1) = w/nw
       if (i < nRestartVectors - 1) {
-        linAlg
-            .axpbyMany(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, (1. / nw), o_w, 0., o_V.at(i + 1));
+        linAlg.axpbyMany(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, (1. / nw), o_w, 0., o_V.at(i + 1));
       }
 
       //apply Givens rotation
+      for(int k = 0 ; k <=i; ++k)
+        H[k + i*(nRestartVectors+1)] = y[k];
+
       for(int k=0; k<i; ++k){
         const dfloat h1 = H[k +     i*(nRestartVectors+1)];
         const dfloat h2 = H[k + 1 + i*(nRestartVectors+1)];

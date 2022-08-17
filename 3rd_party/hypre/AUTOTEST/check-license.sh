@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
 # HYPRE Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -33,13 +33,14 @@ cd $top_dir
 
 ### First check for files that do not have the license, but should
 
-#LicStr='Copyright 1998-2019 Lawrence Livermore'
+#LicStr='Copyright (c) 1998 Lawrence Livermore'
 LicStr='SPDX-License-Identifier: \(Apache-2.0 OR MIT\)'
 
 # Remove these files from the list of all files without 'SPDX'
 
-egrep -LR "$LicStr" . | egrep -v '[.](o|a|filters|pdf|svg|gif)$' |
+egrep -LR "$LicStr" . | egrep -v '[.](o|obj|a|filters|pdf|svg|gif)$' |
   egrep -v '[.]/[.]git' |
+  egrep -v '[.]/.*HYPRE_config[.]h' |
   egrep -v '[.]/src/(blas|lapack)/.*[.]c' |
   egrep -v '[.]/src/examples/docs' |
   egrep -v '[.]/src/test/TEST_.*'    > check-license.files
@@ -67,6 +68,7 @@ cat > check-license.remove <<EOF
 ./src/config/config.guess
 ./src/config/config.sub
 ./src/config/depcomp
+./src/config/HYPRE_config.h.in
 ./src/config/install-sh
 ./src/config/missing
 ./src/config/mkinstalldirs
@@ -77,7 +79,7 @@ cat > check-license.remove <<EOF
 ./src/docs/usr-manual/_static/custom.css
 ./src/docs/usr-manual/conf.py
 ./src/docs/usr-manual/zREADME
-./src/examples/vis.c
+./src/utilities/cub_allocator.h
 ./src/lapack/COPYING
 ./src/nopoe
 ./src/tarch

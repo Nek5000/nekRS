@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -27,7 +27,7 @@ HYPRE_Real hypre_GlobalSEMinDouble( HYPRE_Real value , MPI_Comm hypre_MPI_Contex
 HYPRE_Real hypre_GlobalSESumDouble( HYPRE_Real value , MPI_Comm hypre_MPI_Context );
 
 /* debug.c */
-void hypre_PrintLine( char *str , hypre_PilutSolverGlobals *globals );
+void hypre_PrintLine( const char *str , hypre_PilutSolverGlobals *globals );
 void hypre_CheckBounds( HYPRE_Int low , HYPRE_Int i , HYPRE_Int up , hypre_PilutSolverGlobals *globals );
 hypre_longint hypre_IDX_Checksum( const HYPRE_Int *v , HYPRE_Int len , const char *msg , HYPRE_Int tag , hypre_PilutSolverGlobals *globals );
 hypre_longint hypre_INT_Checksum( const HYPRE_Int *v , HYPRE_Int len , const char *msg , HYPRE_Int tag , hypre_PilutSolverGlobals *globals );

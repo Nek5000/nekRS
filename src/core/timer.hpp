@@ -2,17 +2,21 @@
 #define nekrs_timer_hpp_
 
 #include <string>
-
 #include "nrssys.hpp"
+
 
 namespace timer{
 struct timer_t
 {
-timer_t(MPI_Comm comm,occa::device device,int ifsync = 0);
-void init(MPI_Comm comm,occa::device device,int ifsync = 0);
+timer_t(MPI_Comm comm,occa::device device,int ifsync, int enable_sync);
+void init(MPI_Comm comm,occa::device device,int ifsync, int enable_sync);
 void reset();
 void reset(const std::string tag);
 void finalize();
+void enableSync();
+void disableSync();
+void enable();
+void disable();
 
 void tic(const std::string tag);
 void tic(const std::string tag,int ifSync);

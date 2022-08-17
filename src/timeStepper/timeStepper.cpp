@@ -71,10 +71,6 @@ void evaluateProperties(nrs_t *nrs, const double timeNew) {
 
 namespace timeStepper {
 
-double tSolve = 0;
-double tSolveStepMin = std::numeric_limits<double>::max();
-double tSolveStepMax = std::numeric_limits<double>::min();
-
 void adjustDt(nrs_t* nrs, int tstep)
 {
   const double TOLToZero = 1e-12;
@@ -107,9 +103,9 @@ void adjustDt(nrs_t* nrs, int tstep)
           udf.uEqnSource(nrs, startTime, nrs->o_U, nrs->o_FU);
           platform->timer.toc("udfUEqnSource");
 
-          occa::memory o_FUx = nrs->o_FU + 0 * nrs->fieldOffset * sizeof(dfloat);
-          occa::memory o_FUy = nrs->o_FU + 1 * nrs->fieldOffset * sizeof(dfloat);
-          occa::memory o_FUz = nrs->o_FU + 2 * nrs->fieldOffset * sizeof(dfloat);
+          occa::memory o_FUx = nrs->o_FU + (0 * sizeof(dfloat)) * nrs->fieldOffset;
+          occa::memory o_FUy = nrs->o_FU + (1 * sizeof(dfloat)) * nrs->fieldOffset;
+          occa::memory o_FUz = nrs->o_FU + (2 * sizeof(dfloat)) * nrs->fieldOffset;
 
           platform->linAlg->abs(3 * nrs->fieldOffset, nrs->o_FU);
 
@@ -226,9 +222,9 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
     mesh_t *mesh = nrs->meshV;
     if (nrs->cht)
       mesh = nrs->cds->mesh[0];
-    const dlong NbyteCubature = nrs->NVfields * nrs->cubatureOffset * sizeof(dfloat);
+    const auto NbyteCubature = (nrs->NVfields * sizeof(dfloat)) * nrs->cubatureOffset;
     for (int s = nrs->nEXT; s > 1; s--) {
-      const dlong Nbyte = nrs->fieldOffset * sizeof(dfloat);
+      const auto Nbyte = nrs->fieldOffset * sizeof(dfloat);
       if (movingMesh) {
         mesh->o_divU.copyFrom(
             mesh->o_divU, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
@@ -307,7 +303,7 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
     if (nrs->cht)
       mesh = nrs->cds->mesh[0];
     for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
-      const dlong NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
+      const auto NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
       mesh->o_LMM.copyFrom(mesh->o_LMM,
           NbyteScalar,
           (s - 1) * NbyteScalar,
@@ -330,25 +326,16 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
     if (nrs->cht)
       nrs->meshV->computeInvLMM();
     for (int s = std::max(nrs->nEXT, mesh->nAB); s > 1; s--) {
-      const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+      const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
       mesh->o_U.copyFrom(mesh->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
     }
   }
-
-  platform->device.finish();
-  MPI_Barrier(platform->comm.mpiComm);
-  const double tPreStep = MPI_Wtime() - tStart;
-  tSolve += tPreStep;
 
   const int isOutputStep = nrs->isOutputStep;
   nrs->timeStepConverged = false;
 
   int iter = 0;
   do {
-    platform->device.finish();
-    MPI_Barrier(platform->comm.mpiComm);
-    const double tSolveStepStart = MPI_Wtime();
-
     iter++;
     const dfloat timeNew = time + nrs->dt[0];
 
@@ -375,18 +362,6 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
 
     nrs->timeStepConverged = (udf.timeStepConverged) ? udf.timeStepConverged(nrs, iter) : true; 
 
-    platform->device.finish();
-    MPI_Barrier(platform->comm.mpiComm);
-    double tSolveStep = MPI_Wtime() - tSolveStepStart;
-    tSolve += tSolveStep;
-
-    if(tstep > 9) {
-      tSolveStepMin = std::fmin(tSolveStep, tSolveStepMin); 
-      tSolveStepMax = std::fmax(tSolveStep, tSolveStepMax); 
-      platform->timer.set("minSolveStep", tSolveStepMin);
-      platform->timer.set("maxSolveStep", tSolveStepMax);
-    }
-
     platform->timer.tic("udfExecuteStep", 1);
     nek::ifoutfld(0);
     nrs->isOutputStep = 0;
@@ -400,9 +375,9 @@ void step(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
 
     if (!nrs->timeStepConverged)
       printInfo(nrs, timeNew, tstep);
-  } while (!nrs->timeStepConverged);
 
-  platform->timer.set("solve", tSolve);
+    platform->device.finish();
+  } while (!nrs->timeStepConverged);
 
   nrs->dt[2] = nrs->dt[1];
   nrs->dt[1] = nrs->dt[0];
@@ -569,7 +544,7 @@ void makeq(
   }
 
   for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
-    const dlong Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
+    const auto Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
     cds->o_S.copyFrom(cds->o_S, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
     o_FS.copyFrom(o_FS, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
   }
@@ -726,7 +701,7 @@ void makef(
   }
 
   for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
-    const dlong Nbyte = nrs->fieldOffset * nrs->NVfields * sizeof(dfloat);
+    const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
     nrs->o_U.copyFrom(nrs->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
     o_FU.copyFrom(o_FU, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
   }

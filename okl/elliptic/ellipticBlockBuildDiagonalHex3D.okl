@@ -87,7 +87,6 @@
               dfloat grs      = ggeo[base + p_G01ID * p_Np];
               dfloat grt      = ggeo[base + p_G02ID * p_Np];
               dfloat gst      = ggeo[base + p_G12ID * p_Np];
-              dfloat gwJ      = ggeo[base + p_GWJID * p_Np];
 
               dfloat lambda_0 = s_lambda0[l][j][i];
 
@@ -102,6 +101,7 @@
               }
 
 #ifndef p_poisson
+              dfloat gwJ      = ggeo[base + p_GWJID * p_Np];
               dfloat lambda_1 = lambda[id + 1 * offset + l * loffset];
               r_q  += gwJ * lambda_1;
 #endif

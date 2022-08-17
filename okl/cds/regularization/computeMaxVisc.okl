@@ -161,7 +161,6 @@ inline dfloat nu_k(const dfloat s, const dfloat logReferenceSensor, const dfloat
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
       for(int i = 0; i < p_Nq; ++i; @inner(0)) {
         logSensor = logRelativeMassHighestMode[e];
-        const int id = i + j * p_Nq;
         for (int k = j*p_Nq + i; k < p_blockSize; k += p_Nq*p_Nq){
           s_maxdFdS[k] = -1e8;
         }

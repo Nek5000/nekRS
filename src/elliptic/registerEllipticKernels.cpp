@@ -80,7 +80,6 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
     registerGMRESKernels(section, Nfields);
   }
 
-  // solution projection kernels
   {
     const std::string oklpath = installDir + "/okl/elliptic/";
     std::string fileName, kernelName;
@@ -98,6 +97,11 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
       fileName = oklpath + kernelName + extension;
       platform->kernels.add(
           sectionIdentifier + kernelName, fileName, properties);
+
+      kernelName = "fusedCopyDfloatToPfloat";
+      fileName = oklpath + kernelName + extension;
+      platform->kernels.add(
+          kernelName, fileName, properties);
     }
   }
 
@@ -112,6 +116,7 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
     pfloatKernelInfo["defines/dfloat"] = pfloatString;
     platform->kernels.add("maskPfloat", fileName, pfloatKernelInfo);
   }
+
 
   kernelInfo["defines/p_Nfields"] = Nfields;
 
@@ -172,7 +177,7 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
                                 Nfields,
                                 stressForm,
                                 verbosity,
-                                elliptic_t::targetBenchmark,
+                                elliptic_t::targetTimeBenchmark,
                                 false,
                                 "");
 

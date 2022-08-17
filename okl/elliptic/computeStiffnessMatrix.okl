@@ -216,7 +216,7 @@ void mesh_connectivity(int v_coord[8][3], int t_map[8][4]) {
   @restrict const long long * rows,
   @restrict const long long * row_offsets,
   @restrict const long long * cols,
-  @restrict double * stiffnessMatrix
+  @restrict float * stiffnessMatrix
 )
 {
 

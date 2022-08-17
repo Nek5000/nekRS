@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
 # HYPRE Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -30,6 +30,7 @@ set(SRCS
   F90_HYPRE_ams.c
   gen_redcs_mat.c
   HYPRE_parcsr_amg.c
+  HYPRE_parcsr_amgdd.c
   HYPRE_parcsr_bicgstab.c
   HYPRE_parcsr_block.c
   HYPRE_parcsr_cgnr.c
@@ -40,15 +41,24 @@ set(SRCS
   HYPRE_parcsr_lgmres.c
   HYPRE_parcsr_hybrid.c
   HYPRE_parcsr_int.c
+  HYPRE_parcsr_ilu.c
   HYPRE_parcsr_mgr.c
   HYPRE_parcsr_ParaSails.c
   HYPRE_parcsr_pcg.c
   HYPRE_parcsr_pilut.c
   HYPRE_parcsr_schwarz.c
+  HYPRE_parcsr_fsai.c
   HYPRE_ams.c
   HYPRE_ads.c
   HYPRE_ame.c
+  par_2s_interp.c
   par_amg.c
+  par_amgdd.c
+  par_amgdd_comp_grid.c
+  par_amgdd_solve.c
+  par_amgdd_helpers.c
+  par_amgdd_fac_cycle.c
+  par_amgdd_setup.c
   par_amg_setup.c
   par_amg_solve.c
   par_amg_solveT.c
@@ -56,17 +66,25 @@ set(SRCS
   par_coarsen.c
   par_cgc_coarsen.c
   par_cheby.c
+  par_cheby_device.c
   par_coarse_parms.c
+  par_coarse_parms_device.c
   par_coordinates.c
   par_cr.c
   par_cycle.c
   par_add_cycle.c
   par_difconv.c
+  par_fsai.c
+  par_fsai_setup.c
+  par_fsai_solve.c
   par_gauss_elim.c
   par_gsmg.c
   par_indepset.c
   par_interp.c
   par_jacobi_interp.c
+  par_krylov_func.c
+  par_mod_lr_interp.c
+  par_mod_multi_interp.c
   par_multi_interp.c
   par_laplace_27pt.c
   par_laplace_9pt.c
@@ -84,6 +102,7 @@ set(SRCS
   par_vardifconv_rs.c
   par_relax.c
   par_relax_more.c
+  par_relax_more_device.c
   par_relax_interface.c
   par_scaled_matnorm.c
   par_schwarz.c
@@ -92,7 +111,6 @@ set(SRCS
   par_sv_interp.c
   par_sv_interp_ln.c
   partial.c
-  pcg_par.c
   schwarz.c
   block_tridiag.c
   ams.c
@@ -100,16 +118,65 @@ set(SRCS
   ame.c
   par_restr.c
   par_lr_restr.c
+  par_mgr.c
+  par_mgr_setup.c
+  par_mgr_solve.c
+  par_ilu.c
+  par_ilu_setup.c
+  par_ilu_solve.c
+  par_coarsen_device.c
+  par_indepset_device.c
+  par_interp_device.c
+  par_interp_trunc_device.c
+  par_lr_interp_device.c
+  par_lr_restr_device.c
+  par_strength_device.c
+  par_strength2nd_device.c
+  par_amgdd_fac_cycle_device.c
+  par_2s_interp_device.c
+  par_relax_device.c
+  par_mod_multi_interp_device.c
+  par_mgr_device.c
 )
 
 if (HYPRE_USING_DSUPERLU)
-  list(APPEND SRCS superlu.c)
-endif()  
+  list(APPEND SRCS dsuperlu.c)
+endif()
+
+target_sources(${PROJECT_NAME}
+  PRIVATE ${SRCS}
+          ${HDRS}
+)
+
+if (HYPRE_USING_CUDA OR HYPRE_USING_SYCL)
+  set(GPU_SRCS
+    ams.c
+    ads.c
+    ame.c
+    par_amg_setup.c
+    par_ilu.c
+    par_ilu_setup.c
+    par_ilu_solve.c
+    par_coarsen_device.c
+    par_coarse_parms_device.c
+    par_indepset_device.c
+    par_interp_device.c
+    par_interp_trunc_device.c
+    par_lr_interp_device.c
+    par_lr_restr_device.c
+    par_mod_multi_interp_device.c
+    par_strength_device.c
+    par_strength2nd_device.c
+    par_relax_more_device.c
+    par_cheby_device.c
+    par_amgdd_fac_cycle_device.c
+    par_2s_interp_device.c
+    par_relax_device.c
+    par_mgr_device.c
+  )
+  convert_filenames_to_full_paths(GPU_SRCS)
+  set(HYPRE_GPU_SOURCES ${HYPRE_GPU_SOURCES} ${GPU_SRCS} PARENT_SCOPE)
+endif ()
 
 convert_filenames_to_full_paths(HDRS)
-convert_filenames_to_full_paths(SRCS)
-
 set(HYPRE_HEADERS ${HYPRE_HEADERS} ${HDRS} PARENT_SCOPE)
-set(HYPRE_SOURCES ${HYPRE_SOURCES} ${SRCS} PARENT_SCOPE)
-
-

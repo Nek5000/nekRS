@@ -45,16 +45,19 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   if(!mesh->cht) bid = nekData.boundaryID;
   for(int e = 0; e < mesh->Nelements; e++)
     for(int iface = 0; iface < mesh->Nfaces; iface++) {
-      if(*bid) NboundaryFaces++;
+      if(*bid > 0) NboundaryFaces++;
       bid++;
     }
+  MPI_Allreduce(MPI_IN_PLACE, &NboundaryFaces, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+
+  int NelementsGlobal = mesh->Nelements;
+  MPI_Allreduce(MPI_IN_PLACE, &NelementsGlobal, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
 
   int Nbid = nekData.NboundaryIDt;
   if (!mesh->cht)
     Nbid = nekData.NboundaryID;
-  MPI_Allreduce(MPI_IN_PLACE, &NboundaryFaces, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
   if (platform->comm.mpiRank == 0)
-    printf("NboundaryIDs: %d, NboundaryFaces: %lld ", Nbid, NboundaryFaces);
+    printf("Nelements: %d, NboundaryIDs: %d, NboundaryFaces: %lld ", NelementsGlobal, Nbid, NboundaryFaces);
   mesh->NboundaryFaces = NboundaryFaces;
 
   // boundary face tags (face numbering is in pre-processor notation)

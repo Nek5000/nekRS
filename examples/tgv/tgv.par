@@ -12,7 +12,7 @@ endTime = 20
 timeStepper = tombo2
 dt = targetCFL=2 + max=2e-2
 
-writeControl = runTime
+writeControl = simulationTime 
 writeInterval = 0
 
 regularization = hpfrt + nModes=1 + scalingCoeff=10 
@@ -20,7 +20,7 @@ regularization = hpfrt + nModes=1 + scalingCoeff=10
 [PRESSURE]
 solver = pfcg
 residualTol = 1e-04
-preconditioner = multigrid+additive+coarse
+preconditioner = multigrid+additive
 smootherType = ASM 
 
 [VELOCITY]

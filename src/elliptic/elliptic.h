@@ -73,15 +73,19 @@ struct GmresData{
 
 struct elliptic_t
 {
-  static constexpr double targetBenchmark {0.1};
-  static constexpr int NScratchFields {4};
-  static constexpr int minNFDMOverlap{4};
-  int dim;
-  int elementType; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
-  int coeffField;        // flag for variable coefficient (solver)
-  int coeffFieldPreco;   // flag for variable coefficient (preconditioner)
-  int blockSolver, Nfields, stressForm; // flag for vector solver and number of fields
+  static constexpr double targetTimeBenchmark {0.2};
+  static constexpr int NScratchFields {6};
+  static constexpr int minFDMBytesOverlap{2<<22};
+  int dim = 1;
+  int elementType = 12; // number of edges (3=tri, 4=quad, 6=tet, 12=hex)
+  int coeffField = 1;        // flag for variable coefficient (solver)
+  int coeffFieldPreco = 1;   // flag for variable coefficient (preconditioner)
+  int blockSolver = 0;
+  int Nfields = 1;
+  int stressForm = 0;
   int poisson; 
+
+  bool mgLevel = false;
 
   std::string name;
 
@@ -106,9 +110,6 @@ struct elliptic_t
 
   bool allNeumann;
 
-  // HOST shadow copies
-  dfloat* invDegree;
-
   int* EToB;
 
   occa::memory o_wrk;
@@ -132,21 +133,19 @@ struct elliptic_t
   occa::memory o_res;
   occa::memory o_Ap; // A*search direction
   occa::memory o_invDegree;
-  occa::memory o_interp; // interpolate (r,s,t)F -> (r,s,t)C for variable properties
+  occa::memory o_interp;
+
+  occa::memory o_rPfloat;
+  occa::memory o_zPfloat;
 
   occa::memory o_EXYZ; // element vertices for reconstructing geofacs (trilinear hexes only)
 
   occa::kernel AxKernel;
   occa::kernel AxPfloatKernel;
 
-  occa::kernel scaledAddPfloatKernel;
-  occa::kernel dotMultiplyPfloatKernel;
-  occa::kernel copyDfloatToPfloatKernel;
   occa::kernel fusedCopyDfloatToPfloatKernel;
-  occa::kernel copyPfloatToDPfloatKernel;
-  occa::kernel axmyzManyPfloatKernel;
-  occa::kernel adyManyPfloatKernel;
-  
+  occa::kernel axmyzManyPfloatKernel; 
+ 
   // special kernels for single Chebyshev iteration
   occa::kernel updateSmoothedSolutionVecKernel;
   occa::kernel updateChebyshevSolutionVecKernel;
@@ -169,8 +168,8 @@ struct elliptic_t
   hlong NelementsGlobal;
 
   occa::kernel ellipticBlockBuildDiagonalKernel;
+  occa::kernel ellipticBlockBuildDiagonalPfloatKernel;
   occa::memory o_lambda;
-  occa::memory o_lambdaPfloat;
   dlong loffset;
   int nLevels;
   int* levels;
@@ -233,13 +232,12 @@ void ellipticAx(elliptic_t* elliptic,
                 const char* precision);
 
 void ellipticBuildContinuous(elliptic_t* elliptic, nonZero_t** A,
-                             dlong* nnz, ogs_t** ogs, hlong* globalStarts);
+                             dlong* nnz, hlong* globalStarts);
 
 void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
                                           elliptic_t* ellipticFine,
                                           nonZero_t** A,
                                           dlong* nnz,
-                                          ogs_t** ogs,
                                           hlong* globalStarts);
 
 void ellipticMultiGridUpdateLambda(elliptic_t* elliptic);

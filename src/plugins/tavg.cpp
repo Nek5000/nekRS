@@ -205,19 +205,19 @@ void tavg::outfld(int _outXYZ, int FP64)
     o_Trms = o_Srms;
   }
 
-  writeFld("avg", atime, outXYZ, FP64,
+  writeFld("avg", atime, outfldCounter, outXYZ, FP64,
            &o_Uavg,
            &o_Pavg,
            &o_Tavg,
            Nscalar);
 
-  writeFld("rms", atime, outXYZ, FP64,
+  writeFld("rms", atime, outfldCounter, outXYZ, FP64,
            &o_Urms,
            &o_Prms,
            &o_Trms,
            Nscalar);
 
-  writeFld("rm2", atime, outXYZ, FP64,
+  writeFld("rm2", atime, outfldCounter, outXYZ, FP64,
            &o_Urm2,
            &o_null,
            &o_null,

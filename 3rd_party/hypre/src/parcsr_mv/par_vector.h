@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -14,7 +14,6 @@
 #ifndef hypre_PAR_VECTOR_HEADER
 #define hypre_PAR_VECTOR_HEADER
 
-
 /*--------------------------------------------------------------------------
  * hypre_ParVector
  *--------------------------------------------------------------------------*/
@@ -25,23 +24,21 @@
 
 typedef struct hypre_ParVector_struct
 {
-   MPI_Comm      comm;
+   MPI_Comm              comm;
 
-   HYPRE_BigInt  global_size;
-   HYPRE_BigInt  first_index;
-   HYPRE_BigInt  last_index;
-   HYPRE_BigInt *partitioning;
-   HYPRE_Int     actual_local_size; /* stores actual length of data in local vector
-                                       to allow memory manipulations for temporary vectors*/
-   hypre_Vector *local_vector;
+   HYPRE_BigInt          global_size;
+   HYPRE_BigInt          first_index;
+   HYPRE_BigInt          last_index;
+   HYPRE_BigInt          partitioning[2];
+   /* stores actual length of data in local vector to allow memory
+    * manipulations for temporary vectors*/
+   HYPRE_Int             actual_local_size;
+   hypre_Vector         *local_vector;
 
    /* Does the Vector create/destroy `data'? */
-   HYPRE_Int     owns_data;
-   HYPRE_Int     owns_partitioning;
+   HYPRE_Int             owns_data;
 
-   hypre_IJAssumedPart *assumed_partition; /* only populated if no_global_partition option
-                                              is used (compile-time option) AND this partition
-                                              needed
+   hypre_IJAssumedPart  *assumed_partition; /* only populated if this partition needed
                                               (for setting off-proc elements, for example)*/
 } hypre_ParVector;
 
@@ -57,11 +54,14 @@ typedef struct hypre_ParVector_struct
 #define hypre_ParVectorActualLocalSize(vector)  ((vector) -> actual_local_size)
 #define hypre_ParVectorLocalVector(vector)      ((vector) -> local_vector)
 #define hypre_ParVectorOwnsData(vector)         ((vector) -> owns_data)
-#define hypre_ParVectorOwnsPartitioning(vector) ((vector) -> owns_partitioning)
-#define hypre_ParVectorNumVectors(vector)\
- (hypre_VectorNumVectors( hypre_ParVectorLocalVector(vector) ))
+#define hypre_ParVectorNumVectors(vector)       (hypre_VectorNumVectors(hypre_ParVectorLocalVector(vector)))
 
 #define hypre_ParVectorAssumedPartition(vector) ((vector) -> assumed_partition)
 
+static inline HYPRE_MemoryLocation
+hypre_ParVectorMemoryLocation(hypre_ParVector *vector)
+{
+   return hypre_VectorMemoryLocation(hypre_ParVectorLocalVector(vector));
+}
 
 #endif

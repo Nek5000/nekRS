@@ -60,7 +60,7 @@ void registerAxKernels(const std::string& section, int N, int poissonEquation)
                                     Nfields,
                                     false, // no stress formulation in preconditioner
                                     verbosity,
-                                    elliptic_t::targetBenchmark,
+                                    elliptic_t::targetTimeBenchmark,
                                     false,
                                     kernelSuffix);
 
@@ -87,19 +87,12 @@ void registerJacobiKernels(const std::string &section, int poissonEquation) {
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
   const std::string oklpath = installDir + "/okl/";
-  occa::properties pfloatProps = platform->kernelInfo;
-  pfloatProps["defines/dfloat"] = pfloatString;
 
   // This kernel is needed as it used for mixed-precision Jacobi preconditioning 
   std::string kernelName = "axmyzManyPfloat";
   std::string fileName = oklpath + "elliptic/" + kernelName + extension;
   platform->kernels.add(
     kernelName, fileName, platform->kernelInfo);
-
-  kernelName = "adyManyPfloat";
-  fileName = oklpath + "linAlg/adyMany.okl";
-  platform->kernels.add(
-    kernelName, fileName, pfloatProps);
 }
 
 void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo, int poissonEquation) {
@@ -138,39 +131,6 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo, i
         fileName,
         pfloatKernelInfo,
         orderSuffix + "pfloat");
-    kernelName = "fusedCopyDfloatToPfloat";
-    fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
-    platform->kernels.add(kernelName + orderSuffix,
-        fileName,
-        kernelInfo,
-        orderSuffix);
-
-    kernelName = "copyDfloatToPfloat";
-    fileName = installDir + "/okl/core/" + kernelName + extension;
-    platform->kernels.add(kernelName + orderSuffix,
-        fileName,
-        kernelInfo,
-        orderSuffix);
-
-    kernelName = "copyPfloatToDfloat";
-    fileName = installDir + "/okl/core/" + kernelName + extension;
-    platform->kernels.add(kernelName + orderSuffix,
-        fileName,
-        kernelInfo,
-        orderSuffix);
-
-    kernelName = "scaledAdd";
-    fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
-    platform->kernels.add(kernelName + orderSuffix,
-        fileName,
-        kernelInfo,
-        orderSuffix);
-    kernelName = "dotMultiply";
-    fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
-    platform->kernels.add(kernelName + orderSuffix,
-        fileName,
-        kernelInfo,
-        orderSuffix);
 
     kernelName = "updateSmoothedSolutionVec";
     fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
@@ -198,6 +158,12 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo, i
     kernelName = "ellipticBlockBuildDiagonalHex3D";
     fileName = installDir + "/okl/elliptic/" + kernelName + ".okl";
     platform->kernels.add(poissonPrefix + kernelName + orderSuffix, fileName, buildDiagInfo, orderSuffix);
+    { 
+      occa::properties props = buildDiagInfo;
+      props["defines/dfloat"] = pfloatString;
+      kernelName = "ellipticBlockBuildDiagonalPfloatHex3D";
+      platform->kernels.add(poissonPrefix + kernelName + orderSuffix, fileName, props, orderSuffix);
+    } 
   }
 }
 
@@ -208,10 +174,7 @@ void registerSchwarzKernels(const std::string &section, int N) {
   const int Np = Nq * Nq * Nq;
   const int Np_e = Nq_e * Nq_e * Nq_e;
 
-  bool overlap = false;
   const bool serial = platform->serial;
-  if (Nq >= (elliptic_t::minNFDMOverlap + 1) && !serial)
-    overlap = true;
 
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
@@ -227,7 +190,6 @@ void registerSchwarzKernels(const std::string &section, int N) {
     bool useRAS = platform->options.compareArgs(optionsPrefix + "MULTIGRID SMOOTHER", "RAS");
     const std::string suffix =
         std::string("_") + std::to_string(Nq_e - 1) + std::string("pfloat");
-    properties["defines/p_overlap"] = (int)overlap;
     if(useRAS){
       properties["defines/p_restrict"] = 1;
     }
@@ -247,9 +209,8 @@ void registerSchwarzKernels(const std::string &section, int N) {
                                   Nq_e,
                                   sizeof(pfloat),
                                   useRAS,
-                                  static_cast<int>(overlap),
                                   verbosity,
-                                  elliptic_t::targetBenchmark,
+                                  elliptic_t::targetTimeBenchmark,
                                   false,
                                   suffix);
     platform->kernels.add("fusedFDM" + suffix, fdmKernel);
@@ -365,24 +326,16 @@ void registerMultiGridKernels(const std::string &section, int poissonEquation) {
   if (platform->options.compareArgs(
           optionsPrefix + "MULTIGRID COARSE SOLVE", "TRUE")) {
     if (platform->options.compareArgs(
-            optionsPrefix + "MULTIGRID COARSE SEMFEM", "TRUE")) {
+            optionsPrefix + "MULTIGRID SEMFEM", "TRUE")) {
       registerSEMFEMKernels(section, coarseLevel, poissonEquation);
     } else {
       {
         std::string installDir;
         installDir.assign(getenv("NEKRS_INSTALL_DIR"));
         const std::string oklpath = installDir + "/okl/";
-        std::string fileName = oklpath + "parAlmond/convertFP64ToFP32.okl";
-        std::string kernelName = "convertFP64ToFP32";
-        platform->kernels.add(
-            kernelName, fileName, platform->kernelInfo);
 
-        fileName = oklpath + "parAlmond/convertFP32ToFP64.okl";
-        kernelName = "convertFP32ToFP64";
-        platform->kernels.add(
-            kernelName, fileName, platform->kernelInfo);
-        fileName = oklpath + "parAlmond/vectorDotStar2.okl";
-        kernelName = "vectorDotStar2";
+        std::string fileName = oklpath + "parAlmond/vectorDotStar.okl";
+        std::string kernelName = "vectorDotStar";
         platform->kernels.add(
             kernelName, fileName, platform->kernelInfo);
       }
@@ -394,7 +347,7 @@ void registerSEMFEMKernels(const std::string &section, int N, int poissonEquatio
   const int Np = Nq * Nq * Nq;
   const std::string optionsPrefix = createOptionsPrefix(section);
   const int useFP32 = platform->options.compareArgs(
-      optionsPrefix + "SEMFEM SOLVER PRECISION", "FP32");
+      optionsPrefix + "COARSE SOLVER PRECISION", "FP32");
   occa::properties SEMFEMKernelProps = platform->kernelInfo;
   if (useFP32) {
     SEMFEMKernelProps["defines/pfloat"] = "float";

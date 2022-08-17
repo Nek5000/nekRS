@@ -34,12 +34,7 @@ SOFTWARE.
 #include "nrssys.hpp"
 
 #include "defines.hpp"
-#include "utils.hpp"
-#include "kernels.hpp"
-#include "vector.hpp"
-#include "matrix.hpp"
 #include "level.hpp"
-#include "agmg.hpp"
 #include "coarse.hpp"
 #include "solver.hpp"
 
@@ -54,8 +49,7 @@ void AMGSetup(solver_t* M,
              hlong* Ai,
              hlong* Aj,
              dfloat* Avals,
-             bool nullSpace,
-             dfloat nullSpacePenalty);
+             bool nullSpace);
 
 void Precon(solver_t* M, occa::memory o_x, occa::memory o_rhs);
 

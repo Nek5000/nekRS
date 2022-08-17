@@ -151,7 +151,7 @@ void ciTestAvgBoundary(nrs_t* nrs)
     FAIL;
   }
 
-  occa::memory o_fld = platform->device.malloc(N * nrs->fieldOffset * sizeof(dfloat));
+  occa::memory o_fld = platform->device.malloc((N  * sizeof(dfloat))*nrs->fieldOffset);
   platform->linAlg->fill(N*nrs->fieldOffset, SA, o_fld);
 
   std::array<dfloat, N> results;

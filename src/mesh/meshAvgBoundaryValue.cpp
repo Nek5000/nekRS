@@ -16,7 +16,7 @@ dfloat mesh_t::avgBoundaryValue(int BID, occa::memory o_fld)
 void mesh_t::avgBoundaryValue(int BID, int Nfields, int offsetFld, occa::memory o_fld, dfloat *avgs)
 {
   const auto offset = Nfaces * Nelements;
-  const auto Nbytes = (Nfields + 1) * offset * sizeof(dfloat);
+  const auto Nbytes = ((Nfields + 1) * sizeof(dfloat)) * offset;
 
   if (o_sumFace.size() < Nbytes) {
     if (o_sumFace.size())

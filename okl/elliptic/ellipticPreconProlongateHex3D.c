@@ -25,9 +25,9 @@
  */
 
 extern "C" void FUNC(ellipticPreconProlongateHex3D)(const dlong& Nelements,
-                                               const dfloat* __restrict__  R,
-                                               const dfloat* __restrict__  qc,
-                                               dfloat* __restrict__  qN)
+                                               const pfloat* __restrict__  R,
+                                               const pfloat* __restrict__  qc,
+                                               pfloat* __restrict__  qN)
 {
   dfloat r_q[p_NqCoarse][p_NqFine][p_NqFine];
 

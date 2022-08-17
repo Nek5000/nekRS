@@ -1,11 +1,12 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
  ******************************************************************************/
 
 #include "_hypre_struct_ls.h"
+#include "_hypre_struct_mv.hpp"
 
 /*--------------------------------------------------------------------------
  * hypre_SparseMSGInterpData data structure
@@ -57,7 +58,7 @@ hypre_SparseMSGInterpSetup( void               *interp_vdata,
 
    hypre_StructGrid       *grid;
    hypre_StructStencil    *stencil;
-                       
+
    hypre_ComputeInfo      *compute_info;
    hypre_ComputePkg       *compute_pkg;
 
@@ -118,25 +119,25 @@ hypre_SparseMSGInterp( void               *interp_vdata,
    HYPRE_Int              *cgrid_ids;
 
    hypre_CommHandle       *comm_handle;
-                       
+
    hypre_BoxArrayArray    *compute_box_aa;
    hypre_BoxArray         *compute_box_a;
    hypre_Box              *compute_box;
-                       
+
    hypre_Box              *P_dbox;
    hypre_Box              *xc_dbox;
    hypre_Box              *e_dbox;
-                         
+
    HYPRE_Real             *Pp0, *Pp1;
    HYPRE_Real             *xcp;
    HYPRE_Real             *ep, *ep0, *ep1;
-                       
+
    hypre_Index             loop_size;
    hypre_Index             start;
    hypre_Index             startc;
    hypre_Index             startP;
    hypre_Index             stridec;
-                       
+
    hypre_StructStencil    *stencil;
    hypre_Index            *stencil_shape;
 
@@ -207,7 +208,7 @@ hypre_SparseMSGInterp( void               *interp_vdata,
 
    for (compute_i = 0; compute_i < 2; compute_i++)
    {
-      switch(compute_i)
+      switch (compute_i)
       {
          case 0:
          {
@@ -266,7 +267,7 @@ hypre_SparseMSGInterp( void               *interp_vdata,
     * Return
     *-----------------------------------------------------------------------*/
 
-   hypre_IncFLOPCount(3*hypre_StructVectorGlobalSize(xc));
+   hypre_IncFLOPCount(3 * hypre_StructVectorGlobalSize(xc));
    hypre_EndTiming(interp_data -> time_index);
 
    return ierr;

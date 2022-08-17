@@ -52,7 +52,7 @@ public:
   dfloat* R;
   occa::memory o_R;
   int NpF;
-  occa::memory o_invDegree;
+  occa::memory o_invDegreeFine;
 
   //smoothing params
   SmootherType stype;
@@ -80,9 +80,6 @@ public:
   occa::memory o_work2; // scratch space
   occa::memory o_wts; // weights to apply after operation
 
-  occa::memory o_xPfloat; // float-type o_x
-  occa::memory o_rhsPfloat; // float-type o_x
-
   // Eigenvalues
   occa::memory o_invL;
 
@@ -104,7 +101,7 @@ public:
 
   //build a single level
   MGLevel(elliptic_t* ellipticBase, int Nc,
-          setupAide options_, parAlmond::KrylovType ktype_, MPI_Comm comm_,
+          setupAide options_, MPI_Comm comm_,
           bool _isCoarse = false
           );
   //build a level and connect it to the previous one
@@ -114,7 +111,6 @@ public:
           elliptic_t* ellipticCoarse,          //current level
           int Nf, int Nc,
           setupAide options_,
-          parAlmond::KrylovType ktype_,
           MPI_Comm comm_,
           bool _isCoarse = false
           );

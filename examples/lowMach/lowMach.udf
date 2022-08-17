@@ -4,7 +4,7 @@
 #include <math.h>
 #include "udf.hpp"
 #include "plugins/lowMach.hpp"
-#
+
 #include "ci.inc"
 
 static occa::kernel userQKernel;

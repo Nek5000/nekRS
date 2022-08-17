@@ -34,51 +34,26 @@ class multigridLevel {
 public:
   dlong Nrows, Ncols;
 
-  dfloat *x=NULL;
-  dfloat *rhs=NULL;
-  dfloat *res=NULL;
   occa::memory o_x, o_rhs, o_res;
 
-  //extra storage for kcycle
-  dfloat *ck=NULL;
-  dfloat *vk=NULL;
-  dfloat *wk=NULL;
-  occa::memory o_ck, o_vk, o_wk;
-
-  //switch for weighted inner products
-  bool weighted;
-  dfloat *weight=NULL;
-  occa::memory o_weight;
-
-  KrylovType ktype;
   SmoothType stype;
 
   MPI_Comm comm;
 
-  multigridLevel(dlong N, dlong M, KrylovType Ktype, MPI_Comm comm);
+  multigridLevel(dlong N, dlong M, MPI_Comm comm);
   ~multigridLevel();
 
-  virtual void Ax(dfloat        *x, dfloat        *Ax)=0;
   virtual void Ax(occa::memory o_x, occa::memory o_Ax)=0;
 
-  virtual void smooth(dfloat        *rhs, dfloat        *x, bool x_is_zero)=0;
   virtual void smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)=0;
 
-  virtual void residual(dfloat        *rhs, dfloat        *x, dfloat        *res)=0;
   virtual void residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)=0;
 
-  virtual void coarsen(dfloat        *x, dfloat        *Cx)=0;
   virtual void coarsen(occa::memory o_x, occa::memory o_Cx)=0;
 
-  virtual void prolongate(dfloat        *x, dfloat        *Px)=0;
   virtual void prolongate(occa::memory o_x, occa::memory o_Px)=0;
 
   virtual void Report()=0;
-
-  void kcycleOp1(dfloat *alpha1, dfloat *rho1, dfloat *norm_rhs, dfloat *norm_rhstilde);
-  void kcycleOp2(const dfloat alpha1, const dfloat rho1);
-  void device_kcycleOp1(dfloat *alpha1, dfloat *rho1, dfloat *norm_rhs, dfloat *norm_rhstilde);
-  void device_kcycleOp2(const dfloat alpha1, const dfloat rho1);
 };
 
 }

@@ -1,4 +1,4 @@
-dnl Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+dnl Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
 dnl HYPRE Project Developers. See the top-level COPYRIGHT file for details.
 dnl
 dnl SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -297,7 +297,7 @@ dnl **************************************************************
        else
           hypre_fmangle_blas=4
        fi
-       AC_DEFINE_UNQUOTED(HYPRE_FMANGLE_BLAS, [$hypre_fmangle_blas], [BLAS mangling])
+       AC_DEFINE_UNQUOTED(HYPRE_FMANGLE_BLAS, [$hypre_fmangle_blas], [Define as in HYPRE_FMANGLE to set the BLAS name mangling scheme])
     fi 
 dnl **************************************************************
 dnl Restore LIBS and LDFLAGS

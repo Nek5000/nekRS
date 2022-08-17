@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -61,8 +61,8 @@ hypre_GetSimpleThreadPartition( HYPRE_Int *begin, HYPRE_Int *end, HYPRE_Int n )
    HYPRE_Int num_threads = hypre_NumActiveThreads();
    HYPRE_Int my_thread_num = hypre_GetThreadNum();
 
-   HYPRE_Int n_per_thread = (n + num_threads - 1)/num_threads;
+   HYPRE_Int n_per_thread = (n + num_threads - 1) / num_threads;
 
-   *begin = hypre_min(n_per_thread*my_thread_num, n);
+   *begin = hypre_min(n_per_thread * my_thread_num, n);
    *end = hypre_min(*begin + n_per_thread, n);
 }

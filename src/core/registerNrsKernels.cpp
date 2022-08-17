@@ -245,7 +245,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
 
       if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE") && Nsubsteps) {
         auto subCycleKernel =
-            benchmarkAdvsub(3, NelemBenchmark, Nq, cubNq, nEXT, true, false, verbosity, nrs_t::targetBenchmark, false);
+            benchmarkAdvsub(3, NelemBenchmark, Nq, cubNq, nEXT, true, false, verbosity, nrs_t::targetTimeBenchmark, false);
 
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         platform->kernels.add(section + kernelName, subCycleKernel);

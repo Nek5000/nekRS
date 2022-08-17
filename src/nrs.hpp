@@ -21,7 +21,7 @@
 
 struct nrs_t {
 
-  static constexpr double targetBenchmark {0.1};
+  static constexpr double targetTimeBenchmark {0.2};
 
   bool multiSession;
 

@@ -26,7 +26,6 @@
 @kernel void ellipticBlockUpdatePCG(const dlong N,
                                     const dlong offset,
                                     @restrict const dfloat* invDegree,
-                                    @restrict const dfloat* p,
                                     @restrict const dfloat* Ap,
                                     const dfloat alpha,
                                     @restrict dfloat* r,
@@ -44,7 +43,6 @@
           for(int fld = 0; fld < p_Nfields; fld++) {
             dfloat rn = r[n + fld * offset];
  
-            const dfloat pn = p[n + fld * offset];
             const dfloat Apn = Ap[n + fld * offset];
  
             rn  -= alpha * Apn;

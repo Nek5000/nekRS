@@ -1,5 +1,5 @@
 @kernel void cubatureGeometricFactorsHex3D(const dlong Nelements,
-                               @restrict const  dfloat *D,
+                               @restrict const  dfloat *cubD,
                                @restrict const  dfloat *x,
                                @restrict const  dfloat *y,
                                @restrict const  dfloat *z,
@@ -10,50 +10,20 @@
   for(dlong element = 0; element < Nelements; ++element; @outer(0)) {
     @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
     @shared dfloat s_cubw[p_cubNq];
-    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_cubD[p_cubNq][p_cubNq];
 
     @shared dfloat s_x[p_Nq][p_Nq];
     @shared dfloat s_y[p_Nq][p_Nq];
     @shared dfloat s_z[p_Nq][p_Nq];
 
-    @shared dfloat s_cubxre[p_Nq][p_cubNq];
-    @shared dfloat s_cubxse[p_Nq][p_cubNq];
-    @shared dfloat s_cubxte[p_Nq][p_cubNq];
+    @exclusive dfloat r_cubx[p_cubNq], r_cuby[p_cubNq], r_cubz[p_cubNq];
+    @shared dfloat s_cubx[p_cubNq][p_cubNq];
+    @shared dfloat s_cuby[p_cubNq][p_cubNq];
+    @shared dfloat s_cubz[p_cubNq][p_cubNq];
 
-    @exclusive dfloat r_x[p_Nq], r_y[p_Nq], r_z[p_Nq];
-
-    @shared dfloat s_xre[p_Nq][p_Nq];
-    @shared dfloat s_xse[p_Nq][p_Nq];
-    @shared dfloat s_xte[p_Nq][p_Nq];
-
-    @shared dfloat s_yre[p_Nq][p_Nq];
-    @shared dfloat s_yse[p_Nq][p_Nq];
-    @shared dfloat s_yte[p_Nq][p_Nq];
-    
-    @shared dfloat s_zre[p_Nq][p_Nq];
-    @shared dfloat s_zse[p_Nq][p_Nq];
-    @shared dfloat s_zte[p_Nq][p_Nq];
-
-    @shared dfloat s_cubyre[p_Nq][p_cubNq];
-    @shared dfloat s_cubyse[p_Nq][p_cubNq];
-    @shared dfloat s_cubyte[p_Nq][p_cubNq];
-
-    @shared dfloat s_cubzre[p_Nq][p_cubNq];
-    @shared dfloat s_cubzse[p_Nq][p_cubNq];
-    @shared dfloat s_cubzte[p_Nq][p_cubNq];
-
-    // TODO: reduce register pressure
-    @exclusive dfloat r_cubxre[p_cubNq];
-    @exclusive dfloat r_cubxse[p_cubNq];
-    @exclusive dfloat r_cubxte[p_cubNq];
-
-    @exclusive dfloat r_cubyre[p_cubNq];
-    @exclusive dfloat r_cubyse[p_cubNq];
-    @exclusive dfloat r_cubyte[p_cubNq];
-
-    @exclusive dfloat r_cubzre[p_cubNq];
-    @exclusive dfloat r_cubzse[p_cubNq];
-    @exclusive dfloat r_cubzte[p_cubNq];
+    @shared dfloat s_x1[p_Nq][p_cubNq];
+    @shared dfloat s_y1[p_Nq][p_cubNq];
+    @shared dfloat s_z1[p_Nq][p_cubNq];
 
     for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
       for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
@@ -61,166 +31,121 @@
 
         if (j == 0) s_cubw[i] = cubW[i];
         if (id < p_Nq * p_cubNq) s_cubInterpT[j][i] = cubInterpT[id]; 
-        if (i < p_Nq && j < p_Nq) s_D[j][i]  = D[j*p_Nq+i];
+        s_cubD[j][i]  = cubD[id];
 
         for(int k = 0; k < p_cubNq; ++k) {
 
-          r_cubxre[k] = 0;
-          r_cubxse[k] = 0;
-          r_cubxte[k] = 0;
+          r_cubx[k] = 0;
+          r_cuby[k] = 0;
+          r_cubz[k] = 0;
 
-          r_cubyre[k] = 0;
-          r_cubyse[k] = 0;
-          r_cubyte[k] = 0;
-
-          r_cubzre[k] = 0;
-          r_cubzse[k] = 0;
-          r_cubzte[k] = 0;
         }
       }
     }
-    @barrier("local");
 
-    for(int k = 0 ; k < p_Nq; ++k){
-      for(int j=0;j<p_cubNq;++j;@inner(1)){
-        for(int i=0;i<p_cubNq;++i;@inner(0)){
-          if(i < p_Nq && j < p_Nq){
-            const dlong id = element*p_Np + k*p_Nq*p_Nq + j*p_Nq + i;
-            s_x[j][i] = x[id];
-            s_y[j][i] = y[id];
-            s_z[j][i] = z[id];
-            if(k == 0){
-              for(int l = 0 ; l < p_Nq; ++l){
-                const dlong other_id = element*p_Np + l*p_Nq*p_Nq + j*p_Nq + i;
-                r_x[l] = x[other_id];
-                r_y[l] = y[other_id];
-                r_z[l] = z[other_id];
-              }
-            }
+    for(int c = 0; c < p_Nq; ++c) {
+
+      @barrier("local");
+
+      for(int b = 0; b < p_cubNq; ++b; @inner(1)){
+        for(int a = 0; a < p_cubNq; ++a; @inner(0)) {
+          if(a < p_Nq && b < p_Nq){
+            const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+            s_x[b][a] = x[id];
+            s_y[b][a] = y[id];
+            s_z[b][a] = z[id];
           }
         }
       }
-      @barrier("local");
-      for(int j=0;j<p_cubNq;++j;@inner(1)){
-        for(int i=0;i<p_cubNq;++i;@inner(0)){
-          if(i < p_Nq && j < p_Nq){
-            dfloat xr = 0, yr = 0, zr = 0;
-            dfloat xs = 0, ys = 0, zs = 0;
-            dfloat xt = 0, yt = 0, zt = 0;
-            for(int m=0;m<p_Nq;++m){
-              const dfloat Dim = s_D[i][m];
-              const dfloat Djm = s_D[j][m];
-              const dfloat Dkm = s_D[k][m];
-              xr += Dim*s_x[j][m];
-              xs += Djm*s_x[m][i];
-              xt += Dkm*r_x[m];
-              yr += Dim*s_y[j][m];
-              ys += Djm*s_y[m][i];
-              yt += Dkm*r_y[m];
-              zr += Dim*s_z[j][m];
-              zs += Djm*s_z[m][i];
-              zt += Dkm*r_z[m];
-            }
-            // store results in shmem array
-            s_xre[j][i] = xr;
-            s_xse[j][i] = xs;
-            s_xte[j][i] = xt;
 
-            s_yre[j][i] = yr;
-            s_yse[j][i] = ys;
-            s_yte[j][i] = yt;
-
-            s_zre[j][i] = zr;
-            s_zse[j][i] = zs;
-            s_zte[j][i] = zt;
-          }
-        }
-      }
       @barrier("local");
+
+      // interpolate in 'r'
       for(int b = 0; b < p_cubNq; ++b; @inner(1))
         for(int i = 0; i < p_cubNq; ++i; @inner(0))
           if(b < p_Nq) {
-            dfloat xr1  = 0, xs1 = 0,  xt1 = 0;
-            dfloat yr1  = 0, ys1 = 0,  yt1 = 0;
-            dfloat zr1  = 0, zs1 = 0,  zt1 = 0;
+            dfloat U1  = 0, V1 = 0,  W1 = 0;
+
             for(int a = 0; a < p_Nq; ++a) {
               dfloat Iia = s_cubInterpT[a][i];
-              xr1  += Iia * s_xre[b][a];
-              xs1  += Iia * s_xse[b][a];
-              xt1  += Iia * s_xte[b][a];
-
-              yr1  += Iia * s_yre[b][a];
-              ys1  += Iia * s_yse[b][a];
-              yt1  += Iia * s_yte[b][a];
-
-              zr1  += Iia * s_zre[b][a];
-              zs1  += Iia * s_zse[b][a];
-              zt1  += Iia * s_zte[b][a];
+              U1  += Iia * s_x[b][a];
+              V1  += Iia * s_y[b][a];
+              W1  += Iia * s_z[b][a];
             }
 
-            s_cubxre[b][i] = xr1;
-            s_cubxse[b][i] = xs1;
-            s_cubxte[b][i] = xt1;
-
-            s_cubyre[b][i] = yr1;
-            s_cubyse[b][i] = ys1;
-            s_cubyte[b][i] = yt1;
-
-            s_cubzre[b][i] = zr1;
-            s_cubzse[b][i] = zs1;
-            s_cubzte[b][i] = zt1;
-
+            s_x1[b][i] = U1;
+            s_y1[b][i] = V1;
+            s_z1[b][i] = W1;
           }
 
       @barrier("local");
 
       // interpolate in 's'
-      for(int j = 0; j < p_cubNq; ++j; @inner(1))
+      for(int j = 0; j < p_cubNq; ++j; @inner(1)) {
         for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          dfloat xr2  = 0, xs2 = 0,  xt2 = 0;
-          dfloat yr2  = 0, ys2 = 0,  yt2 = 0;
-          dfloat zr2  = 0, zs2 = 0,  zt2 = 0;
+          dfloat U2 = 0, V2 = 0,  W2 = 0;
+
           // interpolate in b
           for(int b = 0; b < p_Nq; ++b) {
             dfloat Ijb = s_cubInterpT[b][j];
-            xr2 += Ijb * s_cubxre[b][i];
-            xs2 += Ijb * s_cubxse[b][i];
-            xt2 += Ijb * s_cubxte[b][i];
-
-            yr2 += Ijb * s_cubyre[b][i];
-            ys2 += Ijb * s_cubyse[b][i];
-            yt2 += Ijb * s_cubyte[b][i];
-
-            zr2 += Ijb * s_cubzre[b][i];
-            zs2 += Ijb * s_cubzse[b][i];
-            zt2 += Ijb * s_cubzte[b][i];
+            U2 += Ijb * s_x1[b][i];
+            V2 += Ijb * s_y1[b][i];
+            W2 += Ijb * s_z1[b][i];
           }
 
-          // interpolate in k progressively
-          for(int c = 0; c < p_cubNq; ++c) {
-            dfloat Ick = s_cubInterpT[k][c];
-            r_cubxre[c] += Ick * xr2;
-            r_cubxse[c] += Ick * xs2;
-            r_cubxte[c] += Ick * xt2;
-
-            r_cubyre[c] += Ick * yr2;
-            r_cubyse[c] += Ick * ys2;
-            r_cubyte[c] += Ick * yt2;
-
-            r_cubzre[c] += Ick * zr2;
-            r_cubzse[c] += Ick * zs2;
-            r_cubzte[c] += Ick * zt2;
+          // interpolate in c progressively
+          for(int k = 0; k < p_cubNq; ++k) {
+            dfloat Ikc = s_cubInterpT[c][k];
+            r_cubx[k] += Ikc * U2; // (i,j,k) 
+            r_cuby[k] += Ikc * V2;
+            r_cubz[k] += Ikc * W2;
           }
         }
-      @barrier("local");
+      }
+
     }
 
+    // apply derivative matrices
     for(int k = 0; k < p_cubNq; ++k) {
+      @barrier("local");
+
+      for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+        for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+          s_cubx[j][i] = r_cubx[k];
+          s_cuby[j][i] = r_cuby[k];
+          s_cubz[j][i] = r_cubz[k];
+        }
+      }
+
+      @barrier("local");
+
       for(int j = 0; j < p_cubNq; ++j; @inner(1)){
         for(int i = 0; i < p_cubNq; ++i; @inner(0)) {
-          const dfloat xr = r_cubxre[k], xs = r_cubxse[k], xt = r_cubxte[k];
-          const dfloat yr = r_cubyre[k], ys = r_cubyse[k], yt = r_cubyte[k];
-          const dfloat zr = r_cubzre[k], zs = r_cubzse[k], zt = r_cubzte[k];
+          dfloat xr = 0, xs = 0, xt = 0;
+          dfloat yr = 0, ys = 0, yt = 0;
+          dfloat zr = 0, zs = 0, zt = 0;
+
+          for (int n = 0; n < p_cubNq; ++n) {
+            dfloat Din = s_cubD[i][n];
+            xr += Din * s_cubx[j][n];
+            yr += Din * s_cuby[j][n];
+            zr += Din * s_cubz[j][n];
+          }
+
+          for (int n = 0; n < p_cubNq; ++n) {
+            dfloat Djn = s_cubD[j][n];
+            xs += Djn * s_cubx[n][i];
+            ys += Djn * s_cuby[n][i];
+            zs += Djn * s_cubz[n][i];
+          }
+
+          for (int n = 0; n < p_cubNq; ++n) {
+            dfloat Dkn = s_cubD[k][n];
+            xt += Dkn * r_cubx[n];
+            yt += Dkn * r_cuby[n];
+            zt += Dkn * r_cubz[n];
+          }
+
           const dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr * (xs * yt - ys * xt);
 
           const dfloat invJ = 1.0 / J;
@@ -252,6 +177,8 @@
           cubvgeo[gid + p_JID * p_cubNp] = J;
           cubvgeo[gid + p_JWID * p_cubNp] = JW;
           cubvgeo[gid + p_IJWID * p_cubNp] = 1.0 / JW;
+
+
         }
       }
     }

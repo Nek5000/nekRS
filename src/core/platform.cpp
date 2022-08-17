@@ -32,20 +32,6 @@ static void compileDummyKernel(const platform_t& plat)
 
 }
 
-comm_t::comm_t(MPI_Comm _commg, MPI_Comm _comm)
-{
-
-  mpiCommParent = _commg;
-  mpiComm = _comm;
-  MPI_Comm_rank(_comm, &mpiRank);
-  MPI_Comm_size(_comm, &mpiCommSize);
-
-  MPI_Comm_split_type(_comm, MPI_COMM_TYPE_SHARED, mpiRank, MPI_INFO_NULL, &mpiCommLocal);
-  MPI_Comm_rank(mpiCommLocal, &localRank);
-  MPI_Comm_size(mpiCommLocal, &mpiCommLocalSize);
-
-}
-
 deviceVector_t::deviceVector_t(const size_t _offset, const size_t _nVectors, const size_t _wordSize, const std::string _vectorName)
 : 
   nVectors(_nVectors),
@@ -61,7 +47,7 @@ deviceVector_t::deviceVector_t(const size_t _offset, const size_t _nVectors, con
 
   o_vector = platform->device.malloc(nVectors * offset * wordSize);
   for(int s = 0; s < nVectors; ++s){
-    slices.push_back(o_vector + s * offset * wordSize);
+    slices.push_back(o_vector + (s * wordSize) * offset);
   }
 }
 
@@ -89,9 +75,15 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
   warpSize(32),
   comm(_commg, _comm),
   device(options, comm),
-  timer(_comm, device.occaDevice(), 0),
+  timer(_comm, device.occaDevice(), 0, 0),
   kernels(*this)
 {
+  srand48((long int) comm.mpiRank);
+  oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
+
+  timer.enableSync();
+  if(options.compareArgs("ENABLE TIMER SYNC", "FALSE"))
+    timer.disableSync();  
 
   flopCounter = std::make_unique<flopCounter_t>();
 
@@ -109,6 +101,7 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
     kernelInfo["compiler_flags"] += "--prec-sqrt=false ";
     kernelInfo["compiler_flags"] += "--use_fast_math ";
     kernelInfo["compiler_flags"] += "--fmad=true ";
+    kernelInfo["compiler_flags"] += " -lineinfo ";
     //kernelInfo["compiler_flags"] += "-Xptxas -dlcm=ca";
   }
 
@@ -120,12 +113,12 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
       kernelInfo["compiler_flags"] += " -cl-unsafe-math-optimizations ";
       kernelInfo["compiler_flags"] += " -cl-fast-relaxed-math ";
     }
-    kernelInfo["defines/" "hlong"]="long";
+    kernelInfo["defines/" "hlong"] = "long";
   }
 
   if(device.mode() == "HIP" && !getenv("OCCA_HIP_COMPILER_FLAGS")) {
     warpSize = 64; // can be arch specific
-    kernelInfo["compiler_flags"] += " -O3 ";
+    kernelInfo["compiler_flags"] += " -O3 -g ";
     kernelInfo["compiler_flags"] += " -ffp-contract=fast ";
     kernelInfo["compiler_flags"] += " -funsafe-math-optimizations ";
     kernelInfo["compiler_flags"] += " -ffast-math ";
@@ -133,6 +126,10 @@ platform_t::platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm)
 
   serial = device.mode() == "Serial" ||
            device.mode() == "OpenMP";
+
+  if(serial && !getenv("OCCA_CXXFLAGS")) {
+    kernelInfo["compiler_flags"] += " -O3 -g -march=native -mtune=native ";
+  }
   
   const std::string extension = serial ? ".c" : ".okl";
   
@@ -168,21 +165,34 @@ void memPool_t::allocate(const dlong offset, const dlong fields)
 }
 void deviceMemPool_t::allocate(memPool_t& hostMemory, const dlong offset, const dlong fields)
 {
-  bytesAllocated = fields * offset * sizeof(dfloat);
-  o_ptr = platform->device.malloc(offset*fields*sizeof(dfloat), hostMemory.slice0);
-  if(fields > 0) slice0 = o_ptr.slice(0 * offset * sizeof(dfloat));
-  if(fields > 1) slice1 = o_ptr.slice(1 * offset * sizeof(dfloat));
-  if(fields > 2) slice2 = o_ptr.slice(2 * offset * sizeof(dfloat));
-  if(fields > 3) slice3 = o_ptr.slice(3 * offset * sizeof(dfloat));
-  if(fields > 4) slice4 = o_ptr.slice(4 * offset * sizeof(dfloat));
-  if(fields > 5) slice5 = o_ptr.slice(5 * offset * sizeof(dfloat));
-  if(fields > 6) slice6 = o_ptr.slice(6 * offset * sizeof(dfloat));
-  if(fields > 7) slice7 = o_ptr.slice(7 * offset * sizeof(dfloat));
-  if(fields > 9) slice9 = o_ptr.slice(9 * offset * sizeof(dfloat));
-  if(fields > 12) slice12 = o_ptr.slice(12 * offset * sizeof(dfloat));
-  if(fields > 15) slice15 = o_ptr.slice(15 * offset * sizeof(dfloat));
-  if(fields > 18) slice18 = o_ptr.slice(18 * offset * sizeof(dfloat));
-  if(fields > 19) slice19 = o_ptr.slice(19 * offset * sizeof(dfloat));
+  bytesAllocated = (fields * sizeof(dfloat)) * offset;
+  o_ptr = platform->device.malloc(bytesAllocated, hostMemory.slice0);
+  if (fields > 0)
+    slice0 = o_ptr.slice((0 * sizeof(dfloat)) * offset);
+  if (fields > 1)
+    slice1 = o_ptr.slice((1 * sizeof(dfloat)) * offset);
+  if (fields > 2)
+    slice2 = o_ptr.slice((2 * sizeof(dfloat)) * offset);
+  if (fields > 3)
+    slice3 = o_ptr.slice((3 * sizeof(dfloat)) * offset);
+  if (fields > 4)
+    slice4 = o_ptr.slice((4 * sizeof(dfloat)) * offset);
+  if (fields > 5)
+    slice5 = o_ptr.slice((5 * sizeof(dfloat)) * offset);
+  if (fields > 6)
+    slice6 = o_ptr.slice((6 * sizeof(dfloat)) * offset);
+  if (fields > 7)
+    slice7 = o_ptr.slice((7 * sizeof(dfloat)) * offset);
+  if (fields > 9)
+    slice9 = o_ptr.slice((9 * sizeof(dfloat)) * offset);
+  if (fields > 12)
+    slice12 = o_ptr.slice((12 * sizeof(dfloat)) * offset);
+  if (fields > 15)
+    slice15 = o_ptr.slice((15 * sizeof(dfloat)) * offset);
+  if (fields > 18)
+    slice18 = o_ptr.slice((18 * sizeof(dfloat)) * offset);
+  if (fields > 19)
+    slice19 = o_ptr.slice((19 * sizeof(dfloat)) * offset);
 }
 void
 platform_t::create_mempool(const dlong offset, const dlong fields)

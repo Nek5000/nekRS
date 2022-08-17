@@ -104,11 +104,11 @@ int main(int argc, char** argv)
 
   const int verbosity = 2;
   if (Ntests != -1) {
-    benchmarkFDM(Nelements, Nq, wordSize, false, false, verbosity, Ntests, true, "");
+    benchmarkFDM(Nelements, Nq, wordSize, false, verbosity, Ntests, true, "");
   }
   else {
     const double targetTime = 10.0;
-    benchmarkFDM(Nelements, Nq, wordSize, false, false, verbosity, targetTime, true, "");
+    benchmarkFDM(Nelements, Nq, wordSize, false, verbosity, targetTime, true, "");
   }
 
   MPI_Finalize();

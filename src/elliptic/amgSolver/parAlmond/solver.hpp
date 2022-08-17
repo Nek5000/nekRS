@@ -38,9 +38,7 @@ public:
   occa::device device;
   setupAide options;
 
-  bool exact;
-  CycleType    ctype;
-  KrylovType   ktype;
+  CycleType ctype;
   SmoothType stype;
 
   int numLevels;
@@ -49,28 +47,18 @@ public:
 
   coarseSolver *coarseLevel;
 
-  int ChebyshevIterations;
-  bool additive, overlapCrsGridSolve;
+  bool additive;
+  bool overlapCrsGridSolve;
 
   solver_t(occa::device otherdevice, MPI_Comm othercomm,
-                         setupAide otheroptions);
+           setupAide otheroptions);
 
   ~solver_t();
 
-  void AMGSetup(parCSR *A);
-
   void Report();
 
-  void kcycle(int k);
-  void vcycle(int k);
-  void device_kcycle(int k);
   void device_vcycle(int k);
   void additiveVcycle();
-
-  void pcg(const int maxIt, const dfloat tol);
-  void pgmres(const int maxIt, const dfloat tol);
-  void device_pcg(const int maxIt, const dfloat tol);
-  void device_pgmres(const int maxIt, const dfloat tol);
 };
 
 } //namespace parAlmond

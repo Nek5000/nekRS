@@ -36,10 +36,9 @@ occa::memory MGLevel::o_smootherUpdate;
 
 //build a single level
 MGLevel::MGLevel(elliptic_t* ellipticBase, int Nc,
-                 setupAide options_, parAlmond::KrylovType ktype_, MPI_Comm comm_, bool _isCoarse) :
+                 setupAide options_, MPI_Comm comm_, bool _isCoarse) :
   multigridLevel(ellipticBase->mesh->Nelements * ellipticBase->mesh->Np,
                  (ellipticBase->mesh->Nelements + ellipticBase->mesh->totalHaloPairs) * ellipticBase->mesh->Np,
-                 ktype_,
                  comm_)
 {
   isCoarse = _isCoarse;
@@ -48,20 +47,10 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, int Nc,
   mesh = elliptic->mesh;
   options = options_;
   degree = Nc;
-  weighted = false;
-
-  //use weighted inner products
-  if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
-    weighted = true;
-    o_weight = elliptic->o_invDegree;
-    weight   = elliptic->invDegree;
-  }
 
   if(!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
     this->setupSmoother(ellipticBase);
 
-  o_xPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
-  o_rhsPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
 }
 
 //build a level and connect it to the previous one
@@ -71,14 +60,12 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
                  elliptic_t* ellipticCoarse, //current level
                  int Nf, int Nc,
                  setupAide options_,
-                 parAlmond::KrylovType ktype_,
                  MPI_Comm comm_,
                  bool _isCoarse
                  )
   :
   multigridLevel(ellipticCoarse->mesh->Nelements * ellipticCoarse->mesh->Np,
                  (ellipticCoarse->mesh->Nelements + ellipticCoarse->mesh->totalHaloPairs) * ellipticCoarse->mesh->Np,
-                 ktype_,
                  comm_)
 {
   
@@ -87,26 +74,15 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   mesh = elliptic->mesh;
   options = options_;
   degree = Nc;
-  weighted = false;
 
-  //use weighted inner products
-  if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
-    weighted = true;
-    o_weight = elliptic->o_invDegree;
-    weight   = elliptic->invDegree;
-
-    NpF = ellipticFine->mesh->Np;
-    o_invDegree = ellipticFine->ogs->o_invDegree;
-  }
+  NpF = ellipticFine->mesh->Np;
+  o_invDegreeFine = ellipticFine->o_invDegree;
 
   /* build coarsening and prologation operators to connect levels */
   this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
   if(!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
     this->setupSmoother(ellipticBase);
-
-  o_xPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
-  o_rhsPfloat = platform->device.malloc(Nrows ,  sizeof(pfloat));
 }
 
 void MGLevel::setupSmoother(elliptic_t* ellipticBase)
@@ -129,8 +105,15 @@ void MGLevel::setupSmoother(elliptic_t* ellipticBase)
       smtypeUp = SecondarySmootherType::SCHWARZ;
       smtypeDown = SecondarySmootherType::SCHWARZ;
       stype = SmootherType::CHEBYSHEV;
-      if (!options.getArgs("MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations))
-        ChebyshevIterations = 2;   //default to degree 2
+
+      if(isCoarse) {
+        ChebyshevIterations = 8;
+        options.getArgs("COARSE MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations);
+      } else {
+        ChebyshevIterations = 2;
+        options.getArgs("MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations);
+      }
+
       //estimate the max eigenvalue of S*A
       dfloat rho = this->maxEigSmoothAx();
       lambda1 = maxMultiplier * rho;
@@ -200,13 +183,13 @@ void MGLevel::Report()
 
   if (platform->comm.mpiRank == 0) {
     if(isCoarse && options.compareArgs("MULTIGRID COARSE SOLVE","TRUE")) {
-      if(options.compareArgs("AMG SOLVER","BOOMERAMG")) strcpy(smootherString, "BoomerAMG        ");
-      if(options.compareArgs("AMG SOLVER","AMGX"))      strcpy(smootherString, "AMGX             ");
-      printf(     "|    AMG     |   Matrix        | %s |\n", smootherString);
-      printf("     |            |     Degree %2d   |                   |\n", degree);
+      std::string solver;
+      if(options.getArgs("COARSE SOLVER", solver)) strcpy(smootherString, solver.c_str());
+      printf(     "|    AMG     |   Matrix        | %s\n", smootherString);
+      printf("     |            |     Degree %2d   |\n", degree);
     } else {
-      printf(     "|    pMG     |   Matrix-free   | %s |\n", smootherString);
-      printf("     |            |     Degree %2d   |                   |\n", degree);
+      printf(     "|    pMG     |   Matrix-free   | %s\n", smootherString);
+      printf("     |            |     Degree %2d   |\n", degree);
     }
   }
 }
@@ -217,9 +200,9 @@ void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
   const int Nfq = Nf + 1;
   const int Ncq = Nc + 1;
   dfloat *cToFInterp = (dfloat *)calloc(Nfq * Ncq, sizeof(dfloat));
-  dfloat *R = (dfloat *)calloc(Nfq * Ncq, sizeof(dfloat));
   InterpolationMatrix1D(Nc, Ncq, meshLevels[Nc]->r, Nfq, meshLevels[Nf]->r, cToFInterp);
 
+  pfloat *R = (pfloat *)calloc(Nfq * Ncq, sizeof(pfloat));
   // transpose
   for (int i = 0; i < Ncq; i++) {
     for (int j = 0; j < Nfq; j++) {
@@ -227,7 +210,7 @@ void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
     }
   }
 
-  o_R = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), R);
+  o_R = platform->device.malloc(Nfq * Ncq * sizeof(pfloat), R);
 
   free(R);
   free(cToFInterp);
@@ -246,12 +229,23 @@ static void eig(const int Nrows, double* A, double* WR, double* WI)
   double* VL  = new double[Nrows * Nrows];
   double* VR  = new double[Nrows * Nrows];
 
-  int INFO = -999;
+  auto invalid = 0;
+  for(int i = 0; i < Nrows * Nrows; i++) {
+    if(std::isnan(A[i]) || std::isinf(A[i])) invalid++;
+  }
+  if(invalid) {
+    if(platform->comm.mpiRank == 0) printf("invalid matrix entries!\n");
+    ABORT(1);
+  }
 
+  int INFO = -999;
   dgeev_ (&JOBVL, &JOBVR, &N, A, &LDA, WR, WI,
           VL, &LDA, VR, &LDA, WORK, &LWORK, &INFO);
 
-  assert(INFO == 0);
+  if(INFO != 0) {
+    if(platform->comm.mpiRank == 0) printf("failed");
+    ABORT(INFO);
+  }
 
   delete [] VL;
   delete [] VR;
@@ -270,6 +264,8 @@ dfloat MGLevel::maxEigSmoothAx()
   hlong Nlocal = (hlong) Nrows;
   hlong Ntotal = 0;
   MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+
+  occa::memory o_invDegree = platform->device.malloc(Nlocal*sizeof(dfloat), elliptic->ogs->invDegree);
 
   int k;
   if(Ntotal > 10) 
@@ -336,7 +332,7 @@ dfloat MGLevel::maxEigSmoothAx()
     Nlocal,
     elliptic->Nfields,
     elliptic->Ntotal,
-    elliptic->o_invDegree,
+    o_invDegree,
     o_Vx,
     o_Vx,
     platform->comm.mpiComm
@@ -355,11 +351,10 @@ dfloat MGLevel::maxEigSmoothAx()
 
   for(int j = 0; j < k; j++) {
     // v[j+1] = invD*(A*v[j])
-    //this->Ax(o_V[j],o_AVx);
-    ellipticOperator(elliptic,o_V[j],o_AVx,dfloatString);
-    elliptic->copyDfloatToPfloatKernel(M, o_AVx, o_AVxPfloat);
+    platform->copyDfloatToPfloatKernel(M, o_V[j], o_VxPfloat);
+    ellipticOperator(elliptic, o_VxPfloat, o_AVxPfloat, pfloatString);
     this->smoother(o_AVxPfloat, o_VxPfloat, true);
-    elliptic->copyPfloatToDPfloatKernel(M, o_VxPfloat, o_V[j + 1]);
+    platform->copyPfloatToDfloatKernel(M, o_VxPfloat, o_V[j + 1]);
 
     // modified Gram-Schmidth
     for(int i = 0; i <= j; i++) {
@@ -368,7 +363,7 @@ dfloat MGLevel::maxEigSmoothAx()
         Nlocal,
         elliptic->Nfields,
         elliptic->Ntotal,
-        elliptic->o_invDegree,
+        o_invDegree,
         o_V[i],
         o_V[j+1],
         platform->comm.mpiComm
@@ -394,7 +389,7 @@ dfloat MGLevel::maxEigSmoothAx()
         Nlocal,
         elliptic->Nfields,
         elliptic->Ntotal,
-        elliptic->o_invDegree,
+        o_invDegree,
         o_V[j+1],
         o_V[j+1],
         platform->comm.mpiComm
@@ -435,6 +430,7 @@ dfloat MGLevel::maxEigSmoothAx()
   o_AVx.free();
   o_AVxPfloat.free();
   o_VxPfloat.free();
+  o_invDegree.free();
 
   for(int i = 0; i <= k; i++) o_V[i].free();
   delete[] o_V;

@@ -293,9 +293,11 @@ namespace occa {
               << ' '    << sourceFilename
               << " -o " << binaryFilename;
 
+#if 0
       if (!verbose) {
         command << " > /dev/null 2>&1";
       }
+#endif
       const std::string &sCommand = command.str();
       if (verbose) {
         io::stdout << sCommand << '\n';

@@ -166,7 +166,7 @@ ogs_t *ogsSetup(dlong N, hlong *ids, MPI_Comm &comm,
   for (dlong i=0;i<N;i++) {
     if (ids[i]==0) continue;
 
-    if ((minRank[i]!=rank)||(maxRank[i]!=rank)) {
+    if ((minRank[i]!=rank)||(maxRank[i]!=rank)) { // if I am not involved
       ogs->Nhalo++;
       if (flagIds[i]>0) ogs->NownedHalo++;
     } else {

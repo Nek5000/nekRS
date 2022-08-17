@@ -80,7 +80,7 @@ void* scPtr(int id)
   return ptr;
 }
 
-void outfld(const char *filename, dfloat t, int coords, int FP64,
+void outfld(const char *filename, dfloat t, int step, int coords, int FP64,
             void *o_uu, void *o_pp, void *o_ss,
             int NSfields)
 {
@@ -107,6 +107,9 @@ void outfld(const char *filename, dfloat t, int coords, int FP64,
 
   (*nek_storesol_ptr)();
 
+  const int stepSave = *(nekData.istep);
+  *(nekData.istep) = step;
+
   platform->timer.tic("checkpointing", 1);
 
   if(coords){
@@ -118,9 +121,9 @@ void outfld(const char *filename, dfloat t, int coords, int FP64,
     xo = 1;
   }
   if(o_u.ptr()) {
-    occa::memory o_vx = o_u + 0 * nrs->fieldOffset * sizeof(dfloat);
-    occa::memory o_vy = o_u + 1 * nrs->fieldOffset * sizeof(dfloat);
-    occa::memory o_vz = o_u + 2 * nrs->fieldOffset * sizeof(dfloat);
+    occa::memory o_vx = o_u + (0 * sizeof(dfloat)) * nrs->fieldOffset;
+    occa::memory o_vy = o_u + (1 * sizeof(dfloat)) * nrs->fieldOffset;
+    occa::memory o_vz = o_u + (2 * sizeof(dfloat)) * nrs->fieldOffset;
     o_vx.copyTo(nekData.vx, Nlocal * sizeof(dfloat));
     o_vy.copyTo(nekData.vy, Nlocal * sizeof(dfloat));
     o_vz.copyTo(nekData.vz, Nlocal * sizeof(dfloat));
@@ -138,7 +141,7 @@ void outfld(const char *filename, dfloat t, int coords, int FP64,
         (is) ? mesh = nrs->meshV: mesh = nrs->cds->mesh[0];
       const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat* Ti = nekData.t + is * nekFieldOffset;
-      occa::memory o_Si = o_s + is * nrs->fieldOffset * sizeof(dfloat);
+      occa::memory o_Si = o_s + (is * sizeof(dfloat)) * nrs->fieldOffset;
       o_Si.copyTo(Ti, Nlocal * sizeof(dfloat));
     }
     so = 1;
@@ -151,6 +154,8 @@ void outfld(const char *filename, dfloat t, int coords, int FP64,
   platform->timer.toc("checkpointing");
 
   (*nek_restoresol_ptr)();
+
+  *(nekData.istep) = stepSave;
 }
 
 void uic(int ifield)

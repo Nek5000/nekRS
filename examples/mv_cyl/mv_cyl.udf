@@ -42,8 +42,8 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
     const dfloat ce = 1.0 / (1.0 + vnu);
     const dfloat c2 = vnu * ce / (1.0 - 2.0 * vnu);
     const dfloat c3 = 0.5 * ce;
-    auto o_mesh_diff = o_UProp + 2 * nrs->fieldOffset * sizeof(dfloat);
-    auto o_mesh_rho  = o_UProp + 3 * nrs->fieldOffset * sizeof(dfloat);
+    auto o_mesh_diff = o_UProp +( 2  * sizeof(dfloat))*nrs->fieldOffset;
+    auto o_mesh_rho  = o_UProp +( 3  * sizeof(dfloat))*nrs->fieldOffset;
     platform->linAlg->fill(nrs->meshV->Nlocal, c2, o_mesh_diff);
     platform->linAlg->fill(nrs->meshV->Nlocal, c3, o_mesh_rho);
   }

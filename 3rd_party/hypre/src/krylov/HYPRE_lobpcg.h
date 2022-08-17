@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -13,6 +13,7 @@
 #include "fortran_matrix.h"
 #include "multivector.h"
 #include "interpreter.h"
+#include "temp_multivector.h"
 #include "HYPRE_MatvecFunctions.h"
 
 #ifdef __cplusplus
@@ -23,60 +24,63 @@ extern "C" {
  *--------------------------------------------------------------------------*/
 
 /**
- * @name Eigensolvers
+ * @defgroup Eigensolvers Eigensolvers
  *
  * These eigensolvers support many of the matrix/vector storage schemes in
  * hypre.  They should be used in conjunction with the storage-specific
  * interfaces.
  *
  * @memo A basic interface for eigensolvers
+ *
+ * @{
  **/
-/*@{*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
 /**
  * @name EigenSolvers
+ *
+ * @{
  **/
-/*@{*/
 
 #ifndef HYPRE_SOLVER_STRUCT
 #define HYPRE_SOLVER_STRUCT
-   struct hypre_Solver_struct;
+struct hypre_Solver_struct;
 /**
  * The solver object.
  **/
-   typedef struct hypre_Solver_struct *HYPRE_Solver;
+typedef struct hypre_Solver_struct *HYPRE_Solver;
 #endif
 
 #ifndef HYPRE_MATRIX_STRUCT
 #define HYPRE_MATRIX_STRUCT
-   struct hypre_Matrix_struct;
+struct hypre_Matrix_struct;
 /**
  * The matrix object.
  **/
-   typedef struct hypre_Matrix_struct *HYPRE_Matrix;
+typedef struct hypre_Matrix_struct *HYPRE_Matrix;
 #endif
 
 #ifndef HYPRE_VECTOR_STRUCT
 #define HYPRE_VECTOR_STRUCT
-   struct hypre_Vector_struct;
+struct hypre_Vector_struct;
 /**
  * The vector object.
  **/
-   typedef struct hypre_Vector_struct *HYPRE_Vector;
+typedef struct hypre_Vector_struct *HYPRE_Vector;
 #endif
 
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
 /**
  * @name LOBPCG Eigensolver
+ *
+ * @{
  **/
-/*@{*/
 
 /**
  * LOBPCG constructor.
@@ -105,7 +109,7 @@ HYPRE_Int HYPRE_LOBPCGGetPrecond(HYPRE_Solver  solver,
                                  HYPRE_Solver *precond_data_ptr);
 
 /**
- * Set up {\tt A} and the preconditioner (if there is one).
+ * Set up \e A and the preconditioner (if there is one).
  **/
 HYPRE_Int HYPRE_LOBPCGSetup(HYPRE_Solver solver,
                             HYPRE_Matrix A,
@@ -113,7 +117,7 @@ HYPRE_Int HYPRE_LOBPCGSetup(HYPRE_Solver solver,
                             HYPRE_Vector x);
 
 /**
- * (Optional) Set up {\tt B}.  If not called, B = I.
+ * (Optional) Set up \e B.  If not called, B = I.
  **/
 HYPRE_Int HYPRE_LOBPCGSetupB(HYPRE_Solver solver,
                              HYPRE_Matrix B,
@@ -153,7 +157,7 @@ HYPRE_Int HYPRE_LOBPCGSetMaxIter(HYPRE_Solver solver,
                                  HYPRE_Int          max_iter);
 
 /**
- * Define which initial guess for inner PCG iterations to use: {\tt mode} = 0:
+ * Define which initial guess for inner PCG iterations to use: \e mode = 0:
  * use zero initial guess, otherwise use RHS.
  **/
 HYPRE_Int HYPRE_LOBPCGSetPrecondUsageMode(HYPRE_Solver solver,
@@ -188,12 +192,12 @@ void lobpcg_MultiVectorByMultiVector(mv_MultiVectorPtr        x,
                                      mv_MultiVectorPtr        y,
                                      utilities_FortranMatrix *xy);
 
-/*@}*/
+/**@}*/
 
 /*--------------------------------------------------------------------------
  *--------------------------------------------------------------------------*/
 
-/*@}*/
+/**@}*/
 
 #ifdef __cplusplus
 }

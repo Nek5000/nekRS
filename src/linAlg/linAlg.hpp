@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "nrssys.hpp"
 
-//#define ENABLE_TIMER
+#define USE_WEIGHTED_INNER_PROD_MULTI_DEVICE 0
 
 class linAlg_t {
 private:
@@ -37,6 +37,8 @@ private:
   MPI_Comm comm;
   int blocksize;
   bool serial;
+
+  int timer = 0;
 
   //scratch space for reductions
   dfloat* scratch;
@@ -46,11 +48,16 @@ private:
   void setup();
   void reallocScratch(const size_t Nbytes);
 
+  void runTimers();
+
   ~linAlg_t();
   linAlg_t();
   static linAlg_t* singleton;
 public:
   static linAlg_t* getInstance();
+
+  void enableTimer();
+  void disableTimer();
 
   /*********************/
   /* vector operations */
@@ -58,6 +65,7 @@ public:
 
   // o_a[n] = alpha
   void fill(const dlong N, const dfloat alpha, occa::memory& o_a);
+  void pfill(const dlong N, const pfloat alpha, occa::memory& o_a);
 
   // o_a[n] = abs(o_a[n])
   void abs(const dlong N, occa::memory& o_a);
@@ -73,8 +81,13 @@ public:
   void axpby(const dlong N, const dfloat alpha, occa::memory& o_x,
                             const dfloat beta,  occa::memory& o_y,
                             const dlong xOffset = 0, const dlong yOffset = 0);
+  void paxpby(const dlong N, const pfloat alpha, occa::memory& o_x,
+                             const pfloat beta,  occa::memory& o_y,
+                             const dlong xOffset = 0, const dlong yOffset = 0);
   void axpbyMany(const dlong N, const dlong Nfields, const dlong offset, const dfloat alpha, occa::memory& o_x,
                             const dfloat beta,  occa::memory& o_y);
+  void paxpbyMany(const dlong N, const dlong Nfields, const dlong offset, const pfloat alpha, occa::memory& o_x,
+                            const pfloat beta,  occa::memory& o_y);
 
   // o_z[n] = beta*o_y[n] + alpha*o_x[n]
   void axpbyz(const dlong N, const dfloat alpha, occa::memory& o_x,
@@ -87,6 +100,9 @@ public:
   // o_y[n] = alpha*o_x[n]*o_y[n]
   void axmy(const dlong N, const dfloat alpha,
             occa::memory& o_x, occa::memory& o_y);
+  void paxmy(const dlong N, const pfloat alpha,
+            occa::memory& o_x, occa::memory& o_y);
+
   // mode 1:
   // o_y[n,fld] = alpha*o_x[n,fld]*o_y[n,fld]
   // mode 0:
@@ -105,7 +121,13 @@ public:
   void axmyz(const dlong N, const dfloat alpha,
              occa::memory& o_x, occa::memory& o_y,
              occa::memory& o_z);
+  void paxmyz(const dlong N, const pfloat alpha,
+             occa::memory& o_x, occa::memory& o_y,
+             occa::memory& o_z);
   void axmyzMany(const dlong N, const dlong Nfields, const dlong offset, const dfloat alpha,
+             occa::memory& o_x, occa::memory& o_y,
+             occa::memory& o_z);
+  void paxmyzMany(const dlong N, const dlong Nfields, const dlong offset, const pfloat alpha,
              occa::memory& o_x, occa::memory& o_y,
              occa::memory& o_z);
 
@@ -113,6 +135,8 @@ public:
   void ady(const dlong N, const dfloat alpha,
             occa::memory& o_y);
   void adyMany(const dlong N, const dlong Nfields, const dlong offset, const dfloat alpha,
+            occa::memory& o_y);
+  void padyMany(const dlong N, const dlong Nfields, const dlong offset, const pfloat alpha,
             occa::memory& o_y);
   // o_y[n] = alpha*o_x[n]/o_y[n]
   void axdy(const dlong N, const dfloat alpha,
@@ -171,9 +195,15 @@ public:
   // o_w.o_x.o_y
   dfloat weightedInnerProd(const dlong N, occa::memory& o_w, occa::memory& o_x,
                             occa::memory& o_y, MPI_Comm _comm);
-  void weightedInnerProdMulti(const dlong N, const dlong NVec, const dlong Nfields, const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
-                            occa::memory& o_y, MPI_Comm _comm,
-                            dfloat* result, const dlong offset = 0);
+  void weightedInnerProdMulti(const dlong N, const dlong NVec, const dlong Nfields, 
+                              const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
+                              occa::memory& o_y, MPI_Comm _comm,
+                              dfloat* result, const dlong offset = 0);
+  void weightedInnerProdMulti(const dlong N, const dlong NVec, const dlong Nfields, 
+                              const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
+                              occa::memory& o_y, MPI_Comm _comm,
+                              occa::memory& o_result, const dlong offset = 0);
+
   dfloat weightedInnerProdMany(const dlong N,
                                const dlong Nfields, const dlong fieldOffset, occa::memory& o_w, occa::memory& o_x,
                             occa::memory& o_y, MPI_Comm _comm);
@@ -188,24 +218,33 @@ public:
   void unitVector(const dlong N, const dlong fieldOffset, occa::memory &o_v);
 
   occa::kernel fillKernel;
+  occa::kernel pfillKernel;
+
   occa::kernel absKernel;
   occa::kernel addKernel;
   occa::kernel scaleKernel;
   occa::kernel scaleManyKernel;
   occa::kernel axpbyKernel;
+  occa::kernel paxpbyKernel;
   occa::kernel axpbyManyKernel;
+  occa::kernel paxpbyManyKernel;
   occa::kernel axpbyzKernel;
+  occa::kernel paxpbyzKernel;
   occa::kernel axpbyzManyKernel;
   occa::kernel axmyKernel;
+  occa::kernel paxmyKernel;
   occa::kernel axmyManyKernel;
   occa::kernel axmyVectorKernel;
   occa::kernel axmyzKernel;
+  occa::kernel paxmyzKernel;
   occa::kernel axmyzManyKernel;
+  occa::kernel paxmyzManyKernel;
   occa::kernel axdyKernel;
   occa::kernel aydxKernel;
   occa::kernel aydxManyKernel;
   occa::kernel adyKernel;
   occa::kernel adyManyKernel;
+  occa::kernel padyManyKernel;
   occa::kernel axdyzKernel;
   occa::kernel sumKernel;
   occa::kernel sumManyKernel;
@@ -224,6 +263,7 @@ public:
   occa::kernel weightedInnerProdKernel;
   occa::kernel weightedInnerProdManyKernel;
   occa::kernel weightedInnerProdMultiKernel;
+  occa::kernel weightedInnerProdMultiDeviceKernel;
   occa::kernel crossProductKernel;
   occa::kernel unitVectorKernel;
 };

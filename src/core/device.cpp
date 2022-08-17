@@ -2,6 +2,63 @@
 #include "platform.hpp"
 #include <unistd.h>
 #include <regex>
+#include <limits>
+
+namespace {
+
+int compileDummyAtomicKernel(device_t &device)
+{
+  const bool buildNodeLocal = useNodeLocalCache();
+  const std::string dummyKernelName = "simpleAtomicAdd";
+  const std::string dummyKernelStr = std::string("@kernel void simpleAtomicAdd(int N, double * result) {"
+                                                 "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {"
+                                                 "    @atomic result[0] += 1;"
+                                                 "  }"
+                                                 "}");
+
+  occa::properties noKernelInfo;
+
+  auto simpleAtomicAddKernel = device.occaDevice().buildKernelFromString(dummyKernelStr, dummyKernelName, noKernelInfo);
+
+  auto o_result = device.occaDevice().malloc(sizeof(double));
+  double initialValue = 0.0;
+  o_result.copyFrom(&initialValue, sizeof(double));
+
+  constexpr int N = 1000;
+  auto expectedValue = static_cast<double>(N);
+  double actualValue = 0.0;
+
+  auto eps = 10 * std::numeric_limits<double>::epsilon();
+
+  simpleAtomicAddKernel(N, o_result);
+
+  o_result.copyTo(&actualValue, sizeof(double));
+
+  return std::abs(actualValue - expectedValue) < eps;
+
+}
+
+bool atomicsAvailable(device_t &device, MPI_Comm comm)
+{
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  int atomicSupported = 1;
+
+  if (rank == 0) {
+    try {
+      atomicSupported = compileDummyAtomicKernel(device);
+    }
+    catch (std::exception &e) {
+      atomicSupported = 0;
+    }
+  }
+
+  MPI_Bcast(&atomicSupported, 1, MPI_INT, 0, comm);
+
+  return atomicSupported;
+}
+} // namespace
 
 occa::kernel
 device_t::buildNativeKernel(const std::string &fileName,
@@ -157,8 +214,7 @@ device_t::buildKernel(const std::string &fullPath,
   return this->buildKernel(fullPath, props, noSuffix, buildRank0);
 }
 
-occa::memory
-device_t::mallocHost(const size_t Nbytes)
+occa::memory device_t::mallocHost(size_t Nbytes)
 {
   occa::properties props;
   props["host"] = true;
@@ -169,8 +225,7 @@ device_t::mallocHost(const size_t Nbytes)
   return h_scratch;
 }
 
-occa::memory
-device_t::malloc(const size_t Nbytes, const occa::properties& properties)
+occa::memory device_t::malloc(size_t Nbytes, const occa::properties &properties)
 {
   void* buffer = std::calloc(Nbytes, 1);
   occa::memory o_returnValue = _device.malloc(Nbytes, buffer, properties);
@@ -178,8 +233,7 @@ device_t::malloc(const size_t Nbytes, const occa::properties& properties)
   return o_returnValue;
 }
 
-occa::memory
-device_t::malloc(const size_t Nbytes, const void* src, const occa::properties& properties)
+occa::memory device_t::malloc(size_t Nbytes, const void *src, const occa::properties &properties)
 {
   void* buffer;
   buffer = std::calloc(Nbytes, 1);
@@ -189,14 +243,12 @@ device_t::malloc(const size_t Nbytes, const void* src, const occa::properties& p
   return o_returnValue;
 }
 
-occa::memory
-device_t::malloc(const hlong Nword , const dlong wordSize, occa::memory src)
+occa::memory device_t::malloc(size_t Nword, size_t wordSize, occa::memory src)
 {
   return _device.malloc(Nword * wordSize, src);
 }
 
-occa::memory
-device_t::malloc(const hlong Nword , const dlong wordSize)
+occa::memory device_t::malloc(size_t Nword, size_t wordSize)
 {
   const size_t Nbytes = Nword * wordSize;
   void* buffer = std::calloc(Nword, wordSize);
@@ -271,5 +323,11 @@ device_t::device_t(setupAide& options, comm_t& comm)
 
   _device_id = device_id;
 
-  deviceAtomic = this->mode() == "CUDA";
+  deviceAtomic = atomicsAvailable(*this, _comm.mpiComm);
+#if 0
+  if(!deviceAtomic) {
+    if(worldRank == 0) printf("device does not support FP32 atomics!\n");
+    ABORT(EXIT_FAILURE);
+  }
+#endif
 }

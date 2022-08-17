@@ -24,9 +24,9 @@
 
  */
 extern "C" void FUNC(ellipticPreconCoarsenHex3D)(const dlong& Nelements,
-                                            const dfloat* __restrict__  R,
-                                            const dfloat* __restrict__  qf,
-                                            dfloat* __restrict__  qc)
+                                            const pfloat* __restrict__  R,
+                                            const pfloat* __restrict__  qf,
+                                            pfloat* __restrict__  qc)
 {
   dfloat s_q[p_NqFine][p_NqFine];
   dfloat s_Pq[p_NqCoarse][p_NqFine];

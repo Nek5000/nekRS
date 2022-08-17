@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
 # HYPRE Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -27,6 +27,16 @@ UTILITIESFILES = ${HYPRE_SRC_TOP_DIR}/utilities/*.o
 BLASFILES = ${HYPRE_SRC_TOP_DIR}/blas/*.o
 LAPACKFILES = ${HYPRE_SRC_TOP_DIR}/lapack/*.o
 
+IJMVOBJFILES = ${HYPRE_SRC_TOP_DIR}/IJ_mv/*.obj
+PARCSRLSOBJFILES = ${HYPRE_SRC_TOP_DIR}/parcsr_ls/*.obj
+PARCSRMVOBJFILES = ${HYPRE_SRC_TOP_DIR}/parcsr_mv/*.obj
+SEQMVOBJFILES = ${HYPRE_SRC_TOP_DIR}/seq_mv/*.obj
+SSTRUCTLSOBJFILES = ${HYPRE_SRC_TOP_DIR}/sstruct_ls/*.obj
+SSTRUCTMVOBJFILES = ${HYPRE_SRC_TOP_DIR}/sstruct_mv/*.obj
+STRUCTLSOBJFILES = ${HYPRE_SRC_TOP_DIR}/struct_ls/*.obj
+STRUCTMVOBJFILES = ${HYPRE_SRC_TOP_DIR}/struct_mv/*.obj
+UTILITIESOBJFILES = ${HYPRE_SRC_TOP_DIR}/utilities/*.obj
+
 FILES_HYPRE = \
 $(FEIHYPREFILES)\
 $(FEMLIFILES)\
@@ -48,7 +58,16 @@ $(STRUCTLSFILES)\
 $(STRUCTMVFILES)\
 $(UTILITIESFILES)\
 $(BLASFILES)\
-$(LAPACKFILES)
+$(LAPACKFILES)\
+$(IJMVOBJFILES)\
+$(PARCSRLSOBJFILES)\
+$(PARCSRMVOBJFILES)\
+$(SEQMVOBJFILES)\
+$(SSTRUCTLSOBJFILES)\
+$(SSTRUCTMVOBJFILES)\
+$(STRUCTLSOBJFILES)\
+$(STRUCTMVOBJFILES)\
+$(UTILITIESOBJFILES)
 
 SONAME = libHYPRE-${HYPRE_RELEASE_VERSION}${HYPRE_LIB_SUFFIX}
 SOLIBS = ${DSUPERLU_LIBS} ${MPILIBDIRS} ${MPILIBS} ${LAPACKLIBDIRS} ${LAPACKLIBS}\
@@ -75,14 +94,13 @@ distclean: clean
 # Rules
 ##################################################################
 
+# NOTE: Some of the FILES symbols below can be empty, so they are listed on an
+# AR line with at least one nonempty symbol
 libHYPRE.a: ${FILES_HYPRE}
 	@echo  "Building libHYPRE ... "
 	rm -f $@
 	${AR} $@ $(FEIHYPREFILES) $(FEMLIFILES) $(IJMVFILES)
-	${AR} $@ $(EUCLIDFILES)
-	${AR} $@ $(PARASAILSFILES)
-	${AR} $@ $(PILUTFILES)
-	${AR} $@ $(DISTMATRIXFILES)
+	${AR} $@ $(EUCLIDFILES) $(PARASAILSFILES) $(PILUTFILES) $(DISTMATRIXFILES)
 	${AR} $@ $(KRYLOVFILES)
 	${AR} $@ $(MATMATFILES)
 	${AR} $@ $(MULTIVECFILES)
@@ -95,9 +113,18 @@ libHYPRE.a: ${FILES_HYPRE}
 	${AR} $@ $(STRUCTLSFILES)
 	${AR} $@ $(STRUCTMVFILES)
 	${AR} $@ $(UTILITIESFILES) $(BLASFILES) $(LAPACKFILES)
+	${AR} $@ $(IJMVOBJFILES)
+	${AR} $@ $(PARCSRLSOBJFILES)
+	${AR} $@ $(PARCSRMVOBJFILES)
+	${AR} $@ $(SEQMVOBJFILES)
+	${AR} $@ $(SSTRUCTLSOBJFILES)
+	${AR} $@ $(SSTRUCTMVOBJFILES)
+	${AR} $@ $(STRUCTLSOBJFILES)
+	${AR} $@ $(STRUCTMVOBJFILES)
+	${AR} $@ $(UTILITIESOBJFILES)
 	${RANLIB} $@
 
 libHYPRE.so libHYPRE.dylib: ${FILES_HYPRE}
 	@echo  "Building $@ ... "
 	${BUILD_CC_SHARED} -o ${SONAME} ${FILES_HYPRE} ${SOLIBS} ${SHARED_SET_SONAME}${SONAME} ${SHARED_OPTIONS} ${LDFLAGS}
-	ln -s ${SONAME} $@
+	ln -s -f ${SONAME} $@

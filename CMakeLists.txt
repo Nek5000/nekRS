@@ -1,27 +1,35 @@
-cmake_minimum_required(VERSION 3.13)
-project(NekRS LANGUAGES C CXX Fortran VERSION 22.0.0)
+cmake_minimum_required(VERSION 3.18)
+project(NekRS LANGUAGES C CXX Fortran VERSION 22.1.0)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "Error:  In-place builds are not supported. Please create a separate build directory")
 endif(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(CheckCCompilerFlag)
+include(CheckLinkerFlag)
 include(FortranCInterface)
 include(ExternalProject)
 include(FetchContent)
 include(config/utils.cmake)
 
-#set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_INSTALL_MESSAGE NEVER)
-#set(CMAKE_VERBOSE_MAKEFILE ON)
 set(FETCHCONTENT_QUIET on)
 set(FETCHCONTENT_UPDATES_DISCONNECTED on)
+
+if (NOT CMAKE_CONFIGURATION_TYPES AND 
+    NOT CMAKE_NO_BUILD_TYPE AND
+    NOT CMAKE_BUILD_TYPE AND
+    CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
 
 #Link:https://gitlab.kitware.com/cmake/community/wikis/doc/cmake/RPATH-handling
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 #set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/occa/lib")
 
 ###############################################################################
 # Configure Options
@@ -32,16 +40,24 @@ set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING
 set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
   "Directory for Nek5000 inteface source files")
 
-set(OCCA_CXX "${CMAKE_CXX_COMPILER}" CACHE STRING "C++ compiler for OCCA JIT compile")
-set(OCCA_CXXFLAGS "-O2 -ftree-vectorize -funroll-loops -march=native -mtune=native"
-        CACHE STRING "C++ flags for OCCA JIT compile")
-set(OCCA_CUDA_COMPILER_FLAGS "-O3 --fmad=true" CACHE STRING "CUDA flags for OCCA JIT compile")
-set(OCCA_HIP_COMPILER_FLAGS "-O3 -ffp-contract=fast" CACHE STRING "HIP flags for OCCA JIT compile")
+set(OCCA_CXX "g++" CACHE STRING "C++ compiler for OCCA JIT compile")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64le")
+  set(OCCA_CXXFLAGS "-O3 -g -mcpu=native -mtune=native" CACHE STRING "C++ flags for OCCA JIT compile")
+else()
+  set(OCCA_CXXFLAGS "-O3 -g -march=native -mtune=native" CACHE STRING "C++ flags for OCCA JIT compile")
+endif()
+
+set(OCCA_CUDA_COMPILER_FLAGS "-O3 -lineinfo" CACHE STRING "CUDA flags for OCCA JIT compile")
+set(OCCA_HIP_COMPILER_FLAGS "-O3 -g -ffp-contract=fast" CACHE STRING "HIP flags for OCCA JIT compile")
 set(OCCA_OPENCL_COMPILER_FLAGS "-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
 
+set(ENABLE_CUDA ON CACHE BOOL "Enable OCCA CUDA support")
+set(ENABLE_HIP ON CACHE BOOL "Enable OCCA HIP support")
+set(ENABLE_OPENCL OFF CACHE BOOL "Enable OCCA OpenCL support")
 set(ENABLE_METAL OFF CACHE BOOL "Enable OCCA Metal support")
+
 set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
-set(GPU_MPI "1" CACHE STRING "GPU aware MPI")
+set(NEKRS_GPU_MPI ON CACHE BOOL "Enable GPU aware MPI")
 
 ###############################################################################
 # Check compiler/MPI vendor, version and Fortran/C compatibility              #
@@ -118,15 +134,10 @@ if ("${GIT_COMMIT_HASH}" STREQUAL "")
   set(GIT_COMMIT_HASH "no sha")
 endif()
 
-# avoid hijacked symbols with the same name
-set(BSYMBOLIC_FLAG " -Wl,-Bsymbolic -Wl,-Bsymbolic-functions")
-list(APPEND CMAKE_REQUIRED_LIBRARIES ${BSYMBOLIC_FLAG})
-check_c_compiler_flag("" Allowed_LD_Flag_BSYMBOLIC)
-list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${BSYMBOLIC_FLAG})
+set(BSYMBOLIC_FLAG "LINKER:-Bsymbolic LINKER:-Bsymbolic-functions")
+check_linker_flag(C ${BSYMBOLIC_FLAG} Allowed_LD_Flag_BSYMBOLIC)
 if(NOT Allowed_LD_Flag_BSYMBOLIC OR APPLE)
   set(BSYMBOLIC_FLAG "")
-else()
-#  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${BSYMBOLIC_FLAG}")
 endif()
 
 ###############################################################################
@@ -137,10 +148,11 @@ set(ENABLE_CUDA ${OCCA_CUDA_ENABLED})
 set(ENABLE_HIP ${OCCA_HIP_ENABLED})
 set(ENABLE_OPENCL ${OCCA_OPENCL_ENABLED})
 
+set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+
 ###############################################################################
 # Build AMGX                                                                  #
 ###############################################################################
-
 if(ENABLE_CUDA AND ENABLE_AMGX)
   add_subdirectory(3rd_party/AMGX)
 endif()
@@ -148,26 +160,19 @@ endif()
 ###############################################################################
 # Build HYPRE
 ###############################################################################
-
+if(ENABLE_CUDA)
+  set(ENABLE_HYPRE_GPU ON CACHE BOOL "Enable HYPRE GPU support")
+endif()
 include(config/hypre.cmake)
 
 ###############################################################################
 # Build Nek5000 dependencies                                                  #
 ###############################################################################
-
-macro(check_fcompiler_id compiler)
-  if(NOT "${compiler}" STREQUAL "GNU")
-  message(FATAL_ERROR "NekRS only supports gfortran")
-  endif()
-endmacro()
-
-check_fcompiler_id("${CMAKE_Fortran_COMPILER_ID}")
 include(config/nek5000.cmake)
 
 ###############################################################################
 # Build NekRS
 ###############################################################################
-
 include(config/bench.cmake)
 include(config/mesh.cmake)
 include(config/elliptic.cmake)
@@ -191,8 +196,9 @@ set(SRC
     src/bdry/bcMap.cpp
     src/core/compileKernels.cpp
     src/setup/setup.cpp
-    src/core/alignment.cpp
+    src/bdry/alignment.cpp
     src/core/registerNrsKernels.cpp
+    src/core/registerPostProcessingKernels.cpp
     src/bdry/createEToBV.cpp
     src/bdry/applyDirichlet.cpp
     src/timeStepper/timeStepper.cpp
@@ -203,9 +209,10 @@ set(SRC
     src/cds/registerCdsKernels.cpp
     src/io/parReader.cpp
     src/io/re2Reader.cpp
-    src/core/configReader.cpp
+    src/io/configReader.cpp
     src/core/timer.cpp
     src/core/platform.cpp
+    src/core/comm.cpp
     src/core/flopCounter.cpp
     src/core/kernelRequestManager.cpp
     src/core/device.cpp
@@ -243,13 +250,12 @@ set_property(
 
 add_library(nekrs-lib SHARED ${SRC})
 
-add_dependencies(nekrs-lib HYPRE_BUILD)
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 target_link_libraries(nekrs-lib PUBLIC libocca OpenMP::OpenMP_CXX PRIVATE gs ${GSLIB})
 
 target_compile_definitions(nekrs-lib PUBLIC
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
-    -DHYPRE)
+)
 
 target_include_directories(nekrs-lib 
   PUBLIC 
@@ -282,7 +288,6 @@ target_include_directories(nekrs-lib
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/hypre
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx
   ${PARALMOND_SOURCE_DIR}
-  ${HYPRE_INCLUDE_DIR}
 )
 
 if(ENABLE_AMGX AND ENABLE_CUDA)
@@ -290,6 +295,10 @@ if(ENABLE_AMGX AND ENABLE_CUDA)
   target_link_libraries(nekrs-lib PUBLIC amgxsh amgx)
   target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include 3rd_party/AMGX/core/include)
 endif()
+
+
+target_link_libraries(nekrs-lib PRIVATE nekrs-hypre)
+target_link_libraries(nekrs-lib PRIVATE nekrs-hypre-device)
 
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)
@@ -319,17 +328,21 @@ endif()
 #################################################################################
 ### Install                                                                     #
 #################################################################################
-
-# Generate nekrs.conf
 __MPI_underlying_compiler("CXX" MPI_UNDERLYING_COMPILER)
+
+if(NEKRS_GPU_MPI)
+  set(GPU_MPI "1")
+else(NEKRS_GPU_MPI)
+  set(GPU_MPI "0")
+endif()
 
 configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
   ${CMAKE_INSTALL_PREFIX}/nekrs.conf
   @ONLY)
 
-#install nekRS
-install(TARGETS nekrs-lib nekrs-bin axhelm-bin advsub-bin fdm-bin
+install(
+  TARGETS nekrs-lib nekrs-hypre nekrs-hypre-device nekrs-bin axhelm-bin advsub-bin fdm-bin
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -368,11 +381,7 @@ endif()
 if(ENABLE_OPENCL) 
   message(NOTICE "OPENCL backend enabled (flags: ${OCCA_OPENCL_COMPILER_FLAGS})")
 endif()
-if(GPU_MPI)
-  message(NOTICE "GPU aware MPI support enabled")
-else(GPU_MPI)
-  message(NOTICE "GPU aware MPI support disabled!")
-endif()
+message(NOTICE "GPU aware MPI support: ${NEKRS_GPU_MPI}")
 message(NOTICE "-------------------------------------------")
 
 #################################################################################

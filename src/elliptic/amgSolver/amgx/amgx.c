@@ -141,7 +141,7 @@ int AMGXsetup(const int nLocalRows, const int nnz,
   return 0;
 }
 
-int AMGXsolve(void *x, void *rhs)
+int AMGXsolve(void *rhs, void *x)
 {
   AMGX_vector_upload(handle->AmgXP, handle->nLocalRows, 1, x);
   AMGX_vector_upload(handle->AmgXRHS, handle->nLocalRows, 1, rhs);

@@ -40,7 +40,7 @@ dt                          <float> [D], targetCFL=<float>
 subCyclingSteps             <int>, auto                                number of OIFS sub-steps for advection
                             0 [D]                             
 
-writeControl                steps [D], runTime                         checkpoint frequency unit
+writeControl                steps [D], simulationTime                  checkpoint frequency unit
 
 writeInterval               <int>, <float>                             checkpoint frequency in writeControl units
                             0 [D]                                      at the end of the simluation
@@ -82,27 +82,28 @@ initialGuess                previous [D]
                             +nVector=<int>                             dimension of projection space
 
 preconditioner              Jacobi [D]
-                            <multigrid | pMG> [D for PRESSURE]         polynomial multigrid
-                              +coarse [D for PRESSURE]                 coarse grid correction for polynomial multigrid
+                            multigrid [D for PRESSURE]                 polynomial multigrid + coarse grid correction
+                            SEMFEM
+
+coarseGridDiscretization    FEM [D]                                    linear finite elment discretization
+                              +Galerkin                                coarse grid matrix by Galerkin projection 
+                            SEMFEM                                     linear FEM approx on high-order nodes
+
+coarseSolver/semfemSolver   smoother                                     
+                            boomerAMG [D]                              HYPRE's AMG solver
+                            AmgX                                       NVIDIA's AMG solver
+                            +device [D for SEMFEM] 
+                            +cpu [D for multigrid]
 
 pMultigridCoarsening        <int>, <int>, ...                          custom polynomial order for each pMG level
 
-smootherType                                                           smoother for polynomial multigrid
-                            Jacobi
+smootherType                Jacobi
                             ASM [D]                                    overlapping additive Schwarz 
                             RAS                                        overlapping restrictive Schwarz
                             +Chebyshev                                  Chebyshev acceleration
                               +degree=<int>
                               +minEigenvalueBoundFactor=<float> 
                               +maxEigenvalueBoundFactor=<float> 
-
-coarseSolver                BoomerAMG [D]                              HYPRE's AMG solver
-                            +AmgX                                      NVIDIA's AMG solver
-                            +FP32 or FP64 [D]                          floating point precision
-
-coarseGridDiscretization    FEM [D]                                    linear finite elment discretization
-                              +Galerkin                                coarse grid matrix by Galerkin projection 
-                            SEMFEM                                     linear FEM approx on high-order nodes
 
 boundaryTypeMap             <...>, <...>, ...                          boundary type for each boundary ID
                             fixedValue                                 user specified Dirichlet

@@ -391,6 +391,13 @@ int main(int argc, char** argv)
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
+  if (rank == 0) {
+     time_t now = time(0);
+     tm *gmtm = gmtime(&now);
+     char *dt = asctime(gmtm);
+     std::cout << "UTC time: " << dt << std::endl;
+  }
+
   if (cmdOpt->debug) {
     for(int currRank = 0; currRank < size; ++currRank)
       if(rank == currRank) printf("rank %d: pid<%d>\n", rank, ::getpid());
@@ -424,8 +431,6 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
   }
 
-  const int updCheckFreq = 20;
-
   int tStep = 0;
   double time = nekrs::startTime();
 
@@ -441,9 +446,13 @@ int main(int argc, char** argv)
   }
 
   nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
+  nekrs::resetTimer("udfExecuteStep");
 
   int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
   double elapsedStepSum = 0;
+
+  double tSolveStepMin = std::numeric_limits<double>::max();
+  double tSolveStepMax = std::numeric_limits<double>::min();
 
   if (rank == 0 && !lastStep) {
     if (nekrs::endTime() > nekrs::startTime())
@@ -478,24 +487,37 @@ int main(int argc, char** argv)
     nekrs::runStep(time, dt, tStep);
     time += dt;
 
-    if (outputStep) nekrs::outfld(time);
+    if (outputStep) nekrs::outfld(time, tStep);
 
-    if(tStep % updCheckFreq) nekrs::processUpdFile();
+    if(nekrs::updateFileCheckFreq()) {
+      if(tStep % nekrs::updateFileCheckFreq()) 
+        nekrs::processUpdFile();
+    }
 
     MPI_Barrier(comm);
     const double elapsedStep = MPI_Wtime() - timeStartStep;
+    tSolveStepMin = std::min(elapsedStep, tSolveStepMin);
+    tSolveStepMax = std::max(elapsedStep, tSolveStepMax);
+    nekrs::updateTimer("minSolveStep", tSolveStepMin);
+    nekrs::updateTimer("maxSolveStep", tSolveStepMax);
+
     elapsedStepSum += elapsedStep;
     elapsedTime += elapsedStep;
     nekrs::updateTimer("elapsedStep", elapsedStep);
     nekrs::updateTimer("elapsedStepSum", elapsedStepSum);
     nekrs::updateTimer("elapsed", elapsedTime);
 
-    nekrs::printInfo(time, tStep);
+    if(nekrs::printInfoFreq()) {
+      if (tStep % nekrs::printInfoFreq() == 0)
+        nekrs::printInfo(time, tStep);
+    }
 
-    if (tStep % nekrs::runTimeStatFreq() == 0 || lastStep)
-      nekrs::printRuntimeStatistics(tStep);
+    if(nekrs::runTimeStatFreq()) {
+      if (tStep % nekrs::runTimeStatFreq() == 0 || lastStep)
+        nekrs::printRuntimeStatistics(tStep);
+    }
 
-    if (tStep % 10 == 0) fflush(stdout);
+    if (tStep % 100 == 0) fflush(stdout);
   }
   MPI_Pcontrol(0);
 

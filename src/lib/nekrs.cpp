@@ -60,16 +60,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
     std::cout << "MPI tasks: " << size << std::endl << std::endl;
   }
 
-  srand48((long int) rank);
-
   configRead(comm);
-
-  oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
-
-  if (rank == 0) std::cout << "reading par file ...\n"; 
-  auto par = new inipp::Ini();	  
-  std::string setupFile = _setupFile + ".par";
-  options = parRead((void*) par, setupFile, comm);
 
   {
     char buf[FILENAME_MAX];
@@ -106,15 +97,21 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
     fflush(stdout);	
   }
 
+  if (rank == 0) std::cout << "reading par file ...\n"; 
+  auto par = new inipp::Ini();	  
+  parRead((void*) par, _setupFile + ".par", comm, options);
+
+  // precedence: cmd arg, par, env-var
   if(options.getArgs("THREAD MODEL").length() == 0) 
     options.setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
   if(!_backend.empty()) options.setArgs("THREAD MODEL", _backend);
   if(!_deviceID.empty()) options.setArgs("DEVICE NUMBER", _deviceID);
 
-  // setup device
+  // setup device (requires THREAD MODEL)
   platform_t* _platform = platform_t::getInstance(options, commg, comm);
   platform = _platform;
   platform->par = par;
+
 
   if(debug) platform->options.setArgs("VERBOSE","TRUE");
 
@@ -127,11 +124,7 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
     std::string cache_dir;
     cache_dir.assign(getenv("NEKRS_CACHE_DIR"));
     mkdir(cache_dir.c_str(), S_IRWXU);
-    std::string udf_cache_dir = cache_dir + "/udf";
-    mkdir(udf_cache_dir.c_str(), S_IRWXU);
   }
-
-  oudfInit(options);
 
   // jit compile udf
   std::string udfFile;
@@ -264,7 +257,7 @@ double writeInterval(void)
 
 int writeControlRunTime(void)
 {
-  return platform->options.compareArgs("SOLUTION OUTPUT CONTROL", "RUNTIME");
+  return platform->options.compareArgs("SOLUTION OUTPUT CONTROL", "SIMULATIONTIME");
 }
 
 int outputStep(double time, int tStep)
@@ -291,7 +284,7 @@ void outputStep(int val)
   nrs->isOutputStep = val;
 }
 
-void outfld(double time, std::string suffix)
+void outfld(double time, int step, std::string suffix)
 {
   std::string oldValue;
   platform->options.getArgs("CHECKPOINT OUTPUT MESH", oldValue);
@@ -302,16 +295,16 @@ void outfld(double time, std::string suffix)
   if(platform->options.compareArgs("MOVING MESH", "TRUE"))
     platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
-  writeFld(nrs, time, suffix);
+  writeFld(nrs, time, step, suffix);
   lastOutputTime = time;
   firstOutfld = 0;
 
   platform->options.setArgs("CHECKPOINT OUTPUT MESH", oldValue);
 }
 
-void outfld(double time)
+void outfld(double time, int step)
 {
-  outfld(time, "");
+  outfld(time, step, "");
 }
 
 double endTime(void)
@@ -370,7 +363,24 @@ int runTimeStatFreq()
   return freq;
 }
 
-void printRuntimeStatistics(int step) { platform->timer.printRunStat(step); }
+int printInfoFreq()
+{
+  int freq = 1;
+  platform->options.getArgs("PRINT INFO FREQUENCY", freq);
+  return freq;
+}
+
+int updateFileCheckFreq()
+{
+  int freq = 20;
+  platform->options.getArgs("UPDATE FILE CHECK FREQUENCY", freq);
+  return freq;
+}
+
+void printRuntimeStatistics(int step) 
+{ 
+  platform->timer.printRunStat(step); 
+}
 
 void processUpdFile()
 {
@@ -447,6 +457,9 @@ void verboseInfo(bool enabled)
 }
 
 void updateTimer(const std::string &key, double time) { platform->timer.set(key, time); }
+
+void resetTimer(const std::string &key) { platform->timer.reset(key); }
+
 
 } // namespace
 

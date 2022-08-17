@@ -1,3 +1,10 @@
+macro(check_fcompiler_id compiler)
+  if(NOT "${compiler}" STREQUAL "GNU")
+  message(FATAL_ERROR "GNU gfortran required to build dependency Nek5000!")
+  endif()
+endmacro()
+check_fcompiler_id("${CMAKE_Fortran_COMPILER_ID}")
+
 if (${NEK5000_PPLIST} MATCHES "PARRSB")
   set(USE_PARRSB on)
 endif()

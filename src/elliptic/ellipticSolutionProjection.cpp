@@ -36,8 +36,8 @@ void SolutionProjection::matvec(occa::memory& o_Ax,
                                 occa::memory& o_x,
                                 const dlong x_offset)
 {
-  occa::memory o_xtmp = o_x + Nfields * fieldOffset * x_offset * sizeof(dfloat);
-  occa::memory o_Axtmp = o_Ax + Nfields * fieldOffset * Ax_offset * sizeof(dfloat);
+  occa::memory o_xtmp = o_x + (Nfields * x_offset * sizeof(dfloat)) * fieldOffset;
+  occa::memory o_Axtmp = o_Ax + (Nfields * Ax_offset * sizeof(dfloat)) * fieldOffset;
   matvecOperator(o_xtmp, o_Axtmp);
 }
 
@@ -48,6 +48,23 @@ void SolutionProjection::updateProjectionSpace()
 
   double flopCount = 0.0;
 
+#if USE_WEIGHTED_INNER_PROD_MULTI_DEVICE 
+  platform->linAlg->weightedInnerProdMulti(
+    Nlocal,
+    numVecsProjection,
+    Nfields,
+    fieldOffset,
+    o_invDegree,
+    o_xx,
+    o_bb,
+    platform->comm.mpiComm,
+    o_alpha,
+    (type == ProjectionType::CLASSIC) ?
+      Nfields * (numVecsProjection-1) * fieldOffset :
+      0
+  );
+  o_alpha.copyTo(alpha,sizeof(dfloat) * numVecsProjection);
+#else
   platform->linAlg->weightedInnerProdMulti(
     Nlocal,
     numVecsProjection,
@@ -63,6 +80,7 @@ void SolutionProjection::updateProjectionSpace()
       0
   );
   o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
+#endif
 
   const dfloat norm_orig = alpha[numVecsProjection - 1];
   dfloat norm_new = norm_orig;
@@ -75,12 +93,14 @@ void SolutionProjection::updateProjectionSpace()
 
   for(int k = 0; k < numVecsProjection - 1; ++k)
     norm_new = norm_new - alpha[k] * alpha[k];
+
   norm_new = sqrt(norm_new);
   dfloat tol = 1e-7;
   const dfloat test = norm_new / norm_orig;
   if(test > tol) {
     const dfloat scale = 1.0 / norm_new;
-    platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_xx, fieldOffset * Nfields * (numVecsProjection - 1));
+    platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_xx, 
+                                fieldOffset * Nfields * (numVecsProjection - 1));
     if(type == ProjectionType::CLASSIC) platform->linAlg->scaleMany(Nlocal, Nfields, fieldOffset, scale, o_bb, fieldOffset * Nfields * (numVecsProjection - 1));
     flopCount += static_cast<double>(Nlocal) * Nfields;
     flopCount *= (type == ProjectionType::CLASSIC) ? 2 : 1;
@@ -104,7 +124,22 @@ void SolutionProjection::computePreProjection(occa::memory& o_r)
   dfloat zero = 0.0;
   dfloat mone = -1.0;
   if(numVecsProjection <= 0) return;
-  platform->linAlg->weightedInnerProdMulti(
+
+#if USE_WEIGHTED_INNER_PROD_MULTI_DEVICE 
+   platform->linAlg->weightedInnerProdMulti(
+    Nlocal,
+    numVecsProjection,
+    Nfields,
+    fieldOffset,
+    o_invDegree,
+    o_xx,
+    o_r,
+    platform->comm.mpiComm,
+    o_alpha,
+    Nfields * 0 * fieldOffset
+  );
+#else
+   platform->linAlg->weightedInnerProdMulti(
     Nlocal,
     numVecsProjection,
     Nfields,
@@ -117,6 +152,7 @@ void SolutionProjection::computePreProjection(occa::memory& o_r)
     Nfields * 0 * fieldOffset
   );
   o_alpha.copyFrom(alpha,sizeof(dfloat) * numVecsProjection);
+#endif
 
   accumulateKernel(Nlocal, numVecsProjection, fieldOffset, o_alpha, o_xx, o_xbar);
 
@@ -184,9 +220,9 @@ SolutionProjection::SolutionProjection(elliptic_t &elliptic,
 
   platform_t* platform = platform_t::getInstance();
 
-  o_alpha = platform->device.malloc(maxNumVecsProjection, sizeof(dfloat));
-  o_xbar = platform->device.malloc(Nfields * fieldOffset, sizeof(dfloat));
-  o_xx = platform->device.malloc(Nfields * fieldOffset * maxNumVecsProjection, sizeof(dfloat));
+  o_alpha = platform->device.malloc(maxNumVecsProjection * sizeof(dfloat));
+  o_xbar = platform->device.malloc((Nfields * sizeof(dfloat)) * fieldOffset);
+  o_xx = platform->device.malloc((Nfields * maxNumVecsProjection * sizeof(dfloat)) * fieldOffset);
   o_bb = platform->device.malloc(
     (type == ProjectionType::CLASSIC) ? Nfields * fieldOffset * maxNumVecsProjection :
     Nfields * fieldOffset

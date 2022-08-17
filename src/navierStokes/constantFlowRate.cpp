@@ -530,16 +530,16 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
     } else {
       if (nrs->uSolver->Nmasked)
         nrs->maskKernel(nrs->uSolver->Nmasked,
-            nrs->uSolver->o_maskIds,
-            o_RhsVel + 0 * nrs->fieldOffset * sizeof(dfloat));
+                        nrs->uSolver->o_maskIds,
+                        o_RhsVel + (0 * sizeof(dfloat)) * nrs->fieldOffset);
       if (nrs->vSolver->Nmasked)
         nrs->maskKernel(nrs->vSolver->Nmasked,
-            nrs->vSolver->o_maskIds,
-            o_RhsVel + 1 * nrs->fieldOffset * sizeof(dfloat));
+                        nrs->vSolver->o_maskIds,
+                        o_RhsVel + (1 * sizeof(dfloat)) * nrs->fieldOffset);
       if (nrs->wSolver->Nmasked)
         nrs->maskKernel(nrs->wSolver->Nmasked,
-            nrs->wSolver->o_maskIds,
-            o_RhsVel + 2 * nrs->fieldOffset * sizeof(dfloat));
+                        nrs->wSolver->o_maskIds,
+                        o_RhsVel + (2 * sizeof(dfloat)) * nrs->fieldOffset);
     }
 
     platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset,
@@ -628,9 +628,9 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
     if (nrs->uvwSolver) {
       ellipticSolve(nrs->uvwSolver, o_RhsVel, nrs->o_Uc);
     } else {
-      occa::memory o_Ucx = nrs->o_Uc + 0 * nrs->fieldOffset * sizeof(dfloat);
-      occa::memory o_Ucy = nrs->o_Uc + 1 * nrs->fieldOffset * sizeof(dfloat);
-      occa::memory o_Ucz = nrs->o_Uc + 2 * nrs->fieldOffset * sizeof(dfloat);
+      occa::memory o_Ucx = nrs->o_Uc + (0 * sizeof(dfloat)) * nrs->fieldOffset;
+      occa::memory o_Ucy = nrs->o_Uc + (1 * sizeof(dfloat)) * nrs->fieldOffset;
+      occa::memory o_Ucz = nrs->o_Uc + (2 * sizeof(dfloat)) * nrs->fieldOffset;
       ellipticSolve(nrs->uSolver, platform->o_mempool.slice0, o_Ucx);
       ellipticSolve(nrs->vSolver, platform->o_mempool.slice1, o_Ucy);
       ellipticSolve(nrs->wSolver, platform->o_mempool.slice2, o_Ucz);

@@ -25,9 +25,9 @@
  */
 
 @kernel void ellipticPreconProlongateHex3D(const dlong Nelements,
-                                               @restrict const dfloat*  R,
-                                               @restrict const dfloat*  qc,
-                                               @restrict dfloat*  qN)
+                                               @restrict const pfloat*  R,
+                                               @restrict const pfloat*  qc,
+                                               @restrict pfloat*  qN)
 {
   for(dlong e = 0; e < Nelements; ++e; @outer(0)) {
     @exclusive dfloat r_q[p_NqFine];

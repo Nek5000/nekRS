@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -7,13 +7,14 @@
 
 #include "_hypre_struct_ls.h"
 #include "temp_multivector.h"
+#include "_hypre_struct_mv.hpp"
 
-HYPRE_Int 
+HYPRE_Int
 hypre_StructVectorSetRandomValues( hypre_StructVector *vector,
                                    HYPRE_Int seed )
 {
    hypre_Box          *v_data_box;
-                    
+
    HYPRE_Real         *vp;
 
    hypre_BoxArray     *boxes;
@@ -28,11 +29,11 @@ hypre_StructVectorSetRandomValues( hypre_StructVector *vector,
     * Set the vector coefficients
     *-----------------------------------------------------------------------*/
 
-//   srand( seed );
+   //   srand( seed );
    hypre_SeedRand(seed);
 
    hypre_SetIndex3(unit_stride, 1, 1, 1);
- 
+
    boxes = hypre_StructGridBoxes(hypre_StructVectorGrid(vector));
    hypre_ForBoxI(i, boxes)
    {
@@ -42,27 +43,27 @@ hypre_StructVectorSetRandomValues( hypre_StructVector *vector,
       v_data_box =
          hypre_BoxArrayBox(hypre_StructVectorDataSpace(vector), i);
       vp = hypre_StructVectorBoxData(vector, i);
- 
+
       hypre_BoxGetSize(box, loop_size);
-      
-      /* TODO: generate on host and copy to device. FIX? */
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_DEVICE_OPENMP)
+
+      /* RL TODO: generate on host and copy to device. FIX? */
+#if defined(HYPRE_USING_GPU)
       HYPRE_Int loop_n = 1, ii;
       for (ii = 0; ii < hypre_StructVectorNDim(vector); ii++)
       {
          loop_n *= loop_size[ii];
       }
-      
+
       HYPRE_Real *rand_host   = hypre_TAlloc(HYPRE_Real, loop_n, HYPRE_MEMORY_HOST);
       HYPRE_Real *rand_device = hypre_TAlloc(HYPRE_Real, loop_n, HYPRE_MEMORY_DEVICE);
-      
+
       ii = 0;
-      hypre_SerialBoxLoop0Begin(hypre_StructVectorNDim(vector),loop_size)
+      hypre_SerialBoxLoop0Begin(hypre_StructVectorNDim(vector), loop_size)
       {
-	 rand_host[ii++] = 2.0*hypre_Rand() - 1.0;
+         rand_host[ii++] = 2.0 * hypre_Rand() - 1.0;
       }
       hypre_SerialBoxLoop0End()
-      hypre_TMemcpy(rand_device, rand_host, HYPRE_Real, loop_n, 
+      hypre_TMemcpy(rand_device, rand_host, HYPRE_Real, loop_n,
                     HYPRE_MEMORY_DEVICE, HYPRE_MEMORY_HOST);
 #endif
 
@@ -70,16 +71,16 @@ hypre_StructVectorSetRandomValues( hypre_StructVector *vector,
       hypre_BoxLoop1Begin(hypre_StructVectorNDim(vector), loop_size,
                           v_data_box, start, unit_stride, vi);
       {
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_DEVICE_OPENMP)
-	 vp[vi] = rand_device[idx];
+#if defined(HYPRE_USING_GPU)
+         vp[vi] = rand_device[idx];
 #else
-	 vp[vi] = 2.0*hypre_Rand() - 1.0;
+         vp[vi] = 2.0 * hypre_Rand() - 1.0;
 #endif
       }
       hypre_BoxLoop1End(vi);
 #undef DEVICE_VAR
 
-#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_DEVICE_OPENMP)
+#if defined(HYPRE_USING_GPU)
       hypre_TFree(rand_device, HYPRE_MEMORY_DEVICE);
       hypre_TFree(rand_host, HYPRE_MEMORY_HOST);
 #endif
@@ -89,7 +90,8 @@ hypre_StructVectorSetRandomValues( hypre_StructVector *vector,
 }
 
 HYPRE_Int
-hypre_StructSetRandomValues( void* v, HYPRE_Int seed ) {
+hypre_StructSetRandomValues( void* v, HYPRE_Int seed )
+{
 
    return hypre_StructVectorSetRandomValues( (hypre_StructVector*)v, seed );
 }
@@ -98,8 +100,8 @@ HYPRE_Int
 HYPRE_StructSetupInterpreter( mv_InterfaceInterpreter *i )
 {
    i->CreateVector = hypre_StructKrylovCreateVector;
-   i->DestroyVector = hypre_StructKrylovDestroyVector; 
-   i->InnerProd = hypre_StructKrylovInnerProd; 
+   i->DestroyVector = hypre_StructKrylovDestroyVector;
+   i->InnerProd = hypre_StructKrylovInnerProd;
    i->CopyVector = hypre_StructKrylovCopyVector;
    i->ClearVector = hypre_StructKrylovClearVector;
    i->SetRandomValues = hypre_StructSetRandomValues;

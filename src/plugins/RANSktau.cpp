@@ -92,10 +92,9 @@ void RANSktau::buildKernel(occa::properties _kernelInfo)
 
   kernelInfo += _kernelInfo;
 
-  std::string path;
   int rank = platform->comm.mpiRank;
-  path.assign(getenv("NEKRS_INSTALL_DIR"));
-  path += "/okl/plugins/";
+  const std::string install_dir(getenv("NEKRS_INSTALL_DIR"));
+  const std::string path = install_dir + "/okl/plugins/";
   std::string fileName, kernelName;
   const std::string extension = ".okl";
   {
@@ -104,11 +103,11 @@ void RANSktau::buildKernel(occa::properties _kernelInfo)
       computeKernel    = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "SijOijHex3D";
-      fileName = path + kernelName + extension;
+      fileName = install_dir + "/okl/nrs/" + kernelName + extension;
       SijOijKernel     = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "SijOijMag2";
-      fileName = path + kernelName + extension;
+      fileName = install_dir + "/okl/nrs/" + kernelName + extension;
       SijOijMag2Kernel = platform->device.buildKernel(fileName, kernelInfo, true);
 
       kernelName = "limit";
@@ -171,6 +170,7 @@ void RANSktau::updateSourceTerms()
   const int NSOfields = 9;
   SijOijKernel(mesh->Nelements,
                nrs->fieldOffset,
+               1,
                mesh->o_vgeo,
                mesh->o_D,
                nrs->o_U,
@@ -194,6 +194,7 @@ void RANSktau::updateSourceTerms()
 
   SijOijMag2Kernel(mesh->Nelements * mesh->Np,
                    nrs->fieldOffset,
+                   1,
                    o_SijOij,
                    o_OiOjSk,
                    o_SijMag2);

@@ -2,17 +2,17 @@
  * Low-Order finite element preconditioner computed with HYPRE's AMG solver
 */
 
-#include <platform.hpp>
 #include <math.h>
 #include <limits>
-
-#include "__HYPRE.h"
-
-#include "gslib.h"
-#include "ellipticBuildSEMFEM.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
+
+#include "nrssys.hpp"
+#include "platform.hpp"
+#include "hypreWrapper.hpp"
+#include "gslib.h"
+#include "ellipticBuildSEMFEM.hpp"
 
 namespace{
  void quadrature_rule(double q_r[4][3], double q_w[4]) {
@@ -187,17 +187,17 @@ static int num_loc_dofs;
 static long long *dof_map;
 static long long row_start;
 static long long row_end;
-static HYPRE_IJMatrix A_bc;
+static hypreWrapper::IJMatrix *A_bc;
 
 struct COOGraph
 {
-  long long nrows;
+  int nrows;
   long long nnz;
   long long * rows;
   long long * rowOffsets;
-  long long * ncols;
+  int * ncols;
   long long * cols;
-  double* vals;
+  float* vals;
 };
 
 static COOGraph coo_graph;
@@ -245,17 +245,6 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
 
   matrix_distribution();
 
-  {
-    std::string libPath(getenv("NEKRS_INSTALL_DIR"));
-    libPath += "/lib/libHYPRE";
-#ifdef __APPLE__
-    libPath += ".dylib";
-#else
-    libPath += ".so";
-#endif    
-    __HYPRE_Load(libPath.c_str());
-  }
-
   fem_assembly();
 
   SEMFEMData* data;
@@ -274,13 +263,13 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
       }
     }
 
-    HYPRE_BigInt *ownedRows = (HYPRE_BigInt*) calloc(numRows, sizeof(HYPRE_BigInt));
+    hypreWrapper::BigInt *ownedRows = (hypreWrapper::BigInt*) calloc(numRows, sizeof(hypreWrapper::BigInt));
     int ctr = 0;
     for(long long row = row_start; row <= row_end; ++row)
       ownedRows[ctr++] = row;
   
-    HYPRE_Int *ncols = (HYPRE_Int*) calloc(numRows, sizeof(HYPRE_Int));
-    __HYPRE_IJMatrixGetRowCounts(A_bc,
+    hypreWrapper::Int *ncols = (hypreWrapper::Int*) calloc(numRows, sizeof(hypreWrapper::Int));
+    hypreWrapper::IJMatrixGetRowCounts(&A_bc,
       numRows,
       ownedRows,
       ncols);
@@ -290,9 +279,9 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
       nnz += ncols[i];
   
     // construct COO matrix from Hypre matrix
-    HYPRE_BigInt *hAj = (HYPRE_BigInt*) calloc(nnz, sizeof(HYPRE_BigInt));
-    HYPRE_Real   *hAv = (HYPRE_Real*) calloc(nnz, sizeof(HYPRE_Real));
-    __HYPRE_IJMatrixGetValues(A_bc,
+    hypreWrapper::BigInt *hAj = (hypreWrapper::BigInt*) calloc(nnz, sizeof(hypreWrapper::BigInt));
+    hypreWrapper::Real   *hAv = (hypreWrapper::Real*) calloc(nnz, sizeof(hypreWrapper::Real));
+    hypreWrapper::IJMatrixGetValues(&A_bc,
       -numRows,
       ncols,
       ownedRows,
@@ -317,13 +306,41 @@ SEMFEMData* ellipticBuildSEMFEM(const int N_, const int n_elem_,
     free(hAv);
     free(ownedRows);
     free(ncols);
-    __HYPRE_IJMatrixDestroy(A_bc);
+    hypreWrapper::IJMatrixDestroy(&A_bc);
+
+    double dropTol = 0.0;
+    platform->options.getArgs("AMG DROP TOLERANCE", dropTol);
+
+    int nnzTol = 0;
+    for(int n = 0; n < nnz; ++n){
+      if(std::abs(Av[n]) > dropTol){
+        nnzTol++;
+      }
+    }
+
+    long long *AiTol = (long long*) calloc(nnzTol, sizeof(long long));
+    long long *AjTol = (long long*) calloc(nnzTol, sizeof(long long));
+    double    *AvTol = (double*) calloc(nnzTol, sizeof(double));
+
+    int idx = 0;
+    for(int n = 0; n < nnz; ++n){
+      if(std::abs(Av[n]) > dropTol){
+        AiTol[idx] = Ai[n];
+        AjTol[idx] = Aj[n];
+        AvTol[idx] = Av[n];
+        idx++;
+      }
+    }
+
+    free(Ai);
+    free(Aj);
+    free(Av);
 
     data = (SEMFEMData*) malloc(sizeof(SEMFEMData));
-    data->Ai = Ai;
-    data->Aj = Aj;
-    data->Av = Av;
-    data->nnz = nnz;
+    data->Ai = AiTol;
+    data->Aj = AjTol;
+    data->Av = AvTol;
+    data->nnz = nnzTol;
     data->rowStart = row_start;
     data->rowEnd = row_end;
     data->dofMap = dof_map;
@@ -504,10 +521,10 @@ void construct_coo_graph() {
       }
     }
   }
-  const long long nrows = graph.size();
+  const int nrows = graph.size();
   long long * rows = (long long*) malloc(nrows * sizeof(long long));
   long long * rowOffsets = (long long*) malloc((nrows+1) * sizeof(long long));
-  long long * ncols = (long long*) malloc(nrows * sizeof(long long));
+  int * ncols = (int*) malloc(nrows * sizeof(int));
   long long nnz = 0;
   long long ctr = 0;
 
@@ -516,14 +533,14 @@ void construct_coo_graph() {
     nnz += row_and_colset.second.size();
   }
   long long * cols = (long long*) malloc(nnz * sizeof(long long));
-  double* vals = (double*) calloc(nnz,sizeof(double));
+  float* vals = (float*) calloc(nnz,sizeof(float));
   std::sort(rows, rows + nrows);
   long long entryCtr = 0;
   rowOffsets[0] = 0;
-  for(long long localrow = 0; localrow < nrows; ++localrow){
+  for(auto localrow = 0; localrow < nrows; ++localrow){
     const long long row = rows[localrow];
     const auto& colset = graph[row];
-    const int size = colset.size();
+    const auto size = colset.size();
     ncols[localrow] = size;
     rowOffsets[localrow+1] = rowOffsets[localrow] + size;
     for(auto&& col : colset){
@@ -542,13 +559,13 @@ void construct_coo_graph() {
 
 void fem_assembly_host() {
 
-  const long long nrows = coo_graph.nrows;
+  const int nrows = coo_graph.nrows;
   long long * rows = coo_graph.rows;
   long long * rowOffsets = coo_graph.rowOffsets;
-  long long * ncols = coo_graph.ncols;
+  int * ncols = coo_graph.ncols;
   long long nnz = coo_graph.nnz;
   long long * cols = coo_graph.cols;
-  double* vals = coo_graph.vals;
+  float* vals = coo_graph.vals;
 
   double q_r[4][3];
   double q_w[4];
@@ -667,10 +684,10 @@ void fem_assembly_host() {
   }
 
 
-  int err = __HYPRE_IJMatrixAddToValues(A_bc, nrows, ncols, rows, cols, vals);
+  int err = hypreWrapper::IJMatrixAddToValues(&A_bc, nrows, ncols, rows, cols, vals);
   if (err != 0) {
     if (comm.id == 0)
-      printf("HYPRE_IJMatrixAddToValues failed!\n");
+      printf("hypreWrapper::IJMatrixAddToValues failed!\n");
     ABORT(EXIT_FAILURE);
   }
 
@@ -685,13 +702,13 @@ void fem_assembly_host() {
 }
 void fem_assembly_device() {
 
-  const long long nrows = coo_graph.nrows;
+  const int nrows = coo_graph.nrows;
   long long * rows = coo_graph.rows;
   long long * rowOffsets = coo_graph.rowOffsets;
-  long long * ncols = coo_graph.ncols;
+  int * ncols = coo_graph.ncols;
   long long nnz = coo_graph.nnz;
   long long * cols = coo_graph.cols;
-  double* vals = coo_graph.vals;
+  float* vals = coo_graph.vals;
 
   struct AllocationTracker{
     bool o_maskAlloc;
@@ -752,7 +769,7 @@ void fem_assembly_device() {
   );
   occa::memory o_vals = scratchOrAllocateMemory(
     nnz,
-    sizeof(double),
+    sizeof(float),
     vals,
     bytesRemaining,
     byteOffset,
@@ -773,7 +790,7 @@ void fem_assembly_device() {
     o_cols,
     o_vals
   );
-  o_vals.copyTo(vals, nnz * sizeof(double));
+  o_vals.copyTo(vals, nnz * sizeof(float));
 
   if(allocations.o_maskAlloc) o_mask.free();
   if(allocations.o_glo_numAlloc) o_glo_num.free();
@@ -782,10 +799,10 @@ void fem_assembly_device() {
   if(allocations.o_colsAlloc) o_cols.free();
   if(allocations.o_valsAlloc) o_vals.free();
 
-  int err = __HYPRE_IJMatrixAddToValues(A_bc, nrows, ncols, rows, cols, vals);
+  int err = hypreWrapper::IJMatrixAddToValues(&A_bc, nrows, ncols, rows, cols, vals);
   if (err != 0) {
     if (comm.id == 0)
-      printf("HYPRE_IJMatrixAddToValues failed!\n");
+      printf("hypreWrapper::IJMatrixAddToValues failed!\n");
     ABORT(EXIT_FAILURE);
   }
 
@@ -833,9 +850,9 @@ void fem_assembly() {
   }
 
   /* Assemble FE matrices with boundary conditions applied */
-  __HYPRE_IJMatrixCreate(comm.c, row_start, row_end, row_start, row_end, &A_bc);
-  __HYPRE_IJMatrixSetObjectType(A_bc, HYPRE_PARCSR);
-  __HYPRE_IJMatrixInitialize(A_bc);
+  hypreWrapper::IJMatrixCreate(comm.c, row_start, row_end, row_start, row_end, &A_bc);
+  hypreWrapper::IJMatrixSetObjectType(&A_bc);
+  hypreWrapper::IJMatrixInitialize(&A_bc);
 
   construct_coo_graph();
 
@@ -849,7 +866,7 @@ void fem_assembly() {
   }
 
   {
-    __HYPRE_IJMatrixAssemble(A_bc);
+    hypreWrapper::IJMatrixAssemble(&A_bc);
   }
 
   free(glo_num);

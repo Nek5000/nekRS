@@ -96,6 +96,9 @@ echo "module list" >> $SFILE
 echo "rocm-smi" >>$SFILE
 echo "rocm-smi --showpids" >>$SFILE
 
+echo "# which nodes am I running on?" >>$SFILE
+echo "squeue -u \$USER" >>$SFILE
+
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
 
 ## These must be set before compiling so the executable picks up GTL

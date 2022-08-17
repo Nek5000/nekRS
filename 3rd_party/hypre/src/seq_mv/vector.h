@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -21,10 +21,13 @@
 typedef struct
 {
    HYPRE_Complex  *data;
-   HYPRE_Int      size;
+   HYPRE_Int       size;
 
    /* Does the Vector create/destroy `data'? */
-   HYPRE_Int      owns_data;
+   HYPRE_Int       owns_data;
+
+   /* memory location of array data */
+   HYPRE_MemoryLocation  memory_location;
 
    /* For multivectors...*/
    HYPRE_Int   num_vectors;  /* the above "size" is size of one vector */
@@ -41,12 +44,14 @@ typedef struct
  * Accessor functions for the Vector structure
  *--------------------------------------------------------------------------*/
 
-#define hypre_VectorData(vector)      ((vector) -> data)
-#define hypre_VectorSize(vector)      ((vector) -> size)
-#define hypre_VectorOwnsData(vector)  ((vector) -> owns_data)
-#define hypre_VectorNumVectors(vector) ((vector) -> num_vectors)
+#define hypre_VectorData(vector)                  ((vector) -> data)
+#define hypre_VectorSize(vector)                  ((vector) -> size)
+#define hypre_VectorOwnsData(vector)              ((vector) -> owns_data)
+#define hypre_VectorMemoryLocation(vector)        ((vector) -> memory_location)
+#define hypre_VectorNumVectors(vector)            ((vector) -> num_vectors)
 #define hypre_VectorMultiVecStorageMethod(vector) ((vector) -> multivec_storage_method)
-#define hypre_VectorVectorStride(vector) ((vector) -> vecstride )
-#define hypre_VectorIndexStride(vector) ((vector) -> idxstride )
+#define hypre_VectorVectorStride(vector)          ((vector) -> vecstride )
+#define hypre_VectorIndexStride(vector)           ((vector) -> idxstride )
 
 #endif
+

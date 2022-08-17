@@ -1,5 +1,6 @@
 #include <occa/internal/core/memory.hpp>
 #include <occa/internal/core/launchedKernel.hpp>
+#include <occa/internal/utils/env.hpp>
 
 namespace occa {
   launchedModeKernel_t::launchedModeKernel_t(modeDevice_t *modeDevice_,
@@ -57,6 +58,9 @@ namespace occa {
       deviceKernels[i]->arguments = arguments;
     }
 
+    if (env::OCCA_VERBOSE)
+      std::cout << "launching kernel: " << name << " (" << sourceFilename << ") " << std::endl;
+ 
     launcherKernel->run();
   }
 }

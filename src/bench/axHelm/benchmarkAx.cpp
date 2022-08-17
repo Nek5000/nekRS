@@ -18,7 +18,7 @@ struct CallParameters{
   bool constCoeff;
   bool poisson;
   bool computeGeom;
-  int wordSize;
+  size_t wordSize;
   int Ndim;
   bool stressForm;
   std::string suffix;
@@ -59,7 +59,7 @@ occa::kernel benchmarkAx(int Nelements,
                          bool constCoeff,
                          bool poisson,
                          bool computeGeom,
-                         int wordSize,
+                         size_t wordSize,
                          int Ndim,
                          bool stressForm,
                          int verbosity,
@@ -236,7 +236,8 @@ occa::kernel benchmarkAx(int Nelements,
         err = std::max(err, std::abs(refResults[i] - results[i]));
       }
 
-      if (platform->comm.mpiRank == 0 && verbosity > 1) {
+      const auto tol = 100. * std::numeric_limits<dfloat>::epsilon();
+      if (platform->comm.mpiRank == 0 && verbosity > 1 && err > tol) {
         std::cout << "Error in kernel compared to reference implementation " << kernelVariant << ": " << err
                   << std::endl;
       }
@@ -344,7 +345,7 @@ template occa::kernel benchmarkAx<int>(int Nelements,
                                        bool constCoeff,
                                        bool poisson,
                                        bool computeGeom,
-                                       int wordSize,
+                                       size_t wordSize,
                                        int Ndim,
                                        bool stressForm,
                                        int verbosity,
@@ -358,7 +359,7 @@ template occa::kernel benchmarkAx<double>(int Nelements,
                                           bool constCoeff,
                                           bool poisson,
                                           bool computeGeom,
-                                          int wordSize,
+                                          size_t wordSize,
                                           int Ndim,
                                           bool stressForm,
                                           int verbosity,

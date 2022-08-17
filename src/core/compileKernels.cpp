@@ -22,14 +22,17 @@ std::string createOptionsPrefix(std::string section) {
 void compileKernels() {
 
   MPI_Barrier(platform->comm.mpiComm);
+
+  const occa::properties kernelInfoBC = compileUDFKernels();
+
   const double tStart = MPI_Wtime();
   if (platform->comm.mpiRank == 0)
     printf("loading kernels (this may take awhile) ...\n");
   fflush(stdout);
 
-  const occa::properties kernelInfoBC = compileUDFKernels();
-
   registerLinAlgKernels();
+
+  registerPostProcessingKernels();
 
   registerMeshKernels(kernelInfoBC);
 

@@ -1,11 +1,12 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
  ******************************************************************************/
 
 #include "_hypre_struct_ls.h"
+#include "_hypre_struct_mv.hpp"
 
 /* this currently cannot be greater than 7 */
 #ifdef MAX_DEPTH
@@ -19,20 +20,20 @@
 typedef struct
 {
    MPI_Comm                comm;
-                       
+
    HYPRE_Real              tol;       /* tolerance, set =0 for no convergence testing */
    HYPRE_Real              rresnorm;  /* relative residual norm, computed only if tol>0.0 */
    HYPRE_Int               max_iter;
    HYPRE_Int               rel_change;         /* not yet used */
    HYPRE_Int               zero_guess;
    HYPRE_Real              weight;
-                         
+
    HYPRE_Int               num_pointsets;
    HYPRE_Int              *pointset_sizes;
    HYPRE_Int              *pointset_ranks;
    hypre_Index            *pointset_strides;
    hypre_Index           **pointset_indices;
-                       
+
    hypre_StructMatrix     *A;
    hypre_StructVector     *b;
    hypre_StructVector     *x;
@@ -154,10 +155,10 @@ hypre_PointRelaxSetup( void               *relax_vdata,
    hypre_Index            diag_index;
    hypre_IndexRef         stride;
    hypre_IndexRef         index;
-                       
+
    hypre_StructGrid      *grid;
    hypre_StructStencil   *stencil;
-                       
+
    hypre_BoxArrayArray   *orig_indt_boxes;
    hypre_BoxArrayArray   *orig_dept_boxes;
    hypre_BoxArrayArray   *box_aa;
@@ -173,7 +174,7 @@ hypre_PointRelaxSetup( void               *relax_vdata,
    HYPRE_Int              frac;
 
    HYPRE_Int              i, j, k, p, m, compute_i;
-                       
+
    /*----------------------------------------------------------
     * Set up the temp vector
     *----------------------------------------------------------*/
@@ -214,7 +215,7 @@ hypre_PointRelaxSetup( void               *relax_vdata,
 
       for (compute_i = 0; compute_i < 2; compute_i++)
       {
-         switch(compute_i)
+         switch (compute_i)
          {
             case 0:
                box_aa = orig_indt_boxes;
@@ -243,16 +244,16 @@ hypre_PointRelaxSetup( void               *relax_vdata,
                {
                   box = hypre_BoxArrayBox(box_a, j);
                   new_box = hypre_BoxArrayBox(new_box_a, k);
-                  
+
                   hypre_CopyBox(box, new_box);
                   hypre_ProjectBox(new_box, index, stride);
-                  
+
                   k++;
                }
             }
          }
 
-         switch(compute_i)
+         switch (compute_i)
          {
             case 0:
                hypre_ComputeInfoIndtBoxes(compute_info) = new_box_aa;
@@ -297,7 +298,7 @@ hypre_PointRelaxSetup( void               *relax_vdata,
       scale += (pointset_sizes[p] / frac);
    }
    (relax_data -> flops) = (HYPRE_BigInt)scale * (hypre_StructMatrixGlobalSize(A) +
-                                    hypre_StructVectorGlobalSize(x));
+                                                  hypre_StructVectorGlobalSize(x));
 
    return hypre_error_flag;
 }
@@ -323,20 +324,20 @@ hypre_PointRelax( void               *relax_vdata,
    HYPRE_Int              diag_rank        = (relax_data -> diag_rank);
    hypre_ComputePkg     **compute_pkgs     = (relax_data -> compute_pkgs);
    HYPRE_Real             tol              = (relax_data -> tol);
-   HYPRE_Real             tol2             = tol*tol;
+   HYPRE_Real             tol2             = tol * tol;
 
    hypre_ComputePkg      *compute_pkg;
    hypre_CommHandle      *comm_handle;
-                        
+
    hypre_BoxArrayArray   *compute_box_aa;
    hypre_BoxArray        *compute_box_a;
    hypre_Box             *compute_box;
-                        
+
    hypre_Box             *A_data_box;
    hypre_Box             *b_data_box;
    hypre_Box             *x_data_box;
    hypre_Box             *t_data_box;
-                        
+
    HYPRE_Real            *Ap;
    HYPRE_Real            AAp0;
    HYPRE_Real            *bp;
@@ -345,11 +346,11 @@ hypre_PointRelax( void               *relax_vdata,
    void                  *matvec_data = NULL;
 
    HYPRE_Int              Ai;
-                        
+
    hypre_IndexRef         stride;
    hypre_IndexRef         start;
    hypre_Index            loop_size;
-                        
+
    HYPRE_Int              constant_coefficient;
 
    HYPRE_Int              iter, p, compute_i, i, j;
@@ -386,11 +387,13 @@ hypre_PointRelax( void               *relax_vdata,
    }
 
    constant_coefficient = hypre_StructMatrixConstantCoefficient(A);
-   if (constant_coefficient) hypre_StructVectorClearBoundGhostValues(x, 0);
+   if (constant_coefficient) { hypre_StructVectorClearBoundGhostValues(x, 0); }
 
    rsumsq = 0.0;
-   if ( tol>0.0 )
+   if ( tol > 0.0 )
+   {
       bsumsq = hypre_StructInnerProd( b, b );
+   }
 
    /*----------------------------------------------------------
     * Do zero_guess iteration
@@ -398,7 +401,7 @@ hypre_PointRelax( void               *relax_vdata,
 
    p    = 0;
    iter = 0;
-   if ( tol>0.0)
+   if ( tol > 0.0)
    {
       matvec_data = hypre_StructMatvecCreate();
       hypre_StructMatvecSetup( matvec_data, A, x );
@@ -406,7 +409,7 @@ hypre_PointRelax( void               *relax_vdata,
 
    if (zero_guess)
    {
-      if ( p==0 ) rsumsq = 0.0;
+      if ( p == 0 ) { rsumsq = 0.0; }
       if (num_pointsets > 1)
       {
          hypre_StructVectorSetConstantValues(x, 0.0);
@@ -417,7 +420,7 @@ hypre_PointRelax( void               *relax_vdata,
 
       for (compute_i = 0; compute_i < 2; compute_i++)
       {
-         switch(compute_i)
+         switch (compute_i)
          {
             case 0:
             {
@@ -442,7 +445,7 @@ hypre_PointRelax( void               *relax_vdata,
                hypre_BoxArrayBox(hypre_StructVectorDataSpace(b), i);
             x_data_box =
                hypre_BoxArrayBox(hypre_StructVectorDataSpace(x), i);
-             
+
             Ap = hypre_StructMatrixBoxData(A, i, diag_rank);
             bp = hypre_StructVectorBoxData(b, i);
             xp = hypre_StructVectorBoxData(x, i);
@@ -455,10 +458,10 @@ hypre_PointRelax( void               *relax_vdata,
                hypre_BoxGetStrideSize(compute_box, stride, loop_size);
 
                /* all matrix coefficients are constant */
-               if ( constant_coefficient==1 )
+               if ( constant_coefficient == 1 )
                {
                   Ai = hypre_CCBoxIndexRank( A_data_box, start );
-                  AAp0 = 1/Ap[Ai];
+                  AAp0 = 1 / Ap[Ai];
 #define DEVICE_VAR is_device_ptr(xp,bp)
                   hypre_BoxLoop2Begin(hypre_StructVectorNDim(x), loop_size,
                                       b_data_box, start, stride, bi,
@@ -487,16 +490,16 @@ hypre_PointRelax( void               *relax_vdata,
             }
          }
       }
-      
+
       if (weight != 1.0)
       {
          hypre_StructScale(weight, x);
       }
-      
+
       p    = (p + 1) % num_pointsets;
       iter = iter + (p == 0);
 
-      if ( tol>0.0 && p==0 )
+      if ( tol > 0.0 && p == 0 )
          /* ... p==0 here means we've finished going through all the pointsets,
             i.e. this iteration is complete.
             tol>0.0 means to do a convergence test, using tol.
@@ -506,7 +509,7 @@ hypre_PointRelax( void               *relax_vdata,
          hypre_StructMatvecCompute( matvec_data,
                                     -1.0, A, x, 1.0, t );  /* t = - A x + t = - A x + b */
          rsumsq = hypre_StructInnerProd( t, t ); /* <t,t> */
-         if ( rsumsq/bsumsq<tol2 ) max_iter = iter; /* converged; reset max_iter to prevent more iterations */
+         if ( rsumsq / bsumsq < tol2 ) { max_iter = iter; } /* converged; reset max_iter to prevent more iterations */
       }
    }
 
@@ -516,7 +519,7 @@ hypre_PointRelax( void               *relax_vdata,
 
    while (iter < max_iter)
    {
-      if ( p==0 ) rsumsq = 0.0;
+      if ( p == 0 ) { rsumsq = 0.0; }
       pointset = pointset_ranks[p];
       compute_pkg = compute_pkgs[pointset];
       stride = pointset_strides[pointset];
@@ -526,7 +529,7 @@ hypre_PointRelax( void               *relax_vdata,
 
       for (compute_i = 0; compute_i < 2; compute_i++)
       {
-         switch(compute_i)
+         switch (compute_i)
          {
             case 0:
             {
@@ -565,14 +568,14 @@ hypre_PointRelax( void               *relax_vdata,
             {
                compute_box = hypre_BoxArrayBox(compute_box_a, j);
 
-               if ( constant_coefficient==1 || constant_coefficient==2 )
+               if ( constant_coefficient == 1 || constant_coefficient == 2 )
                {
                   hypre_PointRelax_core12(
                      relax_vdata, A, constant_coefficient,
                      compute_box, bp, xp, tp, i,
                      A_data_box, b_data_box, x_data_box, t_data_box,
                      stride
-                     );
+                  );
                }
 
                else
@@ -582,12 +585,12 @@ hypre_PointRelax( void               *relax_vdata,
                      compute_box, bp, xp, tp, i,
                      A_data_box, b_data_box, x_data_box, t_data_box,
                      stride
-                     );
+                  );
                }
 
                Ap = hypre_StructMatrixBoxData(A, i, diag_rank);
 
-               if ( constant_coefficient==0 || constant_coefficient==2 )
+               if ( constant_coefficient == 0 || constant_coefficient == 2 )
                   /* divide by the variable diagonal */
                {
                   start  = hypre_BoxIMin(compute_box);
@@ -622,7 +625,7 @@ hypre_PointRelax( void               *relax_vdata,
       p    = (p + 1) % num_pointsets;
       iter = iter + (p == 0);
 
-      if ( tol>0.0 && p==0 )
+      if ( tol > 0.0 && p == 0 )
          /* ... p==0 here means we've finished going through all the pointsets,
             i.e. this iteration is complete.
             tol>0.0 means to do a convergence test, using tol.
@@ -632,16 +635,16 @@ hypre_PointRelax( void               *relax_vdata,
          hypre_StructMatvecCompute( matvec_data,
                                     -1.0, A, x, 1.0, t );  /* t = - A x + t = - A x + b */
          rsumsq = hypre_StructInnerProd( t, t ); /* <t,t> */
-         if ( rsumsq/bsumsq<tol2 ) break;
+         if ( rsumsq / bsumsq < tol2 ) { break; }
       }
    }
 
-   if ( tol>0.0 )
+   if ( tol > 0.0 )
    {
       hypre_StructMatvecDestroy( matvec_data );
    }
 
-   if ( tol>0.0 ) (relax_data -> rresnorm) = sqrt( rsumsq/bsumsq );
+   if ( tol > 0.0 ) { (relax_data -> rresnorm) = sqrt( rsumsq / bsumsq ); }
    (relax_data -> num_iterations) = iter;
 
    /*-----------------------------------------------------------------------
@@ -669,7 +672,7 @@ hypre_PointRelax_core0( void               *relax_vdata,
                         hypre_Box          *x_data_box,
                         hypre_Box          *t_data_box,
                         hypre_IndexRef      stride
-   )
+                      )
 {
    hypre_PointRelaxData  *relax_data = (hypre_PointRelaxData *)relax_vdata;
 
@@ -692,7 +695,7 @@ hypre_PointRelax_core0( void               *relax_vdata,
    hypre_StructStencil   *stencil;
    hypre_Index           *stencil_shape;
    HYPRE_Int              stencil_size;
-                        
+
    HYPRE_Int              diag_rank        = (relax_data -> diag_rank);
    hypre_IndexRef         start;
    hypre_Index            loop_size;
@@ -732,50 +735,50 @@ hypre_PointRelax_core0( void               *relax_vdata,
             k++;
          }
       }
-                           
-      switch(depth)
+
+      switch (depth)
       {
          case 7:
             Ap6 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[6]);
             xoff6 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[6]]);
+                       x_data_box, stencil_shape[ssi[6]]);
 
          case 6:
             Ap5 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[5]);
             xoff5 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[5]]);
+                       x_data_box, stencil_shape[ssi[5]]);
 
          case 5:
             Ap4 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[4]);
             xoff4 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[4]]);
+                       x_data_box, stencil_shape[ssi[4]]);
 
          case 4:
             Ap3 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[3]);
             xoff3 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[3]]);
+                       x_data_box, stencil_shape[ssi[3]]);
 
          case 3:
             Ap2 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[2]);
             xoff2 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[2]]);
+                       x_data_box, stencil_shape[ssi[2]]);
 
          case 2:
             Ap1 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[1]);
             xoff1 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[1]]);
+                       x_data_box, stencil_shape[ssi[1]]);
 
          case 1:
             Ap0 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[0]);
             xoff0 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[0]]);
+                       x_data_box, stencil_shape[ssi[0]]);
 
          case 0:
 
             break;
       }
 
-      switch(depth)
+      switch (depth)
       {
          case 7:
 #define DEVICE_VAR is_device_ptr(tp,Ap0,Ap1,Ap2,Ap3,Ap4,Ap5,Ap6,xp)
@@ -920,7 +923,7 @@ hypre_PointRelax_core12( void               *relax_vdata,
                          hypre_Box          *x_data_box,
                          hypre_Box          *t_data_box,
                          hypre_IndexRef      stride
-   )
+                       )
 {
    hypre_PointRelaxData  *relax_data = (hypre_PointRelaxData *)relax_vdata;
 
@@ -940,7 +943,7 @@ hypre_PointRelax_core12( void               *relax_vdata,
    HYPRE_Real            AAp5;
    HYPRE_Real            AAp6;
    HYPRE_Real            AApd;
-                        
+
    HYPRE_Int              xoff0;
    HYPRE_Int              xoff1;
    HYPRE_Int              xoff2;
@@ -952,7 +955,7 @@ hypre_PointRelax_core12( void               *relax_vdata,
    hypre_StructStencil   *stencil;
    hypre_Index           *stencil_shape;
    HYPRE_Int              stencil_size;
-                        
+
    HYPRE_Int              diag_rank        = (relax_data -> diag_rank);
    hypre_IndexRef         start;
    hypre_Index            loop_size;
@@ -975,10 +978,10 @@ hypre_PointRelax_core12( void               *relax_vdata,
    Ai = hypre_CCBoxIndexRank( A_data_box, start );
 
 #define DEVICE_VAR is_device_ptr(tp,bp)
-   if ( constant_coefficient==1 ) /* constant diagonal */
+   if ( constant_coefficient == 1 ) /* constant diagonal */
    {
       Apd = hypre_StructMatrixBoxData(A, boxarray_id, diag_rank);
-      AApd = 1/Apd[Ai];
+      AApd = 1 / Apd[Ai];
 
       hypre_BoxLoop2Begin(hypre_StructMatrixNDim(A), loop_size,
                           b_data_box, start, stride, bi,
@@ -999,7 +1002,7 @@ hypre_PointRelax_core12( void               *relax_vdata,
       }
       hypre_BoxLoop2End(bi, ti);
    }
-#undef DEVICE_VAR 
+#undef DEVICE_VAR
 
    /* unroll up to depth MAX_DEPTH */
    for (si = 0; si < stencil_size; si += MAX_DEPTH)
@@ -1018,43 +1021,43 @@ hypre_PointRelax_core12( void               *relax_vdata,
             k++;
          }
       }
-                           
-      switch(depth)
+
+      switch (depth)
       {
          case 7:
             Ap6 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[6]);
             xoff6 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[6]]);
+                       x_data_box, stencil_shape[ssi[6]]);
 
          case 6:
             Ap5 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[5]);
             xoff5 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[5]]);
+                       x_data_box, stencil_shape[ssi[5]]);
 
          case 5:
             Ap4 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[4]);
             xoff4 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[4]]);
+                       x_data_box, stencil_shape[ssi[4]]);
 
          case 4:
             Ap3 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[3]);
             xoff3 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[3]]);
+                       x_data_box, stencil_shape[ssi[3]]);
 
          case 3:
             Ap2 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[2]);
             xoff2 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[2]]);
+                       x_data_box, stencil_shape[ssi[2]]);
 
          case 2:
             Ap1 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[1]);
             xoff1 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[1]]);
+                       x_data_box, stencil_shape[ssi[1]]);
 
          case 1:
             Ap0 = hypre_StructMatrixBoxData(A, boxarray_id, ssi[0]);
             xoff0 = hypre_BoxOffsetDistance(
-               x_data_box, stencil_shape[ssi[0]]);
+                       x_data_box, stencil_shape[ssi[0]]);
 
          case 0:
 
@@ -1062,16 +1065,16 @@ hypre_PointRelax_core12( void               *relax_vdata,
       }
 
 #define DEVICE_VAR is_device_ptr(tp,xp)
-      switch(depth)
+      switch (depth)
       {
          case 7:
-            AAp0 = Ap0[Ai]*AApd;
-            AAp1 = Ap1[Ai]*AApd;
-            AAp2 = Ap2[Ai]*AApd;
-            AAp3 = Ap3[Ai]*AApd;
-            AAp4 = Ap4[Ai]*AApd;
-            AAp5 = Ap5[Ai]*AApd;
-            AAp6 = Ap6[Ai]*AApd;
+            AAp0 = Ap0[Ai] * AApd;
+            AAp1 = Ap1[Ai] * AApd;
+            AAp2 = Ap2[Ai] * AApd;
+            AAp3 = Ap3[Ai] * AApd;
+            AAp4 = Ap4[Ai] * AApd;
+            AAp5 = Ap5[Ai] * AApd;
+            AAp6 = Ap6[Ai] * AApd;
             hypre_BoxLoop2Begin(hypre_StructMatrixNDim(A), loop_size,
                                 x_data_box, start, stride, xi,
                                 t_data_box, start, stride, ti);
@@ -1087,14 +1090,14 @@ hypre_PointRelax_core12( void               *relax_vdata,
             }
             hypre_BoxLoop2End(xi, ti);
             break;
-                      
+
          case 6:
-            AAp0 = Ap0[Ai]*AApd;
-            AAp1 = Ap1[Ai]*AApd;
-            AAp2 = Ap2[Ai]*AApd;
-            AAp3 = Ap3[Ai]*AApd;
-            AAp4 = Ap4[Ai]*AApd;
-            AAp5 = Ap5[Ai]*AApd;
+            AAp0 = Ap0[Ai] * AApd;
+            AAp1 = Ap1[Ai] * AApd;
+            AAp2 = Ap2[Ai] * AApd;
+            AAp3 = Ap3[Ai] * AApd;
+            AAp4 = Ap4[Ai] * AApd;
+            AAp5 = Ap5[Ai] * AApd;
             hypre_BoxLoop2Begin(hypre_StructMatrixNDim(A), loop_size,
                                 x_data_box, start, stride, xi,
                                 t_data_box, start, stride, ti);
@@ -1109,13 +1112,13 @@ hypre_PointRelax_core12( void               *relax_vdata,
             }
             hypre_BoxLoop2End(xi, ti);
             break;
-                      
+
          case 5:
-            AAp0 = Ap0[Ai]*AApd;
-            AAp1 = Ap1[Ai]*AApd;
-            AAp2 = Ap2[Ai]*AApd;
-            AAp3 = Ap3[Ai]*AApd;
-            AAp4 = Ap4[Ai]*AApd;
+            AAp0 = Ap0[Ai] * AApd;
+            AAp1 = Ap1[Ai] * AApd;
+            AAp2 = Ap2[Ai] * AApd;
+            AAp3 = Ap3[Ai] * AApd;
+            AAp4 = Ap4[Ai] * AApd;
             hypre_BoxLoop2Begin(hypre_StructMatrixNDim(A), loop_size,
                                 x_data_box, start, stride, xi,
                                 t_data_box, start, stride, ti);
@@ -1129,12 +1132,12 @@ hypre_PointRelax_core12( void               *relax_vdata,
             }
             hypre_BoxLoop2End(xi, ti);
             break;
-                      
+
          case 4:
-            AAp0 = Ap0[Ai]*AApd;
-            AAp1 = Ap1[Ai]*AApd;
-            AAp2 = Ap2[Ai]*AApd;
-            AAp3 = Ap3[Ai]*AApd;
+            AAp0 = Ap0[Ai] * AApd;
+            AAp1 = Ap1[Ai] * AApd;
+            AAp2 = Ap2[Ai] * AApd;
+            AAp3 = Ap3[Ai] * AApd;
             hypre_BoxLoop2Begin(hypre_StructMatrixNDim(A), loop_size,
                                 x_data_box, start, stride, xi,
                                 t_data_box, start, stride, ti);
@@ -1147,11 +1150,11 @@ hypre_PointRelax_core12( void               *relax_vdata,
             }
             hypre_BoxLoop2End(xi, ti);
             break;
-                      
+
          case 3:
-            AAp0 = Ap0[Ai]*AApd;
-            AAp1 = Ap1[Ai]*AApd;
-            AAp2 = Ap2[Ai]*AApd;
+            AAp0 = Ap0[Ai] * AApd;
+            AAp1 = Ap1[Ai] * AApd;
+            AAp2 = Ap2[Ai] * AApd;
             hypre_BoxLoop2Begin(hypre_StructMatrixNDim(A), loop_size,
                                 x_data_box, start, stride, xi,
                                 t_data_box, start, stride, ti);
@@ -1163,10 +1166,10 @@ hypre_PointRelax_core12( void               *relax_vdata,
             }
             hypre_BoxLoop2End(xi, ti);
             break;
-                      
+
          case 2:
-            AAp0 = Ap0[Ai]*AApd;
-            AAp1 = Ap1[Ai]*AApd;
+            AAp0 = Ap0[Ai] * AApd;
+            AAp1 = Ap1[Ai] * AApd;
             hypre_BoxLoop2Begin(hypre_StructMatrixNDim(A), loop_size,
                                 x_data_box, start, stride, xi,
                                 t_data_box, start, stride, ti);
@@ -1177,9 +1180,9 @@ hypre_PointRelax_core12( void               *relax_vdata,
             }
             hypre_BoxLoop2End(xi, ti);
             break;
-                      
+
          case 1:
-            AAp0 = Ap0[Ai]*AApd;
+            AAp0 = Ap0[Ai] * AApd;
             hypre_BoxLoop2Begin(hypre_StructMatrixNDim(A), loop_size,
                                 x_data_box, start, stride, xi,
                                 t_data_box, start, stride, ti);
@@ -1336,7 +1339,7 @@ hypre_PointRelaxSetNumPointsets( void *relax_vdata,
    (relax_data -> pointset_sizes)   = hypre_TAlloc(HYPRE_Int,  num_pointsets, HYPRE_MEMORY_HOST);
    (relax_data -> pointset_ranks)   = hypre_TAlloc(HYPRE_Int,  num_pointsets, HYPRE_MEMORY_HOST);
    (relax_data -> pointset_strides) = hypre_TAlloc(hypre_Index,  num_pointsets, HYPRE_MEMORY_HOST);
-   (relax_data -> pointset_indices) = hypre_TAlloc(hypre_Index *, 
+   (relax_data -> pointset_indices) = hypre_TAlloc(hypre_Index *,
                                                    num_pointsets, HYPRE_MEMORY_HOST);
    for (i = 0; i < num_pointsets; i++)
    {
@@ -1458,7 +1461,7 @@ HYPRE_Int hypre_relax_wtx( void *relax_vdata, HYPRE_Int pointset,
 
    for (compute_i = 0; compute_i < 2; compute_i++)
    {
-      switch(compute_i)
+      switch (compute_i)
       {
          case 0:
          {
@@ -1497,7 +1500,7 @@ HYPRE_Int hypre_relax_wtx( void *relax_vdata, HYPRE_Int pointset,
                                 x_data_box, start, stride, xi,
                                 t_data_box, start, stride, ti);
             {
-               xp[xi] = weight*tp[ti] + weightc*xp[xi];
+               xp[xi] = weight * tp[ti] + weightc * xp[xi];
             }
             hypre_BoxLoop2End(xi, ti);
 #undef DEVICE_VAR
@@ -1540,7 +1543,7 @@ HYPRE_Int hypre_relax_copy( void *relax_vdata, HYPRE_Int pointset,
 
    for (compute_i = 0; compute_i < 2; compute_i++)
    {
-      switch(compute_i)
+      switch (compute_i)
       {
          case 0:
          {

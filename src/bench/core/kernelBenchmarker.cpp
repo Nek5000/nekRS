@@ -35,7 +35,16 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
       double elapsed = run(10, kernelRunner, candidateKernel);
 
       double candidateKernelTiming = run(Ntests, kernelRunner, candidateKernel);
-      MPI_Allreduce(MPI_IN_PLACE, &candidateKernelTiming, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
+      double tMax;
+      double tMin;
+      MPI_Allreduce(&candidateKernelTiming, &tMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
+      MPI_Allreduce(&candidateKernelTiming, &tMin, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
+
+      const double tRatio = tMax/tMin;
+      if (platform->comm.mpiRank == 0 && tRatio > 1.1)
+        printf("WARNING: kernel timings differ by up to %.2 across ranks!\n", tRatio);
+
+      candidateKernelTiming = tMax;
 
       if (candidateKernelTiming < fastestTime) {
         fastestTime = candidateKernelTiming;
@@ -73,7 +82,16 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
       MPI_Allreduce(MPI_IN_PLACE, &Ntests, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
 
       double candidateKernelTiming = run(Ntests, kernelRunner, candidateKernel);
-      MPI_Allreduce(MPI_IN_PLACE, &candidateKernelTiming, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
+      double tMax;
+      double tMin;
+      MPI_Allreduce(&candidateKernelTiming, &tMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
+      MPI_Allreduce(&candidateKernelTiming, &tMin, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
+
+      const double tRatio = tMax/tMin;
+      if (platform->comm.mpiRank == 0 && tRatio > 1.1)
+        printf("WARNING: kernel timings differ by up to %.2 across ranks!\n", tRatio);
+
+      candidateKernelTiming = tMax;
 
       if (candidateKernelTiming < fastestTime) {
         fastestTime = candidateKernelTiming;

@@ -11,12 +11,13 @@ class comm_t;
 class device_t {
   public:
     device_t(setupAide& options, comm_t& comm);
-    occa::memory malloc(const size_t Nbytes, const void* src = nullptr, const occa::properties& properties = occa::properties());
-    occa::memory malloc(const size_t Nbytes, const occa::properties& properties);
-    occa::memory malloc(const hlong Nwords, const dlong wordSize, occa::memory src);
-    occa::memory malloc(const hlong Nwords, const dlong wordSize);
+    occa::memory
+    malloc(size_t Nbytes, const void *src = nullptr, const occa::properties &properties = occa::properties());
+    occa::memory malloc(size_t Nbytes, const occa::properties &properties);
+    occa::memory malloc(size_t Nwords, size_t wordSize, occa::memory src);
+    occa::memory malloc(size_t Nwords, size_t wordSize);
 
-    occa::memory mallocHost(const size_t Nbytes);
+    occa::memory mallocHost(size_t Nbytes);
 
     int id() const { return _device_id; }
     const occa::device& occaDevice() const { return _device; }

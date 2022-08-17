@@ -45,7 +45,6 @@
       for(int m = 0; m < p_Nfp; ++m; @inner(0)) {
         const int n = m + f * p_Nfp;
         const int sk = e * p_Nfp * p_Nfaces + n;
-        const dlong sid  = e * p_Nfaces * p_Nfp + n;
         const dlong idM = vmapM[sk];
         const dlong bcType = EToB[f + p_Nfaces * e];
 
@@ -79,7 +78,6 @@
             const int sk = e * p_Nfp * p_Nfaces + n;
             const dlong sid  = e * p_Nfaces * p_Nfp + n;
             const dlong idM = vmapM[sk];
-            const dlong bcType = EToB[f + p_Nfaces * e];
 
             bc.id = EToBM[f + p_Nfaces * e];
             bc.idM = idM;

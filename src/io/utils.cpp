@@ -5,8 +5,34 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <libgen.h>
+#include <string>
+#include <cstring>
+#include <iostream>
 
-bool isFileNewer(const char *file1, const char* file2)
+void fileSync(const char * file)
+{
+  std::string dir;
+  {
+    // POSIX allows dirname to overwrite input
+    const int len = std::char_traits<char>::length(file);
+    char *tmp = (char*) malloc((len+1) * sizeof(char));
+    strncpy(tmp, file, len);
+    tmp[len] = '\0'; 
+    dir.assign(dirname(tmp));
+    free(tmp);
+  }
+
+  int fd; 
+  fd = open(file, O_RDONLY);
+  fsync(fd);
+  close(fd);
+
+  fd = open(dir.c_str(), O_RDONLY);
+  fsync(fd);
+  close(fd);
+}
+
+bool isFileNewer(const char *file1, const char *file2)
 {
   struct stat s1, s2;
   if (lstat(file1, &s1) != 0) assert(1);
@@ -17,13 +43,14 @@ bool isFileNewer(const char *file1, const char* file2)
     return false;	  
 }
 
-void copyFile(const char *srcFile, const char* dstFile)
+void copyFile(const char *srcFile, const char *dstFile)
 {
-  std::ifstream src (srcFile, std::fstream::binary);
-  std::ofstream dst (dstFile, std::fstream::trunc|std::fstream::binary);
-  dst<<src.rdbuf();
+  std::ifstream src(srcFile, std::ios::binary);
+  std::ofstream dst(dstFile, std::ios::trunc | std::ios::binary);
+  dst << src.rdbuf();
   src.close();
   dst.close();
+  fileSync(dstFile);
 }
 
 bool fileExists(const char *file)
@@ -37,16 +64,4 @@ bool isFileEmpty(const char *file)
   const bool isEmpty = f.peek() == std::ifstream::traits_type::eof();
   f.close();
   return isEmpty;
-}
-
-void fileSync(const char *file)
-{
-  const std::string dir(dirname((char*) file));
-  int fd = open(file, O_RDONLY);
-  fsync(fd);
-  close(fd);
-
-  fd = open(dir.c_str(), O_RDONLY);
-  fsync(fd);
-  close(fd);
 }

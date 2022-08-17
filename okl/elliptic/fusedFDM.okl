@@ -1,16 +1,13 @@
 #if p_knl == 0
-// Baseline FDM kernel
 @kernel void fusedFDM_v0(const dlong Nelements,
-#if p_overlap
                       @restrict const dlong *elementList,
-#endif
                       @restrict pfloat *Su,
                       @restrict const pfloat *S_x,
                       @restrict const pfloat *S_y,
                       @restrict const pfloat *S_z,
                       @restrict const pfloat *inv_L,
 #if p_restrict
-                      @restrict const dfloat *wts,
+                      @restrict const pfloat *wts,
 #endif
                       @restrict pfloat *u)
 {
@@ -29,11 +26,7 @@
       @barrier("local");
       for (int j = 0; j < p_Nq_e; ++j; @inner) {
         for (int i = 0; i < p_Nq_e; ++i; @inner) {
-#if p_overlap
           element = elementList[my_elem];
-#else
-          element = my_elem;
-#endif
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
           const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
           work1[k][j][i] = u[idx];
@@ -237,18 +230,15 @@
 #endif
 
 #if p_knl == 1
-// Blocked version, tends to do well on low orders on NVIDIA
 @kernel void fusedFDM_v1(const dlong Nelements,
-#if p_overlap
                       @restrict const dlong *elementList,
-#endif
                       @restrict pfloat *Su,
                       @restrict const pfloat *S_x,
                       @restrict const pfloat *S_y,
                       @restrict const pfloat *S_z,
                       @restrict const pfloat *inv_L,
 #if p_restrict
-                      @restrict const dfloat *wts,
+                      @restrict const pfloat *wts,
 #endif
                       @restrict pfloat *u)
 {
@@ -294,11 +284,7 @@
 
           dlong my_elem = es + eo;
 
-#if p_overlap
           element = (my_elem < Nelements) ? elementList[my_elem] : -1;
-#else
-          element = (my_elem < Nelements) ? my_elem : -1;
-#endif
 
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
 
@@ -540,18 +526,15 @@
 #endif
 
 #if p_knl == 2
-// Blocked kernel, tends to be good for low orders on AMD
 @kernel void fusedFDM_v2(const dlong Nelements,
-#if p_overlap
                       @restrict const dlong *elementList,
-#endif
                       @restrict pfloat *Su,
                       @restrict const pfloat *S_x,
                       @restrict const pfloat *S_y,
                       @restrict const pfloat *S_z,
                       @restrict const pfloat *inv_L,
 #if p_restrict
-                      @restrict const dfloat *wts,
+                      @restrict const pfloat *wts,
 #endif
                       @restrict pfloat *u)
 {
@@ -606,11 +589,7 @@
 
           dlong my_elem = es + eo;
 
-#if p_overlap
           element = (my_elem < Nelements) ? elementList[my_elem] : -1;
-#else
-          element = (my_elem < Nelements) ? my_elem : -1;
-#endif
 
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
 
@@ -862,18 +841,15 @@
 #endif
 
 #if p_knl == 3
-// Tends to do well for high orders on AMD
 @kernel void fusedFDM_v3(const dlong Nelements,
-#if p_overlap
                       @restrict const dlong *elementList,
-#endif
                       @restrict pfloat *Su,
                       @restrict const pfloat *S_x,
                       @restrict const pfloat *S_y,
                       @restrict const pfloat *S_z,
                       @restrict const pfloat *inv_L,
 #if p_restrict
-                      @restrict const dfloat *wts,
+                      @restrict const pfloat *wts,
 #endif
                       @restrict pfloat *u)
 {
@@ -925,11 +901,7 @@
 
           dlong my_elem = es + eo;
 
-#if p_overlap
           element = (my_elem < Nelements) ? elementList[my_elem] : -1;
-#else
-          element = (my_elem < Nelements) ? my_elem : -1;
-#endif
 
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
 
@@ -1197,18 +1169,15 @@
 #endif
 
 #if p_knl == 4
-// Tends to do well for high orders on NVIDIA
 @kernel void fusedFDM_v4(const dlong Nelements,
-#if p_overlap
                       @restrict const dlong *elementList,
-#endif
                       @restrict pfloat *Su,
                       @restrict const pfloat *S_x,
                       @restrict const pfloat *S_y,
                       @restrict const pfloat *S_z,
                       @restrict const pfloat *inv_L,
 #if p_restrict
-                      @restrict const dfloat *wts,
+                      @restrict const pfloat *wts,
 #endif
                       @restrict pfloat *u)
 {
@@ -1227,11 +1196,7 @@
 
         dlong my_elem = e;
 
-#if p_overlap
         element = (my_elem < Nelements) ? elementList[my_elem] : -1;
-#else
-        element = (my_elem < Nelements) ? my_elem : -1;
-#endif
 
         const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
 

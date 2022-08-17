@@ -2,13 +2,14 @@
 
 extern "C" void FUNC(fusedFDM)(
   const dlong& Nelements,
+  const dlong *elementList,
   pfloat* __restrict__ Su,
   const pfloat* __restrict__ S_x,
   const pfloat* __restrict__ S_y,
   const pfloat* __restrict__ S_z,
   const pfloat* __restrict__ inv_L,
 #if p_restrict
-  const dfloat* __restrict__ wts,
+  const pfloat* __restrict__ wts,
 #endif
   pfloat* __restrict__ u
   )

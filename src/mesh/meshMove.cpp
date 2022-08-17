@@ -36,7 +36,7 @@ void mesh_t::update()
   double flopsGeometricFactors = 18 * Np * Nq + 91 * Np;
   flopsGeometricFactors *= static_cast<double>(Nelements);
 
-  cubatureGeometricFactorsKernel(Nelements, o_D, o_x, o_y, o_z, o_cubInterpT, o_cubw, o_cubvgeo);
+  cubatureGeometricFactorsKernel(Nelements, o_cubD, o_x, o_y, o_z, o_cubInterpT, o_cubw, o_cubvgeo);
 
   double flopsCubatureGeometricFactors = 0.0;
   flopsCubatureGeometricFactors += 18 * Np * Nq;                                             // deriv
@@ -44,29 +44,23 @@ void mesh_t::update()
   flopsCubatureGeometricFactors += 55 * cubNp; // geometric factor computation
   flopsCubatureGeometricFactors *= static_cast<double>(Nelements);
 
-  // do add check if negative
   const dfloat minJ =
       platform->linAlg->min(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
   const dfloat maxJ =
       platform->linAlg->max(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
 
   if (minJ < 0 || maxJ < 0) {
-    if (platform->options.compareArgs("GALERKIN COARSE OPERATOR", "FALSE") ||
-        (platform->options.compareArgs("GALERKIN COARSE OPERATOR", "TRUE") && N > 1)) {
-      if (platform->comm.mpiRank == 0)
-        printf("Jacobian < 0!");
-      ABORT(EXIT_FAILURE);
-    }
-    }  
+    if (platform->comm.mpiRank == 0) printf("Jacobian < 0 !!!");
+  }  
 
-    volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
+  volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
 
-    computeInvLMM();
-    surfaceGeometricFactorsKernel(Nelements, o_gllw, o_faceNodes, o_vgeo, o_sgeo);
+  computeInvLMM();
+  surfaceGeometricFactorsKernel(Nelements, o_gllw, o_faceNodes, o_vgeo, o_sgeo);
 
-    double flopsSurfaceGeometricFactors = 32 * Nq * Nq;
-    flopsSurfaceGeometricFactors *= static_cast<double>(Nelements);
+  double flopsSurfaceGeometricFactors = 32 * Nq * Nq;
+  flopsSurfaceGeometricFactors *= static_cast<double>(Nelements);
 
-    double flops = flopsGeometricFactors + flopsCubatureGeometricFactors + flopsSurfaceGeometricFactors;
-    platform->flopCounter->add("mesh_t::update", flops);
+  double flops = flopsGeometricFactors + flopsCubatureGeometricFactors + flopsSurfaceGeometricFactors;
+  platform->flopCounter->add("mesh_t::update", flops);
 }

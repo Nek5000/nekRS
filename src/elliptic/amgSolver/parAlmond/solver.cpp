@@ -43,24 +43,13 @@ solver_t::solver_t(occa::device device_, MPI_Comm comm_,
 
   options = options_;
 
-  if (options.compareArgs("PARALMOND CYCLE", "NONSYM")) {
-    ktype = GMRES;
-  } else {
-    ktype = PCG;
-  }
-
-  if(options.compareArgs("PARALMOND CYCLE", "EXACT"))
-    exact = true;
-  else
-    exact = false;
-
   if(options.compareArgs("PARALMOND CYCLE", "VCYCLE")) {
     ctype = VCYCLE;
     additive = false;
     if(options.compareArgs("PARALMOND CYCLE", "ADDITIVE")) {
       if (options.compareArgs("PARALMOND SMOOTHER", "CHEBYSHEV")) {
-        if(rank==0) printf("Additive vcycle is not supported for Chebyshev smoother!\n");
-        exit(-1);
+        if(rank==0) printf("Additive vcycle is not supported for Chebyshev acceleration!\n");
+        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
       }
       additive = true;
       overlapCrsGridSolve = false;
@@ -73,31 +62,24 @@ solver_t::solver_t(occa::device device_, MPI_Comm comm_,
           MPI_Query_thread(&provided);
           if(provided != MPI_THREAD_MULTIPLE) {
             overlapCrsGridSolve = false;
-            if(rank ==0) printf("overlapCrsGridSolve disabled (MPI_THREAD_MULTIPLE not supported)!\n");
+            if(rank ==0 && size > 1) printf("disable overlapping coarse solve as MPI_THREAD_MULTIPLE is not supported!\n");
           }
+          if(size == 1) overlapCrsGridSolve = true;
         }
-        if(rank ==0) printf("overlap coarse grid solve = %d\n", (int)overlapCrsGridSolve);
+        if(rank ==0 && overlapCrsGridSolve) printf("overlapping coarse grid solve enabled\n");
       }
     } else {
       if (options.compareArgs("PARALMOND SMOOTHER", "RAS") || options.compareArgs("PARALMOND SMOOTHER", "ASM")) {
         if(!options.compareArgs("PARALMOND SMOOTHER", "CHEBYSHEV")){
-          if(rank==0) printf("Multiplicative vcycle is not supported for RAS/ASM smoother!\n");
-          exit(-1);
+          if(rank==0) 
+            printf("Multiplicative vcycle is not supported for RAS/ASM smoother without Chebycehv acceleration!\n");
+          MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE); 
         }
       }
     }
   } else {
-    ctype = KCYCLE;
-  }
-
-  if (options.compareArgs("PARALMOND SMOOTHER", "CHEBYSHEV")) {
-    ChebyshevIterations = 2;
-    
-    stype = CHEBYSHEV;
-    options.getArgs("PARALMOND CHEBYSHEV DEGREE", ChebyshevIterations);
-
-  } else { //default to DAMPED_JACOBI
-    stype = DAMPED_JACOBI;
+    if(rank==0) printf("Unknown multigrid cycle type!\n");
+    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE); 
   }
 }
 
@@ -111,21 +93,6 @@ solver_t::~solver_t() {
 
 void solver_t::Report() {
 
-  if(rank==0) {
-    printf("------------------Multigrid Report----------------------------------------\n");
-    printf("--------------------------------------------------------------------------\n");
-    printf("level|    Type    |    dimension   |   nnz per row   |   Smoother        |\n");
-    printf("     |            |  (min,max,avg) |  (min,max,avg)  |                   |\n");
-    printf("--------------------------------------------------------------------------\n");
-  }
-
-  for(int lev=0; lev<numLevels; lev++) {
-    if(rank==0) {printf(" %3d ", lev);fflush(stdout);}
-    levels[lev]->Report();
-  }
-
-  if(rank==0)
-    printf("--------------------------------------------------------------------------\n");
 }
 
 }
