@@ -4,7 +4,6 @@
 : ${QUEUE:="batch"} # batch, batch-hm, debug
 
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
-: ${OCCA_CACHE_DIR:="$PWD/.cache/occa"}
 
 if [ $# -ne 7 ]; then
   echo "usage: [PROJ_ID] [CPUONLY=1] $0 <sess> <case1> <case2> <number of compute nodes> <procsA> <procsB> <hh:mm>"
@@ -32,7 +31,6 @@ module load gcc
 
 : ${CPUONLY:=0}
 export NEKRS_HOME
-export OCCA_CACHE_DIR
 export NEKRS_HYPRE_NUM_THREADS=1
 export NEKRS_GPU_MPI=1
 if [ $CPUONLY -eq 1 ]; then
@@ -118,8 +116,6 @@ done
 echo $caseA"/"$caseA":"$procsA";" >  ${sess}
 echo $caseB"/"$caseB":"$procsB";" >> ${sess}
 
-mkdir -p $OCCA_CACHE_DIR 2>/dev/null
-
 while true; do
   read -p "Do you want precompile (recommended)? [N]" yn
   case $yn in
@@ -139,7 +135,7 @@ while true; do
   esac
 done
 
-export IO_STEPS="jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a $OCCA_CACHE_DIR/* $NVME_HOME; export OCCA_CACHE_DIR=$NVME_HOME; "
+#export cpNVME="jsrun -X 1 -n$nodes -r1 -a1 -c1 -g0 -b packed:1 -d packed cp -a $OCCA_CACHE_DIR/* $NVME_HOME; export OCCA_CACHE_DIR=$NVME_HOME; "
 export POST_STEPS="mv ${caseA}/${caseA}.log nekRS_${caseA}.\$LSB_JOBID; mv ${caseB}/${caseB}.log nekRS_${caseB}.\$LSB_JOBID;"
 
 if [ $CPUONLY -eq 1 ]; then
@@ -148,6 +144,6 @@ else
   jsrun="jsrun --smpiargs='-gpu' -X 1 -n$nn -r$gpu_per_node -a1 -c2 -g1 -b rs -d packed $bin --setup ${sess} --backend $backend --device-id 0"
 fi
 
-cmd="bsub -q $QUEUE -nnodes $nodes -alloc_flags NVME -W $time -P $PROJ_ID -J nekRS_${sess} '${IO_STEPS} ${jsrun}; ${POST_STEPS}'"
+cmd="bsub -q $QUEUE -nnodes $nodes -alloc_flags NVME -W $time -P $PROJ_ID -J nekRS_${sess} '${jsrun}; ${POST_STEPS}'"
 echo $cmd
 $cmd
