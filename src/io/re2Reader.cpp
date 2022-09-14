@@ -20,8 +20,19 @@ void re2::nelg(const std::string& meshFile, int& nelgt, int& nelgv, MPI_Comm com
  
     char ver[6];
     int ndim;
+    int nBCre2;
+
     // has to match header in re2
-    sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
+    sscanf(buf, "%5s", ver);
+    if (strcmp(ver,"#v004")==0) {
+        sscanf(buf, "%5s %d %d %d %d", ver, &nelgt, &ndim, &nelgv, &nBCre2);
+      if(rank == 0) printf("\nhdr:%5s %d %d %d %d\n",ver, nelgt, ndim, nelgv, nBCre2);
+    }
+    else {
+        sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
+      if(rank == 0) printf("\nhdr:%5s %9d %1d %9d\n",ver, nelgt, ndim, nelgv);
+    }
+
 
     if(ndim != 3) {
       if(rank == 0) printf("\nERROR: Unsupported ndim=%d read from re2 header!\n", ndim);
