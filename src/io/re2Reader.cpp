@@ -26,11 +26,9 @@ void re2::nelg(const std::string& meshFile, int& nelgt, int& nelgv, MPI_Comm com
     sscanf(buf, "%5s", ver);
     if (strcmp(ver,"#v004")==0) {
         sscanf(buf, "%5s %d %d %d %d", ver, &nelgt, &ndim, &nelgv, &nBCre2);
-      if(rank == 0) printf("\nhdr:%5s %d %d %d %d\n",ver, nelgt, ndim, nelgv, nBCre2);
     }
     else {
         sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv);
-      if(rank == 0) printf("\nhdr:%5s %9d %1d %9d\n",ver, nelgt, ndim, nelgv);
     }
 
 
