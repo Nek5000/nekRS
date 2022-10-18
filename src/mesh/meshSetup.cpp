@@ -344,10 +344,7 @@ mesh_t *createMeshV(
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
 
-  //meshPhysicalNodesHex3D(mesh);
-  mesh->x = meshT->x;
-  mesh->y = meshT->y;
-  mesh->z = meshT->z;
+  meshPhysicalNodesHex3D(mesh);
 
   meshHaloPhysicalNodes(mesh);
 
