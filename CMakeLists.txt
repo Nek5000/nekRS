@@ -165,6 +165,13 @@ check_fcompiler_id("${CMAKE_Fortran_COMPILER_ID}")
 include(config/nek5000.cmake)
 
 ###############################################################################
+# Build with SENSEI support                                                   #
+###############################################################################
+
+include(config/sensei.cmake)
+set(ENABLE_SENSEI OFF CACHE BOOL "Enable SENSEI support")
+
+###############################################################################
 # Build NekRS
 ###############################################################################
 
@@ -250,6 +257,10 @@ target_link_libraries(nekrs-lib PUBLIC libocca OpenMP::OpenMP_CXX PRIVATE gs ${G
 target_compile_definitions(nekrs-lib PUBLIC
     -DDOGS="${CMAKE_INSTALL_PREFIX}/gatherScatter"
     -DHYPRE)
+
+if(ENABLE_SENSEI)
+  target_link_libraries(nekrs-lib PRIVATE neksensei)
+endif()
 
 target_include_directories(nekrs-lib 
   PUBLIC 

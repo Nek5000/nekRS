@@ -79,6 +79,10 @@
 
 #include "nekrs.hpp"
 
+#ifdef ENABLE_SENSEI
+#include "sensei/Bridge.h"
+#endif
+
 #define DEBUG
 
 namespace {
@@ -500,6 +504,10 @@ int main(int argc, char** argv)
   MPI_Pcontrol(0);
 
   nekrs::finalize();
+
+#ifdef ENABLE_SENSEI
+  sensei_bridge_finalize();
+#endif
 
   MPI_Barrier(commGlobal);
   if (rank == 0)

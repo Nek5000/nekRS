@@ -14,6 +14,10 @@
 #include "cfl.hpp"
 #include "amgx.h"
 
+#ifdef ENABLE_SENSEI
+#include "sensei/Bridge.h"
+#endif
+
 // extern variable from nrssys.hpp
 platform_t* platform;
 
@@ -27,6 +31,14 @@ static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 
 static void setOccaVars();
+
+#ifdef ENABLE_SENSEI
+dfloat* vel_x;
+dfloat* vel_y;
+dfloat* vel_z;
+dfloat* temp;
+dfloat* pr;
+#endif
 
 bool useNodeLocalCache(){
   int buildNodeLocal = 0;
@@ -193,12 +205,142 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   }
   fflush(stdout);
 
+#ifdef ENABLE_SENSEI
+  std::string casename;
+  options.getArgs("CASENAME", casename);
+  
+  dfloat* vx = nrs->U + 0 * nrs->fieldOffset;
+  dfloat* vy = nrs->U + 1 * nrs->fieldOffset;
+  dfloat* vz = nrs->U + 2 * nrs->fieldOffset;
+
+
+  mesh_t *mesh = nrs->meshV;
+
+  double mi = 0.0f;
+  double ma = 100.0f;
+  double x_min = -0.5;
+  double x_max = 0.5f;
+  double z_min = 0.0f;
+  double z_max = 20.0f;
+  
+  dfloat global_min_mesh_x = 0, global_min_mesh_y = 0, global_min_mesh_z = 0, global_min_vx = 0, global_min_vy = 0, global_min_vz = 0, global_min_p = 0, global_min_t = 0;
+  dfloat global_max_mesh_x = 0, global_max_mesh_y = 0, global_max_mesh_z = 0, global_max_vx = 0, global_max_vy = 0, global_max_vz = 0, global_max_p = 0, global_max_t = 0;
+  
+  dfloat local_min_mesh_x = *std::min_element(mesh->x, mesh->x + nrs->fieldOffset);
+  dfloat local_min_mesh_y = *std::min_element(mesh->y, mesh->y + nrs->fieldOffset);
+  dfloat local_min_mesh_z = *std::min_element(mesh->z, mesh->z + nrs->fieldOffset);
+
+  dfloat local_min_vx = *std::min_element(vx, vx + nrs->fieldOffset);
+  dfloat local_min_vy = *std::min_element(vy, vy + nrs->fieldOffset);
+  dfloat local_min_vz = *std::min_element(vz, vz + nrs->fieldOffset);
+
+  dfloat local_min_p = *std::min_element(nrs->P, nrs->P + nrs->fieldOffset);
+  dfloat local_min_t = *std::min_element(nrs->cds->S, nrs->cds->S + nrs->fieldOffset);
+
+  dfloat local_max_mesh_x = *std::max_element(mesh->x, mesh->x + nrs->fieldOffset);
+  dfloat local_max_mesh_y = *std::max_element(mesh->y, mesh->y + nrs->fieldOffset);
+  dfloat local_max_mesh_z = *std::max_element(mesh->z, mesh->z + nrs->fieldOffset);
+
+  dfloat local_max_vx = *std::max_element(vx, vx + nrs->fieldOffset);
+  dfloat local_max_vy = *std::max_element(vy, vy + nrs->fieldOffset);
+  dfloat local_max_vz = *std::max_element(vz, vz + nrs->fieldOffset);
+
+  dfloat local_max_p = *std::max_element(nrs->P, nrs->P + nrs->fieldOffset);
+  dfloat local_max_t = *std::max_element(nrs->cds->S, nrs->cds->S + nrs->fieldOffset);
+
+  MPI_Allreduce(&local_min_vx, &global_min_vx, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+  MPI_Allreduce(&local_min_vy, &global_min_vy, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+  MPI_Allreduce(&local_min_vz, &global_min_vz, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+ 
+  MPI_Allreduce(&local_min_mesh_x, &global_min_mesh_x, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+  MPI_Allreduce(&local_min_mesh_y, &global_min_mesh_y, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+  MPI_Allreduce(&local_min_mesh_z, &global_min_mesh_z, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+
+  MPI_Allreduce(&local_min_p, &global_min_p, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+  MPI_Allreduce(&local_min_t, &global_min_t, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+
+  MPI_Allreduce(&local_max_vx, &global_max_vx, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+  MPI_Allreduce(&local_max_vy, &global_max_vy, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+  MPI_Allreduce(&local_max_vz, &global_max_vz, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+ 
+  MPI_Allreduce(&local_max_mesh_x, &global_max_mesh_x, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+  MPI_Allreduce(&local_max_mesh_y, &global_max_mesh_y, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+  MPI_Allreduce(&local_max_mesh_z, &global_max_mesh_z, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+
+  MPI_Allreduce(&local_max_p, &global_min_p, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+  MPI_Allreduce(&local_max_t, &global_min_t, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+
+	dlong Nlocal = mesh->Nelements * mesh->Np;
+	vel_x = (dfloat*)malloc(Nlocal * sizeof(dfloat));
+	vel_y = (dfloat*)malloc(Nlocal * sizeof(dfloat));
+	vel_z = (dfloat*)malloc(Nlocal * sizeof(dfloat));
+
+	temp = (dfloat*)malloc(nrs->Nscalar * Nlocal * sizeof(dfloat));
+	pr = (dfloat*)malloc(Nlocal * sizeof(dfloat));
+
+  sensei_bridge_initialize(&comm, (char*)casename.c_str(), &mesh->Nelements,
+      &mesh->Nq, &mesh->Nq, &mesh->Nq, mesh->x, mesh->y, mesh->z,
+      &mesh->Nq, &mesh->Nq, &mesh->Nq, mesh->x, mesh->y, mesh->z,
+      vel_x, vel_y, vel_z,
+      nullptr, nullptr, nullptr,
+      pr, temp, nullptr, &size,
+      &global_min_mesh_x, &global_max_mesh_x, &global_min_mesh_y, &global_max_mesh_y, &global_min_mesh_z, &global_max_mesh_z,
+      &global_min_vx, &global_max_vx, &global_min_vy, &global_max_vy, &global_min_vz, &global_max_vz,
+      &mi, &ma, &mi, &ma, &mi, &ma, //double* vort_x_min, double* vort_x_max, double* vort_y_min, double* vort_y_max, double* vort_z_min, double* vort_z_max,
+      &global_min_p, &global_max_p, &global_min_t, &global_max_t, &mi, &ma); //double* pr_min, double* pr_max, double* temp_min, double* temp_max, double* jac_min, double* jac_max);
+
+#endif
+
   platform->flopCounter->clear();
 }
 
 void runStep(double time, double dt, int tstep)
 {
   timeStepper::step(nrs, time, dt, tstep);
+
+#ifdef ENABLE_SENSEI
+	sensei::DataAdaptor *daOut = nullptr;
+
+  // Copy to CPU
+  // Code from nekInterface/nekInterfaceAdapter.cpp
+	mesh_t* mesh = nrs->meshV;
+	
+	dlong Nlocal = mesh->Nelements * mesh->Np;
+	occa::memory o_u, o_p, o_s;
+	void* o_uu = &nrs->o_U;
+	void* o_pp = &nrs->o_P;
+	void* o_ss = &nrs->cds->o_S;
+	if(o_uu) o_u = *((occa::memory *) o_uu);
+	if(o_pp) o_p = *((occa::memory *) o_pp);
+	if(o_ss && nrs->Nscalar) o_s = *((occa::memory *) o_ss);
+	
+	if(o_u.ptr()) {
+    occa::memory o_vx = o_u + 0 * nrs->fieldOffset * sizeof(dfloat);
+    occa::memory o_vy = o_u + 1 * nrs->fieldOffset * sizeof(dfloat);
+    occa::memory o_vz = o_u + 2 * nrs->fieldOffset * sizeof(dfloat);
+    o_vx.copyTo(vel_x, Nlocal * sizeof(dfloat));
+		o_vy.copyTo(vel_y, Nlocal * sizeof(dfloat));
+		o_vz.copyTo(vel_z, Nlocal * sizeof(dfloat));
+  }
+  if(nrs->o_P.ptr()) {
+    o_p.copyTo(pr, Nlocal * sizeof(dfloat));
+  }
+  if(nrs->cds->o_S.ptr()) {
+    const dlong nekFieldOffset = nekData.lelt * mesh->Np;
+		int NSfields = nrs->Nscalar;
+    for(int is = 0; is < NSfields; is++) {
+      mesh_t* mesh = nrs->meshV;
+      if(nrs->cds)
+        (is) ? mesh = nrs->meshV: mesh = nrs->cds->mesh[0];
+      const dlong Nlocal = mesh->Nelements * mesh->Np;
+      dfloat* Ti = temp + is * nekFieldOffset;
+      occa::memory o_Si = o_s + is * nrs->fieldOffset * sizeof(dfloat);
+      o_Si.copyTo(Ti, Nlocal * sizeof(dfloat));
+    }
+  } 
+	sensei_bridge_update(&tstep, &time, &daOut);
+#endif
+
 }
 
 void copyFromNek(double time, int tstep)
@@ -357,6 +499,13 @@ void* nrsPtr(void)
 
 void finalize(void)
 {
+#ifdef ENABLE_SENSEI
+	free(vel_x);
+	free(vel_y);
+	free(vel_z);
+	free(temp);
+	free(pr);
+#endif
   if(options.compareArgs("BUILD ONLY", "FALSE")) {
     AMGXfree();
     nek::end();
