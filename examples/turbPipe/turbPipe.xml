@@ -1,0 +1,13 @@
+<sensei>
+
+  <!-- configure ADIOS2 write -->
+  <analysis type="PosthocIO" mode="paraview" output_dir="./post" enabled="0" >
+
+    <mesh name="mesh">
+      <point_arrays> pressure, velocity_x, velocity_y, velocity_z </point_arrays>
+    </mesh>
+
+  </analysis>
+
+  <analysis type="catalyst" pipeline="pythonscript" filename="analysis.py" output_dir="./datasets" enabled="1" />
+</sensei>
