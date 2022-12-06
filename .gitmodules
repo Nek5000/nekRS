@@ -1,3 +1,3 @@
 [submodule "src/sensei"]
 	path = src/sensei
-	url = git@git.cels.anl.gov:vmateevitsi/nek_sensei.git
+  url = git@github.com:mvictoras/nek_sensei.git
