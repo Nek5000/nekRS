@@ -10,31 +10,29 @@
 #include <tuple>
 #include <map>
 
-namespace{
-struct CallParameters{
+namespace {
+struct CallParameters {
   int Nelements;
   int Nq_e;
   size_t wordSize;
   bool useRAS;
   std::string suffix;
 };
-}
+} // namespace
 
-namespace std
-{
-  template<> struct less<CallParameters>
+namespace std {
+template <> struct less<CallParameters> {
+  bool operator()(const CallParameters &lhs, const CallParameters &rhs) const
   {
-    bool operator() (const CallParameters& lhs, const CallParameters& rhs) const
-    {
-      auto tier = [](const CallParameters &v) {
-        return std::tie(v.Nelements, v.Nq_e, v.wordSize, v.useRAS, v.suffix);
-      };
-      return tier(lhs) < tier(rhs);
-    }
-  };
-}
+    auto tier = [](const CallParameters &v) {
+      return std::tie(v.Nelements, v.Nq_e, v.wordSize, v.useRAS, v.suffix);
+    };
+    return tier(lhs) < tier(rhs);
+  }
+};
+} // namespace std
 
-namespace{
+namespace {
 std::map<CallParameters, occa::kernel> cachedResults;
 }
 
@@ -48,13 +46,13 @@ occa::kernel benchmarkFDM(int Nelements,
                           bool requiresBenchmark,
                           std::string suffix)
 {
-  if(platform->options.compareArgs("BUILD ONLY", "TRUE")){
+  if (platform->options.compareArgs("BUILD ONLY", "TRUE")) {
     Nelements = 1;
   }
 
   CallParameters params{Nelements, Nq_e, wordSize, useRAS, suffix};
 
-  if(cachedResults.count(params) > 0){
+  if (cachedResults.count(params) > 0) {
     return cachedResults.at(params);
   }
 
@@ -103,7 +101,7 @@ occa::kernel benchmarkFDM(int Nelements,
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = installDir + "/kernels/elliptic/" + kernelName + ext;
 
       return std::make_pair(platform->device.buildKernel(fileName, newProps, suffix, true), -1.0);
     }
@@ -137,7 +135,7 @@ occa::kernel benchmarkFDM(int Nelements,
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = installDir + "/kernels/elliptic/" + kernelName + ext;
 
       referenceKernel = platform->device.buildKernel(fileName, newProps, suffix, true);
     }
@@ -156,10 +154,11 @@ occa::kernel benchmarkFDM(int Nelements,
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = installDir + "/kernels/elliptic/" + kernelName + ext;
 
       auto kernel = platform->device.buildKernel(fileName, newProps, suffix, true);
-      if(platform->options.compareArgs("BUILD ONLY", "TRUE")) return kernel;
+      if (platform->options.compareArgs("BUILD ONLY", "TRUE"))
+        return kernel;
 
       auto dumpResult = [&]() {
         std::vector<FPType> result;
@@ -194,10 +193,16 @@ occa::kernel benchmarkFDM(int Nelements,
         err = std::max(err, std::abs(result[i] - referenceResult[i]));
       }
 
-      const auto tol = 100. * std::numeric_limits<dfloat>::epsilon();
+      const auto tol = 100. * std::numeric_limits<FPType>::epsilon();
       if (platform->comm.mpiRank == 0 && verbosity > 1 && err > tol) {
         std::cout << "Error in kernel compared to reference implementation " << kernelVariant << ": " << err
                   << std::endl;
+      }
+
+      // error is too large -- pass an un-initialized kernel to the benchmarker
+      // to skip this kernel variant
+      if (err > tol) {
+        kernel = occa::kernel();
       }
 
       return kernel;
@@ -244,7 +249,8 @@ occa::kernel benchmarkFDM(int Nelements,
     auto kernelAndTime =
         benchmarkKernel(fdmKernelBuilder, kernelRunner, printCallBack, kernelVariants, NtestsOrTargetTime);
 
-    if (kernelAndTime.first.properties().has("defines/p_knl") && platform->options.compareArgs("BUILD ONLY","FALSE")) {
+    if (kernelAndTime.first.properties().has("defines/p_knl") &&
+        platform->options.compareArgs("BUILD ONLY", "FALSE")) {
       int bestKernelVariant = static_cast<int>(kernelAndTime.first.properties()["defines/p_knl"]);
 
       // print only the fastest kernel

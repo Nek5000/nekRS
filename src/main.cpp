@@ -76,6 +76,7 @@
 #include <sstream>
 #include <fcntl.h>
 #include <chrono>
+#include <filesystem>
 
 #include "nekrs.hpp"
 
@@ -188,6 +189,21 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
         err = 1;
       }
     }
+
+    if(cmdOpt->setupFile.empty()){
+      int cnt = 0;
+      for (auto &p : std::filesystem::directory_iterator{"."})
+      {
+        if (p.path().extension() == ".par") {
+          cmdOpt->setupFile.assign(p.path().stem().string());
+          cnt++; 
+        }
+      }
+      if(cnt > 1) {
+        std::cout << "Multiple .par files found!\n"; 
+        err++; 
+      }
+    }
   }
 
   char buf[FILENAME_MAX];
@@ -222,7 +238,7 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
       if (helpCat == "par") {
         std::string installDir;
         installDir.assign(getenv("NEKRS_HOME"));
-        std::ifstream f(installDir + "/include/parHelp.txt");
+        std::ifstream f(installDir + "/doc/parHelp.txt");
         if (f.is_open()) std::cout << f.rdbuf();
         f.close();
       } else {
@@ -449,6 +465,7 @@ int main(int argc, char** argv)
   nekrs::resetTimer("udfExecuteStep");
 
   int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
+  if (nekrs::endTime() > nekrs::startTime()) lastStep = 0;
   double elapsedStepSum = 0;
 
   double tSolveStepMin = std::numeric_limits<double>::max();
@@ -487,12 +504,17 @@ int main(int argc, char** argv)
     nekrs::runStep(time, dt, tStep);
     time += dt;
 
-    if (outputStep) nekrs::outfld(time, tStep);
-
     if(nekrs::updateFileCheckFreq()) {
       if(tStep % nekrs::updateFileCheckFreq()) 
         nekrs::processUpdFile();
     }
+
+    if (nekrs::printInfoFreq()) {
+      if (tStep % nekrs::printInfoFreq() == 0)
+        nekrs::printInfo(time, tStep, false, true);
+    }
+
+    if (outputStep) nekrs::outfld(time, tStep);
 
     MPI_Barrier(comm);
     const double elapsedStep = MPI_Wtime() - timeStartStep;
@@ -507,9 +529,9 @@ int main(int argc, char** argv)
     nekrs::updateTimer("elapsedStepSum", elapsedStepSum);
     nekrs::updateTimer("elapsed", elapsedTime);
 
-    if(nekrs::printInfoFreq()) {
+    if (nekrs::printInfoFreq()) {
       if (tStep % nekrs::printInfoFreq() == 0)
-        nekrs::printInfo(time, tStep);
+        nekrs::printInfo(time, tStep, true, false);
     }
 
     if(nekrs::runTimeStatFreq()) {

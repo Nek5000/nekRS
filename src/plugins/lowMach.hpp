@@ -1,3 +1,6 @@
+#if !defined(nekrs_lowMach_hpp_)
+#define nekrs_lowMach_hpp_
+
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
@@ -8,3 +11,5 @@ void buildKernel(occa::properties kernelInfo);
 void qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div);
 void dpdt(occa::memory o_FU);
 }
+
+#endif

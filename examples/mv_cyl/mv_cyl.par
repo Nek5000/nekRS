@@ -11,9 +11,6 @@ writeInterval = 50
 boundaryTypeMap = fixedValue, zeroValue, sym
 solver = elasticity
 
-[PROBLEMTYPE]
-stressFormulation = true
-
 [PRESSURE]
 residualTol = 1e-8
 initialGuess = previous

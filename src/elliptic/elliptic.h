@@ -34,8 +34,6 @@
 
 #include "nrssys.hpp"
 #include "mesh3D.h"
-#include "amgSolver/parAlmond/parAlmond.hpp"
-#include "ellipticPrecon.h"
 #include "platform.hpp"
 
 #include "timer.hpp"
@@ -92,11 +90,11 @@ struct elliptic_t
   int Niter;
   dfloat res00Norm, res0Norm, resNorm;
 
-  dlong Ntotal; // offset
+  dlong fieldOffset; 
 
   mesh_t* mesh;
 
-  precon_t* precon;
+  void* precon = nullptr;
 
   ogs_t* ogs;
   oogs_t* oogs;
@@ -144,14 +142,13 @@ struct elliptic_t
   occa::kernel AxPfloatKernel;
 
   occa::kernel fusedCopyDfloatToPfloatKernel;
-  occa::kernel axmyzManyPfloatKernel; 
- 
-  // special kernels for single Chebyshev iteration
-  occa::kernel updateSmoothedSolutionVecKernel;
-  occa::kernel updateChebyshevSolutionVecKernel;
+  occa::kernel axmyzManyPfloatKernel;
 
-  // special kernel for two Chebyshev iterations
-  occa::kernel updateIntermediateSolutionVecKernel;
+  // update for 1st Kind Chebyshev iteration
+  occa::kernel updateChebyshevKernel;
+
+  // fourth kind Chebyshev iteration
+  occa::kernel updateFourthKindChebyshevKernel;
 
   occa::kernel updatePGMRESSolutionKernel;
   occa::kernel fusedResidualAndNormKernel;
@@ -178,9 +175,11 @@ struct elliptic_t
   GmresData *gmresData;
 
   std::function<void(dlong Nelements, occa::memory &o_elementList, occa::memory &o_x)> applyZeroNormalMask;
+  std::function<void(occa::memory & o_r, occa::memory & o_z)> userPreconditioner;
+
+  ~elliptic_t();
 };
 
-#include "ellipticMultiGrid.h"
 #include "ellipticSolutionProjection.h"
 
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
@@ -188,9 +187,6 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* elliptic);
 void ellipticPreconditioner(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_z);
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs);
 void ellipticBuildPreconditionerKernels(elliptic_t* elliptic);
-
-void ellipticSEMFEMSetup(elliptic_t*);
-void ellipticSEMFEMSolve(elliptic_t*, occa::memory&, occa::memory&);
 
 void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x);
 
@@ -231,19 +227,11 @@ void ellipticAx(elliptic_t* elliptic,
                 occa::memory &o_Aq,
                 const char* precision);
 
-void ellipticBuildContinuous(elliptic_t* elliptic, nonZero_t** A,
-                             dlong* nnz, hlong* globalStarts);
-
-void ellipticBuildContinuousGalerkinHex3D(elliptic_t* elliptic,
-                                          elliptic_t* ellipticFine,
-                                          nonZero_t** A,
-                                          dlong* nnz,
-                                          hlong* globalStarts);
 
 void ellipticMultiGridUpdateLambda(elliptic_t* elliptic);
 void ellipticUpdateJacobi(elliptic_t* elliptic, occa::memory& o_invDiagA);
 
-void ellipticMultiGridSetup(elliptic_t* elliptic, precon_t* precon);
+void ellipticMultiGridSetup(elliptic_t* elliptic, void* precon);
 elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf);
 
 dfloat ellipticUpdatePCG(elliptic_t* elliptic, occa::memory &o_p, occa::memory &o_Ap, dfloat alpha,

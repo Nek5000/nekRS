@@ -414,9 +414,8 @@ oogs_t *oogs::setup(ogs_t *ogs,
 
     oogs_mode_list.push_back(OOGS_DEFAULT);
     oogs_mode_list.push_back(OOGS_HOSTMPI);
-    if (OGS_MPI_SUPPORT && ogs->device.mode() != "Serial") {
-      oogs_mode_list.push_back(OOGS_DEVICEMPI);
-      ;
+    if (ogs->device.mode() != "Serial") {
+      if(OGS_MPI_SUPPORT) oogs_mode_list.push_back(OOGS_DEVICEMPI);
     }
     oogs_modeExchange_list.push_back(OOGS_EX_NBC);
   }
@@ -430,7 +429,9 @@ oogs_t *oogs::setup(ogs_t *ogs,
     oogs_modeExchange fastestModeExchange = OOGS_EX_PW;
     int fastestPrepostRecv = 0;
 
-    occa::memory o_q = device.malloc(std::max(stride, ogs->N) * nVec * Nbytes);
+    void * q = calloc(std::max(stride, ogs->N) * nVec * Nbytes, 1);
+    occa::memory o_q = device.malloc(std::max(stride, ogs->N) * nVec * Nbytes, q);
+    free(q);
 
     for (auto const &mode : oogs_mode_list) {
       gs->mode = mode;
@@ -543,26 +544,22 @@ oogs_t *oogs::setup(ogs_t *ogs,
     MPI_Allreduce(&elapsedMinMPI, &tmax, 1, MPI_DOUBLE, MPI_MAX, gs->comm);
     MPI_Allreduce(&elapsedMinMPI, &tavg, 1, MPI_DOUBLE, MPI_SUM, gs->comm);
 
-    const std::string gsModeExchangeStr = (gs->modeExchange == OOGS_EX_NBC) ? "nbc" : "pw";
-    const std::string gsEarlyPrepostRecvStr = (gs->earlyPrepostRecv) ? "+early" : "";
+    std::string configStr = (gs->modeExchange == OOGS_EX_NBC) ? "nbc" : "pw";
+    configStr += (gs->earlyPrepostRecv) ? "+early" : "";
     if (gs->rank == 0) {
       if (ogs->NhaloGather > 0) {
-        std::string gsModeStr;
         switch (gs->mode) {
         case OOGS_DEFAULT:
-          gsModeStr = "+host";
+          if (ogs->device.mode() != "Serial") configStr += "+host";
           break;
         case OOGS_HOSTMPI:
-          gsModeStr = "+hybrid";
+          if (ogs->device.mode() != "Serial")  configStr += "+hybrid"; 
           break;
         case OOGS_DEVICEMPI:
-          gsModeStr = "+device";
+           configStr += "+device";
           break;
         }
-        printf("\nused config: %s%s%s ",
-               gsModeExchangeStr.c_str(),
-               gsEarlyPrepostRecvStr.c_str(),
-               gsModeStr.c_str());
+        printf("\nused config: %s ", configStr.c_str());
         if (tavg/size > MPI_Wtick())
           printf("(MPI min/max/avg: %.2es %.2es %.2es / avg bi-bw: %.1fGB/s/rank)\n",
                  tmin, tmax, tavg/size,
@@ -745,18 +742,20 @@ void oogs::finish(occa::memory &o_v,
                            op,
                            o_v);
 
-  if (ogs->NhaloGather && gs->mode != OOGS_LOCAL) {
-    if (!OGS_OVERLAP)
-      ogs->device.finish();
+
+  if (ogs->NhaloGather && !OGS_OVERLAP)
+    ogs->device.finish();
+
+  if (ogs->NhaloGather && gs->mode == OOGS_HOSTMPI) {
     ogs->device.setStream(ogs::dataStream);
 
     struct gs_data *hgs = (gs_data *)ogs->haloGshSym;
     const void *execdata = hgs->r.data;
     const struct pw_data *pwd = (pw_data *)execdata;
 
-    if (gs->mode == OOGS_HOSTMPI)
-      gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total * unit_size, 0, "async: true");
+    gs->o_bufSend.copyTo(gs->bufSend, pwd->comm[send].total * unit_size, 0, "async: true");
 
+    // syncs device on exit (MPI is not stream-aware)
     ogsHostTic(gs->comm, 1);
     if (gs->modeExchange == OOGS_EX_NBC)
       neighborAllToAll(unit_size, gs);
@@ -764,10 +763,25 @@ void oogs::finish(occa::memory &o_v,
       pairwiseExchange(unit_size, gs);
     ogsHostToc();
 
-    if (gs->mode == OOGS_HOSTMPI)
-      gs->o_bufRecv.copyFrom(gs->bufRecv, pwd->comm[recv].total * unit_size, 0, "async: true");
+    gs->o_bufRecv.copyFrom(gs->bufRecv, pwd->comm[recv].total * unit_size, 0, "async: true");
 
-    unpackBuf(gs,
+    ogs->device.finish();
+    ogs->device.setStream(ogs::defaultStream);
+  }
+
+
+  if (ogs->NhaloGather && gs->mode == OOGS_DEVICEMPI) {
+    // syncs device on exit (MPI is not stream-aware)
+    ogsHostTic(gs->comm, 1);
+    if (gs->modeExchange == OOGS_EX_NBC)
+      neighborAllToAll(unit_size, gs);
+    else
+      pairwiseExchange(unit_size, gs);
+    ogsHostToc();
+  }
+
+  if (ogs->NhaloGather)
+     unpackBuf(gs,
               ogs->NhaloGather,
               k,
               stride,
@@ -780,9 +794,6 @@ void oogs::finish(occa::memory &o_v,
               gs->o_bufRecv,
               o_v);
 
-    ogs->device.finish();
-    ogs->device.setStream(ogs::defaultStream);
-  }
 }
 
 void oogs::startFinish(void *v, const int k, const dlong stride, const char *type, const char *op, oogs_t *h)

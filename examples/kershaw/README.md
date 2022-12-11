@@ -10,9 +10,9 @@ solve time: 0.292781s
     smoother 0.160926s
     coarse grid 0.0339261s
 iterations: 28
-throughput: 2.62421e+08 (DOF x iter)/s/rank
-throughput: 9.37219e+06 DOF/s/rank
-flops/rank: 5.66996e+11 
+throughput: 2.62e+08 (DOF x iter)/s/rank
+throughput: 9.37e+06 DOF/s/rank
+flops/rank: 5.669e+11 
 
 BP5
 throughput: 2.39e+09 (DOF x iter)/s/rank
@@ -28,8 +28,8 @@ solve time: 0.196772s
     coarse grid 0.0321823s
 iterations: 28
 throughput: 3.90e+08 (DOF x iter)/s/rank
-throughput: 1.39451e+07 DOF/s/rank
-flops/rank: 8.43646e+11 
+throughput: 1.39e+07 DOF/s/rank
+flops/rank: 8.436e+11 
 
 BP5
 throughput: 3.87e+09 (DOF x iter)/s/rank
@@ -44,9 +44,9 @@ solve time: 0.279318s
     smoother 0.156591s
     coarse grid 0.0339095s
 iterations: 28
-throughput: 2.7507e+08 (DOF x iter)/s/rank
-throughput: 9.82393e+06 DOF/s/rank
-flops/rank: 5.87756e+11
+throughput: 2.75e+08 (DOF x iter)/s/rank
+throughput: 9.82e+06 DOF/s/rank
+flops/rank: 5.877e+11
 
 BP5
 throughput: 3.07e+09 (DOF x iter)/s/rank
@@ -62,8 +62,8 @@ solve time: 1.43221s
     coarse grid 0.396102s
 iterations: 59
 throughput: 1.13e+08 (DOF x iter)/s/rank
-throughput: 1.92343e+06 DOF/s/rank 
-flops/rank: 2.43445e+11
+throughput: 1.92e+06 DOF/s/rank 
+flops/rank: 2.434e+11
 tbd
 
 BP5
@@ -80,12 +80,30 @@ solve time: 0.965085s
     coarse grid 0.321199s
 iterations: 59
 throughput: 1.68e+08 (DOF x iter)/s/rank
-throughput: 2.84328e+06 DOF/s/rank
-flops/rank: 3.6387e+11 
+throughput: 2.84e+06 DOF/s/rank
+flops/rank: 3.638e+11 
 
 BP5
 throughput: 3.37e+09 (DOF x iter)/s/rank
-flops/rank: 6.3896+11 
+flops/rank: 6.389+11 
+```
+
+### Juwles Booster 128 nodes
+```
+BPS5
+solve time: 0.765929s
+  preconditioner 0.649919s
+    smoother 0.35097s
+    coarse grid 0.234218s
+iterations: 59
+throughput: 2.11e+08 (DOF x iter)/s/rank
+throughput: 3.58e+06 DOF/s/rank
+flops/rank: 4.534e+11 
+
+BP5
+throughput: 3.40e+09 (DOF x iter)/s/rank
+flops/rank: 6.472e+11 
+
 ```
 
 ### Crusher 64 nodes 
@@ -97,10 +115,10 @@ solve time: 1.17859s
     coarse grid 0.398124s
 iterations: 59
 throughput: 1.37e+08 (DOF x iter)/s/rank
-throughput: 2.32820e+06 DOF/s/rank
-flops/rank: 2.9795e+11
+throughput: 2.32e+06 DOF/s/rank
+flops/rank: 2.979e+11
 
 BP5
 throughput: 2.27e+09 (DOF x iter)/s/rank
-flops/rank: 4.3017e+11
+flops/rank: 4.301e+11
 ```

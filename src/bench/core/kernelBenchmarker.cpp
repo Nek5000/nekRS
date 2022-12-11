@@ -29,6 +29,8 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
   for (auto &&kernelVariant : kernelVariants) {
 
     auto candidateKernel = kernelBuilder(kernelVariant);
+    if (!candidateKernel.isInitialized())
+      continue;
 
     if(platform->options.compareArgs("BUILD ONLY", "FALSE")){
       // warmup
@@ -42,7 +44,7 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
 
       const double tRatio = tMax/tMin;
       if (platform->comm.mpiRank == 0 && tRatio > 1.1)
-        printf("WARNING: kernel timings differ by up to %.2 across ranks!\n", tRatio);
+        printf("WARNING: kernel timings differ by up to %.2f across ranks!\n", tRatio);
 
       candidateKernelTiming = tMax;
 
@@ -72,6 +74,8 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
   for (auto &&kernelVariant : kernelVariants) {
 
     auto candidateKernel = kernelBuilder(kernelVariant);
+    if (!candidateKernel.isInitialized())
+      continue;
     if(platform->options.compareArgs("BUILD ONLY", "FALSE")){
 
       // warmup
@@ -89,7 +93,7 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
 
       const double tRatio = tMax/tMin;
       if (platform->comm.mpiRank == 0 && tRatio > 1.1)
-        printf("WARNING: kernel timings differ by up to %.2 across ranks!\n", tRatio);
+        printf("WARNING: kernel timings differ by up to %.2f across ranks!\n", tRatio);
 
       candidateKernelTiming = tMax;
 

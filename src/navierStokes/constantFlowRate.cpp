@@ -434,18 +434,20 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
         platform->o_mempool.slice6);
     for (int sweep = 0; sweep < 2; sweep++) {
       nrs->pressureDirichletBCKernel(mesh->Nelements,
-          time,
-          nrs->fieldOffset,
-          mesh->o_sgeo,
-          mesh->o_x,
-          mesh->o_y,
-          mesh->o_z,
-          mesh->o_vmapM,
-          mesh->o_EToB,
-          nrs->o_EToB,
-          nrs->o_usrwrk,
-          nrs->o_U,
-          platform->o_mempool.slice6);
+                                     time,
+                                     nrs->fieldOffset,
+                                     mesh->o_sgeo,
+                                     mesh->o_x,
+                                     mesh->o_y,
+                                     mesh->o_z,
+                                     mesh->o_vmapM,
+                                     mesh->o_EToB,
+                                     nrs->o_EToB,
+                                     nrs->o_rho,
+                                     nrs->o_mue,
+                                     nrs->o_usrwrk,
+                                     nrs->o_U,
+                                     platform->o_mempool.slice6);
 
       // take care of Neumann-Dirichlet shared edges across elements
       if (sweep == 0)
@@ -548,33 +550,37 @@ void compute(nrs_t *nrs, double lengthScale, dfloat time) {
     for (int sweep = 0; sweep < 2; sweep++) {
 
       nrs->velocityDirichletBCKernel(mesh->Nelements,
-          nrs->fieldOffset,
-          time,
-          mesh->o_sgeo,
-          nrs->o_zeroNormalMaskVelocity,
-          mesh->o_x,
-          mesh->o_y,
-          mesh->o_z,
-          mesh->o_vmapM,
-          mesh->o_EToB,
-          nrs->o_EToB,
-          nrs->o_usrwrk,
-          nrs->o_Uc,
-          platform->o_mempool.slice3);
+                                     nrs->fieldOffset,
+                                     time,
+                                     mesh->o_sgeo,
+                                     nrs->o_zeroNormalMaskVelocity,
+                                     mesh->o_x,
+                                     mesh->o_y,
+                                     mesh->o_z,
+                                     mesh->o_vmapM,
+                                     mesh->o_EToB,
+                                     nrs->o_EToB,
+                                     nrs->o_rho,
+                                     nrs->o_mue,
+                                     nrs->o_usrwrk,
+                                     nrs->o_Uc,
+                                     platform->o_mempool.slice3);
 
       nrs->velocityNeumannBCKernel(mesh->Nelements,
-          nrs->fieldOffset,
-          mesh->o_sgeo,
-          mesh->o_vmapM,
-          mesh->o_EToB,
-          nrs->o_EToB,
-          time,
-          mesh->o_x,
-          mesh->o_y,
-          mesh->o_z,
-          nrs->o_usrwrk,
-          nrs->o_U,
-          platform->o_mempool.slice3);
+                                   nrs->fieldOffset,
+                                   mesh->o_sgeo,
+                                   mesh->o_vmapM,
+                                   mesh->o_EToB,
+                                   nrs->o_EToB,
+                                   time,
+                                   mesh->o_x,
+                                   mesh->o_y,
+                                   mesh->o_z,
+                                   nrs->o_rho,
+                                   nrs->o_mue,
+                                   nrs->o_usrwrk,
+                                   nrs->o_U,
+                                   platform->o_mempool.slice3);
 
       // take care of Neumann-Dirichlet shared edges across elements
       if (sweep == 0)
@@ -667,7 +673,7 @@ void printInfo(mesh_t* mesh, bool verboseInfo)
     err = std::abs(userSpecifiedFlowRate - finalFlowRate);
   }
   if(verboseInfo) 
-    printf("  flowRate : %s0 %.2e  %s %.2e  err %.2e  scale %.2e\n",
+    printf("flowRate : %s0 %.2e  %s %.2e  err %.2e  scale %.2e\n",
       flowRateType.c_str(), currentRate, flowRateType.c_str(), finalFlowRate, err, scale);
 }
 

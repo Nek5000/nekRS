@@ -198,17 +198,25 @@ namespace occa {
 #endif
       }
 
-      if (compilerLanguageFlag == sys::language::CPP && env::var("OCCA_CXXFLAGS").size()) {
+      if (kernelProps.get<std::string>("compiler_flags").size()) {
+        compilerFlags = (std::string)kernelProps["compiler_flags"];
+      }
+      else if (compilerLanguageFlag == sys::language::CPP && env::var("OCCA_CXXFLAGS").size()) {
         compilerFlags = env::var("OCCA_CXXFLAGS");
-      } else if (compilerLanguageFlag == sys::language::C && env::var("OCCA_CFLAGS").size()) {
+      }
+      else if (compilerLanguageFlag == sys::language::C && env::var("OCCA_CFLAGS").size()) {
         compilerFlags = env::var("OCCA_CFLAGS");
-      } else if (kernelProps.get<std::string>("compiler_flags").size()) {
+      }
+      else if (kernelProps.get<std::string>("compiler_flags").size()) {
         compilerFlags = (std::string) kernelProps["compiler_flags"];
-      } else if (compilerLanguageFlag == sys::language::CPP && env::var("CXXFLAGS").size()) {
+      }
+      else if (compilerLanguageFlag == sys::language::CPP && env::var("CXXFLAGS").size()) {
         compilerFlags = env::var("CXXFLAGS");
-      } else if (compilerLanguageFlag == sys::language::C && env::var("CFLAGS").size()) {
+      }
+      else if (compilerLanguageFlag == sys::language::C && env::var("CFLAGS").size()) {
         compilerFlags = env::var("CFLAGS");
-      } else {
+      }
+      else {
 #if (OCCA_OS & (OCCA_LINUX_OS | OCCA_MACOS_OS))
         compilerFlags = "-O3";
 #else

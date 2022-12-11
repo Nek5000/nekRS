@@ -1,0 +1,15 @@
+
+@kernel void setEllipticCoeff(const dlong N,
+                              const dfloat lambda,
+                              const dlong fieldOffset,
+                              const dlong offset,
+                              @ restrict const dfloat *val0,
+                              @ restrict const dfloat *val1,
+                              @ restrict dfloat *coeff)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+    if (n < N) {
+      coeff[0 * offset + n] = val0[fieldOffset + n];
+      coeff[1 * offset + n] = lambda * val1[fieldOffset + n];
+    }
+}

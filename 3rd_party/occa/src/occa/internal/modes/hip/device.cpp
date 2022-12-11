@@ -51,11 +51,13 @@ namespace occa {
         compiler = "hipcc";
       }
 
-      if (env::var("OCCA_HIP_COMPILER_FLAGS").size()) {
-        compilerFlags = env::var("OCCA_HIP_COMPILER_FLAGS");
-      } else if (kernelProps.get<std::string>("compiler_flags").size()) {
+      if (kernelProps.get<std::string>("compiler_flags").size()) {
         compilerFlags = (std::string) kernelProps["compiler_flags"];
-      } else {
+      }
+      else if (env::var("OCCA_HIP_COMPILER_FLAGS").size()) {
+        compilerFlags = env::var("OCCA_HIP_COMPILER_FLAGS");
+      }
+      else {
         compilerFlags = "-O3";
       }
 

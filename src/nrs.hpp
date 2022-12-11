@@ -27,17 +27,17 @@ struct nrs_t {
 
   int dim, elementType;
 
-  mesh_t *_mesh;
-  mesh_t *meshV;
+  mesh_t *_mesh = nullptr;
+  mesh_t *meshV = nullptr;
 
-  elliptic_t *uSolver;
-  elliptic_t *vSolver;
-  elliptic_t *wSolver;
-  elliptic_t *uvwSolver;
-  elliptic_t *pSolver;
-  elliptic_t *meshSolver;
+  elliptic_t *uSolver = nullptr;
+  elliptic_t *vSolver = nullptr;
+  elliptic_t *wSolver = nullptr;
+  elliptic_t *uvwSolver = nullptr;
+  elliptic_t *pSolver = nullptr;
+  elliptic_t *meshSolver = nullptr;
 
-  cds_t *cds;
+  cds_t *cds = nullptr;
 
   oogs_t *gsh;
 
@@ -58,6 +58,7 @@ struct nrs_t {
   dfloat CFL, unitTimeCFL;
 
   dfloat p0th[3] = {0.0, 0.0, 0.0};
+  dfloat p0the = 0.0;
   dfloat dp0thdt;
 
   int nEXT;
@@ -168,6 +169,7 @@ struct nrs_t {
 
   occa::kernel curlKernel;
   occa::kernel maskCopyKernel;
+  occa::kernel maskCopy2Kernel;
   occa::kernel maskKernel;
 
   occa::memory o_zeroNormalMaskVelocity;
@@ -183,7 +185,8 @@ struct nrs_t {
 static std::string to_string_f(double a)
 {
   std::stringstream s;
-  s << std::scientific << a;
+  constexpr auto maxPrecision{std::numeric_limits<double>::digits10 + 1};
+  s << std::setprecision(maxPrecision) << std::scientific << a;
   return s.str();
 }
 

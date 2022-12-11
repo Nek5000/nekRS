@@ -212,7 +212,7 @@ SolutionProjection::SolutionProjection(elliptic_t &elliptic,
     : maxNumVecsProjection(_maxNumVecsProjection), numTimeSteps(_numTimeSteps), type(_type),
       alpha((dfloat *)calloc(maxNumVecsProjection, sizeof(dfloat))), numVecsProjection(0),
       prevNumVecsProjection(0), Nlocal(elliptic.mesh->Np * elliptic.mesh->Nelements),
-      fieldOffset(elliptic.Ntotal), Nfields(elliptic.Nfields), timestep(0),
+      fieldOffset(elliptic.fieldOffset), Nfields(elliptic.Nfields), timestep(0),
       verbose(elliptic.options.compareArgs("VERBOSE", "TRUE")), o_invDegree(elliptic.mesh->ogs->o_invDegree),
       o_rtmp(elliptic.o_z), o_Ap(elliptic.o_Ap)
 {

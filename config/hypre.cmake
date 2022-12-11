@@ -30,7 +30,7 @@ set_target_properties(nekrs-hypre PROPERTIES CXX_VISIBILITY_PRESET hidden)
 if(ENABLE_HYPRE_GPU)
 
 if(ENABLE_CUDA)
-  find_package(CUDAToolkit 10.0 REQUIRED)
+  find_package(CUDAToolkit 11.0 REQUIRED)
   set(HYPRE_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/HYPRE_BUILD_DEVICE-prefix)
   set(HYPRE_CUDA_SM 70)
 

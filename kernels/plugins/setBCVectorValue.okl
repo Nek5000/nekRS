@@ -1,0 +1,25 @@
+
+
+@kernel void setBCVectorValue(const dlong Nelements,
+                              const dfloat c,
+                              const dlong bcid,
+                              const dlong offset,
+                              @ restrict dfloat *U,
+                              @ restrict const dlong *vmapM,
+                              @ restrict const int *EToB)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0))
+    for (int f = 0; f < p_Nfaces; f++) {
+      @barrier();
+      for (int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const int n = m + f * p_Nfp;
+        const int idM = vmapM[e * p_Nfp * p_Nfaces + n];
+        const int id = EToB[f + p_Nfaces * e];
+        if (id == bcid) {
+          U[idM + 0 * offset] = c;
+          U[idM + 1 * offset] = c;
+          U[idM + 2 * offset] = c;
+        }
+      }
+    }
+}

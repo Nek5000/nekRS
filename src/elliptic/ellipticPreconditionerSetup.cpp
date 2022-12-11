@@ -25,26 +25,29 @@
  */
 
 #include "elliptic.h"
+#include "ellipticPrecon.h"
 #include "platform.hpp"
 
 void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
 {
+  elliptic->precon = new precon_t();
+  precon_t* precon = (precon_t*) elliptic->precon;
+  const long long int pre = platform->device.occaDevice().memoryAllocated();
   
   mesh_t* mesh = elliptic->mesh;
-  precon_t* precon = elliptic->precon;
   setupAide& options = elliptic->options;
 
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
 
   if(options.compareArgs("PRECONDITIONER", "MULTIGRID")) {
-    if(platform->comm.mpiRank == 0) printf("building MG preconditioner ... \n"); fflush(stdout);
     ellipticMultiGridSetup(elliptic,precon);
   } else if(options.compareArgs("PRECONDITIONER", "SEMFEM")) {
-    ellipticSEMFEMSetup(elliptic);
+    if(platform->comm.mpiRank == 0) printf("building SEMFEM preconditioner ...\n"); fflush(stdout);
+    precon->SEMFEMSolver = new SEMFEMSolver_t(elliptic);
   } else if(options.compareArgs("PRECONDITIONER", "JACOBI")) {
     if(platform->comm.mpiRank == 0) printf("building Jacobi preconditioner ... "); fflush(stdout);
-    precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->Ntotal ,  sizeof(pfloat));
+    precon->o_invDiagA = platform->device.malloc(elliptic->Nfields * elliptic->fieldOffset, sizeof(pfloat));
     ellipticUpdateJacobi(elliptic, precon->o_invDiagA);
   } else if(options.compareArgs("PRECONDITIONER", "NONE")) {
     // nothing 
@@ -53,6 +56,16 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
     ABORT(EXIT_FAILURE);
   }
 
+  precon->preconBytes = platform->device.occaDevice().memoryAllocated() - pre;
+
   MPI_Barrier(platform->comm.mpiComm);
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
+}
+
+precon_t::~precon_t()
+{
+  if(SEMFEMSolver) delete SEMFEMSolver;
+  if(MGSolver) delete MGSolver;
+  o_diagA.free();
+  o_invDiagA.free();
 }

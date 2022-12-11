@@ -1,0 +1,25 @@
+// given SAd_k
+// compute:
+// x_k+1 = x_k + \beta d_k
+// r_k+1 = r_k - Ad_k
+@kernel void updateFourthKindChebyshev(const dlong N,
+                                       const pfloat beta,
+                                       @ restrict const pfloat *Ad,
+                                       @ restrict const pfloat *d,
+                                       @ restrict pfloat *r,
+                                       @ restrict pfloat *x)
+{
+
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const pfloat x_n = x[n];
+    const pfloat d_n = d[n];
+    const pfloat r_n = r[n];
+    const pfloat Ad_n = Ad[n];
+
+    const pfloat x_np1 = x_n + beta * d_n;
+    const pfloat r_np1 = r_n - Ad_n;
+
+    x[n] = x_np1;
+    r[n] = r_np1;
+  }
+}

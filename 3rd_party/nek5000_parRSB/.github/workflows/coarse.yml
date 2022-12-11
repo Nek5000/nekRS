@@ -1,0 +1,56 @@
+name: Coarse tests
+on:
+  push:
+    branch: [main, next]
+  pull_request:
+    branch: [main, next]
+env:
+  GITHUB.TOKEN: ${{ secrets.token }}
+  PARRSB_CI: parRSB-github-ci
+  EXAMPLESDIR: build/examples
+jobs:
+  coarse:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test: [box_2x2x2, box_10x1x1, box_3x5x7, pyramid, solid, ethier, vortex, expansion]
+        np: [2, 3, 4]
+      fail-fast: false
+    name: "Coarse: ${{ matrix.test }}, NP = ${{ matrix.np }}"
+    env:
+      GSVER: 1.0.7
+      CC: mpicc
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install apt dependencies
+        shell: bash
+        run: |
+          sudo apt -y update
+          sudo apt install -y mpich libmpich-dev
+          sudo apt install -y libblas-dev liblapack-dev
+      - name: Build parRSB and clone tests
+        shell: bash
+        run: |
+          # Build gslib
+          git clone https://github.com/Nek5000/gslib.git
+          make -C gslib -j4
+
+          # Build parRSB
+          export GSLIBPATH=`pwd`/gslib/build/
+          make -j4 examples
+
+          # Clone tests
+          git clone https://github.com/thilinarmtb/${PARRSB_CI}.git
+
+          # For MPI
+          echo "localhost:4" > hostfile
+      - name: schur
+        if: always()
+        shell: bash
+        run: |
+          cp hostfile ${EXAMPLESDIR}/coarse ${PARRSB_CI}/${{ matrix.test }}
+          cd ${PARRSB_CI}/${{ matrix.test }}
+
+          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
+          mpirun -np ${{ matrix.np }} --hostfile hostfile ./coarse \
+            --mesh ${{ matrix.test }} --tol=${tol} --crs_tol=1e-12

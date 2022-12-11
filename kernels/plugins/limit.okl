@@ -1,0 +1,17 @@
+
+
+@kernel void limit(const dlong N, @ restrict dfloat *K, @ restrict dfloat *TAU)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+    if (n < N) {
+      dfloat k = K[n];
+      dfloat tau = TAU[n];
+      if (k < 0)
+        k = 0.01 * abs(k);
+      if (tau < 0)
+        tau = 0.01 * abs(tau);
+
+      K[n] = k;
+      TAU[n] = tau;
+    }
+}

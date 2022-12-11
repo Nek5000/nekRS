@@ -12,7 +12,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
   mesh_t* mesh = nrs->meshV;
   
   nrs->curlKernel(mesh->Nelements,
-		          1,
+	          1,
                   mesh->o_vgeo,
                   mesh->o_D,
                   nrs->fieldOffset,
@@ -51,7 +51,7 @@ occa::memory pressureSolve(nrs_t* nrs, dfloat time, int stage)
     platform->o_mempool.slice0);
   flopCount += static_cast<double>(mesh->Nelements) * (6 * mesh->Np * mesh->Nq + 18 * mesh->Np);
 
-  if (platform->options.compareArgs("STRESSFORMULATION", "TRUE")) {
+  if (platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE")) {
     nrs->pressureStressKernel(
          mesh->Nelements,
          mesh->o_vgeo,
@@ -135,7 +135,7 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
   mesh_t* mesh = nrs->meshV;
   
   dfloat scale = -1./3;
-  if(platform->options.compareArgs("STRESSFORMULATION", "TRUE")) scale = 2./3;
+  if(platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE")) scale = 2./3;
 
   platform->linAlg->axmyz(
        mesh->Nlocal,
@@ -181,6 +181,8 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
                                mesh->o_x,
                                mesh->o_y,
                                mesh->o_z,
+                               nrs->o_rho,
+                               nrs->o_mue,
                                nrs->o_usrwrk,
                                nrs->o_U,
                                platform->o_mempool.slice0);
@@ -199,6 +201,18 @@ occa::memory velocitySolve(nrs_t* nrs, dfloat time, int stage)
 
   platform->timer.toc("velocity rhs");
   platform->o_mempool.slice0.copyFrom(nrs->o_U, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+
+  occa::memory o_U0;
+  if(nrs->uvwSolver) 
+    o_U0 = nrs->uvwSolver->options.compareArgs("INITIAL GUESS", "EXTRAPOLATION") && stage == 1 ? 
+           nrs->o_Ue : nrs->o_U;
+  else
+    o_U0 = (nrs->uSolver->options.compareArgs("INITIAL GUESS", "EXTRAPOLATION")   || 
+            nrs->vSolver->options.compareArgs("INITIAL GUESS", "EXTRAPOLATION")   || 
+            nrs->wSolver->options.compareArgs("INITIAL GUESS", "EXTRAPOLATION"))  && stage == 1 ? 
+            nrs->o_Ue : nrs->o_U;
+
+  platform->o_mempool.slice0.copyFrom(o_U0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 
   if(nrs->uvwSolver) {
     ellipticSolve(nrs->uvwSolver, platform->o_mempool.slice3, platform->o_mempool.slice0);

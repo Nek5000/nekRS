@@ -77,7 +77,7 @@ void ellipticAx(elliptic_t* elliptic,
       (precisionStr != dFloatStr) ? elliptic->AxPfloatKernel : elliptic->AxKernel;
 
   AxKernel(NelementsList,
-           elliptic->Ntotal,  /* field offset */
+           elliptic->fieldOffset,
            elliptic->loffset, /* lambda field offset */
            o_elementsList,
            o_geom_factors,
@@ -137,7 +137,7 @@ void ellipticOperator(elliptic_t* elliptic,
                         precision);
     }
  
-    oogs::start(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
+    oogs::start(o_Aq, elliptic->Nfields, elliptic->fieldOffset, ogsDataTypeString, ogsAdd, oogsAx);
     ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList, o_q, o_Aq, precision);
  
     if (masked) {
@@ -150,7 +150,7 @@ void ellipticOperator(elliptic_t* elliptic,
                         precision);
     }
 
-    oogs::finish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
+    oogs::finish(o_Aq, elliptic->Nfields, elliptic->fieldOffset, ogsDataTypeString, ogsAdd, oogsAx);
   } else {
     ellipticAx(elliptic, mesh->Nelements, mesh->o_elementList, o_q, o_Aq, precision);
     if (masked) {
@@ -162,6 +162,6 @@ void ellipticOperator(elliptic_t* elliptic,
                         o_Aq,
                         precision);
     }
-    oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->Ntotal, ogsDataTypeString, ogsAdd, oogsAx);
+    oogs::startFinish(o_Aq, elliptic->Nfields, elliptic->fieldOffset, ogsDataTypeString, ogsAdd, oogsAx);
   }
 }

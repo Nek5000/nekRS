@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.11)
 
 set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 
-set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 
@@ -22,11 +22,11 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/io
   ${NEKRS_INSTALL_DIR}/include/core
   ${NEKRS_INSTALL_DIR}/include/utils
-  ${NEKRS_INSTALL_DIR}/include/timeStepper
+  ${NEKRS_INSTALL_DIR}/include/setup
   ${NEKRS_INSTALL_DIR}/include/udf
+  ${NEKRS_INSTALL_DIR}/include/setup
   ${NEKRS_INSTALL_DIR}/include/navierStokes
   ${NEKRS_INSTALL_DIR}/include/elliptic
-  ${NEKRS_INSTALL_DIR}/include/elliptic/parAlmond
   ${NEKRS_INSTALL_DIR}/include/nekInterface
   ${NEKRS_INSTALL_DIR}/include/cds
   ${NEKRS_INSTALL_DIR}/include/linAlg

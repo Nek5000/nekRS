@@ -9,8 +9,8 @@ void velocityDirichletConditions(bcData *bc)
 
 void velocityNeumannConditions(bcData *bc)
 {
-  const dfloat invMagUWall = 1/bc->wrk[9*bc->fieldOffset + 1];
-  const dfloat uTau = bc->wrk[9*bc->fieldOffset + 3];
+  const dfloat invMagUWall = 1/bc->usrwrk[1];
+  const dfloat uTau = bc->usrwrk[3];
 
   const dfloat ut1x = bc->u*bc->t1x +  bc->v*bc->t1y +  bc->w*bc->t1z;
   const dfloat ut2x = bc->u*bc->t2x +  bc->v*bc->t2y +  bc->w*bc->t2z;
@@ -24,10 +24,10 @@ void scalarNeumannConditions(bcData *bc)
 {
   bc->flux = p_cond * p_TsGrad; 
   if(bc->id == 2) {
-    const dfloat thts = bc->wrk[9*bc->fieldOffset + 0];
-    const dfloat dtempWall = fabs(bc->wrk[9*bc->fieldOffset + 2] - (thts - 1));
-    const dfloat uTau = bc->wrk[9*bc->fieldOffset + 3];
-    const dfloat thetaTau = bc->wrk[9*bc->fieldOffset + 4];
+    const dfloat thts = bc->usrwrk[0];
+    const dfloat dtempWall = fabs(bc->usrwrk[2] - (thts - 1));
+    const dfloat uTau = bc->usrwrk[3];
+    const dfloat thetaTau = bc->usrwrk[4];
     const dfloat dtemp = bc->s - (thts - 1);
 
     bc->flux = 0;

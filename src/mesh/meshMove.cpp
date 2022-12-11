@@ -51,7 +51,7 @@ void mesh_t::update()
 
   if (minJ < 0 || maxJ < 0) {
     if (platform->comm.mpiRank == 0) printf("Jacobian < 0 !!!");
-  }  
+  }
 
   volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
 

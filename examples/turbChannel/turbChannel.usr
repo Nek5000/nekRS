@@ -1,0 +1,68 @@
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat   ! This routine to modify element vertices
+      include 'SIZE'      ! _before_ mesh is generated, which 
+      include 'TOTAL'     ! guarantees GLL mapping of mesh.
+
+      real           XLEN, ZLEN, BETAM
+      COMMON /CASED/ XLEN, ZLEN, BETAM
+
+      n = nelv * 2**ldim
+      xmin = glmin(xc,n)
+      xmax = glmax(xc,n)
+      ymin = glmin(yc,n)
+      ymax = glmax(yc,n)
+      zmin = glmin(zc,n)
+      zmax = glmax(zc,n)
+
+      xscale = XLEN/(xmax-xmin)
+      yscale = 1./(ymax-ymin)
+      zscale = ZLEN/(zmax-zmin)
+
+      do i=1,n
+         xc(i,1) = xscale*xc(i,1)
+         yc(i,1) = yscale*yc(i,1)
+         yc(i,1) = tanh(BETAM*(2*yc(i,1)-1))/tanh(BETAM)
+         zc(i,1) = zscale*zc(i,1)
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2   ! This routine to modify mesh coordinates
+      include 'SIZE'
+      include 'TOTAL'
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'W  ') boundaryID(ifc,iel) = 1 
+         cbc(ifc,iel,2) = cbc(ifc,iel,1) 
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat0
+      include 'SIZE'
+      include 'TOTAL'
+
+      real           XLEN, ZLEN, BETAM
+      COMMON /CASED/ XLEN, ZLEN, BETAM
+
+      COMMON /NRSSCPTR/ nrs_scptr(3)
+      integer*8         nrs_scptr
+
+      nrs_scptr(1) = loc(XLEN)
+      nrs_scptr(2) = loc(ZLEN)
+      nrs_scptr(3) = loc(BETAM)
+
+      return
+      end
+c-----------------------------------------------------------------------

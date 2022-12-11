@@ -49,7 +49,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   occa::memory &o_z = (!options.compareArgs("PRECONDITIONER", "NONE")) ? elliptic->o_z : o_r;
   occa::memory &o_Ap = elliptic->o_Ap;
   occa::memory &o_weight = elliptic->o_invDegree;
-  platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_p);
+  platform->linAlg->fill(elliptic->Nfields * elliptic->fieldOffset, 0.0, o_p);
 
   if(platform->comm.mpiRank == 0 && verbose) {
     if(flexible) 
@@ -69,7 +69,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       rdotz1 = platform->linAlg->weightedInnerProdMany(
         mesh->Nlocal,
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         o_weight,
         o_r,
         o_z,
@@ -89,7 +89,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         const dfloat zdotAp = platform->linAlg->weightedInnerProdMany(
           mesh->Nlocal,
           elliptic->Nfields,
-          elliptic->Ntotal,
+          elliptic->fieldOffset,
           o_weight,
           o_z,
           o_Ap,
@@ -109,7 +109,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     platform->linAlg->axpbyMany(
       mesh->Nlocal,
       elliptic->Nfields,
-      elliptic->Ntotal,
+      elliptic->fieldOffset,
       1.0,
       o_z,
       beta,
@@ -119,7 +119,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     const dfloat pAp = platform->linAlg->weightedInnerProdMany(
       mesh->Nlocal,
       elliptic->Nfields,
-      elliptic->Ntotal,
+      elliptic->fieldOffset,
       o_weight,
       o_p,
       o_Ap,

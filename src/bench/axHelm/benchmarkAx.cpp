@@ -10,8 +10,8 @@
 #include <tuple>
 #include <map>
 
-namespace{
-struct CallParameters{
+namespace {
+struct CallParameters {
   int Nelements;
   int Nq;
   int Ng;
@@ -23,32 +23,30 @@ struct CallParameters{
   bool stressForm;
   std::string suffix;
 };
-}
+} // namespace
 
-namespace std
-{
-  template<> struct less<CallParameters>
+namespace std {
+template <> struct less<CallParameters> {
+  bool operator()(const CallParameters &lhs, const CallParameters &rhs) const
   {
-    bool operator() (const CallParameters& lhs, const CallParameters& rhs) const
-    {
-      auto tier = [](const CallParameters &v) {
-        return std::tie(v.Nelements,
-                        v.Nq,
-                        v.Ng,
-                        v.constCoeff,
-                        v.poisson,
-                        v.computeGeom,
-                        v.wordSize,
-                        v.Ndim,
-                        v.stressForm,
-                        v.suffix);
-      };
-      return tier(lhs) < tier(rhs);
-    }
-  };
-}
+    auto tier = [](const CallParameters &v) {
+      return std::tie(v.Nelements,
+                      v.Nq,
+                      v.Ng,
+                      v.constCoeff,
+                      v.poisson,
+                      v.computeGeom,
+                      v.wordSize,
+                      v.Ndim,
+                      v.stressForm,
+                      v.suffix);
+    };
+    return tier(lhs) < tier(rhs);
+  }
+};
+} // namespace std
 
-namespace{
+namespace {
 std::map<CallParameters, occa::kernel> cachedResults;
 }
 
@@ -67,17 +65,18 @@ occa::kernel benchmarkAx(int Nelements,
                          bool requiresBenchmark,
                          std::string suffix)
 {
-  if(platform->options.compareArgs("BUILD ONLY", "TRUE")){
+  if (platform->options.compareArgs("BUILD ONLY", "TRUE")) {
     Nelements = 1;
   }
 
-  CallParameters params{Nelements, Nq, Ng, constCoeff, poisson, computeGeom, wordSize, Ndim, stressForm, suffix};
+  CallParameters
+      params{Nelements, Nq, Ng, constCoeff, poisson, computeGeom, wordSize, Ndim, stressForm, suffix};
 
-  if(cachedResults.count(params) > 0){
+  if (cachedResults.count(params) > 0) {
     return cachedResults.at(params);
   }
 
-  const auto N = Nq-1;
+  const auto N = Nq - 1;
 
   const auto Np = Nq * Nq * Nq;
   const auto Nq_g = Ng + 1;
@@ -94,7 +93,7 @@ occa::kernel benchmarkAx(int Nelements,
     props["defines/p_poisson"] = 1;
 
   std::string kernelName = "elliptic";
-  if (Ndim > 1){
+  if (Ndim > 1) {
     kernelName += stressForm ? "Stress" : "Block";
   }
   kernelName += "PartialAx";
@@ -117,24 +116,25 @@ occa::kernel benchmarkAx(int Nelements,
     }
   }
   kernelName += "Hex3D";
-  if (Ndim > 1 && !stressForm)
-    kernelName += "_N" + std::to_string(Ndim);
 
   auto benchmarkAxWithPrecision = [&](auto sampleWord) {
     using FPType = decltype(sampleWord);
     const auto wordSize = sizeof(FPType);
     constexpr int p_Nggeo{7};
 
-    int Nkernels = 1;
+    int Nkernels = 2;
     if (kernelName == "ellipticPartialAxHex3D")
-      Nkernels = 7;
+      Nkernels = 8;
+    if (kernelName == "ellipticBlockPartialAxCoeffHex3D")
+      Nkernels = 1;
+    if (kernelName == "ellipticBlockPartialAxHex3D")
+      Nkernels = 1;
+
     std::vector<int> kernelVariants;
     if (platform->serial) {
       kernelVariants.push_back(0);
-    }
-    else {
+    } else {
       for (int knl = 0; knl < Nkernels; ++knl) {
-
 #if 0
         // v3 requires Nq^3 < 1024 (max threads/thread block on CUDA/HIP)
         if (knl == 3 && Np > 1024)
@@ -154,12 +154,15 @@ occa::kernel benchmarkAx(int Nelements,
     if (kernelVariants.size() == 1 && !requiresBenchmark) {
 
       auto newProps = props;
-      if (kernelName == "ellipticPartialAxHex3D" && !platform->serial) {
+      if (kernelName == "ellipticPartialAxHex3D" ||
+          kernelName == "ellipticBlockPartialAxCoeffHex3D" || 
+          kernelName == "ellipticBlockPartialAxHex3D" && 
+          !platform->serial) {
         newProps["defines/p_knl"] = kernelVariants.back();
       }
 
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = installDir + "/kernels/elliptic/" + kernelName + ext;
 
       return std::make_pair(platform->device.buildKernel(fileName, newProps, suffix, true), -1.0);
     }
@@ -194,7 +197,7 @@ occa::kernel benchmarkAx(int Nelements,
         newProps["defines/p_knl"] = kernelVariants.front();
 
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = installDir + "/kernels/elliptic/" + kernelName + ext;
 
       referenceKernel = platform->device.buildKernel(fileName, newProps, suffix, true);
     }
@@ -216,11 +219,12 @@ occa::kernel benchmarkAx(int Nelements,
         newProps["defines/p_knl"] = kernelVariant;
 
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = installDir + "/kernels/elliptic/" + kernelName + ext;
 
       auto kernel = platform->device.buildKernel(fileName, newProps, suffix, true);
-
-      if(platform->options.compareArgs("BUILD ONLY", "TRUE")) return kernel;
+      
+      if (platform->options.compareArgs("BUILD ONLY", "TRUE"))
+        return kernel;
 
       std::vector<FPType> refResults((Ndim * Np) * Nelements);
       std::vector<FPType> results((Ndim * Np) * Nelements);
@@ -236,10 +240,16 @@ occa::kernel benchmarkAx(int Nelements,
         err = std::max(err, std::abs(refResults[i] - results[i]));
       }
 
-      const auto tol = 100. * std::numeric_limits<dfloat>::epsilon();
+      const auto tol = 200. * std::numeric_limits<FPType>::epsilon();
       if (platform->comm.mpiRank == 0 && verbosity > 1 && err > tol) {
         std::cout << "Error in kernel compared to reference implementation " << kernelVariant << ": " << err
                   << std::endl;
+      }
+
+      // error is too large -- pass an un-initialized kernel to the benchmarker
+      // to skip this kernel variant
+      if (err > tol) {
+        kernel = occa::kernel();
       }
 
       return kernel;
@@ -299,7 +309,8 @@ occa::kernel benchmarkAx(int Nelements,
     auto kernelAndTime =
         benchmarkKernel(axKernelBuilder, kernelRunner, printCallBack, kernelVariants, NtestsOrTargetTime);
 
-    if (kernelAndTime.first.properties().has("defines/p_knl") && platform->options.compareArgs("BUILD ONLY","FALSE")) {
+    if (kernelAndTime.first.properties().has("defines/p_knl") &&
+        platform->options.compareArgs("BUILD ONLY", "FALSE")) {
       int bestKernelVariant = static_cast<int>(kernelAndTime.first.properties()["defines/p_knl"]);
 
       // print only the fastest kernel
@@ -333,7 +344,7 @@ occa::kernel benchmarkAx(int Nelements,
     auto kernelAndTime = benchmarkAxWithPrecision(p);
     kernel = kernelAndTime.first;
   }
-  
+
   cachedResults[params] = kernel;
 
   return kernel;

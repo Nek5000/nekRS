@@ -2,88 +2,48 @@
 
 ## Performance Results for `--cimode=1`
 
-### NVIDIA V100
-```
-  elapsedStepSum        2.71067e+01s  0.34
-  solve                 2.70991e+01s  0.34
-    min                 6.82823e-02s
-    max                 1.12194e-01s
-    flop/s              8.78751e+11
-
-    makef               7.90189e+00s  0.29  200
-      udfUEqnSource     7.96262e-03s  0.00  200
-    udfProperties       4.81280e-04s  0.00  201
-    velocitySolve       6.94172e+00s  0.26  200
-      rhs               5.17492e-01s  0.07  200
-    pressureSolve       1.14328e+01s  0.42  200
-      rhs               1.02998e+00s  0.09  200
-      preconditioner    8.31936e+00s  0.73  784
-        pMG smoother    6.30344e+00s  0.76  3136
-        coarse grid     1.13952e+00s  0.14  784
-      initial guess     5.96070e-01s  0.05  200
-```
-
 ### NVIDIA A100
 ```
-  elapsedStepSum        1.67510e+01s  0.28
-  solve                 1.67437e+01s  0.28
-    min                 4.11823e-02s
-    max                 6.82533e-02s
-    flop/s              1.42219e+12
-
-    makef               5.19625e+00s  0.31  200
-      udfUEqnSource     5.15341e-03s  0.00  200
-    udfProperties       4.99168e-04s  0.00  201
-    velocitySolve       4.17803e+00s  0.25  200
-      rhs               2.99974e-01s  0.07  200
-    pressureSolve       7.00880e+00s  0.42  200
-      rhs               5.76952e-01s  0.08  200
-      preconditioner    5.15284e+00s  0.74  784
-        pMG smoother    3.77986e+00s  0.73  3136
-        coarse grid     8.23711e-01s  0.16  784
-      initial guess     3.66708e-01s  0.05  200
-```
-
-### AMD MI100
-```
-  elapsedStepSum        3.07072e+01s  0.40
-  solve                 3.06957e+01s  0.39
-    min                 7.14650e-02s
-    max                 1.19184e-01s
-    flop/s              7.74037e+11
-
-    makef               1.05012e+01s  0.34  200
-      udfUEqnSource     8.05440e-03s  0.00  200
-    udfProperties       1.14064e-03s  0.00  201
-    velocitySolve       6.90001e+00s  0.22  200
-      rhs               4.90322e-01s  0.07  200
-    pressureSolve       1.24524e+01s  0.41  200
-      rhs               1.02992e+00s  0.08  200
-      preconditioner    9.23485e+00s  0.74  776
-        pMG smoother    7.16544e+00s  0.78  3104
-        coarse grid     1.12134e+00s  0.12  776
-      initial guess     6.34976e-01s  0.05  200
+  solve                 1.43790e+01s  23.4      
+    min                 6.06289e-02s
+    max                 1.80862e-01s
+    flops/rank          1.54316e+12
+    udfExecuteStep      7.99648e-04s   0.0   0.0  200
+    makef               4.16758e+00s   6.8  29.0  200
+      udfUEqnSource     5.42614e-03s   0.0   0.1  200
+    udfProperties       7.55936e-04s   0.0   0.0  201
+    velocitySolve       2.55075e+00s   4.2  17.7  200
+      rhs               3.00298e-01s   0.5  11.8  200
+      preconditioner    1.56645e-01s   0.3   6.1  859
+    pressureSolve       6.97296e+00s  11.4  48.5  200
+      rhs               5.76751e-01s   0.9   8.3  200
+      preconditioner    5.09020e+00s   8.3  73.0  760
+        pMG smoother    3.02419e+00s   4.9  59.4  1520
+        pMG smoother    6.25036e-01s   1.0  12.3  1520
+        coarse grid     9.87971e-01s   1.6  19.4  760
+      initial guess     3.50167e-01s   0.6   5.0  200
 ```
 
 ### AMD MI250X/1
 ```
-  elapsedStepSum        2.35982e+01s  0.11
-  solve                 2.35922e+01s  0.11
-    min                 5.87667e-02s
-    max                 9.92639e-02s
-    flop/s              1.00710e+12
-
-    makef               6.85422e+00s  0.29  200
-      udfUEqnSource     6.26127e-03s  0.00  200
-    udfProperties       9.04159e-04s  0.00  201
-    velocitySolve       5.38714e+00s  0.23  200
-      rhs               3.83831e-01s  0.07  200
-    pressureSolve       1.05776e+01s  0.45  200
-      rhs               8.74453e-01s  0.08  200
-      preconditioner    7.89478e+00s  0.75  776
-        pMG smoother    6.02886e+00s  0.76  3104
-        coarse grid     1.08808e+00s  0.14  776
-      initial guess     5.38374e-01s  0.05  200
+  solve                 2.20199e+01s  33.8      
+    min                 9.40218e-02s
+    max                 2.59696e-01s
+    flops/rank          1.00712e+12
+    udfExecuteStep      1.08784e-03s   0.0   0.0  200
+    makef               6.87332e+00s  10.5  31.2  200
+      udfUEqnSource     6.21969e-03s   0.0   0.1  200
+    udfProperties       9.22722e-04s   0.0   0.0  201
+    velocitySolve       3.32075e+00s   5.1  15.1  200
+      rhs               3.11703e-01s   0.5   9.4  200
+      preconditioner    1.69817e-01s   0.3   5.1  858
+    pressureSolve       1.07468e+01s  16.5  48.8  200
+      rhs               8.67965e-01s   1.3   8.1  200
+      preconditioner    8.15062e+00s  12.5  75.8  758
+        pMG smoother    5.27370e+00s   8.1  64.7  1516
+        pMG smoother    1.10941e+00s   1.7  13.6  1516
+        coarse grid     1.13773e+00s   1.7  14.0  758
+      initial guess     4.83602e-01s   0.7   4.5  200
 ```
 
 ### AMD EPYC 7742

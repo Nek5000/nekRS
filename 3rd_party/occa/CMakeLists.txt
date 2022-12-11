@@ -297,3 +297,4 @@ if(ENABLE_EXAMPLES)
 endif(ENABLE_EXAMPLES)
 
 add_subdirectory(bin)
+set(OCCA_FOUND "ON" PARENT_SCOPE )

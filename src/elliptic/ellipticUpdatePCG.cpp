@@ -38,7 +38,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
   // r <= r - alpha*A*p
   // dot(r,r)
   elliptic->updatePCGKernel(mesh->Nlocal,
-                            elliptic->Ntotal,
+                            elliptic->fieldOffset,
                             elliptic->o_invDegree,
                             o_Ap,
                             alpha,
@@ -62,7 +62,7 @@ dfloat ellipticUpdatePCG(elliptic_t* elliptic,
   platform->linAlg->axpbyMany(
     mesh->Nlocal,
     elliptic->Nfields,
-    elliptic->Ntotal,
+    elliptic->fieldOffset,
     alpha,
     o_p,
     1.0,

@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "ellipticPrecon.h"
 #include "platform.hpp"
 
 namespace{
@@ -53,6 +54,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   mesh_t* mesh = createMeshMG(baseElliptic->mesh, Nc);
   elliptic->mesh = mesh;
+
+  elliptic->fieldOffset = elliptic->mesh->Nlocal; // assumes elliptic->Nfields == 1
 
   { // setup an unmasked gs handle
     ogs_t *ogs = NULL;
@@ -89,7 +92,9 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";
 
+#if 0
   if(Nc > 1 || elliptic->options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
+#endif
   {
       const std::string AxSuffix = elliptic->coeffFieldPreco ? "CoeffHex3D" : "Hex3D";
       // check for trilinear
@@ -103,26 +108,23 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
       }
 
       {
-        const std::string kernelSuffix = gen_suffix(elliptic, dfloatString);
-        elliptic->AxKernel = platform->kernels.get(poissonPrefix + kernelName + kernelSuffix);
-      }
-      {
         const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
         elliptic->AxPfloatKernel =
           platform->kernels.get(poissonPrefix + kernelName + kernelSuffix);
       }
   }
 
-  elliptic->precon = new precon_t();
+  elliptic->precon = (void*) new precon_t();
+  precon_t* precon = (precon_t*) elliptic->precon;
 
   {
     const std::string kernelSuffix =
         std::string("_Nf_") + std::to_string(Nf) + std::string("_Nc_") + std::to_string(Nc);
 
     kernelName = "ellipticPreconCoarsen" + suffix;
-    elliptic->precon->coarsenKernel = platform->kernels.get(kernelName + kernelSuffix);
+    precon->coarsenKernel = platform->kernels.get(kernelName + kernelSuffix);
     kernelName = "ellipticPreconProlongate" + suffix;
-    elliptic->precon->prolongateKernel = platform->kernels.get(kernelName + kernelSuffix);
+    precon->prolongateKernel = platform->kernels.get(kernelName + kernelSuffix);
 
   }
 
@@ -138,8 +140,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
   elliptic->o_interp = platform->device.malloc(Nfq * Ncq * sizeof(pfloat));
   platform->copyDfloatToPfloatKernel(Nfq * Ncq, o_interp, elliptic->o_interp);
 
-  elliptic->precon->coarsenKernel(mesh->Nelements, elliptic->o_interp, 
-                                  baseElliptic->o_lambda, elliptic->o_lambda);
+  precon->coarsenKernel(mesh->Nelements, elliptic->o_interp, 
+                        baseElliptic->o_lambda, elliptic->o_lambda);
 
   free(fToCInterp);
 

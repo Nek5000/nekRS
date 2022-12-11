@@ -2,7 +2,8 @@
 #include <compileKernels.hpp>
 #include "mesh.h"
 
-void registerMeshKernels(occa::properties kernelInfoBC) {
+void registerMeshKernels(occa::properties kernelInfoBC)
+{
   int N, cubN;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
   platform->options.getArgs("CUBATURE POLYNOMIAL DEGREE", cubN);
@@ -17,7 +18,7 @@ void registerMeshKernels(occa::properties kernelInfoBC) {
   auto kernelInfo = platform->kernelInfo + meshKernelProperties(N);
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
-  std::string oklpath = installDir + "/okl/";
+  std::string oklpath = installDir + "/kernels/";
   std::string kernelName;
 
   const std::string meshPrefix = "mesh-";
@@ -52,12 +53,10 @@ void registerMeshKernels(occa::properties kernelInfoBC) {
 
     kernelName = "geometricFactorsHex3D";
     fileName = oklpath + "mesh/" + kernelName + ".okl";
-    platform->kernels.add(
-        meshPrefix + kernelName, fileName, meshKernelInfo);
+    platform->kernels.add(meshPrefix + kernelName, fileName, meshKernelInfo);
     kernelName = "surfaceGeometricFactorsHex3D";
     fileName = oklpath + "mesh/" + kernelName + ".okl";
-    platform->kernels.add(
-        meshPrefix + kernelName, fileName, meshKernelInfo);
+    platform->kernels.add(meshPrefix + kernelName, fileName, meshKernelInfo);
 
     kernelName = "cubatureGeometricFactorsHex3D";
     fileName = oklpath + "mesh/" + kernelName + ".okl";

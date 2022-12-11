@@ -31,7 +31,7 @@
 void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
 {
   mesh_t* mesh = elliptic->mesh;
-  const hlong Ntotal = elliptic->NelementsGlobal * mesh->Np; 
+  const hlong Nglobal = elliptic->NelementsGlobal * mesh->Np; 
 
   if(elliptic->blockSolver) {
     if(platform->comm.mpiRank == 0)
@@ -39,8 +39,7 @@ void ellipticZeroMean(elliptic_t* elliptic, occa::memory &o_q)
     ABORT(EXIT_FAILURE);
   } else {
     dfloat qmeanGlobal = platform->linAlg->sum(mesh->Nlocal, o_q, platform->comm.mpiComm);
-    qmeanGlobal /= (dfloat) Ntotal;
+    qmeanGlobal /= (dfloat) Nglobal;
     platform->linAlg->add(mesh->Nlocal, -qmeanGlobal, o_q);
-    //printf("qmeanGlobal %.15e %d\n", qmeanGlobal, Ntotal);
   }
 }

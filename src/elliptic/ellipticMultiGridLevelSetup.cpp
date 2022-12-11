@@ -25,17 +25,36 @@
  */
 
 #include "elliptic.h"
+#include "ellipticMultiGrid.h"
 #include "platform.hpp"
 #include "linAlg.hpp"
+#include "parseMultigridSchedule.hpp"
 
-size_t MGLevel::smootherResidualBytes;
-pfloat* MGLevel::smootherResidual;
-occa::memory MGLevel::o_smootherResidual;
-occa::memory MGLevel::o_smootherResidual2;
-occa::memory MGLevel::o_smootherUpdate;
+namespace{
+
+ChebyshevSmootherType
+convertSmootherType(SmootherType s){
+  switch(s){
+    case SmootherType::ASM:
+      return ChebyshevSmootherType::ASM;
+    case SmootherType::RAS:
+      return ChebyshevSmootherType::RAS;
+    case SmootherType::JACOBI:
+      return ChebyshevSmootherType::JACOBI;
+    default:
+    {
+      if(platform->comm.mpiRank == 0){
+        std::cout << "Invalid configuration hit in convertSmootherType!\n";
+      }
+      ABORT(1);
+    }
+  }
+}
+
+}
 
 //build a single level
-MGLevel::MGLevel(elliptic_t* ellipticBase, int Nc,
+pMGLevel::pMGLevel(elliptic_t* ellipticBase, int Nc,
                  setupAide options_, MPI_Comm comm_, bool _isCoarse) :
   multigridLevel(ellipticBase->mesh->Nelements * ellipticBase->mesh->Np,
                  (ellipticBase->mesh->Nelements + ellipticBase->mesh->totalHaloPairs) * ellipticBase->mesh->Np,
@@ -48,13 +67,15 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, int Nc,
   options = options_;
   degree = Nc;
 
+#if 0
   if(!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
+#endif
     this->setupSmoother(ellipticBase);
 
 }
 
 //build a level and connect it to the previous one
-MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
+pMGLevel::pMGLevel(elliptic_t* ellipticBase, //finest level
                  mesh_t** meshLevels,
                  elliptic_t* ellipticFine, //previous level
                  elliptic_t* ellipticCoarse, //current level
@@ -65,7 +86,8 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
                  )
   :
   multigridLevel(ellipticCoarse->mesh->Nelements * ellipticCoarse->mesh->Np,
-                 (ellipticCoarse->mesh->Nelements + ellipticCoarse->mesh->totalHaloPairs) * ellipticCoarse->mesh->Np,
+                 ellipticCoarse->mesh->Np*(ellipticCoarse->mesh->Nelements + 
+                   ellipticCoarse->mesh->totalHaloPairs),
                  comm_)
 {
   
@@ -81,120 +103,145 @@ MGLevel::MGLevel(elliptic_t* ellipticBase, //finest level
   /* build coarsening and prologation operators to connect levels */
   this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
+#if 0
   if(!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
+#endif
     this->setupSmoother(ellipticBase);
 }
 
-void MGLevel::setupSmoother(elliptic_t* ellipticBase)
+void pMGLevel::setupSmoother(elliptic_t* ellipticBase)
 {
 
-  dfloat minMultiplier;
+  dfloat minMultiplier = 0.9;
   options.getArgs("MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR", minMultiplier);
 
-  dfloat maxMultiplier;
+  dfloat maxMultiplier = 1.1;
   options.getArgs("MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR", maxMultiplier);
 
-  if (options.compareArgs("MULTIGRID SMOOTHER","ASM") ||
-      options.compareArgs("MULTIGRID SMOOTHER","RAS")) {
-    stype = SmootherType::SCHWARZ;
-    smtypeUp = SecondarySmootherType::JACOBI;
-    smtypeDown = SecondarySmootherType::JACOBI;
+  const bool useASM = options.compareArgs("MULTIGRID SMOOTHER","ASM");
+  const bool useRAS = options.compareArgs("MULTIGRID SMOOTHER","RAS");
+  const bool useJacobi = options.compareArgs("MULTIGRID SMOOTHER","DAMPEDJACOBI");
+  if (useASM || useRAS){
+    smootherType = useASM ? SmootherType::ASM : SmootherType::RAS;
     build(ellipticBase);
-
-    if(options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
-      smtypeUp = SecondarySmootherType::SCHWARZ;
-      smtypeDown = SecondarySmootherType::SCHWARZ;
-      stype = SmootherType::CHEBYSHEV;
-
-      if(isCoarse) {
-        ChebyshevIterations = 8;
-        options.getArgs("COARSE MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations);
-      } else {
-        ChebyshevIterations = 2;
-        options.getArgs("MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations);
+  } else {
+    if(!useJacobi){
+      if(platform->comm.mpiRank == 0){
+        std::cout << "Invalid setup occurred in pMGLevel::setupSmoother\n";
       }
-
-      //estimate the max eigenvalue of S*A
-      dfloat rho = this->maxEigSmoothAx();
-      lambda1 = maxMultiplier * rho;
-      lambda0 = minMultiplier * rho;
+      ABORT(1);
     }
-    if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI") ||
-       options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI")) {
-      o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat));
-      ellipticUpdateJacobi(elliptic,o_invDiagA);
-      if(options.compareArgs("MULTIGRID UPWARD SMOOTHER","JACOBI"))
-        smtypeUp = SecondarySmootherType::JACOBI;
-      if(options.compareArgs("MULTIGRID DOWNWARD SMOOTHER","JACOBI"))
-        smtypeDown = SecondarySmootherType::JACOBI;
-    }
-  } else if (options.compareArgs("MULTIGRID SMOOTHER","DAMPEDJACOBI")) { //default to damped jacobi
-    stype = SmootherType::JACOBI;
-    smtypeUp = SecondarySmootherType::JACOBI;
-    smtypeDown = SecondarySmootherType::JACOBI;
-
-    o_invDiagA = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(pfloat));
+    smootherType = SmootherType::JACOBI;
+    o_invDiagA = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
     ellipticUpdateJacobi(elliptic,o_invDiagA);
+  }
 
-    if (options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
-      stype = SmootherType::CHEBYSHEV;
+  if (options.compareArgs("MULTIGRID SMOOTHER","CHEBYSHEV")) {
+    chebySmootherType = convertSmootherType(smootherType);
+    smootherType = SmootherType::CHEBYSHEV;
 
-      if (!options.getArgs("MULTIGRID CHEBYSHEV DEGREE", ChebyshevIterations))
-        ChebyshevIterations = 2; //default to degree 2
+    //estimate the max eigenvalue of S*A
+    dfloat rho = this->maxEigSmoothAx();
 
-      //estimate the max eigenvalue of S*A
-      dfloat rho = this->maxEigSmoothAx();
+    lambda1 = maxMultiplier * rho;
+    lambda0 = minMultiplier * rho;
+    this->maxEig = rho;
 
-      lambda1 = maxMultiplier * rho;
-      lambda0 = minMultiplier * rho;
+    UpLegChebyshevDegree = 3;
+    DownLegChebyshevDegree = 3;
+
+    if(isCoarse) {
+      if(options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE")) {
+        UpLegChebyshevDegree = 3;
+        DownLegChebyshevDegree = 3;
+      } else {
+        UpLegChebyshevDegree = 5;
+        DownLegChebyshevDegree = 5;
+      }
+    } else {
+      options.getArgs("MULTIGRID CHEBYSHEV DEGREE", UpLegChebyshevDegree);
+      options.getArgs("MULTIGRID CHEBYSHEV DEGREE", DownLegChebyshevDegree);
     }
+
+  }
+
+  std::string schedule = options.getArgs("MULTIGRID SCHEDULE");
+  if (!schedule.empty()) {
+    auto [scheduleMap, errorString] = parseMultigridSchedule(schedule, options, DownLegChebyshevDegree);
+    if(scheduleMap[{degree, true}] > -1)
+      UpLegChebyshevDegree = scheduleMap[{degree, true}];
+    if(scheduleMap[{degree, false}] > -1)
+      DownLegChebyshevDegree = scheduleMap[{degree, false}];
+  }
+
+  if(options.compareArgs("MULTIGRID SMOOTHER", "FOURTHOPT")){
+    UpLegBetas = optimalCoeffs(UpLegChebyshevDegree);
+    DownLegBetas = optimalCoeffs(DownLegChebyshevDegree);
+    smootherType = SmootherType::OPT_FOURTH_CHEBYSHEV;
+  }
+  else if(options.compareArgs("MULTIGRID SMOOTHER", "FOURTH")){
+    // same as above, but beta_i = 1 for all i
+    UpLegBetas = std::vector<pfloat>(UpLegChebyshevDegree, 1.0);
+    DownLegBetas = std::vector<pfloat>(DownLegChebyshevDegree, 1.0);
+    smootherType = SmootherType::FOURTH_CHEBYSHEV;
   }
 }
 
-void MGLevel::Report()
+void pMGLevel::Report()
 {
-  platform_t * platform = platform_t::getInstance();
-  hlong hNrows = (hlong) Nrows;
 
-  dlong minNrows = 0, maxNrows = 0;
-  hlong totalNrows = 0;
-  dfloat avgNrows;
-
-  MPI_Allreduce(&Nrows, &maxNrows, 1, MPI_DLONG, MPI_MAX, platform->comm.mpiComm);
-  MPI_Allreduce(&hNrows, &totalNrows, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-  avgNrows = (dfloat) totalNrows / platform->comm.mpiCommSize;
-
-  if (Nrows == 0) Nrows = maxNrows; //set this so it's ignored for the global min
-  MPI_Allreduce(&Nrows, &minNrows, 1, MPI_DLONG, MPI_MIN, platform->comm.mpiComm);
-
-  char smootherString[BUFSIZ];
-  if (!isCoarse || options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE")) {
-    if (stype == SmootherType::CHEBYSHEV && smtypeDown == SecondarySmootherType::JACOBI)
-      strcpy(smootherString, "Chebyshev+Jacobi ");
-    else if (stype == SmootherType::SCHWARZ)
-      strcpy(smootherString, "Schwarz          ");
-    else if (stype == SmootherType::JACOBI)
-      strcpy(smootherString, "Jacobi           ");
-    else if (stype == SmootherType::CHEBYSHEV && smtypeDown == SecondarySmootherType::SCHWARZ)
-      strcpy(smootherString, "Chebyshev+Schwarz");
-    else
-      strcpy(smootherString, "???");
+  std::string smootherString;
+  {
+    if(smootherType == SmootherType::CHEBYSHEV){
+      smootherString += "1st Kind Chebyshev+";
+    }
+    if(smootherType == SmootherType::FOURTH_CHEBYSHEV){
+      smootherString += "4th Kind Chebyshev+";
+    }
+    if(smootherType == SmootherType::OPT_FOURTH_CHEBYSHEV){
+      smootherString += "Opt. 4th Kind Chebyshev+";
+    }
+    if (smootherType == SmootherType::ASM || chebySmootherType == ChebyshevSmootherType::ASM){
+      smootherString += "ASM";
+    }
+    if (smootherType == SmootherType::RAS || chebySmootherType == ChebyshevSmootherType::RAS){
+      smootherString += "RAS";
+    }
+    if (smootherType == SmootherType::JACOBI || chebySmootherType == ChebyshevSmootherType::JACOBI){
+      smootherString += "Jacobi";
+    }
+    smootherString += "(" + std::to_string(UpLegChebyshevDegree) + "," + std::to_string(DownLegChebyshevDegree) + ")";
   }
 
   if (platform->comm.mpiRank == 0) {
     if(isCoarse && options.compareArgs("MULTIGRID COARSE SOLVE","TRUE")) {
-      std::string solver;
-      if(options.getArgs("COARSE SOLVER", solver)) strcpy(smootherString, solver.c_str());
-      printf(     "|    AMG     |   Matrix        | %s\n", smootherString);
-      printf("     |            |     Degree %2d   |\n", degree);
+      const auto useSEMFEM = options.compareArgs("MULTIGRID SEMFEM", "TRUE");
+      if(options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH","TRUE")) {
+
+      printf(     "|    pMG     |   Matrix-free   | %s\n", smootherString.c_str());
+      printf("     |            |     p = %2d      |\n", degree);
+      if(useSEMFEM)
+      printf("     |    AMG     |   SEMFEM Matrix | \n");
+      else
+      printf("     |    AMG     |   FEM Matrix    | \n");
+
+      } else {
+
+      if(useSEMFEM)
+      printf(     "|    AMG     |   SEMFEM Matrix | \n");
+      else
+      printf(     "|    AMG     |   FEM Matrix    | \n");
+      }
+
     } else {
-      printf(     "|    pMG     |   Matrix-free   | %s\n", smootherString);
-      printf("     |            |     Degree %2d   |\n", degree);
+      printf(     "|    pMG     |   Matrix-free   | %s\n", smootherString.c_str());
+      printf("     |            |     p = %2d      |\n", degree);
     }
   }
+
 }
 
-void MGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
+void pMGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
 {
 
   const int Nfq = Nf + 1;
@@ -252,7 +299,7 @@ static void eig(const int Nrows, double* A, double* WR, double* WI)
   delete [] WORK;
 }
 
-dfloat MGLevel::maxEigSmoothAx()
+dfloat pMGLevel::maxEigSmoothAx()
 {
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
@@ -262,18 +309,11 @@ dfloat MGLevel::maxEigSmoothAx()
   const dlong M = Ncols;
 
   hlong Nlocal = (hlong) Nrows;
-  hlong Ntotal = 0;
-  MPI_Allreduce(&Nlocal, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+  hlong Nglobal = 0;
+  MPI_Allreduce(&Nlocal, &Nglobal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
   occa::memory o_invDegree = platform->device.malloc(Nlocal*sizeof(dfloat), elliptic->ogs->invDegree);
-
-  int k;
-  if(Ntotal > 10) 
-    k = 10;
-  else
-    k = (int) Ntotal;
-
-  // do an arnoldi
+  const int k = (int) std::min(pMGLevel::Narnoldi, Nglobal);
 
   // allocate memory for Hessenberg matrix
   double* H = (double*) calloc(k * k,sizeof(double));
@@ -331,7 +371,7 @@ dfloat MGLevel::maxEigSmoothAx()
   dfloat norm_vo = platform->linAlg->weightedInnerProdMany(
     Nlocal,
     elliptic->Nfields,
-    elliptic->Ntotal,
+    elliptic->fieldOffset,
     o_invDegree,
     o_Vx,
     o_Vx,
@@ -342,7 +382,7 @@ dfloat MGLevel::maxEigSmoothAx()
   platform->linAlg->axpbyMany(
     Nlocal,
     elliptic->Nfields,
-    elliptic->Ntotal,
+    elliptic->fieldOffset,
     1. / norm_vo,
     o_Vx,
     0.0,
@@ -362,7 +402,7 @@ dfloat MGLevel::maxEigSmoothAx()
       dfloat hij = platform->linAlg->weightedInnerProdMany(
         Nlocal,
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         o_invDegree,
         o_V[i],
         o_V[j+1],
@@ -373,7 +413,7 @@ dfloat MGLevel::maxEigSmoothAx()
       platform->linAlg->axpbyMany(
         Nlocal,
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         -hij,
         o_V[i],
         1.0,
@@ -388,7 +428,7 @@ dfloat MGLevel::maxEigSmoothAx()
       dfloat norm_vj = platform->linAlg->weightedInnerProdMany(
         Nlocal,
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         o_invDegree,
         o_V[j+1],
         o_V[j+1],
@@ -398,7 +438,7 @@ dfloat MGLevel::maxEigSmoothAx()
       platform->linAlg->scaleMany(
         Nlocal,
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         1 / norm_vj,
         o_V[j+1]
       );

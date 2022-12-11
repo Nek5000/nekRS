@@ -79,12 +79,13 @@ bool Ini::extract(const std::string & key,
              const std::string & value,
              std::string & dst)
 {
-  if (sections[key].count(value)) {
-    dst = sections[key][value];
+  auto lowerCaseKey = toLowerCase(key);
+  auto lowerCaseValue = toLowerCase(value);
+  if (sections[lowerCaseKey].count(lowerCaseValue)) {
+    dst = sections[lowerCaseKey][lowerCaseValue];
     return true;
-  } else {
-    return false;
   }
+  return false;
 }
 
 void Ini::generate(std::ostringstream & os) const
@@ -102,9 +103,9 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
   std::string section;
   while (!is.eof()) {
     std::getline(is, line);
-    auto it = std::find_if(line.rbegin(), line.rend(),
+    auto it = std::find_if(line.begin(), line.end(),
                            [](int ch) { return ch == char_comment; });
-    if (it != line.rend()) line.erase((++it).base(), line.end());
+    if (it != line.end()) line.erase(it, line.end());
     detail::ltrim(line);
     detail::rtrim(line);
 

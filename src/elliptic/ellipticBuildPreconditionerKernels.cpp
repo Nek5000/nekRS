@@ -47,17 +47,11 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic)
     mesh->maskPfloatKernel =
       platform->kernels.get(kernelName + orderSuffix + "pfloat");
 
-    kernelName = "updateSmoothedSolutionVec";
-    elliptic->updateSmoothedSolutionVecKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+    kernelName = "updateChebyshev";
+    elliptic->updateChebyshevKernel = platform->kernels.get(kernelName + orderSuffix);
 
-    kernelName = "updateChebyshevSolutionVec";
-    elliptic->updateChebyshevSolutionVecKernel =
-      platform->kernels.get(kernelName + orderSuffix);
-
-    kernelName = "updateIntermediateSolutionVec";
-    elliptic->updateIntermediateSolutionVecKernel =
-      platform->kernels.get(kernelName + orderSuffix);
+    kernelName = "updateFourthKindChebyshev";
+    elliptic->updateFourthKindChebyshevKernel = platform->kernels.get(kernelName + orderSuffix);
 
     kernelName = "ellipticBlockBuildDiagonalHex3D";
     const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";

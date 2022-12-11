@@ -32,7 +32,7 @@ int numSteps(void);
 int lastStep(double time, int tstep, double elapsedTime);
 int writeControlRunTime(void);
 void processUpdFile();
-void printInfo(double time, int tstep);
+void printInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo);
 void verboseInfo(bool enabled);
 void updateTimer(const std::string &key, double time);
 void resetTimer(const std::string &key); 

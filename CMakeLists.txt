@@ -40,16 +40,23 @@ set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING
 set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
   "Directory for Nek5000 inteface source files")
 
-set(OCCA_CXX "g++" CACHE STRING "C++ compiler for OCCA JIT compile")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64le")
-  set(OCCA_CXXFLAGS "-O3 -g -mcpu=native -mtune=native" CACHE STRING "C++ flags for OCCA JIT compile")
-else()
-  set(OCCA_CXXFLAGS "-O3 -g -march=native -mtune=native" CACHE STRING "C++ flags for OCCA JIT compile")
-endif()
+set(NEKRS_COMPILER_FLAGS "-O2 -g -march=native -mtune=native -ftree-vectorize" CACHE STRING "compiler flags")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${NEKRS_COMPILER_FLAGS})
+set(CMAKE_C_FLAGS_RELWITHDEBINFO ${NEKRS_COMPILER_FLAGS})
+set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO ${NEKRS_COMPILER_FLAGS})
 
-set(OCCA_CUDA_COMPILER_FLAGS "-O3 -lineinfo" CACHE STRING "CUDA flags for OCCA JIT compile")
-set(OCCA_HIP_COMPILER_FLAGS "-O3 -g -ffp-contract=fast" CACHE STRING "HIP flags for OCCA JIT compile")
-set(OCCA_OPENCL_COMPILER_FLAGS "-cl-std=CL2.0 -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
+set(OCCA_CXX "g++" CACHE STRING "C++ compiler for OCCA JIT compile")
+set(OCCA_CXXFLAGS "-w -O3 -g -march=native -mtune=native" CACHE STRING "C++ flags for OCCA JIT compile")
+set(OCCA_CUDA_COMPILER_FLAGS "-w -O3 -lineinfo --use_fast_math" CACHE STRING "CUDA flags for OCCA JIT compile")
+set(OCCA_HIP_COMPILER_FLAGS "-w -O3 -g -ffp-contract=fast -funsafe-math-optimizations -ffast-math -munsafe-fp-atomics" CACHE STRING "HIP flags for OCCA JIT compile")
+set(OCCA_OPENCL_COMPILER_FLAGS "-cl-std=CL2.0 -cl-unsafe-math-optimizations -cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64le")
+  string(REPLACE "-march" "-mcpu" OCCA_CXXFLAGS ${OCCA_CXXFLAGS})
+  string(REPLACE "-march" "-mcpu" CMAKE_Fortran_FLAGS_RELWITHDEBINFO ${CMAKE_Fortran_FLAGS_RELWITHDEBINFO})
+  string(REPLACE "-march" "-mcpu" CMAKE_C_FLAGS_RELWITHDEBINFO ${CMAKE_C_FLAGS_RELWITHDEBINFO})
+  string(REPLACE "-march" "-mcpu" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+endif()
 
 set(ENABLE_CUDA ON CACHE BOOL "Enable OCCA CUDA support")
 set(ENABLE_HIP ON CACHE BOOL "Enable OCCA HIP support")
@@ -82,7 +89,9 @@ if (NOT FortranCInterface_VERIFIED_CXX)
 endif()
 
 set (CMAKE_C_STANDARD 99)
-set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD 17)
+
+__MPI_underlying_compiler("CXX" MPI_UNDERLYING_COMPILER)
 
 ###############################################################################
 # Set compiler flags                                                          #
@@ -182,7 +191,7 @@ include(config/blaslapack.cmake)
 set(SRC 
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
-    src/io/utils.cpp
+    src/io/fileUtils.cpp
     src/utils/inipp.cpp
     src/utils/mysort.cpp
     src/utils/parallelSort.cpp
@@ -190,7 +199,7 @@ set(SRC
     src/utils/setupAide.cpp
     src/core/numberActiveFields.cpp
     src/core/printHeader.cpp
-    src/timeStepper/cfl.cpp
+    src/navierStokes/cfl.cpp
     src/regularization/filter.cpp
     src/regularization/avm.cpp
     src/bdry/bcMap.cpp
@@ -200,16 +209,18 @@ set(SRC
     src/core/registerNrsKernels.cpp
     src/core/registerPostProcessingKernels.cpp
     src/bdry/createEToBV.cpp
-    src/bdry/applyDirichlet.cpp
-    src/timeStepper/timeStepper.cpp
-    src/timeStepper/subCycling.cpp
+    src/navierStokes/applyDirichlet.cpp
+    src/navierStokes/timeStepper.cpp
+    src/navierStokes/subCycling.cpp
     src/navierStokes/tombo.cpp
     src/navierStokes/constantFlowRate.cpp
     src/cds/cdsSolve.cpp
     src/cds/registerCdsKernels.cpp
-    src/io/parReader.cpp
+    src/cds/subCycling.cpp
+    src/setup/parReader.cpp
+    src/setup/parseMultigridSchedule.cpp
     src/io/re2Reader.cpp
-    src/io/configReader.cpp
+    src/setup/configReader.cpp
     src/core/timer.cpp
     src/core/platform.cpp
     src/core/comm.cpp
@@ -233,7 +244,6 @@ set(SRC
     src/postProcessing/planarAvg.cpp
     ${BENCH_SOURCES}
     ${MESH_SOURCES}
-    ${PARALMOND_SOURCES}
     ${ELLIPTIC_SOURCES}
     ${BLASLAPACK_SOURCES}
     ${OGS_SOURCES}
@@ -270,7 +280,6 @@ target_include_directories(nekrs-lib
   src/udf
   src/regularization
   src/linAlg
-  src/timeStepper
   src/navierStokes
   src/cds
   src/postProcessing
@@ -296,7 +305,6 @@ if(ENABLE_AMGX AND ENABLE_CUDA)
   target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include 3rd_party/AMGX/core/include)
 endif()
 
-
 target_link_libraries(nekrs-lib PRIVATE nekrs-hypre)
 target_link_libraries(nekrs-lib PRIVATE nekrs-hypre-device)
 
@@ -304,6 +312,26 @@ add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 target_link_libraries(nekrs-bin PRIVATE nekrs-lib)
+
+###############################################################################
+# Optional nekRS plugins
+###############################################################################
+file(GLOB plugins LIST_DIRECTORIES true ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/plugins/*)
+set(PLUGINS_RPATH "")
+foreach(DIR ${plugins})
+  get_filename_component(PLUGIN_NAME ${DIR} NAME)
+  IF(IS_DIRECTORY ${DIR})
+      message(NOTICE "-- Found plugin: ${PLUGIN_NAME}")
+      add_subdirectory(${DIR})
+  ELSE()
+      CONTINUE()
+  ENDIF()
+  set(UDF_LIBS "${UDF_LIBS} ${CMAKE_INSTALL_PREFIX}/3rdParty/${PLUGIN_NAME}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${PLUGIN_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  set(PLUGINS_RPATH "${PLUGINS_RPATH};${CMAKE_INSTALL_PREFIX}/3rdParty/${PLUGIN_NAME}/lib")
+  set(UDF_INCLUDES "${UDF_INCLUDES};${CMAKE_INSTALL_PREFIX}/3rdParty/${PLUGIN_NAME}/include")
+endforeach()
+
+set_target_properties(nekrs-bin PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${PLUGINS_RPATH}")
 
 add_executable(axhelm-bin src/bench/axHelm/main.cpp)
 set_target_properties(axhelm-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-bench-axhelm)
@@ -323,12 +351,12 @@ elseif(ENABLE_HIP)
   set(BACKEND_DEFAULT "HIP" CACHE STRING "Default occa mode")
 else()
   set(BACKEND_DEFAULT "SERIAL" CACHE STRING "Default occa mode")
+  set(NEKRS_GPU_MPI OFF CACHE BOOL "Enable GPU aware MPI" FORCE)
 endif() 
 
 #################################################################################
 ### Install                                                                     #
 #################################################################################
-__MPI_underlying_compiler("CXX" MPI_UNDERLYING_COMPILER)
 
 if(NEKRS_GPU_MPI)
   set(GPU_MPI "1")
@@ -351,7 +379,7 @@ install(
 # Trailing slash prevents parent directory from being copied
 install(DIRECTORY scripts/ DESTINATION bin
   FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY okl/ DESTINATION okl FILES_MATCHING REGEX "\.okl$|\.c|\.h$")
+install(DIRECTORY kernels/ DESTINATION kernels FILES_MATCHING REGEX "\.okl$|\.c|\.h$")
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
 install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
@@ -362,7 +390,7 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
         ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
 install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
 
-install(FILES src/io/parHelp.txt DESTINATION include)
+install(FILES doc/parHelp.txt DESTINATION doc)
 
 message(NOTICE "")
 message(NOTICE "----------------- Summary -----------------")

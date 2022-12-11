@@ -2,111 +2,101 @@
 #define HYPRE_WRAPPER_H
 
 #include <mpi.h>
-#include "occa.hpp"
 
-#define BOOMERAMG_NPARAM 10
+namespace hypreWrapper {
 
-namespace hypreWrapper
-{
+constexpr int NPARAM = 11;
 
+#ifndef HYPRE_HEADER
 // has to match HYPRE config
 typedef int Int;
 typedef long long int BigInt;
 typedef float Real;
+
 typedef void IJMatrix;
+typedef void IJVector;
+typedef void Solver;
 
 typedef Int HYPRE_Int;
 typedef BigInt HYPRE_BigInt;
 typedef IJMatrix HYPRE_IJMatrix;
+typedef IJVector HYPRE_IJVector;
+typedef Solver HYPRE_Solver;
 typedef Real HYPRE_Real;
+#endif
 
-int BoomerAMGSetup(int nrows,
-                   int nz, const long long int *Ai, const long long int *Aj, const double *Av,
-                   int null_space, MPI_Comm ce, int Nthreads,
-                   int useFP32, const double *param, int verbose);
+void finalize();
 
-int BoomerAMGSolve(void *b, void *x);
+class boomerAMG_t {
 
-void Free();
+public:
+  ~boomerAMG_t();
 
-void IJMatrixGetRowCounts
-(
-  HYPRE_IJMatrix  *matrix,
-  HYPRE_Int       nrows,
-  HYPRE_BigInt   *rows,
-  HYPRE_Int      *ncols
-);
+  boomerAMG_t(int nrows,
+             int nz,
+             const long long int *Ai,
+             const long long int *Aj,
+             const double *Av,
+             int null_space,
+             MPI_Comm ce,
+             int Nthreads,
+             int useFP32,
+             const double *param,
+             int verbose);
 
-void IJMatrixGetValues
-(
-  HYPRE_IJMatrix  *matrix,
-  HYPRE_Int       nrows,
-  HYPRE_Int      *ncols,
-  HYPRE_BigInt   *rows,
-  HYPRE_BigInt   *cols,
-  HYPRE_Real  *values
-);
+  void solve(void *b, void *x);
 
-int IJMatrixDestroy
-(
-  HYPRE_IJMatrix *matrix
-);
+private:
+  MPI_Comm comm;
+  int nRows;
+  int Nthreads;
+  int rank;
+  double params[NPARAM];
+  HYPRE_Solver *solver;
+  HYPRE_IJMatrix *A;
+  HYPRE_IJVector *b;
+  HYPRE_IJVector *x;
+};
 
-int IJMatrixAddToValues
-(
-  HYPRE_IJMatrix      *matrix,
-  HYPRE_Int            nrows,
-  HYPRE_Int           *ncols,
-  const HYPRE_BigInt  *rows,
-  const HYPRE_BigInt  *cols,
-  const HYPRE_Real *values
-);
+class IJ_t {
 
-int IJMatrixCreate
-(
-  MPI_Comm        comm,
-  HYPRE_BigInt    ilower,
-  HYPRE_BigInt    iupper,
-  HYPRE_BigInt    jlower,
-  HYPRE_BigInt    jupper,
-  HYPRE_IJMatrix *matrix
-);
+public:
+  IJ_t();
 
-int IJMatrixSetObjectType
-(
-  HYPRE_IJMatrix *matrix
-);
+  ~IJ_t();
 
-int IJMatrixInitialize
-(
-  HYPRE_IJMatrix *matrix
-);
+  int MatrixGetRowCounts(HYPRE_Int nrows, HYPRE_BigInt *rows, HYPRE_Int *ncols);
 
-int IJMatrixAssemble
-(
-  HYPRE_IJMatrix *matrix
-);
+  int MatrixGetValues(HYPRE_Int nrows,
+                        HYPRE_Int *ncols,
+                        HYPRE_BigInt *rows,
+                        HYPRE_BigInt *cols,
+                        HYPRE_Real *values);
 
-} // namespace
+  int MatrixAddToValues(HYPRE_Int nrows,
+                          HYPRE_Int *ncols,
+                          const HYPRE_BigInt *rows,
+                          const HYPRE_BigInt *cols,
+                          const HYPRE_Real *values);
 
-namespace hypreWrapperDevice
-{
+  int MatrixCreate(MPI_Comm comm,
+                     HYPRE_BigInt ilower,
+                     HYPRE_BigInt iupper,
+                     HYPRE_BigInt jlower,
+                     HYPRE_BigInt jupper);
 
-// has to match HYPRE config
-typedef int HYPRE_Int;
-typedef long long int HYPRE_BigInt;
-typedef float HYPRE_Real;
-typedef void HYPRE_IJMatrix;
+  int MatrixSetObjectType();
 
-int BoomerAMGSetup(int nrows, int nz,
-                   const long long int * Ai, const long long int * Aj, const double * Av,
-                   int null_space, MPI_Comm ce, occa::device device,
-                   int useFP32, const double *param, int verbose);
+  int MatrixInitialize();
 
-int BoomerAMGSolve(const occa::memory& o_b, const occa::memory& o_x);
+  int MatrixAssemble();
 
-void Free();
+private:
+  HYPRE_IJMatrix *A;
+};
 
-} // namespace
+
+
+} // namespace hypreWrapper
 
 #endif

@@ -38,7 +38,7 @@ void ellipticUpdateJacobi(elliptic_t *elliptic, occa::memory &o_invDiagA)
   if(elliptic->mgLevel)
     elliptic->ellipticBlockBuildDiagonalPfloatKernel(mesh->Nelements,
                                                      elliptic->Nfields,
-                                                     elliptic->Ntotal,
+                                                     elliptic->fieldOffset,
                                                      elliptic->loffset,
                                                      mesh->o_ggeoPfloat,
                                                      mesh->o_DPfloat,
@@ -48,7 +48,7 @@ void ellipticUpdateJacobi(elliptic_t *elliptic, occa::memory &o_invDiagA)
   else
     elliptic->ellipticBlockBuildDiagonalKernel(mesh->Nelements,
                                                elliptic->Nfields,
-                                               elliptic->Ntotal,
+                                               elliptic->fieldOffset,
                                                elliptic->loffset,
                                                mesh->o_ggeo,
                                                mesh->o_D,
@@ -61,9 +61,9 @@ void ellipticUpdateJacobi(elliptic_t *elliptic, occa::memory &o_invDiagA)
   flopCount *= static_cast<double>(mesh->Nlocal) * elliptic->Nfields;
   if(elliptic->mgLevel) flopCount *= 0.5;
 
-  oogs::startFinish(o_invDiagA, elliptic->Nfields, elliptic->Ntotal, ogsPfloat, ogsAdd, elliptic->oogs);
+  oogs::startFinish(o_invDiagA, elliptic->Nfields, elliptic->fieldOffset, ogsPfloat, ogsAdd, elliptic->oogs);
 
   const pfloat one = 1.0;
-  platform->linAlg->padyMany(Nlocal, elliptic->Nfields, elliptic->Ntotal, one, o_invDiagA);
+  platform->linAlg->padyMany(Nlocal, elliptic->Nfields, elliptic->fieldOffset, one, o_invDiagA);
   platform->flopCounter->add(elliptic->name + " ellipticUpdateJacobi", flopCount);
 }

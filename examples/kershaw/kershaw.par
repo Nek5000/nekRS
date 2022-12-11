@@ -13,13 +13,14 @@ residualTol = 1e-8+relative
 
 # p-MG multiplicative V-cycle, coarse grid solve
 preconditioner = multigrid
-smootherType = RAS+Chebyshev+degree=2 #+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
+smootherType = RAS+OptFourthChebyshev #+maxEigenvalueBoundFactor=1.1
 #coarseSolver = boomerAMG+device #AmgX
 #coarseGridDiscretization = FEM #+Galerkin
-#pMultigridCoarsening = 7,5,3,1
+#pMGSchedule = p=7+degree=3, p=3+degree=3, p=1, p=3+degree=3, p=7+degree=3
 
 # p-MG additive V-cycle, overlapping coarse grid solve
-#preconditioner = multigrid+additive+overlapCrsSolve
+#preconditioner = multigrid+additive
+#coarseSolver = boomerAMG+cpu+overlap
 #smootherType = ASM
 
 # p-MG, solve coarsest level using SEMFEM discretization
@@ -45,6 +46,7 @@ viscosity = 1.0
 #strongThreshold = 0.25
 #nonGalerkinTol = 0.0
 #aggressiveCoarseningLevels = 0
+#chebyshevRelaxOrder = 1
 
 #[AMGX]
 #configFile = "amgx.json"

@@ -110,8 +110,9 @@ mesh_t *createMesh(MPI_Comm comm,
   // get mesh from nek
   meshNekReaderHex3D(N, mesh);
 
-  if (mesh->Nelements * mesh->Nvgeo * cubN > std::numeric_limits<int>::max()) {
-    if (platform->comm.mpiRank == 0) printf("FATAL ERROR: Local element count too large!");
+  if ((hlong) mesh->Nelements * (mesh->Nvgeo * cubN) > std::numeric_limits<int>::max()) {
+    if (platform->comm.mpiRank == 0) 
+      printf("ERROR: mesh->Nelements * mesh->Nvgeo * cubN exceeds <int> limit!");
     ABORT(EXIT_FAILURE);
   }
 

@@ -169,6 +169,8 @@ c-----------------------------------------------------------------------
       call setupcomm(comm_in,newcomm,newcommg,path_in,session_in)
       call iniproc()
 
+      call usrdat0
+
       istep  = 0
       call initdim ! Initialize / set default values.
       call initdat
@@ -242,8 +244,6 @@ c-----------------------------------------------------------------------
 
       call bcastParam
 
-      call usrdat0
-
       call chkParam
       call mapelpr 
       call read_re2_data(ifbswap, .true., .true., .true.)
@@ -295,7 +295,6 @@ c-----------------------------------------------------------------------
       call geom_reset(1)    ! recompute Jacobians, etc.
 
       call vrdsmsh          ! verify mesh topology
-      call mesh_metrics     ! print some metrics
 
       call setlog(.false.)  ! Initalize logical flags
 
@@ -841,9 +840,9 @@ c      write(6,*) 'vel cbc_bmap: ', (cbc_bmap(i,1), i=1,NBID_TYPES)
             cb = cbc(ifc,iel,ifld) 
             if(cb.eq.'t  ') then
               bcID = 1
-            else if(cb.eq.'I  ') then
+            else if(cb.eq.'I  ' .or. cb.eq.'O  ') then
               bcID = 2
-            else if(cb.eq.'f  ' .or. cb.eq.'O  ') then
+            else if(cb.eq.'f  ') then
               bcID = 3
             else
               if(cb.ne.'E  ' .and. cb.ne.'P  ') ierr = 1

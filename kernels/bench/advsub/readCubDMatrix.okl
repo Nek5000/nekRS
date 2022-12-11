@@ -1,0 +1,10 @@
+@kernel void readCubDMatrix(@ restrict dfloat *cubD)
+{
+  for (dlong threadBlock = 0; threadBlock < 1; ++threadBlock; @outer(0)) {
+    for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+      for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+        cubD[j * p_cubNq + i] = c_D[j][i];
+      }
+    }
+  }
+}

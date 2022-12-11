@@ -3,12 +3,13 @@
 #include "re2Reader.hpp"
 #include "benchmarkAx.hpp"
 
-namespace{
+namespace {
 
-void registerGMRESKernels(const std::string &section, int Nfields) {
+void registerGMRESKernels(const std::string &section, int Nfields)
+{
   std::string installDir;
   installDir.assign(getenv("NEKRS_INSTALL_DIR"));
-  const std::string oklpath = installDir + "/okl/elliptic/";
+  const std::string oklpath = installDir + "/kernels/elliptic/";
   std::string fileName;
   const bool serial = platform->serial;
 
@@ -20,23 +21,21 @@ void registerGMRESKernels(const std::string &section, int Nfields) {
 
   std::string kernelName = "gramSchmidtOrthogonalization";
   fileName = oklpath + kernelName + fileNameExtension;
-  platform->kernels.add(
-      sectionIdentifier + kernelName, fileName, gmresKernelInfo);
+  platform->kernels.add(sectionIdentifier + kernelName, fileName, gmresKernelInfo);
 
   kernelName = "updatePGMRESSolution";
   fileName = oklpath + kernelName + fileNameExtension;
-  platform->kernels.add(
-      sectionIdentifier + kernelName, fileName, gmresKernelInfo);
+  platform->kernels.add(sectionIdentifier + kernelName, fileName, gmresKernelInfo);
 
   kernelName = "fusedResidualAndNorm";
   fileName = oklpath + kernelName + fileNameExtension;
-  platform->kernels.add(
-      sectionIdentifier + kernelName, fileName, gmresKernelInfo);
+  platform->kernels.add(sectionIdentifier + kernelName, fileName, gmresKernelInfo);
 }
 
-}
+} // namespace
 
-void registerEllipticKernels(std::string section, int poissonEquation) {
+void registerEllipticKernels(std::string section, int poissonEquation)
+{
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
   const std::string optionsPrefix = createOptionsPrefix(section);
@@ -52,19 +51,25 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
   kernelInfo += meshKernelProperties(N);
 
   const bool blockSolver = [&section]() {
-    if (section.find("velocity") == std::string::npos)
-      return false;
-    if (platform->options.compareArgs("STRESSFORMULATION", "TRUE"))
+    if (section == "velocity" && 
+        platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       return true;
-    if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    if (section == "velocity" && 
+        platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
+      return true;
+    if (section == "mesh" && 
+        platform->options.compareArgs("MESH STRESSFORMULATION", "TRUE"))
       return true;
     return false;
   }();
   const int Nfields = (blockSolver) ? 3 : 1;
   const bool stressForm = [&section]() {
-    if (section.find("velocity") == std::string::npos)
-      return false;
-    if (platform->options.compareArgs("STRESSFORMULATION", "TRUE"))
+
+    if (section == "velocity" && 
+        platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
+      return true;
+    if (section == "mesh" && 
+        platform->options.compareArgs("MESH STRESSFORMULATION", "TRUE"))
       return true;
     return false;
   }();
@@ -75,13 +80,12 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
 
   const std::string sectionIdentifier = std::to_string(Nfields) + "-";
 
-  if (platform->options.compareArgs(
-          optionsPrefix + "KRYLOV SOLVER", "PGMRES")) {
+  if (platform->options.compareArgs(optionsPrefix + "KRYLOV SOLVER", "PGMRES")) {
     registerGMRESKernels(section, Nfields);
   }
 
   {
-    const std::string oklpath = installDir + "/okl/elliptic/";
+    const std::string oklpath = installDir + "/kernels/elliptic/";
     std::string fileName, kernelName;
 
     {
@@ -91,22 +95,19 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
 
       kernelName = "multiScaledAddwOffset";
       fileName = oklpath + kernelName + extension;
-      platform->kernels.add(
-          sectionIdentifier + kernelName, fileName, properties);
+      platform->kernels.add(sectionIdentifier + kernelName, fileName, properties);
       kernelName = "accumulate";
       fileName = oklpath + kernelName + extension;
-      platform->kernels.add(
-          sectionIdentifier + kernelName, fileName, properties);
+      platform->kernels.add(sectionIdentifier + kernelName, fileName, properties);
 
       kernelName = "fusedCopyDfloatToPfloat";
       fileName = oklpath + kernelName + extension;
-      platform->kernels.add(
-          kernelName, fileName, properties);
+      platform->kernels.add(kernelName, fileName, properties);
     }
   }
 
   {
-    const std::string oklpath = installDir + "/okl/core/";
+    const std::string oklpath = installDir + "/kernels/core/";
     std::string fileName;
 
     fileName = oklpath + "mask.okl";
@@ -116,7 +117,6 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
     pfloatKernelInfo["defines/dfloat"] = pfloatString;
     platform->kernels.add("maskPfloat", fileName, pfloatKernelInfo);
   }
-
 
   kernelInfo["defines/p_Nfields"] = Nfields;
 
@@ -130,7 +130,7 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
   const std::string suffix = "Hex3D";
 
   occa::properties AxKernelInfo = dfloatKernelInfo;
-  const std::string oklpath = installDir + "/okl/elliptic/";
+  const std::string oklpath = installDir + "/kernels/elliptic/";
   std::string fileName;
   std::string kernelName;
 
@@ -138,30 +138,30 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
   fileName = oklpath + kernelName + ".okl";
   dfloatKernelInfo["defines/dfloat"] = dfloatString;
   dfloatKernelInfo["defines/pfloat"] = pfloatString;
-  platform->kernels.add(
-      sectionIdentifier + kernelName, fileName, dfloatKernelInfo);
+  platform->kernels.add(sectionIdentifier + kernelName, fileName, dfloatKernelInfo);
 
-  if(poissonEquation){
+  if (poissonEquation) {
     AxKernelInfo["defines/p_poisson"] = 1;
   }
 
   int nelgt, nelgv;
   const std::string meshFile = platform->options.getArgs("MESH FILE");
   re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
-  const int NelemBenchmark = nelgv/platform->comm.mpiCommSize;
+  const int NelemBenchmark = nelgv / platform->comm.mpiCommSize;
   bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
   const int verbosity = verbose ? 2 : 1;
 
-  for(auto&& coeffField : {true, false}){
+  for (auto &&coeffField : {true, false}) {
     std::string kernelNamePrefix = "elliptic";
     if (blockSolver)
       kernelNamePrefix += (stressForm) ? "Stress" : "Block";
 
     kernelName = "Ax";
-    if (coeffField) kernelName += "Coeff";
-    if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
-    kernelName += suffix; 
-    if (blockSolver && !stressForm) kernelName += "_N" + std::to_string(Nfields);
+    if (coeffField)
+      kernelName += "Coeff";
+    if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR"))
+      kernelName += "Trilinear";
+    kernelName += suffix;
 
     const std::string _kernelName = kernelNamePrefix + "Partial" + kernelName;
     const std::string prefix = (poissonEquation) ? "poisson-" : "";
@@ -181,21 +181,17 @@ void registerEllipticKernels(std::string section, int poissonEquation) {
                                 false,
                                 "");
 
-    platform->kernels.add(
-      prefix + _kernelName, axKernel);
+    platform->kernels.add(prefix + _kernelName, axKernel);
   }
 
   kernelName = "ellipticBlockBuildDiagonal" + suffix;
   fileName = oklpath + kernelName + ".okl";
   dfloatKernelInfo["defines/dfloat"] = dfloatString;
   dfloatKernelInfo["defines/pfloat"] = pfloatString;
-  platform->kernels.add(
-      sectionIdentifier + kernelName, fileName, dfloatKernelInfo);
+  platform->kernels.add(sectionIdentifier + kernelName, fileName, dfloatKernelInfo);
   dfloatKernelInfo["defines/pfloat"] = dfloatString;
 
   // PCG update
   fileName = oklpath + "ellipticBlockUpdatePCG" + fileNameExtension;
-  platform->kernels.add(sectionIdentifier + "ellipticBlockUpdatePCG",
-      fileName,
-      kernelInfo);
+  platform->kernels.add(sectionIdentifier + "ellipticBlockUpdatePCG", fileName, kernelInfo);
 }

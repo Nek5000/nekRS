@@ -6,13 +6,17 @@
 #include "printHeader.hpp"
 #include "udf.hpp"
 #include "parReader.hpp"
+#include "re2Reader.hpp"
 #include "configReader.hpp"
+#include "re2Reader.hpp"
 #include "timeStepper.hpp"
 #include "platform.hpp"
 #include "nrssys.hpp"
 #include "linAlg.hpp"
 #include "cfl.hpp"
-#include "amgx.h"
+#include "AMGX.hpp"
+#include "hypreWrapper.hpp"
+#include "hypreWrapperDevice.hpp"
 
 // extern variable from nrssys.hpp
 platform_t* platform;
@@ -100,6 +104,16 @@ void setup(MPI_Comm commg_in, MPI_Comm comm_in,
   if (rank == 0) std::cout << "reading par file ...\n"; 
   auto par = new inipp::Ini();	  
   parRead((void*) par, _setupFile + ".par", comm, options);
+
+  int nelgt, nelgv;
+  const std::string meshFile = options.getArgs("MESH FILE");
+  re2::nelg(meshFile, nelgt, nelgv, comm);
+  if (size > nelgv) {
+    if (rank == 0) {
+      std::cout << "ERROR: MPI tasks > number of elements!" << std::endl;
+    }
+    EXIT_AND_FINALIZE(EXIT_FAILURE);
+  }
 
   // precedence: cmd arg, par, env-var
   if(options.getArgs("THREAD MODEL").length() == 0) 
@@ -233,8 +247,6 @@ double dt(int tstep)
     const double dtOld = nrs->dt[0];
     timeStepper::adjustDt(nrs, tstep);
 
-    // limit dt to control introduced error
-    if(tstep > 1) nrs->dt[0] = std::min(nrs->dt[0], 1.25*dtOld);
     double maxDt = 0;
     platform->options.getArgs("MAX DT", maxDt);
     if(maxDt > 0) nrs->dt[0] = std::min(nrs->dt[0], maxDt);
@@ -327,7 +339,7 @@ int lastStep(double time, int tstep, double elapsedTime)
     double maxElaspedTime;
     platform->options.getArgs("STOP AT ELAPSED TIME", maxElaspedTime);
     if(elapsedTime > 60.0*maxElaspedTime) nrs->lastStep = 1; 
-  } else if (endTime() > 0) { 
+  } else if (endTime() >= 0) { 
      const double eps = 1e-12;
      nrs->lastStep = fabs((time+nrs->dt[0]) - endTime()) < eps || (time+nrs->dt[0]) > endTime();
   } else {
@@ -351,8 +363,11 @@ void* nrsPtr(void)
 void finalize(void)
 {
   if(options.compareArgs("BUILD ONLY", "FALSE")) {
-    AMGXfree();
     nek::end();
+    if(nrs->pSolver) delete nrs->pSolver;
+    hypreWrapper::finalize();
+    hypreWrapperDevice::finalize();
+    AMGXfinalize();
   }
 }
 
@@ -448,7 +463,10 @@ void processUpdFile()
   }
 }
 
-void printInfo(double time, int tstep) { timeStepper::printInfo(nrs, time, tstep); }
+void printInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo) 
+{ 
+  timeStepper::printInfo(nrs, time, tstep, printStepInfo, printVerboseInfo);
+}
 
 void verboseInfo(bool enabled)
 {

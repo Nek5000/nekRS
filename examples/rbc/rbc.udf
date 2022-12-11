@@ -19,7 +19,6 @@ void UDF_LoadKernels(occa::properties& kernelInfo)
 
 void UDF_Setup(nrs_t *nrs)
 {
-  // assign function pointer to drive flow by constant mean pressure gradient
   udf.uEqnSource = &userf;
 }
 

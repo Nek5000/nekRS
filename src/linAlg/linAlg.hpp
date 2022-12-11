@@ -163,6 +163,11 @@ public:
   // \max o_a
   dfloat max(const dlong N, occa::memory& o_a, MPI_Comm _comm);
 
+  // ||o_a||_\infty
+  dfloat amax(const dlong N, occa::memory &o_a, MPI_Comm _comm);
+  dfloat
+  amaxMany(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory &o_a, MPI_Comm _comm);
+
   // ||o_a||_2
   dfloat norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm);
   dfloat norm2Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, MPI_Comm _comm);
@@ -251,6 +256,8 @@ public:
   occa::kernel sumFieldKernel;
   occa::kernel minKernel;
   occa::kernel maxKernel;
+  occa::kernel amaxKernel;
+  occa::kernel amaxManyKernel;
   occa::kernel norm2Kernel;
   occa::kernel norm2ManyKernel;
   occa::kernel norm1Kernel;

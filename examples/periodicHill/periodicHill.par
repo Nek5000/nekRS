@@ -1,0 +1,28 @@
+[GENERAL]
+polynomialOrder = 7
+#startFrom = r.fld
+
+stopAt = endTime
+endTime = 200
+
+dt = targetCFL=2 + max=1e-2 + initial=1e-3
+timeStepper = tombo2
+
+writeControl = simulationTime
+writeInterval = 20 
+
+regularization = hpfrt + nModes=1 + scalingCoeff=10
+
+constFlowRate = meanVelocity=1.0 + direction=X
+
+[PRESSURE]
+residualTol = 1.0e-04
+
+[VELOCITY]
+boundaryTypeMap = wall
+viscosity = 1/6000.0
+density = 1.0
+residualTol = 1.0e-06
+
+[TEMPERATURE]
+solver = none

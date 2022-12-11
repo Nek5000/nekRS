@@ -15,9 +15,6 @@ udf = "mv_cyl.udf"
 solver = elasticity
 file = "mv_cyl.re2"
 
-[PROBLEMTYPE]
-stressFormulation = true
-
 [PRESSURE]
 residualTol = 1e-8
 initialGuess = previous

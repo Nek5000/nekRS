@@ -8,6 +8,10 @@
 #include "parReader.hpp"
 #include "constantFlowRate.hpp"
 #include "postProcessing.hpp"
+#include "plugins/velRecycling.hpp"
+#include "plugins/tavg.hpp"
+#include "plugins/lowMach.hpp"
+#include "plugins/RANSktau.hpp"
 
 extern "C" {
 void UDF_Setup0(MPI_Comm comm, setupAide &options);

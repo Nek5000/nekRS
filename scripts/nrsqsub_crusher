@@ -111,6 +111,7 @@ echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 
 echo "export NVME_HOME=$NVME_HOME" >>$SFILE
 echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
+echo "export MPICH_OFI_NIC_POLICY=NUMA" >>$SFILE
 
 echo "# actual run" >>$SFILE
 echo "date" >>$SFILE

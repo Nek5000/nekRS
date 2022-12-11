@@ -63,12 +63,14 @@ void meshHaloSetup(mesh_t* mesh)
   rank = platform->comm.mpiRank;
   size = platform->comm.mpiCommSize;
 
+  mesh->totalHaloPairs = 0;
+  return;
+
   // non-blocking MPI isend/irecv requests (used in meshHaloExchange)
   mesh->haloSendRequests = calloc(size, sizeof(MPI_Request));
   mesh->haloRecvRequests = calloc(size, sizeof(MPI_Request));
 
   // count number of halo element nodes to swap
-  mesh->totalHaloPairs = 0;
   mesh->NhaloPairs = (int*) calloc(size, sizeof(int));
   for(dlong e = 0; e < mesh->Nelements; ++e)
     for(int f = 0; f < mesh->Nfaces; ++f) {
@@ -155,14 +157,16 @@ void meshHaloPhysicalNodes(mesh_t* mesh)
   dlong totalHaloNodes = mesh->totalHaloPairs * mesh->Np;
   dlong localNodes     = mesh->Nelements * mesh->Np;
 
-  // temporary send buffer
-  dfloat* sendBuffer = (dfloat*) calloc(totalHaloNodes, sizeof(dfloat));
-
-  // send halo data and recv into extended part of arrays
-  meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->x, sendBuffer, mesh->x + localNodes);
-  meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->y, sendBuffer, mesh->y + localNodes);
-  if(mesh->dim == 3)
-    meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->z, sendBuffer, mesh->z + localNodes);
-
-  free(sendBuffer);
+  if(totalHaloNodes) {
+    // temporary send buffer
+    dfloat* sendBuffer = (dfloat*) calloc(totalHaloNodes, sizeof(dfloat));
+ 
+    // send halo data and recv into extended part of arrays
+    meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->x, sendBuffer, mesh->x + localNodes);
+    meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->y, sendBuffer, mesh->y + localNodes);
+    if(mesh->dim == 3)
+      meshHaloExchange(mesh, mesh->Np * sizeof(dfloat), mesh->z, sendBuffer, mesh->z + localNodes);
+ 
+    free(sendBuffer);
+  }
 }

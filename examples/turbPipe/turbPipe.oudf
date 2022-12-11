@@ -1,9 +1,9 @@
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
 {                                                                        
-  bc->u = bc->wrk[bc->idM + 0*bc->fieldOffset];
-  bc->v = bc->wrk[bc->idM + 1*bc->fieldOffset];
-  bc->w = bc->wrk[bc->idM + 2*bc->fieldOffset];
+  bc->u = bc->usrwrk[bc->idM + 0*bc->fieldOffset];
+  bc->v = bc->usrwrk[bc->idM + 1*bc->fieldOffset];
+  bc->w = bc->usrwrk[bc->idM + 2*bc->fieldOffset];
 }
 
 // Stabilized outflow (Dong et al)

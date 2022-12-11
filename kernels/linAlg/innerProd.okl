@@ -1,0 +1,101 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void innerProd(const dlong Nblocks,
+                       const dlong N,
+                       const dlong offset,
+                       @ restrict const dfloat *x,
+                       @ restrict const dfloat *y,
+                       @ restrict dfloat *dot)
+{
+
+  for (dlong b = 0; b < Nblocks; ++b; @outer(0)) {
+
+    @shared volatile dfloat s_dot[p_blockSize];
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      dlong id = t + b * p_blockSize;
+      s_dot[t] = 0.0;
+      if (id < N) {
+        s_dot[t] += x[id + offset] * y[id];
+      }
+    }
+    @barrier();
+
+#if p_blockSize > 512
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 512)
+        s_dot[t] += s_dot[t + 512];
+    @barrier();
+#endif
+
+#if p_blockSize > 256
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 256)
+        s_dot[t] += s_dot[t + 256];
+    @barrier();
+#endif
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 128)
+        s_dot[t] += s_dot[t + 128];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 64)
+        s_dot[t] += s_dot[t + 64];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 32)
+        s_dot[t] += s_dot[t + 32];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 16)
+        s_dot[t] += s_dot[t + 16];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 8)
+        s_dot[t] += s_dot[t + 8];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 4)
+        s_dot[t] += s_dot[t + 4];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 2)
+        s_dot[t] += s_dot[t + 2];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 1)
+        dot[b] = s_dot[0] + s_dot[1];
+  }
+}

@@ -34,7 +34,7 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 {
   mesh_t *mesh = nrs->meshV;
 
-  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], nrs->p0th[0],
+  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], nrs->p0the,
                o_S, o_UProp, o_SProp);
   if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY")){
     // moving mesh parameters

@@ -10,7 +10,7 @@ writeControl = simulationTime
 writeInterval = 50
 
 [PROBLEMTYPE]
-stressFormulation = true # required for variable viscosity
+equation = navierStokes+variableViscosity
 
 [PRESSURE]
 residualTol = 1e-04

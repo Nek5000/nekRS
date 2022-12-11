@@ -306,7 +306,7 @@ c
       tavg = glsc2(t, bm1, ntotv) / volvm1
       tex = pex ** ((P_GAMMA-1.)/P_GAMMA)
 
-      write(*,'(A,7(1X,E15.7))') 'err',time,
+      if(nid.eq.0) write(*,'(A,7(1X,E15.7))') 'err',time,
      $   volex-volvm1,(vpex*XLEN*ZLEN)-termV,
      &   pex-p0th,dpdtex-dp0thdt,ypex-ypist,
      &   tavg - tex

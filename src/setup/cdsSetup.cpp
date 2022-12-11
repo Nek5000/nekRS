@@ -210,6 +210,9 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     kernelName = "maskCopy";
     cds->maskCopyKernel = platform->kernels.get(section + kernelName);
 
+    kernelName = "maskCopy2";
+    cds->maskCopy2Kernel = platform->kernels.get(section + kernelName);
+
     kernelName = "sumMakef";
     cds->sumMakefKernel = platform->kernels.get(section + kernelName);
 

@@ -6,8 +6,8 @@
 
 static int ciMode = 0;
 
-#define PASS { if (rank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
-#define FAIL { if (rank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
+#define PASS { if (platform->comm.mpiRank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
+#define FAIL { if (platform->comm.mpiRank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
 
 #define EPS 1e-1
 
@@ -53,11 +53,25 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("END TIME", std::string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("0"));
+    std::string casename = platform->options.getArgs("CASENAME");
+    if(casename != "mv_ethier"){
+      if(platform->comm.mpiRank == 0){
+        std::cout << "Unexpected input file for CI mode" << std::endl;
+      }
+      FAIL;
+    }
   }
   if (ciMode == 6) {
     options.setArgs("END TIME", std::string("0.2"));
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
+    std::string casename = platform->options.getArgs("CASENAME");
+    if(casename != "mv_ethier"){
+      if(platform->comm.mpiRank == 0){
+        std::cout << "Unexpected input file for CI mode" << std::endl;
+      }
+      FAIL;
+    }
   }
   if (ciMode == 7) {
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
@@ -96,6 +110,14 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if (ciMode == 13) {
     options.setArgs("SCALAR00 SOLVER", "NONE");
     options.setArgs("VELOCITY SOLVER", "NONE");
+
+    std::string casename = platform->options.getArgs("CASENAME");
+    if(casename != "ethierScalar"){
+      if(platform->comm.mpiRank == 0){
+        std::cout << "Unexpected input file for CI" << std::endl;
+      }
+      FAIL;
+    }
   }
 
   options.setArgs("TIME INTEGRATOR", "TOMBO3");
@@ -207,6 +229,16 @@ dfloat norm1(dfloat const * const array, const int size, MPI_Comm comm)
   MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_SUM, comm);
   return norm;
 }
+
+dfloat amax(dfloat const * const array, const int size, MPI_Comm comm)
+{
+  dfloat norm = 0.0;
+  for(int i = 0 ; i < size; ++i)
+    norm = std::max(norm, std::abs(array[i]));
+  MPI_Allreduce(MPI_IN_PLACE, &norm, 1, MPI_DFLOAT, MPI_MAX, comm);
+  return norm;
+}
+
 void ciTestLinAlg(const int N)
 {
   linAlg_t* linAlg = platform->linAlg;
@@ -254,6 +286,11 @@ void ciTestLinAlg(const int N)
       return linAlg->norm1(N, o_x, comm); 
     },
     norm1, "norm1");
+  evaluate_method(
+    [&](auto N, auto o_x, auto comm) { 
+      return linAlg->amax(N, o_x, comm); 
+    },
+    amax, "amax");
   free(x);
   o_x.free();
 }
@@ -265,7 +302,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     int NiterP = nrs->pSolver->Niter;
 
     // mode 11 uses Chebyshev+Jacobi smoothing
-    const int expectedNiterP = (ciMode == 11) ? 13 : 6;
+    const int expectedNiterP = (ciMode == 11) ? 19 : 7;
     const int pIterErr = abs(NiterP - expectedNiterP);
     if(pIterErr >= 2) {
       if(rank==0){
@@ -317,26 +354,26 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   int NiterS02 = platform->options.compareArgs("SCALAR01 SOLVER", "NONE") ? -1 : nrs->cds->solver[1]->Niter;
   int s01IterErr, s02IterErr;
 
+  s01IterErr = abs(NiterS01 - 2);
+  s02IterErr = abs(NiterS02 - 2);
+
+
   switch (ciMode) {
     case 1 : velIterErr = abs(NiterU - 10);
-             s1Err = abs((err[2] - 4.76E-12)/err[2]);
-             s2Err = abs((err[3] - 5.54E-12)/err[3]);
+             s1Err = abs((err[2] - 5.42E-12)/err[2]);
+             s2Err = abs((err[3] - 6.30E-12)/err[3]);
              pIterErr = abs(NiterP - 4);
-             vxErr = abs((err[0] - 2.78E-10)/err[0]);
-             prErr = abs((err[1] - 7.02E-010)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
+             vxErr = abs((err[0] - 2.77E-10)/err[0]);
+             prErr = abs((err[1] - 7.14E-010)/err[1]);
              break;
     case 2 : 
     case 11:
              velIterErr = abs(NiterU - 10);
-             s1Err = abs((err[2] - 6.11E-12)/err[2]);
-             s2Err = abs((err[3] - 6.84E-12)/err[3]);
-             pIterErr = abs(NiterP - 1);
-             vxErr = abs((err[0] - 2.78E-10)/err[0]);
-             prErr = abs((err[1] - 7.11E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
+             s1Err = abs((err[2] - 6.67E-12)/err[2]);
+             s2Err = abs((err[3] - 7.49E-12)/err[3]);
+             pIterErr = abs(NiterP - 4);
+             vxErr = abs((err[0] - 2.77E-10)/err[0]);
+             prErr = abs((err[1] - 6.98E-10)/err[1]);
              break;
     case 3 : velIterErr = abs(NiterU - 4);
              s1Err = abs((err[2] - 5.25E-12)/err[2]);
@@ -344,8 +381,6 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 2);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 7.11E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
              break;
     case 4 : velIterErr = abs(NiterU - 1);
              s1Err = abs((err[2] - 1.71E-11)/err[2]);
@@ -353,26 +388,24 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 3.65E-10)/err[0]);
              prErr = abs((err[1] - 6.71E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
              break;
     case 5 : velIterErr = abs(NiterU - 12);
              s1Err = abs((err[2] - 1.53E-06)/err[2]);
              s2Err = abs((err[3] - 1.73E-06)/err[3]);
-             pIterErr = abs(NiterP - 12);
+             pIterErr = abs(NiterP - 11);
              vxErr = abs((err[0] - 2.57E-07)/err[0]);
              prErr = abs((err[1] - 2.16E-06)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
+             s01IterErr = abs(NiterS01 - 5);
+             s02IterErr = abs(NiterS02 - 5);
              break;
     case 6 : velIterErr = abs(NiterU - 12);
              s1Err = abs((err[2] - 1.27E-06)/err[2]);
              s2Err = abs((err[3] - 1.41E-06)/err[3]);
-             pIterErr = abs(NiterP - 12);
+             pIterErr = abs(NiterP - 11);
              vxErr = abs((err[0] - 2.43E-07)/err[0]);
              prErr = abs((err[1] - 2.89E-06)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
+             s01IterErr = abs(NiterS01 - 5);
+             s02IterErr = abs(NiterS02 - 5);
              break;
     case 7 : velIterErr = abs(NiterU - 5);
              s1Err = abs((err[2] - 2E-13)/err[2]);
@@ -383,17 +416,13 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
              vxErr = abs((err[0] - 1.4E-10)/err[0]);
              prErr = abs((err[1] - 8.7E-9)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
              break;
     case 8 : velIterErr = abs(NiterU - 10);
-             s1Err = abs((err[2] - 1.03E-11)/err[2]);
-             s2Err = abs((err[3] - 1.34E-11)/err[3]);
+             s1Err = abs((err[2] - 1.53E-11)/err[2]);
+             s2Err = abs((err[3] - 1.77E-11)/err[3]);
              pIterErr = abs(NiterP - 2);
-             vxErr = abs((err[0] - 3.38E-10)/err[0]);
-             prErr = abs((err[1] - 7.8E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
+             vxErr = abs((err[0] - 3.35E-10)/err[0]);
+             prErr = abs((err[1] - 1.63E-09)/err[1]);
              break;
     case 9 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 1.03E-11)/err[2]);
@@ -401,8 +430,6 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 6.98E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
              break;
     case 10 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 1.03E-11)/err[2]);
@@ -410,8 +437,6 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              pIterErr = abs(NiterP - 1);
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 6.98E-10)/err[1]);
-             s01IterErr = abs(NiterS01 - 10);
-             s02IterErr = abs(NiterS02 - 10);
              break;
     case 12 : velIterErr = abs(NiterU - 10);
              s1Err = abs((err[2] - 2.506E-3)/err[2]);
@@ -420,7 +445,6 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              vxErr = abs((err[0] - 2.78E-10)/err[0]);
              prErr = abs((err[1] - 6.98E-10)/err[1]);
              s01IterErr = abs(NiterS01 + 1);
-             s02IterErr = abs(NiterS02 - 10);
              break;
     case 13 : velIterErr = abs(NiterU +1);
              s1Err = abs((err[2] - 2.506E-3)/err[2]);
@@ -429,7 +453,6 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
              vxErr = abs((err[0] - 2.5E-3)/err[0]);
              prErr = abs((err[1] - 2.364E-2)/err[1]);
              s01IterErr = abs(NiterS01 + 1);
-             s02IterErr = abs(NiterS02 - 10);
              break;
      }
 
@@ -460,15 +483,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
       FAIL;
     }
 
-    // mode 13 requires using ethierScalar.par as the input
-    std::string casename = platform->options.getArgs("CASENAME");
-    if(casename != "ethierScalar"){
-      if(platform->comm.mpiRank == 0){
-        std::cout << "Unexpected input file for CI mode 13" << std::endl;
-      }
-      FAIL;
-    }
-
+ 
     if(nrs->flow){
       if(platform->comm.mpiRank == 0){
         std::cout << "nrs->flow = true for CI mode 13" << std::endl;
@@ -493,7 +508,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     }
   }
   if (ciMode == 8){
-    const int expectedSteps = 68;
+    const int expectedSteps = 56;
     const int errSteps = abs(expectedSteps - tstep);
     if (rank == 0)
       printf("nSteps err variable dt:  %d\n", errSteps);

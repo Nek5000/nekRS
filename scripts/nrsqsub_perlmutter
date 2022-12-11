@@ -96,6 +96,7 @@ echo "nvidia-smi" >>$SFILE
 echo "export SLURM_CPU_BIND=\"cores\"" >> $SFILE
 echo "export CRAY_ACCEL_TARGET=nvidia80" >>$SFILE
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
+echo "export MPICH_OFI_NIC_POLICY=NUMA" >>$SFILE
 
 echo "ulimit -s unlimited " >>$SFILE
 echo "export NEKRS_HOME=$NEKRS_HOME" >>$SFILE

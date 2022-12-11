@@ -46,11 +46,16 @@ namespace occa {
         compiler = "nvcc";
       }
 
-      if (env::var("OCCA_CUDA_COMPILER_FLAGS").size()) {
+      if (kernelProps.get<std::string>("compiler_flags").size()) {
+        compilerFlags = (std::string)kernelProps["compiler_flags"];
+      }
+      else if (env::var("OCCA_CUDA_COMPILER_FLAGS").size()) {
         compilerFlags = env::var("OCCA_CUDA_COMPILER_FLAGS");
-      } else if (kernelProps.get<std::string>("compiler_flags").size()) {
+      }
+      else if (kernelProps.get<std::string>("compiler_flags").size()) {
         compilerFlags = (std::string) kernelProps["compiler_flags"];
-      } else {
+      }
+      else {
         compilerFlags = "-O3";
       }
 

@@ -1,0 +1,21 @@
+@kernel void unitVector(const dlong N, const dlong fieldOffset, @ restrict dfloat *v)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+
+    const dfloat vx = v[n + 0 * fieldOffset];
+    const dfloat vy = v[n + 1 * fieldOffset];
+    const dfloat vz = v[n + 2 * fieldOffset];
+
+    dfloat mag = vx * vx + vy * vy + vz * vz;
+    mag = sqrt(mag);
+
+    const dfloat tol = 1e-8;
+
+    if (mag > tol) {
+      const dfloat invMag = 1.0 / mag;
+      v[n + 0 * fieldOffset] = vx * invMag;
+      v[n + 1 * fieldOffset] = vy * invMag;
+      v[n + 2 * fieldOffset] = vz * invMag;
+    }
+  }
+}

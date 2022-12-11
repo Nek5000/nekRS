@@ -25,6 +25,7 @@
  */
 
 #include "elliptic.h"
+#include "ellipticPrecon.h"
 #include <string>
 #include "platform.hpp"
 #include "linAlg.hpp"
@@ -51,18 +52,17 @@ void checkConfig(elliptic_t* elliptic)
   if (elliptic->blockSolver &&  
       !options.compareArgs("PRECONDITIONER","JACOBI")) {
     if(platform->comm.mpiRank == 0)
-      printf("ERROR: Block solver is implemented for C0-HEXAHEDRA with Jacobi preconditioner only\n");
+      printf("ERROR: Block solver requires Jacobi preconditioner\n");
     err++;
   }
 
   if (options.compareArgs("COEFFICIENT","VARIABLE")) {
     if(options.compareArgs("PRECONDITIONER", "MULTIGRID") &&
        !options.compareArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE")) {
-      if(platform->comm.mpiRank == 0)
-        printf(
-          "ERROR: Multigrid preconditioner does not support varibale coefficients\n");
-      err++;
-
+       if(platform->comm.mpiRank == 0)
+         printf(
+           "ERROR: Multigrid preconditioner does not support variable coefficients\n");
+       err++;
     }
   }
 
@@ -106,7 +106,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       platform->kernels.get(sectionIdentifier + "fusedResidualAndNorm");
   }
 
-  const size_t offsetBytes = elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat);
+  const size_t offsetBytes = elliptic->fieldOffset * elliptic->Nfields * sizeof(dfloat);
 
   if(elliptic->o_wrk.size() < elliptic_t::NScratchFields * offsetBytes) {
     if(platform->comm.mpiRank == 0) printf("ERROR: mempool assigned for elliptic too small!");
@@ -123,7 +123,7 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   const dlong Nblocks = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
   elliptic->tmpNormr = (dfloat*) calloc(Nblocks,sizeof(dfloat));
   elliptic->o_tmpNormr = platform->device.malloc(Nblocks * sizeof(dfloat),
-                                             elliptic->tmpNormr);
+                                                 elliptic->tmpNormr);
 
   int useFlexible = options.compareArgs("KRYLOV SOLVER", "FLEXIBLE");
 
@@ -137,8 +137,8 @@ void ellipticSolveSetup(elliptic_t* elliptic)
 
   elliptic->NelementsGlobal = NelementsGlobal;
 
-  dfloat* lambda = (dfloat*) calloc(2*elliptic->Ntotal, sizeof(dfloat));
-  elliptic->o_lambda.copyTo(lambda, 2*elliptic->Ntotal*sizeof(dfloat));
+  dfloat* lambda = (dfloat*) calloc(2*elliptic->fieldOffset, sizeof(dfloat));
+  elliptic->o_lambda.copyTo(lambda, 2*elliptic->fieldOffset*sizeof(dfloat));
 
   int *allNeumann = (int *)calloc(elliptic->Nfields, sizeof(int));
   // check based on the coefficient
@@ -146,14 +146,14 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     if(elliptic->coeffField) {
       int allzero = 1;
       for(int n = 0; n < Nlocal; n++) { // check any non-zero value for each field
-        if(lambda[n + elliptic->Ntotal + fld * elliptic->loffset]) {
+        if(lambda[n + elliptic->fieldOffset + fld * elliptic->loffset]) {
           allzero = 0;
           break;
         }
       }
       allNeumann[fld] = allzero;
     }else{
-      allNeumann[fld] = (lambda[elliptic->Ntotal + fld * elliptic->loffset] == 0) ? 1 : 0;
+      allNeumann[fld] = (lambda[elliptic->fieldOffset + fld * elliptic->loffset] == 0) ? 1 : 0;
     }
   }
 
@@ -198,9 +198,9 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     ogs_t *ogs = NULL;
     if (elliptic->blockSolver) ogs = mesh->ogs;
     ellipticOgs(mesh,
-                elliptic->Ntotal,
+                elliptic->fieldOffset,
                 elliptic->Nfields,
-                /* offset */ elliptic->Ntotal,
+                elliptic->fieldOffset,
                 elliptic->EToB,
                 elliptic->Nmasked,
                 elliptic->o_maskIds,
@@ -213,7 +213,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
     elliptic->o_invDegree = elliptic->ogs->o_invDegree;
   }
 
-  elliptic->precon = new precon_t();
 
   std::string suffix = "Hex3D";
   std::string kernelName;
@@ -243,8 +242,6 @@ void ellipticSolveSetup(elliptic_t* elliptic)
       if (elliptic->coeffField) kernelName += "Coeff";
       if (platform->options.compareArgs("ELEMENT MAP", "TRILINEAR")) kernelName += "Trilinear";
       kernelName += suffix; 
-      if (elliptic->blockSolver && !elliptic->stressForm) 
-        kernelName += "_N" + std::to_string(elliptic->Nfields);
 
       elliptic->AxKernel = 
         platform->kernels.get(kernelNamePrefix + "Partial" + kernelName);
@@ -259,17 +256,12 @@ void ellipticSolveSetup(elliptic_t* elliptic)
                     ellipticAx(elliptic, mesh->NlocalGatherElements, mesh->o_localGatherElementList,
                                elliptic->o_p, elliptic->o_Ap, dfloatString);
                   };
-  elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, NULL, oogsMode);
+  elliptic->oogs = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->fieldOffset, ogsDfloat, NULL, oogsMode);
   elliptic->oogsAx = elliptic->oogs;
   if(options.compareArgs("GS OVERLAP", "TRUE")) 
-    elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, callback, oogsMode);
+    elliptic->oogsAx = oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->fieldOffset, ogsDfloat, callback, oogsMode);
 
-  long long int pre = platform->device.occaDevice().memoryAllocated();
   ellipticPreconditionerSetup(elliptic, elliptic->ogs);
-
-  long long int usedBytes = platform->device.occaDevice().memoryAllocated() - pre;
-
-  elliptic->precon->preconBytes = usedBytes;
 
   if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
      options.compareArgs("INITIAL GUESS", "PROJECTION-ACONJ"))
@@ -292,4 +284,13 @@ void ellipticSolveSetup(elliptic_t* elliptic)
   MPI_Barrier(platform->comm.mpiComm);
   if(platform->comm.mpiRank == 0) printf("done (%gs)\n", MPI_Wtime() - tStart);
   fflush(stdout);
+}
+
+elliptic_t::~elliptic_t()
+{
+  if(precon) delete (precon_t*) this->precon;
+  free(this->tmpNormr);
+  this->o_tmpNormr.free();
+  this->o_lambda.free(); 
+  this->o_EToB.free();
 }

@@ -43,8 +43,8 @@ GmresData::GmresData(elliptic_t* elliptic)
       return 0;
     }()
   ),
-  o_V(elliptic->Ntotal * elliptic->Nfields, nRestartVectors, sizeof(dfloat)),
-  o_Z(elliptic->Ntotal * elliptic->Nfields, flexible ? nRestartVectors : 1, sizeof(dfloat)),
+  o_V(elliptic->fieldOffset * elliptic->Nfields, nRestartVectors, sizeof(dfloat)),
+  o_Z(elliptic->fieldOffset * elliptic->Nfields, flexible ? nRestartVectors : 1, sizeof(dfloat)),
   o_y(platform->device.malloc(nRestartVectors, sizeof(dfloat))),
   H((dfloat *) calloc((nRestartVectors+1)*(nRestartVectors+1), sizeof(dfloat))),
   sn((dfloat *) calloc(nRestartVectors, sizeof(dfloat))),
@@ -99,17 +99,17 @@ void gmresUpdate(elliptic_t* elliptic,
   if(elliptic->options.compareArgs("KRYLOV SOLVER", "FLEXIBLE")){
     elliptic->updatePGMRESSolutionKernel(
       mesh->Nlocal,
-      elliptic->Ntotal,
+      elliptic->fieldOffset,
       gmresUpdateSize,
       o_y,
       o_Z,
       o_x
     );
   } else {
-    platform->linAlg->fill(elliptic->Nfields * elliptic->Ntotal, 0.0, o_z);
+    platform->linAlg->fill(elliptic->Nfields * elliptic->fieldOffset, 0.0, o_z);
     elliptic->updatePGMRESSolutionKernel(
       mesh->Nlocal,
-      elliptic->Ntotal,
+      elliptic->fieldOffset,
       gmresUpdateSize,
       o_y,
       o_V,
@@ -120,7 +120,7 @@ void gmresUpdate(elliptic_t* elliptic,
     platform->linAlg->axpbyMany(
       mesh->Nlocal,
       elliptic->Nfields,
-      elliptic->Ntotal,
+      elliptic->fieldOffset,
       1.0,
       o_tmp,
       1.0,
@@ -152,7 +152,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   occa::memory& o_weight = elliptic->o_invDegree;
 
   occa::memory& o_b = elliptic->o_z;
-  o_b.copyFrom(o_r, elliptic->Ntotal * elliptic->Nfields * sizeof(dfloat));
+  o_b.copyFrom(o_r, elliptic->fieldOffset * elliptic->Nfields * sizeof(dfloat));
 
   dfloat* y = elliptic->gmresData->y;
   dfloat* H = elliptic->gmresData->H;
@@ -192,7 +192,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     linAlg.axpbyMany(
       mesh->Nlocal,
       elliptic->Nfields,
-      elliptic->Ntotal,
+      elliptic->fieldOffset,
       1.0 / nr,
       o_r,
       0.0,
@@ -213,7 +213,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         mesh->Nlocal,
         (i+1),
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         o_weight,
         o_V,
         o_w,
@@ -226,7 +226,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
         mesh->Nlocal,
         (i+1),
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         o_weight,
         o_V,
         o_w,
@@ -239,7 +239,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       elliptic->gramSchmidtOrthogonalizationKernel(
         Nblock,
         mesh->Nlocal,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         (i+1),
         o_weight,
         o_y,
@@ -271,7 +271,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
 
       // V(:,i+1) = w/nw
       if (i < nRestartVectors - 1) {
-        linAlg.axpbyMany(mesh->Nlocal, elliptic->Nfields, elliptic->Ntotal, (1. / nw), o_w, 0., o_V.at(i + 1));
+        linAlg.axpbyMany(mesh->Nlocal, elliptic->Nfields, elliptic->fieldOffset, (1. / nw), o_w, 0., o_V.at(i + 1));
       }
 
       //apply Givens rotation
@@ -332,7 +332,7 @@ int pgmres(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
     elliptic->fusedResidualAndNormKernel(
       Nblock,
       mesh->Nlocal,
-      elliptic->Ntotal,
+      elliptic->fieldOffset,
       elliptic->o_invDegree,
       o_b,
       o_Ax,

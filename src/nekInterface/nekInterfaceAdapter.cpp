@@ -3,7 +3,7 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "bcMap.hpp"
-#include "ioUtils.hpp"
+#include "fileUtils.hpp"
 #include "re2Reader.hpp"
 
 nekdata_private nekData;
@@ -53,6 +53,7 @@ static void (* nek_setabbd_ptr)(double *, double*, int*, int*);
 static void (* nek_storesol_ptr)(void);
 static void (* nek_restoresol_ptr)(void);
 static void (* nek_updggeom_ptr)(void);
+static void (* nek_meshmetrics_ptr)(void);
 
 void noop_func(void) {}
 
@@ -75,6 +76,11 @@ void* ptr(const char* id)
 
 void* scPtr(int id)
 {
+  if(!id) {
+    if(rank == 0) fprintf(stderr, "Error: nek::scPtr index <1!\n");
+    ABORT(EXIT_FAILURE);
+  }
+
   void* ptr;
   (*nek_scptr_ptr)(&id, &ptr);
   return ptr;
@@ -326,6 +332,8 @@ void set_usr_handles(const char* session_in,int verbose)
   check_error(dlerror());
   nek_updggeom_ptr = (void (*)(void))dlsym(handle, fname("nekf_updggeom"));
   check_error(dlerror());
+  nek_meshmetrics_ptr = (void (*)(void))dlsym(handle, fname("mesh_metrics"));
+  check_error(dlerror());
 
 #define postfix(x) x ## _ptr
 #define load_or_noop(s) \
@@ -352,7 +360,7 @@ void set_usr_handles(const char* session_in,int verbose)
 #undef load_or_noop
 }
 
-void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldimt, setupAide& options, char* SIZE)
+void mkSIZE(int lx1, int lxd, int lelt, int lelg, int ldim, int lpmin, int ldimt, setupAide& options, char* SIZE)
 {
   char line[BUFSIZ];
   const char *cache_dir = getenv("NEKRS_CACHE_DIR");
@@ -382,8 +390,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
     }
   }
 
-  int lx1m = (options.compareArgs("MOVING MESH", "TRUE")) ? lx1 : 1;
-  lx1m = (options.compareArgs("STRESSFORMULATION", "TRUE")) ? lx1 : lx1m;
+  int lx1m = lx1;
 
   constexpr int nMaxObj = 20;
 
@@ -396,7 +403,7 @@ void mkSIZE(int lx1, int lxd, int lelt, hlong lelg, int ldim, int lpmin, int ldi
     else if(strstr(line, "parameter (lelt=") != NULL)
       sprintf(line, "      parameter (lelt=%d)\n", lelt);
     else if(strstr(line, "parameter (lelg=") != NULL)
-      sprintf(line, "      parameter (lelg=%d)\n", (int)lelg);
+      sprintf(line, "      parameter (lelg=%d)\n", lelg);
     else if(strstr(line, "parameter (ldim=") != NULL)
       sprintf(line, "      parameter (ldim=%d)\n", ldim);
     else if(strstr(line, "parameter (lpmin=") != NULL)
@@ -505,8 +512,8 @@ void buildNekInterface(int ldimt, int N, int np, setupAide& options)
       const int ndim = 3;
       re2::nelg(meshFile, nelgt, nelgv, MPI_COMM_NULL); 
 
-      int lelt = (int)(nelgt/np) + 3;
-      if(lelt > nelgt) lelt = (int)nelgt;
+      int lelt = (nelgt/np) + 3;
+      if(lelt > nelgt) lelt = nelgt;
       sprintf(buf,"%s/SIZE",cache_dir.c_str());
       mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, options, buf);
 
@@ -688,7 +695,7 @@ int setup(nrs_t* nrs_in)
   dfloat lambda;
   options->getArgs("SCALAR00 DIFFUSIVITY", lambda);
 
-  int stressForm = options->compareArgs("STRESSFORMULATION", "TRUE");
+  int stressForm = 1; // avoid recompilation + bypass unligned SYM/SHL check 
 
   (*nek_setup_ptr)(&flow,
                    &nscal,
@@ -992,4 +999,7 @@ void coeffAB(double *coeff, double *dt, int order)
 }
 
 void recomputeGeometry() { (*nek_updggeom_ptr)(); }
+
+void printMeshMetrics() { (*nek_meshmetrics_ptr)(); }
+
 }

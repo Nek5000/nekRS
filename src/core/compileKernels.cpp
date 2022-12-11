@@ -62,7 +62,8 @@ void compileKernels() {
   // as pressure section kernels are the same.
   const std::vector<std::pair<std::string,int>> sections = {
       {"pressure", 1},
-      {"velocity", 0}
+      {"velocity", 0},
+      {"mesh", 0},
   };
 
   std::string section;

@@ -11,19 +11,17 @@
 
 ## Breaking Changes
 * [nrsconfig] Optional build settings have to be passed as a command line arg e.g. `-DENABLE_AMGX=ON`
-* time step was added to `nekRS::outfld(..., int step, ...)`
-
-## Known Bugs / Restrictions
-
+* Time step was added to `nekRS::outfld(..., int step, ...)`
+* [par] Use `pMGSchedule` instead of `pMultigridCoarsening` (see help for more details)
 * [par] Rename writeControl value `runTime` => `simulationTime`
 * [par] Remove multigrid qualifier `coarse`
 * [par] Remove SEMFEM solver specification from key `preconditioner`, use `semfemSolver` instead
+* [par] Replace `stressFormulation = true` by `equation = navierStokes+variableViscosity` 
 
 ## Known Bugs / Restrictions
 
 * Mesh solver does not support CHT and unaligned sym/shl BCs
 * [729](https://github.com/Nek5000/Nek5000/issues/759)
-* [300](https://github.com/Nek5000/nekRS/issues/300)
 * [258](https://github.com/Nek5000/nekRS/issues/258)
 
 ## Thanks to our Contributors
@@ -59,6 +57,7 @@ asked and answered questions, and were part of inspiring discussions.
 * [udf] Rename plug-in name `avg`  => `tavg`
 * [udf] Rename `udf.converged` => `udf.timeStepConverged`
 * [nrsconfig] Rename env-var `AMGX_ENABLE` => `ENABLE_AMGX`
+* [oudf] Rename `bc->wrk` => `bc->usrwrk`
 
 ## Known Bugs / Restrictions
 

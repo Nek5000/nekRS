@@ -132,5 +132,6 @@ void bdfCoeff(double *g0, double *coeff, double *dt, int order);
 void extCoeff(double *coeff, double *dt, int nAB, int nBDF);
 void coeffAB(double *coeff, double *dt, int order);
 void recomputeGeometry();
+void printMeshMetrics();
 }
 #endif

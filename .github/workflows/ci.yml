@@ -17,6 +17,7 @@ env:
   ENABLE_CUDA: "0"
   ENABLE_HIP: "0"
   NEKRS_COMPILER_FLAGS: "-O2"
+  OCCA_CXXFLAGS: "-O2"
   NEKRS_OCCA_MODE_DEFAULT: "SERIAL"
   NEKRS_CI: "1"
 
@@ -30,7 +31,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -57,7 +58,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -133,7 +134,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -161,7 +162,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -235,7 +236,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -263,7 +264,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -294,7 +295,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -324,7 +325,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -347,7 +348,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -370,7 +371,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -393,7 +394,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -416,7 +417,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -441,7 +442,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -464,7 +465,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -487,7 +488,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -510,7 +511,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -533,7 +534,7 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 

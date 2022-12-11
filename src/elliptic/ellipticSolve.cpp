@@ -25,14 +25,16 @@
  */
 
 #include "elliptic.h"
+#include "ellipticPrecon.h"
 #include "platform.hpp"
 #include "linAlg.hpp"
 
 void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 {
   setupAide& options = elliptic->options;
+  precon_t* precon = (precon_t*) elliptic->precon;
   if(elliptic->coeffFieldPreco && options.compareArgs("PRECONDITIONER", "JACOBI"))
-    ellipticUpdateJacobi(elliptic, elliptic->precon->o_invDiagA);
+    ellipticUpdateJacobi(elliptic, precon->o_invDiagA);
   else if(elliptic->coeffFieldPreco && options.compareArgs("PRECONDITIONER", "MULTIGRID"))
     ellipticMultiGridUpdateLambda(elliptic);
 
@@ -53,7 +55,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       platform->linAlg->weightedNorm2Many(
         mesh->Nlocal,
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         elliptic->o_invDegree,
         o_r,
         platform->comm.mpiComm
@@ -67,7 +69,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       platform->linAlg->weightedNorm2Many(
         mesh->Nlocal,
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         elliptic->o_invDegree,
         o_x,
         platform->comm.mpiComm
@@ -81,7 +83,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   platform->linAlg->axpbyMany(
     mesh->Nlocal,
     elliptic->Nfields,
-    elliptic->Ntotal,
+    elliptic->fieldOffset,
     -1.0,
     elliptic->o_Ap,
     1.0,
@@ -89,10 +91,10 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   );
   if(elliptic->allNeumann) ellipticZeroMean(elliptic, o_r);
   ellipticApplyMask(elliptic, o_r, dfloatString);
-  oogs::startFinish(o_r, elliptic->Nfields, elliptic->Ntotal, ogsDfloat, ogsAdd, elliptic->oogs);
+  oogs::startFinish(o_r, elliptic->Nfields, elliptic->fieldOffset, ogsDfloat, ogsAdd, elliptic->oogs);
 
-  elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->Ntotal * sizeof(dfloat));
-  platform->linAlg->fill(elliptic->Ntotal * elliptic->Nfields, 0.0, o_x);
+  elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->fieldOffset * sizeof(dfloat));
+  platform->linAlg->fill(elliptic->fieldOffset * elliptic->Nfields, 0.0, o_x);
   if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
      options.compareArgs("INITIAL GUESS","PROJECTION-ACONJ")) {
     
@@ -101,7 +103,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
       platform->linAlg->weightedNorm2Many(
         mesh->Nlocal,
         elliptic->Nfields,
-        elliptic->Ntotal,
+        elliptic->fieldOffset,
         elliptic->o_invDegree,
         o_r,
         platform->comm.mpiComm
@@ -119,7 +121,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     platform->linAlg->weightedNorm2Many(
       mesh->Nlocal,
       elliptic->Nfields,
-      elliptic->Ntotal /* offset */,
+      elliptic->fieldOffset /* offset */,
       elliptic->o_invDegree,
       o_r,
       platform->comm.mpiComm
@@ -168,7 +170,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   platform->linAlg->axpbyMany(
     mesh->Nlocal,
     elliptic->Nfields,
-    elliptic->Ntotal,
+    elliptic->fieldOffset,
     1.0,
     elliptic->o_x0,
     1.0,

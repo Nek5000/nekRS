@@ -10,8 +10,6 @@
 #include "mesh3D.h"
 #include "elliptic.h"
 
-#define NSCALAR_MAX 100
-
 struct cds_t
 {
   static constexpr double targetTimeBenchmark {0.1};
@@ -114,6 +112,7 @@ struct cds_t
   occa::kernel setEllipticCoeffKernel;
 
   occa::kernel maskCopyKernel;
+  occa::kernel maskCopy2Kernel;
 
   occa::properties* kernelInfo;
 };

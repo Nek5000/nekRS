@@ -184,6 +184,7 @@ struct mesh_t
 
   // mesh velocity
   occa::memory o_U;
+  occa::memory o_Ue;
   dfloat* U; // host shadow of mesh velocity
 
   occa::memory o_D;
@@ -215,8 +216,7 @@ struct mesh_t
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors
 
-  occa::memory o_gllzw;
-
+  occa::memory o_gllz;
   occa::memory o_gllw;
   occa::memory o_cubw;
   occa::memory o_faceNodes;
@@ -300,6 +300,8 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
 // generic mesh setup
 mesh_t* meshSetup(char* filename, int N, setupAide &options);
 void meshFree(mesh_t*);
+
+void printMeshMetrics(mesh_t* mesh);
 
 void occaTimerTic(occa::device device,std::string name);
 void occaTimerToc(occa::device device,std::string name);
