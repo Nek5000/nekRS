@@ -16,10 +16,11 @@ endif()
 # Nek5000
 # =======
 
-  # Since Nek5000 is compiled in-source, we copy it to the build 
+# Since Nek5000 is compiled in-source, we copy it to the build
 FetchContent_Declare(
   nek5000_content
-  URL ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/nek5000)
+  GIT_REPOSITORY https://github.com/thilinarmtb/Nek5000.git
+  GIT_TAG new_re2_dproc_v0_mm)
 FetchContent_GetProperties(nek5000_content)
 if (NOT nek5000_content_POPULATED)
   FetchContent_Populate(nek5000_content)
