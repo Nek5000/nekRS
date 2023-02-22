@@ -18,6 +18,7 @@ static int expansionCoeff = 1;
 static dfloat gamma0 = 1;
 static occa::kernel qtlKernel;
 static occa::kernel p0thHelperKernel;
+static occa::kernel p0thHelper2Kernel;
 static occa::kernel surfaceFluxKernel;
 
 }
@@ -38,6 +39,10 @@ void lowMach::buildKernel(occa::properties kernelInfo)
     kernelName = "p0thHelper";
     fileName = path + kernelName + extension;
     p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo, true);
+
+    kernelName = "p0thHelper2";
+    fileName = path + kernelName + extension;
+    p0thHelper2Kernel  = platform->device.buildKernel(fileName, kernelInfo, true);
 
     {
       int N;
@@ -197,7 +202,7 @@ void lowMach::qThermalIdealGasSingleComponent(dfloat time, occa::memory o_div)
 }
 
 // qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div, occa::memory o_Q)
+void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div, occa::memory o_beta, occa::memory o_kappa)
 {
   qThermal = 1;
   nrs_t* nrs = the_nrs;
@@ -234,7 +239,7 @@ void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div, oc
   }
 
    expansionCoeff = 1;
-// o_Q is thermal expansion coefficient provided by user
+// o_beta is thermal expansion coefficient provided by user
   qtlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
@@ -242,7 +247,7 @@ void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div, oc
     nrs->fieldOffset,
     platform->o_mempool.slice0,
 	expansionCoeff,
-    o_Q,
+    o_beta,
     cds->o_diff,
     cds->o_rho,
     platform->o_mempool.slice3,
@@ -260,6 +265,70 @@ void lowMach::qThermalRealGasSingleComponent(dfloat time, occa::memory o_div, oc
     o_div);
 
   double surfaceFlops = 0.0;
+
+  if(nrs->pSolver->allNeumann){
+
+    const dlong Nlocal = mesh->Nlocal;
+
+    linAlg->axmyz(Nlocal, 1.0, mesh->o_LMM, o_div, platform->o_mempool.slice0);
+    const dfloat termQ = linAlg->sum(Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
+
+    surfaceFluxKernel(
+      mesh->Nelements,
+      mesh->o_sgeo,
+      mesh->o_vmapM,
+      nrs->o_EToB,
+      nrs->fieldOffset,
+      nrs->o_Ue,
+      platform->o_mempool.slice0
+    );
+
+    double surfaceFluxFlops = 13 * mesh->Nq * mesh->Nq;
+    surfaceFluxFlops *= static_cast<double>(mesh->Nelements);
+
+    platform->o_mempool.slice0.copyTo(platform->mempool.slice0, mesh->Nelements * sizeof(dfloat));
+    dfloat termV = 0.0;
+    for(int i = 0 ; i < mesh->Nelements; ++i) termV += platform->mempool.slice0[i];
+    MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+
+/*
+    p0thHelperKernel(Nlocal,
+      dd,
+      cds->o_rho,
+      nrs->o_rho,
+      nrs->meshV->o_LMM,
+      platform->o_mempool.slice0,
+      platform->o_mempool.slice1 
+    );
+*/
+    p0thHelper2Kernel(Nlocal,
+      o_beta,
+	  o_kappa,
+      cds->o_rho,
+      nrs->o_rho,
+      nrs->meshV->o_LMM,
+      platform->o_mempool.slice0,
+      platform->o_mempool.slice1 
+    );
+
+    double p0thHelperFlops = 4 * mesh->Nlocal;
+
+    const dfloat prhs = (termQ - termV)/linAlg->sum(Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
+    linAlg->axpby(Nlocal, -prhs, platform->o_mempool.slice1, 1.0, o_div);
+
+    dfloat Saqpq = 0.0;
+    for(int i = 0 ; i < nrs->nBDF; ++i){
+      Saqpq += nrs->coeffBDF[i] * nrs->p0th[i];
+    }
+    nrs->p0th[2] = nrs->p0th[1];
+    nrs->p0th[1] = nrs->p0th[0];
+
+    nrs->p0th[0] = Saqpq / (nrs->g0 - nrs->dt[0] * prhs);
+    nrs->dp0thdt = prhs * nrs->p0th[0];
+
+    surfaceFlops += surfaceFluxFlops + p0thHelperFlops;
+  }
+
   qThermal = 0;
 
   double flops = surfaceFlops + flopsGrad + flopsQTL;
