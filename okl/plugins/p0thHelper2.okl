@@ -43,7 +43,7 @@
       w1[n] = w2_val * massMatrix[n];
 	  }
 	  else{   // non-dimensional run
-	  const dfloat w2_val = (kappa[n]  - beta[n]*alpha0)*p0;
+	  const dfloat w2_val = (kappa[n]  - alpha0*beta[n]/rhoCp[n])*p0;
 	  w2[n] = w2_val;
       w1[n] = w2_val * massMatrix[n];
 	  }
