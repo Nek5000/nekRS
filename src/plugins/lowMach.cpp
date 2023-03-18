@@ -16,9 +16,12 @@ static linAlg_t* the_linAlg = nullptr;
 
 static int qThermal = 0;
 static int expansionCoeff = 1;
-static dfloat alpha0 = 1;
+static dfloat alpha0 = 1.0;
+
+static occa::memory o_beta;
+static occa::memory o_kappa;
+
 static occa::kernel qtlKernel;
-static occa::kernel p0thHelperKernel;
 static occa::kernel p0thHelper2Kernel;
 static occa::kernel surfaceFluxKernel;
 }
@@ -35,10 +38,6 @@ void lowMach::buildKernel(occa::properties kernelInfo)
     kernelName = "qtlHex3D";
     fileName = path + kernelName + extension;
     qtlKernel         = platform->device.buildKernel(fileName, kernelInfo, true);
-
-    kernelName = "p0thHelper";
-    fileName = path + kernelName + extension;
-    p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo, true);
 
     kernelName = "p0thHelper2";
     fileName = path + kernelName + extension;
@@ -64,10 +63,14 @@ void lowMach::buildKernel(occa::properties kernelInfo)
   }
 }
 
-void lowMach::setup(nrs_t* nrs, dfloat alpha)
+void lowMach::setup(nrs_t* nrs, dfloat alpha_, occa::memory o_beta_, occa::memory o_kappa_)
 {
   the_nrs = nrs;
-  alpha0 = alpha;  //1 for dimensional run, !=1 for non-dimensional run.
+  
+  alpha0 = alpha_; 				//1 for dimensional run, !=1 for non-dimensional run.
+  o_beta = o_beta_;				//  
+  o_kappa = o_kappa_;			// 
+  
   the_linAlg = platform->linAlg;
   mesh_t* mesh = nrs->meshV;
   int err = 1;
@@ -79,8 +82,8 @@ void lowMach::setup(nrs_t* nrs, dfloat alpha)
   platform->options.setArgs("LOWMACH", "TRUE"); 
 }
 
-// qtl = 1/(rho*cp*T) * (div[k*grad[T] ] + qvol)
-void lowMach::qThermalSingleComponent(dfloat time, occa::memory o_div, occa::memory o_beta, occa::memory o_kappa)
+
+void lowMach::qThermalSingleComponent(dfloat time, occa::memory o_div)
 {
   qThermal = 1;
   nrs_t* nrs = the_nrs;
@@ -129,7 +132,6 @@ void lowMach::qThermalSingleComponent(dfloat time, occa::memory o_div, occa::mem
     cds->o_rho,
     platform->o_mempool.slice3,
     o_div);
-
 
   double flopsQTL = 18 * mesh->Np * mesh->Nq + 23 * mesh->Np;
   flopsQTL *= static_cast<double>(mesh->Nelements);

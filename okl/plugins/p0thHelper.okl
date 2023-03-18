@@ -34,7 +34,8 @@
 {
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
-      const dfloat w2_val = dd * rhoCp[n] / rho[n] + 1.0;
+      // const dfloat w2_val = dd * rhoCp[n] / rho[n] + 1.0;
+	  const dfloat w2_val = dd *rho[n]/rhoCp[n] + 1.0; // should be this
       w2[n] = w2_val;
       w1[n] = w2_val * massMatrix[n];
     }

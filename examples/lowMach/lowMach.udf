@@ -10,14 +10,19 @@
 static occa::kernel userQKernel;
 static occa::kernel userVpKernel;
 
+static dfloat Pth_0;
+static dfloat alpha_0;
+
 static dfloat P_DELTA;
 static dfloat P_GAMMA;
 
+occa::memory o_beta;
+occa::memory o_kappa;
+
 void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 {
-  lowMach::qThermalIdealGasSingleComponent(time, o_div);
+  lowMach::qThermalSingleComponent(time, o_div);
 }
-
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
@@ -31,8 +36,9 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 {
   mesh_t *mesh = nrs->meshV;
 
+  // also update o_beta, and o_kappa
   userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], 
-               o_S, o_UProp, o_SProp);
+               nrs->p0th[0],o_S, o_UProp, o_SProp,o_beta,o_kappa);
 }
 
 /* UDF Functions */                                                      
@@ -49,8 +55,12 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) ciSetup(comm, options);
+  platform->par->extract("casedata", "Pth_0", Pth_0);
+  platform->par->extract("casedata", "alpha_0", alpha_0);  
   platform->par->extract("casedata", "p_delta", P_DELTA);
-  platform->par->extract("casedata", "p_gamma", P_GAMMA);
+  
+  P_GAMMA = 1.0/(1.0-alpha_0);
+    
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
     nek_cb_scnrs[0] = P_DELTA;
@@ -63,8 +73,18 @@ void UDF_Setup(nrs_t *nrs)
   udf.sEqnSource = &userq;
   udf.properties = &uservp;
 
-  lowMach::setup(nrs, P_GAMMA);
+// initialize o_beta, o_kappa
+  o_beta= platform->device.malloc(nrs->fieldOffset,  sizeof(dfloat));
+  o_kappa= platform->device.malloc(nrs->fieldOffset,  sizeof(dfloat));
+
+  lowMach::setup(nrs, alpha_0,o_beta,o_kappa);
   udf.div = &qtl;
+  
+  // initialize nrs->p0th[i]
+  for(int i = 0 ; i < nrs->nBDF; ++i){
+   nrs->p0th[i] = Pth_0;
+  }
+  
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

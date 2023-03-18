@@ -19,5 +19,6 @@ boundaryTypeMap = fixedValue
 residualTol = 1e-12
 
 [CASEDATA]
+Pth_0  = 1.0
+alpha_0  = 0.2857 
 P_DELTA  = 0.2
-P_GAMMA  = 1.4
