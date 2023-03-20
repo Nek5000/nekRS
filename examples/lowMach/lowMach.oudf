@@ -29,7 +29,7 @@ void scalarDirichletConditions(bcData *bc)
 @kernel void userVp(const dlong Nelements,
                     const dlong uOffset,
                     const dlong sOffset,
-					const dlong Pth,
+                    const double p0th,
                     @restrict const dfloat * TEMP,
                     @restrict dfloat * UPROP,
                     @restrict dfloat * SPROP,
@@ -44,9 +44,8 @@ void scalarDirichletConditions(bcData *bc)
       UPROP[id + 1*uOffset] = 1/TEMP[id];
       SPROP[id + 1*sOffset] = 1/TEMP[id];
 	  
-	  BETA[id] = 1/TEMP[id];   // thermal expansion coefficient
-	  KAPPA[id] = 1/Pth;       // isothermal compressibility
-	  
+	  BETA[id] = 1/TEMP[id];
+	  KAPPA[id] = 1/p0th;
     }
   }
 }

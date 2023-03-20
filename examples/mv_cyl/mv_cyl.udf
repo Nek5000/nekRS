@@ -13,12 +13,18 @@ static dfloat XLEN;
 static dfloat YLEN;
 static dfloat ZLEN;
 
+
+static dfloat alpha0;
+
 static dfloat P_GAMMA;
 static dfloat P_DELTA;
 static dfloat P_OMEGA;
 static dfloat P_AMP;
 static dfloat P_ROT;
  
+occa::memory o_beta;
+occa::memory o_kappa;
+
 void userq(nrs_t* nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
 {
   lowMach::dpdt(o_SU);
@@ -26,7 +32,7 @@ void userq(nrs_t* nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
 
 void qtl(nrs_t* nrs, dfloat time, occa::memory o_div)
 {
-  lowMach::qThermalIdealGasSingleComponent(time, o_div);
+  lowMach::qThermalSingleComponent(time, o_div);
 }
 
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
@@ -34,8 +40,9 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
 {
   mesh_t *mesh = nrs->meshV;
 
-  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0], nrs->p0th[0],
-               o_S, o_UProp, o_SProp);
+  userVpKernel(mesh->Nelements, nrs->fieldOffset, nrs->cds->fieldOffset[0],
+               nrs->p0th[0], o_S, o_UProp, o_SProp,o_beta,o_kappa);
+
   if(platform->options.compareArgs("MESH SOLVER", "ELASTICITY")){
     // moving mesh parameters
     const dfloat vnu = 0.4;
@@ -92,7 +99,12 @@ void UDF_Setup(nrs_t *nrs)
   udf.properties = &uservp;
   udf.sEqnSource = &userq;
 
-  lowMach::setup(nrs, P_GAMMA);
+  o_beta = platform->device.malloc(nrs->fieldOffset*sizeof(dfloat));
+  o_kappa= platform->device.malloc(nrs->fieldOffset*sizeof(dfloat));
+
+  alpha0 = (P_GAMMA-1.0)/P_GAMMA;
+
+  lowMach::setup(nrs, alpha0,o_beta,o_kappa);
   udf.div = &qtl;
 }
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

@@ -15,14 +15,13 @@ static nrs_t* the_nrs = nullptr;
 static linAlg_t* the_linAlg = nullptr;
 
 static int qThermal = 0;
-static int expansionCoeff = 1;
 static dfloat alpha0 = 1.0;
 
 static occa::memory o_beta;
 static occa::memory o_kappa;
 
 static occa::kernel qtlKernel;
-static occa::kernel p0thHelper2Kernel;
+static occa::kernel p0thHelperKernel;
 static occa::kernel surfaceFluxKernel;
 }
 
@@ -39,9 +38,9 @@ void lowMach::buildKernel(occa::properties kernelInfo)
     fileName = path + kernelName + extension;
     qtlKernel         = platform->device.buildKernel(fileName, kernelInfo, true);
 
-    kernelName = "p0thHelper2";
+    kernelName = "p0thHelper";
     fileName = path + kernelName + extension;
-    p0thHelper2Kernel  = platform->device.buildKernel(fileName, kernelInfo, true);
+    p0thHelperKernel  = platform->device.buildKernel(fileName, kernelInfo, true);
 
     {
       int N;
@@ -119,14 +118,12 @@ void lowMach::qThermalSingleComponent(dfloat time, occa::memory o_div)
     platform->timer.toc("udfSEqnSource");
   }
 
-	expansionCoeff = 1;
 	qtlKernel(
     mesh->Nelements,
     mesh->o_vgeo,
     mesh->o_D,
     nrs->fieldOffset,
     platform->o_mempool.slice0,
-	expansionCoeff,
     o_beta,
     cds->o_diff,
     cds->o_rho,
@@ -171,13 +168,12 @@ void lowMach::qThermalSingleComponent(dfloat time, occa::memory o_div)
     for(int i = 0 ; i < mesh->Nelements; ++i) termV += platform->mempool.slice0[i];
     MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
-    p0thHelper2Kernel(Nlocal,
+    p0thHelperKernel(Nlocal,
 	  alpha0,
 	  nrs->p0th[0],
       o_beta,
 	  o_kappa,
       cds->o_rho,
-      nrs->o_rho,
       nrs->meshV->o_LMM,
       platform->o_mempool.slice0,
       platform->o_mempool.slice1 
@@ -215,13 +211,6 @@ void lowMach::dpdt(occa::memory o_FU)
 
   if(!qThermal)
   {
-	 if (alpha0 == 1.0)   // dimensional run
-	 {
-		platform->linAlg->add(mesh->Nlocal, nrs->dp0thdt, o_FU);
-	 }
-	 else // non dim run
-	 {
-		platform->linAlg->add(mesh->Nlocal, nrs->dp0thdt * alpha0, o_FU);
-	 }
+	platform->linAlg->add(mesh->Nlocal, nrs->dp0thdt * alpha0, o_FU);
   }
 }

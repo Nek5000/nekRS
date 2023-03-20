@@ -25,18 +25,19 @@
  */
 
 @kernel void p0thHelper(const dlong N,
-                      const dfloat dd,
+					  const dfloat alpha0,
+					  const dfloat p0th,
+					  @restrict const dfloat* beta,
+					  @restrict const dfloat* kappa,
                       @restrict const dfloat* rhoCp,
-                      @restrict const dfloat* rho,
                       @restrict const dfloat* massMatrix,
-                      @restrict dfloat *  w1,
+                      @restrict dfloat * w1,
                       @restrict dfloat * w2)
 {
   for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
     if(n<N){
-      // const dfloat w2_val = dd * rhoCp[n] / rho[n] + 1.0;
-	  const dfloat w2_val = dd *rho[n]/rhoCp[n] + 1.0; // should be this
-      w2[n] = w2_val;
+	  const dfloat w2_val = (kappa[n]  - alpha0*beta[n]/rhoCp[n])*p0th;
+	  w2[n] = w2_val;
       w1[n] = w2_val * massMatrix[n];
     }
   }
