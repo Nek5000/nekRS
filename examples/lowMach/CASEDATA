@@ -1,4 +1,3 @@
-      real Pth_0, alpha_0
       real p_delta, p_gamma
-	  
-      common /casevars/ Pth_0, alpha_0,p_delta, p_gamma
+
+      common /casevars/ p_delta, p_gamma
