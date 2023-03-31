@@ -1,4 +1,5 @@
 #define INTP_NMAX 200 /* number of sample points for 1D profile */
+#define TAVG_NFIELDS 8
 #define PI (4.*atan(1.))
 
 c-----------------------------------------------------------------------
@@ -29,7 +30,10 @@ c-----------------------------------------------------------------------
       save xint, yint, zint
       save igs_x, igs_z
 
-      real uwhav(INTP_NMAX,7)
+      real tavg1d(INTP_NMAX,TAVG_NFIELDS)
+
+      real            tavg(lx1,ly1,lz1,lelt,TAVG_NFIELDS)
+      COMMON /CBTAVG/ tavg
 
       common /gaaa/    wo1(lx1,ly1,lz1,lelv)
      &              ,  wo2(lx1,ly1,lz1,lelv)
@@ -70,104 +74,53 @@ c
           call cfill(zint,0.0,size(zint))
         endif
         iffpts = .true. ! dummy call to find points
-        call interp_nfld(uwhav,wo2,1,xint,yint,zint,nint,
+        call interp_nfld(tavg1d,wo2,1,xint,yint,zint,nint,
      $                   iwk,rwk,INTP_NMAX,iffpts,intp_h)
         iffpts = .false.
-        nelx  = number_elements_x
-        nely  = number_elements_y
-        nelz  = number_elements_z
-        call gtpp_gs_setup(igs_x,nelx     ,nely,nelz,1) ! x-avx
-        call gtpp_gs_setup(igs_z,nelx*nely,1   ,nelz,3) ! z-avg
 
         if(nid.eq.0) then
-           open(unit=58,file='mean_prof_horz.dat')
-           write(58,'(A)') '# Horizontally averaged mean profiles'
+           open(unit=58,file='statistics.dat')
            close(58)
-           open(unit=58,file='mean_prof_horz.dat', access='append')
+           open(unit=58,file='statistics.dat', access='append')
         endif
 
         icalld = 1
       endif
 
-c calculate du/dy and average horizontally and interpolate
-      call rzero(uwhav, 7*INTP_NMAX)
-      call opgrad(wk1,wk2,wk3,vx)
-      call dssum (wk2,lx1,ly1,lz1)
-      call col2  (wk2,binvm1,n)
+      if(ifoutfld) then
+        call rzero(tavg1d, TAVG_NFIELDS*INTP_NMAX)
+        do i = 1,TAVG_NFIELDS
+          call interp_nfld(tavg1d(1,i),tavg(1,1,1,1,i),1,xint,yint,zint,
+     $                     nint,iwk,rwk,INTP_NMAX,iffpts,intp_h)
+        enddo
+        if(nid.ne.0) goto 90
 
-      call planar_avg (wo1      ,wk2      ,igs_x)
-      call planar_avg (wo2      ,wo1      ,igs_z)
-      call interp_nfld(uwhav(1,1),wo2,1,xint,yint,zint,nint,
-     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
+        write(6,*) 'Dumping statistics',time
 
-c calculate dw/dy and average horizontally and interpolate
-      call opgrad(wk1,wk2,wk3,vz)
-      call dssum (wk2,lx1,ly1,lz1)
-      call col2  (wk2,binvm1,n)
+        write(58,'(A,1pe14.7,A)') '#t=', time, 
+     $    '  y <u> <w> <T> <dudy> <dwdy> <dTdy> <u''T''> <w''T''>'
 
-      call planar_avg (wo1      ,wk2      ,igs_x)
-      call planar_avg (wo2      ,wo1      ,igs_z)
-      call interp_nfld(uwhav(1,2),wo2,1,xint,yint,zint,nint,
-     $                      iwk,rwk,INTP_NMAX,iffpts,intp_h)
-
-c average horizontally u and interpolate
-      call planar_avg (wo1      ,vx       ,igs_x)
-      call planar_avg (wo2      ,wo1      ,igs_z)
-      call interp_nfld(uwhav(1,3),wo2,1,xint,yint,zint,nint,
-     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
-
-c average horizontally w and interpolate
-      call planar_avg (wo1      ,vz       ,igs_x)
-      call planar_avg (wo2      ,wo1      ,igs_z)
-      call interp_nfld(uwhav(1,4),wo2,1,xint,yint,zint,nint,
-     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
-
-c calculate dT/dy and average horizontally and interpolate
-      call opgrad(wk1,wk2,wk3,t )
-      call dssum (wk2,lx1,ly1,lz1)
-      call col2  (wk2,binvm1,n)
-
-      call planar_avg (wo1      ,wk2      ,igs_x)
-      call planar_avg (wo2      ,wo1      ,igs_z)
-      call interp_nfld(uwhav(1,5),wo2,1,xint,yint,zint,nint,
-     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
-
-c average horizontally T and interpolate
-      call planar_avg (wo1      ,t        ,igs_x)
-      call planar_avg (wo2      ,wo1      ,igs_z)
-      call interp_nfld(uwhav(1,6),wo2,1,xint,yint,zint,nint,
-     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
-
-c average horizontally nu and interpolate
-      call planar_avg (wo1      ,vdiff    ,igs_x)
-      call planar_avg (wo2      ,wo1      ,igs_z)
-      call interp_nfld(uwhav(1,7),wo2,1,xint,yint,zint,nint,
-     $                 iwk,rwk,INTP_NMAX,iffpts,intp_h)
-
-      if(ifoutfld .and. nid.eq.0) then
-        write(6,*) 'Dumping horizontally averaged mean profiles',time
-        write(58,'(A,1pe14.7,A)') '#time = ', time, 
-     $    '   y   u   w   T   dudy  dwdy   dTdy  '
         do i = 1,nint
           yy = yint(i)
-          um = uwhav(i,3)
-          wm = uwhav(i,4)
+          um = tavg1d(i,3)
+          wm = tavg1d(i,4)
           ang= atan2(wm,um)*180./PI
           uh = sqrt(um*um+wm*wm)
           write(58,3)
      &        yy,
-     &        uwhav(i,3),
-     &        uwhav(i,4),
-     &        uwhav(i,6),
-     &        uwhav(i,1),
-     &        uwhav(i,2),
-     &        uwhav(i,5),
-     &        uh, ang, uwhav(i,7)
+     &        tavg1d(i,1),
+     &        tavg1d(i,2),
+     &        tavg1d(i,3),
+     &        tavg1d(i,4),
+     &        tavg1d(i,5),
+     &        tavg1d(i,6),
+     &        tavg1d(i,7) - tavg1d(i,1)*tavg1d(i,3),
+     &        tavg1d(i,8) - tavg1d(i,2)*tavg1d(i,3)
   3       format(1p15e17.9)
         enddo
         write(58,*)
         call flush(58)
-      endif
+  90  endif
 
       return
       end
@@ -185,13 +138,11 @@ c-----------------------------------------------------------------------
       real kx, ky
 
       ux = 1.0
-c      if(y.le.1.) ux = y*(2.-y)
-
       uy = 0.0
       uz = 0.0
 
       ! thin boundary layer at the lower wall
-      if(y.le.1) then
+      if(y.le.1.0) then
          kx  = 23
          kz  = 13
          alpha = kx * 2*PI/XLEN
@@ -284,6 +235,21 @@ c-----------------------------------------------------------------------
 
         icalld = 1
       endif
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat0
+      include 'SIZE'
+      include 'TOTAL'
+
+      real            tavg(lx1,ly1,lz1,lelt,TAVG_NFIELDS)
+      COMMON /CBTAVG/ tavg
+
+      COMMON /NRSSCPTR/ nrs_scptr(3)
+      integer*8         nrs_scptr
+
+      nrs_scptr(1) = loc(tavg)
 
       return
       end

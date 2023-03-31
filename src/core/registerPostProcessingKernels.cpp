@@ -18,20 +18,26 @@ void registerPostProcessingKernels()
 
   kernelInfo["includes"].asArray();
 
-  std::string installDir;
-  installDir.assign(getenv("NEKRS_INSTALL_DIR"));
-  std::string oklpath = installDir + "/okl/";
+  const std::string oklpath = getenv("NEKRS_KERNEL_DIR");
   std::string kernelName, fileName;
 
-  kernelInfo["includes"] += oklpath + "postProcessing/planarAveraging.h";
+  kernelName = "drag";
+  fileName = oklpath + "/postProcessing/" + kernelName + ".okl";
+  platform->kernels.add(kernelName, fileName, kernelInfo);
 
-  for(const std::string dir : {"XY", "XZ", "YZ"}){
+  kernelName = "Qcriterion";
+  fileName = oklpath + "/postProcessing/" + kernelName + ".okl";
+  platform->kernels.add(kernelName, fileName, kernelInfo);
+
+  kernelInfo["includes"] += oklpath + "/postProcessing/planarAveraging.h";
+
+  for (const std::string dir : {"XY", "XZ", "YZ"}) {
     kernelName = "gatherPlanarValues" + dir;
-    fileName = oklpath + "postProcessing/" + kernelName + ".okl";
+    fileName = oklpath + "/postProcessing/" + kernelName + ".okl";
     platform->kernels.add(kernelName, fileName, kernelInfo);
-  
+
     kernelName = "scatterPlanarValues" + dir;
-    fileName = oklpath + "postProcessing/" + kernelName + ".okl";
+    fileName = oklpath + "/postProcessing/" + kernelName + ".okl";
     platform->kernels.add(kernelName, fileName, kernelInfo);
   }
 }

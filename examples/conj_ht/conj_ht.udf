@@ -1,14 +1,17 @@
 //
 // nekRS User Defined File
 //
-#include <math.h>
 #include "udf.hpp"
 
 #include "ci.inc"
 
-static occa::kernel cFillKernel;
-
 static int updateProperties = 1;
+
+#ifdef __okl__
+
+#include "conj_ht.oudf"
+
+#endif
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
@@ -16,7 +19,7 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
   mesh_t *mesh = cds->mesh[0];
   const dfloat qvolFluid = 0.0;
   const dfloat qvolSolid = 1.0;
-  cFillKernel(mesh->Nelements, qvolFluid, qvolSolid, mesh->o_elementInfo, o_FS);
+  cFill(mesh->Nelements, qvolFluid, qvolSolid, mesh->o_elementInfo, o_FS);
 }
 
 void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
@@ -36,22 +39,15 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
     // velocity 
     const occa::memory o_mue = o_UProp.slice(0*nrs->fieldOffset*sizeof(dfloat));
     const occa::memory o_rho = o_UProp.slice(1*nrs->fieldOffset*sizeof(dfloat));
-    cFillKernel(nrs->meshV->Nelements, mue, 0, nrs->meshV->o_elementInfo, o_mue);
-    cFillKernel(nrs->meshV->Nelements, rho, 0, nrs->meshV->o_elementInfo, o_rho);
+    cFill(nrs->meshV->Nelements, mue, 0, nrs->meshV->o_elementInfo, o_mue);
+    cFill(nrs->meshV->Nelements, rho, 0, nrs->meshV->o_elementInfo, o_rho);
     // temperature 
     const occa::memory o_con   = o_SProp.slice(0*cds->fieldOffset[0]*sizeof(dfloat));
     const occa::memory o_rhoCp = o_SProp.slice(1*cds->fieldOffset[0]*sizeof(dfloat));
-    cFillKernel(cds->mesh[0]->Nelements, conFluid, conSolid, cds->mesh[0]->o_elementInfo, o_con);
-    cFillKernel(cds->mesh[0]->Nelements, rhoCpFluid, rhoCpSolid, cds->mesh[0]->o_elementInfo, o_rhoCp);
+    cFill(cds->mesh[0]->Nelements, conFluid, conSolid, cds->mesh[0]->o_elementInfo, o_con);
+    cFill(cds->mesh[0]->Nelements, rhoCpFluid, rhoCpSolid, cds->mesh[0]->o_elementInfo, o_rhoCp);
     updateProperties = 0;
   }
-}
-
-/* UDF Functions */                                                      
-
-void UDF_LoadKernels(occa::properties& kernelInfo)
-{
-  cFillKernel = oudfBuildKernel(kernelInfo, "cFill");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

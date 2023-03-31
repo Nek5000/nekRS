@@ -8,6 +8,8 @@ namespace occa {
   namespace lang {
     namespace okl {
       class withLauncher : public parser_t {
+       private:
+        bool add_barriers{true};
        public:
         serialParser launcherParser;
 
@@ -45,8 +47,6 @@ namespace occa {
         bool isLastInnerLoop(forStatement &forSmnt);
 
         bool isInsideLoop(forStatement &forSmnt);
-
-        dim innerDims(functionDeclStatement &kernelSmnt);
 
         void setKernelLaunch(functionDeclStatement &kernelSmnt,
                              forStatement &forSmnt,
@@ -86,6 +86,7 @@ namespace occa {
 
         virtual std::string getOuterIterator(const int loopIndex) = 0;
         virtual std::string getInnerIterator(const int loopIndex) = 0;
+        virtual std::string launchBoundsAttribute(const int innerDims[3]) = 0;
       };
     }
   }

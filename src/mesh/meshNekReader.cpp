@@ -81,17 +81,12 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   }
   if (Nbid > 0) {
     MPI_Allreduce(MPI_IN_PLACE, &minEToB, 1, MPI_INT, MPI_MIN, platform->comm.mpiComm);
-    if (minEToB != 1) {
-      if (platform->comm.mpiRank == 0)
-        printf("\nboundary IDs are not one-based, min(ID): %d!\n", minEToB);
-      EXIT_AND_FINALIZE(EXIT_FAILURE);
-    }
+    nrsCheck(minEToB != 1, platform->comm.mpiComm, EXIT_FAILURE,
+             "\nboundary IDs are not one-based, min(ID): %d!\n", minEToB);
 #if 0
     MPI_Allreduce(MPI_IN_PLACE, &maxEToB, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
     if (maxEToB - minEToB != Nbid - 1) {
-      if (platform->comm.mpiRank == 0)
-        printf("\nboundary IDs are not contiguous!\n");
-      EXIT_AND_FINALIZE(EXIT_FAILURE);
+      printf("\nboundary IDs are not contiguous!\n");
     }
 #endif
   }

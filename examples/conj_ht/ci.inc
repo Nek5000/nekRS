@@ -2,9 +2,6 @@
 
 static int ciMode = 0;
 
-#define PASS { if (rank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
-#define FAIL { if (rank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
-
 #define EPS 1e-3
 
 void ciSetup(MPI_Comm comm, setupAide &options)
@@ -16,12 +13,34 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("DT", std::string("2e-2"));
   options.setArgs("SUBCYCLING STEPS", std::string("0"));
   if (ciMode == 2) options.setArgs("SUBCYCLING STEPS", std::string("1"));
-  options.setArgs("TIME INTEGRATOR", "TOMBO2");
+  options.setArgs("BDF ORDER", "2");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-06"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-04"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", std::string("1e-06"));
   options.setArgs("VARIABLEPROPERTIES", "TRUE");
+
+  // set up CVODE solver details
+  if(ciMode == 3){
+    options.setArgs("CVODE", "TRUE");
+    options.setArgs("CVODE INTEGRATOR", "BDF");
+    options.setArgs("CVODE MAX TIMESTEPPER ORDER", "3");
+    options.setArgs("CVODE EPS LIN", "0.05");
+    options.setArgs("CVODE STOP TIME", "TRUE");
+
+    const auto hmax = 1;
+    options.setArgs("CVODE HMAX", to_string_f(hmax));
+
+    const auto maxSteps = 10000;
+    options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
+
+    options.setArgs("CVODE RELATIVE TOLERANCE", "1e-06");
+    options.setArgs("CVODE ABSOLUTE TOLERANCE", "1e-08");
+    options.setArgs("CVODE GMR VECTORS", "20");
+
+    options.setArgs("SCALAR00 SOLVER", "CVODE");
+
+  }
 }
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
@@ -41,5 +60,5 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (rank == 0)
     printf("relative error to target: vx=%g s=%g\n", vxErr, sErr);
 
-  (vxErr < EPS && sErr < EPS) ? (PASS) : (FAIL); 
+  (vxErr < EPS && sErr < EPS) ? (CIPASS) : (CIFAIL); 
 }

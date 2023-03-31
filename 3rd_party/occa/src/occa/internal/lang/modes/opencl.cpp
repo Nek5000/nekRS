@@ -9,13 +9,13 @@
 namespace occa {
   namespace lang {
     namespace okl {
-      qualifier_t openclParser::global("__global", qualifierType::custom);
 
       openclParser::openclParser(const occa::json &settings_) :
         withLauncher(settings_),
         constant("__constant", qualifierType::custom),
         kernel("__kernel", qualifierType::custom),
-        local("__local", qualifierType::custom) {
+        local("__local", qualifierType::custom), 
+        global("__global",qualifierType::custom) {
 
         okl::addOklAttributes(*this);
 
@@ -23,7 +23,6 @@ namespace occa {
           settings["okl/restrict"] = "restrict";
         }
         settings["extensions/cl_khr_fp64"] = true;
-        std::cout << settings;
       }
 
       void openclParser::onClear() {
@@ -52,7 +51,7 @@ namespace occa {
         addBarriers();
 
         if (!success) return;
-        //addFunctionPrototypes();
+        addFunctionPrototypes();
 
         if (!success) return;
         addStructQualifiers();
@@ -73,6 +72,18 @@ namespace occa {
         name += occa::toString(loopIndex);
         name += ')';
         return name;
+      }
+
+      std::string openclParser::launchBoundsAttribute(const int innerDims[3]) {
+        std::stringstream ss; 
+        ss << "__attribute__((reqd_work_group_size("
+           << innerDims[0]
+           << ","
+           << innerDims[1]
+           << ","
+           << innerDims[2]
+           << ")))\n";
+        return ss.str();
       }
 
       void openclParser::addExtensions() {
@@ -119,87 +130,19 @@ namespace occa {
             .nestedForEachDeclaration([&](variableDeclaration &decl) {
                 variable_t &var = decl.variable();
                 if (var.hasAttribute("shared")) {
-                  var.add(0, local);
+                  var.add(0,local);
                 }
               });
       }
 
-      bool openclParser::sharedVariableMatcher(exprNode &expr) {
-        return expr.hasAttribute("shared");
-      }
-
       void openclParser::setGlobalQualifiers() {
-        root.children
-            .flatFilterByStatementType(
-              statementType::declaration
-              | statementType::functionDecl
-              | statementType::function
-            )
-            .forEach(updateGlobalVariables);
-      }
-
-      void openclParser::updateGlobalVariables(statement_t *smnt) {
-        if (smnt->type() & statementType::function) {
-          addGlobalToFunctionArgs(
-            smnt->to<functionStatement>().function()
-          );
-        }
-        else if (smnt->type() & statementType::functionDecl) {
-          addGlobalToFunctionArgs(
-            smnt->to<functionDeclStatement>().function()
-          );
-        }
-        else {
-          declarationStatement &declSmnt = smnt->to<declarationStatement>();
-          const int declCount = declSmnt.declarations.size();
-          for (int i = 0; i < declCount; ++i) {
-            addGlobalToVariable(
-              declSmnt.declarations[i].variable()
-            );
-          }
-        }
-      }
-
-      void openclParser::addGlobalToFunctionArgs(function_t &func) {
-        const int argc = (int) func.args.size();
-        for (int i = 0; i < argc; ++i) {
-          variable_t *arg = func.args[i];
-          if (arg) {
-            addGlobalToVariable(*arg);
-          }
-        }
-      }
-
-      void openclParser::addGlobalToVariable(variable_t &var) {
-        if (var.hasAttribute("globalPtr")) {
-          var.add(0, global);
-        }
-      }
-
-      void openclParser::updateScopeStructVariables(statement_t *smnt) {
-        if (smnt->type() & statementType::function) {
-          addStructToFunctionArgs(
-            smnt->to<functionStatement>().function()
-          );
-          return;
-        }
-
-        scope_t &scope = smnt->to<blockStatement>().scope;
-
-        keywordMap::iterator it = scope.keywords.begin();
-        while (it != scope.keywords.end()) {
-          keyword_t &keyword = *(it->second);
-
-          if (keyword.type() & keywordType::variable) {
-            addStructToVariable(keyword.to<variableKeyword>().variable);
-          } else if (keyword.type() & keywordType::function) {
-            addStructToFunctionArgs(
-              keyword.to<functionKeyword>().function
-            );
-          }
-
-          ++it;
-        }
+        statementArray::from(root)
+            .nestedForEachDeclaration([&](variableDeclaration &decl) {
+                variable_t &var = decl.variable();
+                if (var.hasAttribute("globalPtr")) {
+                  var.add(0,global);
+                }
+              });
       }
 
       void openclParser::addStructToVariable(variable_t &var) {
@@ -263,7 +206,30 @@ namespace occa {
               statementType::blockStatements
               | statementType::function
             )
-            .forEach(updateScopeStructVariables);
+            .forEach([&](statement_t *smnt) {
+               if (smnt->type() & statementType::function) {
+                addStructToFunctionArgs(
+                smnt->to<functionStatement>().function());
+                return;
+              }
+
+              scope_t &scope = smnt->to<blockStatement>().scope;
+
+              keywordMap::iterator it = scope.keywords.begin();
+              while (it != scope.keywords.end()) {
+                keyword_t &keyword = *(it->second);
+
+                if (keyword.type() & keywordType::variable) {
+                  addStructToVariable(keyword.to<variableKeyword>().variable);
+                } else if (keyword.type() & keywordType::function) {
+                  addStructToFunctionArgs(
+                    keyword.to<functionKeyword>().function
+                  );
+                }
+
+                ++it;
+              }
+            });
       }
 
       void openclParser::setupKernels() {
@@ -280,24 +246,6 @@ namespace occa {
 
                   migrateLocalDecls((functionDeclStatement&) *smnt);
                   if (!success) return;
-
-                  const bool addLaunchBounds = !settings.get("okl/no_launch_bounds", false);
-                  dim kernelInnerDims = innerDims((functionDeclStatement&) *smnt);
-                  if (!success) return;
-
-                  int kernelInnerDim = kernelInnerDims[0];
-                  for(int i=1; i < kernelInnerDims.dims; i++) kernelInnerDim *= kernelInnerDims[i];
-                  if(kernelInnerDim && addLaunchBounds) {
-                    std::string s = "__attribute__((work_group_size_hint(";
-                    s += std::to_string(kernelInnerDims[0]); 
-                    for(int i=1; i < 3; i++) {
-                      s += ", " + std::to_string(std::max((int)kernelInnerDims[i],1));
-                    }
-                    s += ")))";
-                    qualifier_t *boundQualifier = new qualifier_t(s, qualifierType::custom);
-                    function->returnType.add(0, *boundQualifier);
-                  }
-
                 } else {
                   function = &(((functionStatement*) smnt)->function());
                 }
@@ -318,18 +266,16 @@ namespace occa {
       }
 
       void openclParser::setKernelQualifiers(function_t &function) {
-
         function.returnType.add(0, kernel);
 
-        const int argCount = (int) function.args.size();
-        for (int ai = 0; ai < argCount; ++ai) {
-          variable_t &arg = *(function.args[ai]);
-          arg.vartype = arg.vartype.flatten();
-          if (arg.vartype.isPointerType()) {
-            arg.add(0, global);
-          }
+        for (auto arg : function.args) {
+          vartype_t &type = arg->vartype;
+          type = type.flatten();
+          if (type.isPointerType())
+            arg->add(0,global);
         }
       }
+
     }
   }
 }

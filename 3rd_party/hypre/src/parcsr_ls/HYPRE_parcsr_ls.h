@@ -24,10 +24,8 @@ extern "C" {
 /**
  * @defgroup ParCSRSolvers ParCSR Solvers
  *
- * These solvers use matrix/vector storage schemes that are taylored
- * for general sparse matrix systems.
- *
- * @memo Linear solvers for sparse matrix systems
+ * Linear solvers for sparse matrix systems. These solvers use matrix/vector
+ * storage schemes that are taylored for general sparse matrix systems.
  *
  * @{
  **/
@@ -154,6 +152,19 @@ HYPRE_Int HYPRE_BoomerAMGGetResidual(HYPRE_Solver     solver,
  **/
 HYPRE_Int HYPRE_BoomerAMGGetNumIterations(HYPRE_Solver  solver,
                                           HYPRE_Int          *num_iterations);
+
+/*
+ * Returns cumulative num of nonzeros for A and P operators
+ **/
+HYPRE_Int HYPRE_BoomerAMGGetCumNnzAP(HYPRE_Solver  solver,
+                                     HYPRE_Real   *cum_nnz_AP);
+
+/*
+ * Activates cumulative num of nonzeros for A and P operators.
+ * Needs to be set to a positive number for activation.
+ **/
+HYPRE_Int HYPRE_BoomerAMGSetCumNnzAP(HYPRE_Solver  solver,
+                                     HYPRE_Real    cum_nnz_AP);
 
 /**
  * Returns the norm of the final relative residual.
@@ -1117,6 +1128,34 @@ HYPRE_Int HYPRE_BoomerAMGSetFSAIEigMaxIters(HYPRE_Solver solver,
  **/
 HYPRE_Int HYPRE_BoomerAMGSetFSAIKapTolerance(HYPRE_Solver solver,
                                              HYPRE_Real   kap_tolerance);
+
+/**
+ * (Optional) Defines triangular solver for ILU(k,T) smoother: 0-iterative, 1-direct (default)
+ * For further explanation see description of ILU.
+ **/
+HYPRE_Int HYPRE_BoomerAMGSetILUTriSolve( HYPRE_Solver  solver,
+                                         HYPRE_Int     ilu_tri_solve);
+
+/**
+ * (Optional) Defines number of lower Jacobi iterations for ILU(k,T) smoother triangular solve.
+ * For further explanation see description of ILU.
+ **/
+HYPRE_Int HYPRE_BoomerAMGSetILULowerJacobiIters( HYPRE_Solver  solver,
+                                                 HYPRE_Int     ilu_lower_jacobi_iters);
+
+/**
+ * (Optional) Defines number of upper Jacobi iterations for ILU(k,T) smoother triangular solve.
+ * For further explanation see description of ILU.
+ **/
+HYPRE_Int HYPRE_BoomerAMGSetILUUpperJacobiIters( HYPRE_Solver  solver,
+                                                 HYPRE_Int     ilu_upper_jacobi_iters);
+
+/**
+ * Set Local Reordering paramter (1==RCM, 0==None)
+ * For further explanation see description of ILU.
+ **/
+HYPRE_Int HYPRE_BoomerAMGSetILULocalReordering( HYPRE_Solver solver,
+                                                HYPRE_Int    ilu_reordering_type);
 
 /**
  * (Optional) Defines which parallel restriction operator is used.
@@ -3920,7 +3959,8 @@ HYPRE_MGRSetReservedCpointsLevelToKeep( HYPRE_Solver solver, HYPRE_Int level);
  * (Optional) Set the relaxation type for F-relaxation.
  * Currently supports the following flavors of relaxation types
  * as described in the \e BoomerAMGSetRelaxType:
- * \e relax_type 0 - 8, 13, 14, 18, 19, 98.
+ * \e relax_type 0, 3 - 8, 13, 14, 18. Also supports AMG (options 1 and 2)
+ *    and direct solver variants (9, 99, 199). See HYPRE_MGRSetLevelFRelaxType for details.
  **/
 HYPRE_Int
 HYPRE_MGRSetRelaxType(HYPRE_Solver solver,
@@ -3933,7 +3973,7 @@ HYPRE_MGRSetRelaxType(HYPRE_Solver solver,
  *    - 0 : Single-level relaxation sweeps for F-relaxation as prescribed by \e MGRSetRelaxType
  *    - 1 : Multi-level relaxation strategy for F-relaxation (V(1,0) cycle currently supported).
  *
- *    NOTE: This function will be removed in favor of /e HYPRE_MGRSetFLevelRelaxType!!
+ *    NOTE: This function will be removed in favor of /e HYPRE_MGRSetLevelFRelaxType!!
  **/
 HYPRE_Int
 HYPRE_MGRSetFRelaxMethod(HYPRE_Solver solver,
@@ -3950,10 +3990,11 @@ HYPRE_MGRSetLevelFRelaxMethod(HYPRE_Solver solver, HYPRE_Int *relax_method );
  *
  *    - 0, 3 - 8, 13, 14, 18: (as described in \e BoomerAMGSetRelaxType)
  *    - 1 : Multi-level relaxation strategy for F-relaxation (V(1,0) cycle currently supported).
- *    - 2 : AMG.
+ *    - 2 : AMG
+ *    - 9, 99, 199 : Gaussian Elimination variants (GE, GE with pivoting, direct inversion respectively)
  **/
 HYPRE_Int
-HYPRE_MGRSetFLevelRelaxType(HYPRE_Solver solver,
+HYPRE_MGRSetLevelFRelaxType(HYPRE_Solver solver,
                             HYPRE_Int *relax_type );
 
 /**
@@ -4163,12 +4204,12 @@ HYPRE_MGRSetLevelSmoothIters( HYPRE_Solver solver,
 /**
  * (Optional) Set the smoothing order for global smoothing at each level.
  * Options for \e level_smooth_order are:
- *    - 1 : Pre-smoothing (default)
- *    - 2 : Post-smoothing
+ *    - 1 : Pre-smoothing - Down cycle (default)
+ *    - 2 : Post-smoothing - Up cycle
  **/
 HYPRE_Int
-HYPRE_MGRSetLevelSmoothOrder( HYPRE_Solver solver,
-                              HYPRE_Int level_smooth_order );
+HYPRE_MGRSetGlobalSmoothCycle( HYPRE_Solver solver,
+                               HYPRE_Int global_smooth_cycle );
 
 /**
  * (Optional) Determines type of global smoother.
@@ -4276,6 +4317,27 @@ HYPRE_Int HYPRE_ILUSolve( HYPRE_Solver solver,
  **/
 HYPRE_Int
 HYPRE_ILUSetMaxIter( HYPRE_Solver solver, HYPRE_Int max_iter );
+
+/**
+ * (Optional) Set triangular solver type (0) direct (1) iterative
+ * Set this to 1 Jacobi iterations. The default is 0 direct method.
+ **/
+HYPRE_Int
+HYPRE_ILUSetTriSolve( HYPRE_Solver solver, HYPRE_Int tri_solve );
+
+/**
+ * (Optional) Set number of lower Jacobi iterations for the triangular L solves
+ * Set this to integer > 0 when using iterative tri_solve (0). The default is 5 iterations.
+ **/
+HYPRE_Int
+HYPRE_ILUSetLowerJacobiIters( HYPRE_Solver solver, HYPRE_Int lower_jacobi_iterations );
+
+/**
+ * (Optional) Set number of upper Jacobi iterations for the triangular U solves
+ * Set this to integer > 0 when using iterative tri_solve (0). The default is 5 iterations.
+ **/
+HYPRE_Int
+HYPRE_ILUSetUpperJacobiIters( HYPRE_Solver solver, HYPRE_Int upper_jacobi_iterations );
 
 /**
  * (Optional) Set the convergence tolerance for the ILU smoother.

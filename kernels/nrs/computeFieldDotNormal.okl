@@ -1,0 +1,17 @@
+@kernel void computeFieldDotNormal(const dlong N,
+                                   const dlong offset,
+                                   const dfloat n_x,
+                                   const dfloat n_y,
+                                   const dfloat n_z,
+                                   @ restrict const dfloat *field,
+                                   @ restrict dfloat *result)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dfloat field_x = field[n + 0 * offset];
+    const dfloat field_y = field[n + 1 * offset];
+    const dfloat field_z = field[n + 2 * offset];
+
+    const dfloat fieldDotNormal = field_x * n_x + field_y * n_y + field_z * n_z;
+    result[n] = fieldDotNormal;
+  }
+}

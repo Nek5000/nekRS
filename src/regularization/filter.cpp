@@ -86,13 +86,8 @@ void filterVandermonde1D(int N, int Np, dfloat* r, dfloat* V)
 
 double* filterSetup(mesh_t* mesh, const dlong filterNc)
 {
-  if(filterNc < 1)
-  {
-    if(platform->comm.mpiRank == 0)
-      printf("ERROR: filterNc must be at least 1, but is set to %d\n"
-        , filterNc);
-    ABORT(EXIT_FAILURE);
-  }
+  nrsCheck(filterNc < 1, platform->comm.mpiComm, EXIT_FAILURE,
+           "filterNc must be at least 1, but is set to %d\n", filterNc);
 
   // Construct Filter Function
   int Nmodes = mesh->N + 1; // N+1, 1D GLL points
@@ -122,12 +117,10 @@ double* filterSetup(mesh_t* mesh, const dlong filterNc)
     iV[n] = V[n];
 
   dgetrf_(&N,&N,(double*)iV,&N,IPIV,&INFO);
-  dgetri_(&N,(double*)iV,&N,IPIV,(double*)WORK,&LWORK,&INFO);
+  nrsCheck(INFO, MPI_COMM_SELF, EXIT_FAILURE, "dgetrf failed", "");
 
-  if(INFO) {
-    printf("DGE_TRI/TRF error: %d \n", INFO);
-    ABORT(EXIT_FAILURE);
-  }
+  dgetri_(&N,(double*)iV,&N,IPIV,(double*)WORK,&LWORK,&INFO);
+  nrsCheck(INFO, MPI_COMM_SELF, EXIT_FAILURE, " dgetrifailed", "");
 
   // V*A*V^-1 in row major
   char TRANSA = 'T';

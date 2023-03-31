@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <float.h>
 
 #include <occa.h>
 
@@ -69,12 +70,13 @@ int main(int argc, const char **argv) {
   //========================================================
 
   // Allocate memory on the device
-  o_a  = occaDeviceTypedMalloc(device, entries, occaDtypeFloat, NULL, occaDefault);
-  o_b  = occaDeviceTypedMalloc(device, entries, occaDtypeFloat, NULL, occaDefault);
+  o_a  = occaDeviceTypedMalloc(device, entries, occaDtypeFloat, a, occaDefault);
+  o_b  = occaDeviceTypedMalloc(device, entries, occaDtypeFloat, b, occaDefault);
 
-  // We can also allocate memory without a dtype
+  // We can also allocate memory without a dtype and manually copy the data over
   // WARNING: This will disable runtime type checking
   o_ab = occaDeviceMalloc(device, entries * sizeof(float), NULL, occaDefault);
+  occaCopyPtrToMem(o_ab, ab, occaAllBytes, 0, occaDefault);
 
   // Setup properties that can be passed to the kernel
   occaJson props = occaCreateJson();
@@ -85,10 +87,6 @@ int main(int argc, const char **argv) {
                                      "addVectors.okl",
                                      "addVectors",
                                      props);
-
-  // Copy memory to the device
-  occaCopyPtrToMem(o_a, a, entries*sizeof(float), 0, occaDefault);
-  occaCopyPtrToMem(o_b, b, occaAllBytes         , 0, occaDefault);
 
   // Launch device kernel
   occaKernelRun(addVectors,
@@ -102,7 +100,7 @@ int main(int argc, const char **argv) {
     printf("%d = %f\n", i, ab[i]);
   }
   for (i = 0; i < entries; ++i) {
-    if (fabs(ab[i] -(a[i] + b[i])) > 1.0e-8)
+    if (fabsf(ab[i] -(a[i] + b[i])) > (2.0f*FLT_EPSILON))
       exit(1);
   }
 
@@ -132,7 +130,7 @@ occaJson parseArgs(int argc, const char **argv) {
     "      shortname: 'd',"
     "      description: 'Device properties (default: \"{mode: \\'Serial\\'}\")',"
     "      with_arg: true,"
-    "      default_value: { mode: 'Serial' },"
+    "      default_value: \"{ mode: 'Serial' }\","
     "    },"
     "    {"
     "      name: 'verbose',"

@@ -1,63 +1,10 @@
-// Boundary conditions
-void velocityDirichletConditions(bcData *bc)
-{
-  const dfloat u = 0.0;
-  const dfloat v = p_AMP*sin(p_OMEGA*bc->time);
-  const dfloat w = 0.0;
-
-  bc->u = u * cos(p_ROT) - v * sin(p_ROT);
-  bc->v = u * sin(p_ROT) + v * cos(p_ROT);
-  bc->w = w;
-}
+#include "mv_cyl_derived_bc.oudf" 
 
 void meshVelocityDirichletConditions(bcData *bc)
 {
-  bc->meshu = bc->u;
-  bc->meshv = bc->v;
-  bc->meshw = bc->w;
-}
+  const dfloat vPiston = p_AMP*sin(p_OMEGA*bc->time);
 
-@kernel void userVp(const dlong Nelements,
-                    const dlong uOffset,
-                    const dlong sOffset,
-                    const double p0th,
-                    @restrict const dfloat * TEMP,
-                    @restrict dfloat * UPROP,
-                    @restrict dfloat * SPROP)
-{
-  for(dlong e=0;e<Nelements;++e;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-      const int id = e*p_Np + n;
-      UPROP[id + 0*uOffset] = 1e-2;
-      SPROP[id + 0*sOffset] = 1e-2;
-      UPROP[id + 1*uOffset] = p0th/TEMP[id];
-      SPROP[id + 1*sOffset] = p0th/TEMP[id];
-    }
-  }
-}
-@kernel void userMeshVelocity(const dlong Nelements,
-                    const dlong offset,
-                    const dfloat hmin,
-                    const dfloat hmax,
-                    const dfloat time,
-                    @restrict const dfloat * h,
-                    @restrict dfloat * W)
-{
-  for(dlong e=0;e<Nelements;++e;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-      const dfloat v_piston = p_AMP * sin(p_OMEGA * time);
-      const dfloat hlen = hmin - hmax;
-
-      const int id = e*p_Np + n;
-      const dfloat hh = h[id];
-
-      const dfloat hsc = (hh - hmax) / hlen;
-      const dfloat wxt = 0.0;
-      const dfloat wyt = hsc * v_piston;
-
-      W[id + 0 * offset] = wxt * cos(p_ROT) - wyt * sin(p_ROT);
-      W[id + 1 * offset] = wxt * sin(p_ROT) + wyt * cos(p_ROT);
-      W[id + 2 * offset] = 0.0;
-    }
-  }
+  bc->meshu = -vPiston * bc->nx;
+  bc->meshv = -vPiston * bc->ny;
+  bc->meshw = -vPiston * bc->nz;
 }

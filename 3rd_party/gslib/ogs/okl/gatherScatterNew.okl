@@ -56,7 +56,7 @@ SOFTWARE.
             gtemp[id-gStart] = q[k+gatherIds[id]*Nentries+m*stride];            \
           }                                                                     \
         }                                                                       \
-        @barrier("local");                                                      \
+        @barrier();                                                      \
         for(dlong n=0;n<p_blockSize;++n;@inner){                                \
           for (dlong row=blockStart+n;row<blockEnd;row+=p_blockSize) {          \
             const dlong gRowStart = gatherStarts[row]  -gStart;                 \
@@ -72,14 +72,14 @@ SOFTWARE.
             }                                                                   \
           }                                                                     \
         }                                                                       \
-        @barrier("local");                                                      \
+        @barrier();                                                      \
                                                                                 \
         for(dlong n=0;n<p_blockSize;++n;@inner){                                \
           for (dlong id=sStart+n;id<gatherStarts[blockEnd];id+=p_blockSize) {   \
             q[k+gatherIds[id]*Nentries+m*stride] = stemp[id-sStart];            \
           }                                                                     \
         }                                                                       \
-        @barrier("local");                                                      \
+        @barrier();                                                      \
       }                                                                         \
     }                                                                           \
   }                                                                             \

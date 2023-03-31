@@ -7,6 +7,8 @@
 occa::properties compileUDFKernels();
 void registerLinAlgKernels();
 void registerPostProcessingKernels();
+void registerNekNekKernels();
+void registerCvodeKernels(occa::properties kernelInfoBC);
 void registerMeshKernels(occa::properties kernelInfoBC);
 void registerNrsKernels(occa::properties kernelInfoBC);
 void registerCdsKernels(occa::properties kernelInfoBC);

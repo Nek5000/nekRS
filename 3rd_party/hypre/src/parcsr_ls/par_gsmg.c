@@ -35,7 +35,7 @@ static HYPRE_Real mydnrm2(HYPRE_Int n, HYPRE_Real *x)
    {
       temp = temp + x[i] * x[i];
    }
-   return sqrt(temp);
+   return hypre_sqrt(temp);
 }
 
 static void mydscal(HYPRE_Int n, HYPRE_Real a, HYPRE_Real *x)
@@ -532,7 +532,7 @@ hypre_BoomerAMGCreateSmoothVecs(void         *data,
             ret = hypre_BoomerAMGRelax(A, Zero, NULL /*CFmarker*/,
                                        rlx_type, 0 /*rel pts*/, 1.0 /*weight*/,
                                        1.0 /*omega*/, NULL, U, Temp,
-                                       Qtemp, 0);
+                                       Qtemp);
             hypre_assert(ret == 0);
          }
       }

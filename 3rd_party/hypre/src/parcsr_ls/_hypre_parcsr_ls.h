@@ -160,6 +160,9 @@ typedef struct
    HYPRE_Int            ilu_max_row_nnz;
    HYPRE_Int            ilu_max_iter;
    HYPRE_Real           ilu_droptol;
+   HYPRE_Int            ilu_tri_solve;
+   HYPRE_Int            ilu_lower_jacobi_iters;
+   HYPRE_Int            ilu_upper_jacobi_iters;
    HYPRE_Int            ilu_reordering_type;
 
    HYPRE_Int            fsai_max_steps;
@@ -176,6 +179,8 @@ typedef struct
    HYPRE_Real           cheby_fraction;
    hypre_Vector       **cheby_ds;
    HYPRE_Real         **cheby_coefs;
+
+   HYPRE_Real           cum_nnz_AP;
 
    /* data needed for non-Galerkin option */
    HYPRE_Int           nongalerk_num_tol;
@@ -406,6 +411,9 @@ typedef struct
 #define hypre_ParAMGDataILULevel(amg_data) ((amg_data)->ilu_lfil)
 #define hypre_ParAMGDataILUMaxRowNnz(amg_data) ((amg_data)->ilu_max_row_nnz)
 #define hypre_ParAMGDataILUDroptol(amg_data) ((amg_data)->ilu_droptol)
+#define hypre_ParAMGDataILUTriSolve(amg_data) ((amg_data)->ilu_tri_solve)
+#define hypre_ParAMGDataILULowerJacobiIters(amg_data) ((amg_data)->ilu_lower_jacobi_iters)
+#define hypre_ParAMGDataILUUpperJacobiIters(amg_data) ((amg_data)->ilu_upper_jacobi_iters)
 #define hypre_ParAMGDataILUMaxIter(amg_data) ((amg_data)->ilu_max_iter)
 #define hypre_ParAMGDataILULocalReordering(amg_data) ((amg_data)->ilu_reordering_type)
 #define hypre_ParAMGDataFSAIMaxSteps(amg_data) ((amg_data)->fsai_max_steps)
@@ -422,6 +430,8 @@ typedef struct
 #define hypre_ParAMGDataChebyScale(amg_data) ((amg_data)->cheby_scale)
 #define hypre_ParAMGDataChebyDS(amg_data) ((amg_data)->cheby_ds)
 #define hypre_ParAMGDataChebyCoefs(amg_data) ((amg_data)->cheby_coefs)
+
+#define hypre_ParAMGDataCumNnzAP(amg_data)   ((amg_data)->cum_nnz_AP)
 
 /* block */
 #define hypre_ParAMGDataABlockArray(amg_data) ((amg_data)->A_block_array)
@@ -858,6 +868,214 @@ typedef struct hypre_ParFSAIData_struct
 /* log info data */
 #define hypre_ParFSAIDataLogging(fsai_data)                 ((fsai_data) -> logging)
 #define hypre_ParFSAIDataPrintLevel(fsai_data)              ((fsai_data) -> print_level)
+
+#endif
+/******************************************************************************
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
+ * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
+ *
+ * SPDX-License-Identifier: (Apache-2.0 OR MIT)
+ ******************************************************************************/
+
+#ifndef hypre_AMS_DATA_HEADER
+#define hypre_AMS_DATA_HEADER
+
+/*--------------------------------------------------------------------------
+ * Auxiliary space Maxwell Solver data
+ *--------------------------------------------------------------------------*/
+typedef struct
+{
+   /* Space dimension (2 or 3) */
+   HYPRE_Int dim;
+
+   /* Edge element (ND1) stiffness matrix */
+   hypre_ParCSRMatrix *A;
+
+   /* Discrete gradient matrix (vertex-to-edge) */
+   hypre_ParCSRMatrix *G;
+   /* Coarse grid matrix on the range of G^T */
+   hypre_ParCSRMatrix *A_G;
+   /* AMG solver for A_G */
+   HYPRE_Solver B_G;
+   /* Is the mass term coefficient zero? */
+   HYPRE_Int beta_is_zero;
+
+   /* Nedelec nodal interpolation matrix (vertex^dim-to-edge) */
+   hypre_ParCSRMatrix *Pi;
+   /* Coarse grid matrix on the range of Pi^T */
+   hypre_ParCSRMatrix *A_Pi;
+   /* AMG solver for A_Pi */
+   HYPRE_Solver B_Pi;
+
+   /* Components of the Nedelec interpolation matrix (vertex-to-edge each) */
+   hypre_ParCSRMatrix *Pix, *Piy, *Piz;
+   /* Coarse grid matrices on the ranges of Pi{x,y,z}^T */
+   hypre_ParCSRMatrix *A_Pix, *A_Piy, *A_Piz;
+   /* AMG solvers for A_Pi{x,y,z} */
+   HYPRE_Solver B_Pix, B_Piy, B_Piz;
+
+   /* Does the solver own the Nedelec interpolations? */
+   HYPRE_Int owns_Pi;
+   /* Does the solver own the coarse grid matrices? */
+   HYPRE_Int owns_A_G, owns_A_Pi;
+
+   /* Coordinates of the vertices (z = 0 if dim == 2) */
+   hypre_ParVector *x, *y, *z;
+
+   /* Representations of the constant vectors in the Nedelec basis */
+   hypre_ParVector *Gx, *Gy, *Gz;
+
+   /* Nodes in the interior of the zero-conductivity region */
+   hypre_ParVector *interior_nodes;
+   /* Discrete gradient matrix for the interior nodes only */
+   hypre_ParCSRMatrix *G0;
+   /* Coarse grid matrix on the interior nodes */
+   hypre_ParCSRMatrix *A_G0;
+   /* AMG solver for A_G0 */
+   HYPRE_Solver B_G0;
+   /* How frequently to project the r.h.s. onto Ker(G0^T)? */
+   HYPRE_Int projection_frequency;
+   /* Internal counter to use with projection_frequency in PCG */
+   HYPRE_Int solve_counter;
+
+   /* Solver options */
+   HYPRE_Int maxit;
+   HYPRE_Real tol;
+   HYPRE_Int cycle_type;
+   HYPRE_Int print_level;
+
+   /* Smoothing options for A */
+   HYPRE_Int A_relax_type;
+   HYPRE_Int A_relax_times;
+   hypre_Vector *A_l1_norms;
+   HYPRE_Real A_relax_weight;
+   HYPRE_Real A_omega;
+   HYPRE_Real A_max_eig_est;
+   HYPRE_Real A_min_eig_est;
+   HYPRE_Int A_cheby_order;
+   HYPRE_Real  A_cheby_fraction;
+
+   /* AMG options for B_G */
+   HYPRE_Int B_G_coarsen_type;
+   HYPRE_Int B_G_agg_levels;
+   HYPRE_Int B_G_relax_type;
+   HYPRE_Int B_G_coarse_relax_type;
+   HYPRE_Real B_G_theta;
+   HYPRE_Int B_G_interp_type;
+   HYPRE_Int B_G_Pmax;
+
+   /* AMG options for B_Pi */
+   HYPRE_Int B_Pi_coarsen_type;
+   HYPRE_Int B_Pi_agg_levels;
+   HYPRE_Int B_Pi_relax_type;
+   HYPRE_Int B_Pi_coarse_relax_type;
+   HYPRE_Real B_Pi_theta;
+   HYPRE_Int B_Pi_interp_type;
+   HYPRE_Int B_Pi_Pmax;
+
+   /* Temporary vectors */
+   hypre_ParVector *r0, *g0, *r1, *g1, *r2, *g2, *zz;
+
+   /* Output log info */
+   HYPRE_Int num_iterations;
+   HYPRE_Real rel_resid_norm;
+
+} hypre_AMSData;
+
+/* Space dimension */
+#define hypre_AMSDataDimension(ams_data) ((ams_data)->dim)
+
+/* Edge stiffness matrix */
+#define hypre_AMSDataA(ams_data) ((ams_data)->A)
+
+/* Vertex space data */
+#define hypre_AMSDataDiscreteGradient(ams_data) ((ams_data)->G)
+#define hypre_AMSDataPoissonBeta(ams_data) ((ams_data)->A_G)
+#define hypre_AMSDataPoissonBetaAMG(ams_data) ((ams_data)->B_G)
+#define hypre_AMSDataOwnsPoissonBeta(ams_data) ((ams_data)->owns_A_G)
+#define hypre_AMSDataBetaIsZero(ams_data) ((ams_data)->beta_is_zero)
+
+/* Vector vertex space data */
+#define hypre_AMSDataPiInterpolation(ams_data) ((ams_data)->Pi)
+#define hypre_AMSDataOwnsPiInterpolation(ams_data) ((ams_data)->owns_Pi)
+#define hypre_AMSDataPoissonAlpha(ams_data) ((ams_data)->A_Pi)
+#define hypre_AMSDataPoissonAlphaAMG(ams_data) ((ams_data)->B_Pi)
+#define hypre_AMSDataOwnsPoissonAlpha(ams_data) ((ams_data)->owns_A_Pi)
+
+/* Vector vertex components data */
+#define hypre_AMSDataPiXInterpolation(ams_data) ((ams_data)->Pix)
+#define hypre_AMSDataPiYInterpolation(ams_data) ((ams_data)->Piy)
+#define hypre_AMSDataPiZInterpolation(ams_data) ((ams_data)->Piz)
+#define hypre_AMSDataPoissonAlphaX(ams_data) ((ams_data)->A_Pix)
+#define hypre_AMSDataPoissonAlphaY(ams_data) ((ams_data)->A_Piy)
+#define hypre_AMSDataPoissonAlphaZ(ams_data) ((ams_data)->A_Piz)
+#define hypre_AMSDataPoissonAlphaXAMG(ams_data) ((ams_data)->B_Pix)
+#define hypre_AMSDataPoissonAlphaYAMG(ams_data) ((ams_data)->B_Piy)
+#define hypre_AMSDataPoissonAlphaZAMG(ams_data) ((ams_data)->B_Piz)
+
+/* Coordinates of the vertices */
+#define hypre_AMSDataVertexCoordinateX(ams_data) ((ams_data)->x)
+#define hypre_AMSDataVertexCoordinateY(ams_data) ((ams_data)->y)
+#define hypre_AMSDataVertexCoordinateZ(ams_data) ((ams_data)->z)
+
+/* Representations of the constant vectors in the Nedelec basis */
+#define hypre_AMSDataEdgeConstantX(ams_data) ((ams_data)->Gx)
+#define hypre_AMSDataEdgeConstantY(ams_data) ((ams_data)->Gy)
+#define hypre_AMSDataEdgeConstantZ(ams_data) ((ams_data)->Gz)
+
+/* Interior zero conductivity region */
+#define hypre_AMSDataInteriorNodes(ams_data) ((ams_data)->interior_nodes)
+#define hypre_AMSDataInteriorDiscreteGradient(ams_data) ((ams_data)->G0)
+#define hypre_AMSDataInteriorPoissonBeta(ams_data) ((ams_data)->A_G0)
+#define hypre_AMSDataInteriorPoissonBetaAMG(ams_data) ((ams_data)->B_G0)
+#define hypre_AMSDataInteriorProjectionFrequency(ams_data) ((ams_data)->projection_frequency)
+#define hypre_AMSDataInteriorSolveCounter(ams_data) ((ams_data)->solve_counter)
+
+/* Solver options */
+#define hypre_AMSDataMaxIter(ams_data) ((ams_data)->maxit)
+#define hypre_AMSDataTol(ams_data) ((ams_data)->tol)
+#define hypre_AMSDataCycleType(ams_data) ((ams_data)->cycle_type)
+#define hypre_AMSDataPrintLevel(ams_data) ((ams_data)->print_level)
+
+/* Smoothing and AMG options */
+#define hypre_AMSDataARelaxType(ams_data) ((ams_data)->A_relax_type)
+#define hypre_AMSDataARelaxTimes(ams_data) ((ams_data)->A_relax_times)
+#define hypre_AMSDataAL1Norms(ams_data) ((ams_data)->A_l1_norms)
+#define hypre_AMSDataARelaxWeight(ams_data) ((ams_data)->A_relax_weight)
+#define hypre_AMSDataAOmega(ams_data) ((ams_data)->A_omega)
+#define hypre_AMSDataAMaxEigEst(ams_data) ((ams_data)->A_max_eig_est)
+#define hypre_AMSDataAMinEigEst(ams_data) ((ams_data)->A_min_eig_est)
+#define hypre_AMSDataAChebyOrder(ams_data) ((ams_data)->A_cheby_order)
+#define hypre_AMSDataAChebyFraction(ams_data) ((ams_data)->A_cheby_fraction)
+
+#define hypre_AMSDataPoissonBetaAMGCoarsenType(ams_data) ((ams_data)->B_G_coarsen_type)
+#define hypre_AMSDataPoissonBetaAMGAggLevels(ams_data) ((ams_data)->B_G_agg_levels)
+#define hypre_AMSDataPoissonBetaAMGRelaxType(ams_data) ((ams_data)->B_G_relax_type)
+#define hypre_AMSDataPoissonBetaAMGCoarseRelaxType(ams_data) ((ams_data)->B_G_coarse_relax_type)
+#define hypre_AMSDataPoissonBetaAMGStrengthThreshold(ams_data) ((ams_data)->B_G_theta)
+#define hypre_AMSDataPoissonBetaAMGInterpType(ams_data) ((ams_data)->B_G_interp_type)
+#define hypre_AMSDataPoissonBetaAMGPMax(ams_data) ((ams_data)->B_G_Pmax)
+
+#define hypre_AMSDataPoissonAlphaAMGCoarsenType(ams_data) ((ams_data)->B_Pi_coarsen_type)
+#define hypre_AMSDataPoissonAlphaAMGAggLevels(ams_data) ((ams_data)->B_Pi_agg_levels)
+#define hypre_AMSDataPoissonAlphaAMGRelaxType(ams_data) ((ams_data)->B_Pi_relax_type)
+#define hypre_AMSDataPoissonAlphaAMGCoarseRelaxType(ams_data) ((ams_data)->B_Pi_coarse_relax_type)
+#define hypre_AMSDataPoissonAlphaAMGStrengthThreshold(ams_data) ((ams_data)->B_Pi_theta)
+#define hypre_AMSDataPoissonAlphaAMGInterpType(ams_data) ((ams_data)->B_Pi_interp_type)
+#define hypre_AMSDataPoissonAlphaAMGPMax(ams_data) ((ams_data)->B_Pi_Pmax)
+
+/* Temporary vectors */
+#define hypre_AMSDataTempEdgeVectorR(ams_data) ((ams_data)->r0)
+#define hypre_AMSDataTempEdgeVectorG(ams_data) ((ams_data)->g0)
+#define hypre_AMSDataTempVertexVectorR(ams_data) ((ams_data)->r1)
+#define hypre_AMSDataTempVertexVectorG(ams_data) ((ams_data)->g1)
+#define hypre_AMSDataTempVecVertexVectorR(ams_data) ((ams_data)->r2)
+#define hypre_AMSDataTempVecVertexVectorG(ams_data) ((ams_data)->g2)
+#define hypre_AMSDataTempVecVertexVectorZZ(ams_data) ((ams_data)->zz)
+
+/* Output log info */
+#define hypre_AMSDataNumIterations(ams_data) ((ams_data)->num_iterations)
+#define hypre_AMSDataResidualNorm(ams_data) ((ams_data)->rel_resid_norm)
 
 #endif
 /******************************************************************************
@@ -1369,6 +1587,11 @@ HYPRE_Int HYPRE_BoomerAMGSetILULevel( HYPRE_Solver solver, HYPRE_Int ilu_lfil);
 HYPRE_Int HYPRE_BoomerAMGSetILUMaxRowNnz( HYPRE_Solver  solver, HYPRE_Int ilu_max_row_nnz);
 HYPRE_Int HYPRE_BoomerAMGSetILUMaxIter( HYPRE_Solver solver, HYPRE_Int ilu_max_iter);
 HYPRE_Int HYPRE_BoomerAMGSetILUDroptol( HYPRE_Solver solver, HYPRE_Real ilu_droptol);
+HYPRE_Int HYPRE_BoomerAMGSetILUTriSolve( HYPRE_Solver solver, HYPRE_Int ilu_tri_solve);
+HYPRE_Int HYPRE_BoomerAMGSetILULowerJacobiIters( HYPRE_Solver solver,
+                                                 HYPRE_Int ilu_lower_jacobi_iters);
+HYPRE_Int HYPRE_BoomerAMGSetILUUpperJacobiIters( HYPRE_Solver solver,
+                                                 HYPRE_Int ilu_upper_jacobi_iters);
 HYPRE_Int HYPRE_BoomerAMGSetILULocalReordering( HYPRE_Solver solver, HYPRE_Int ilu_reordering_type);
 HYPRE_Int HYPRE_BoomerAMGSetFSAIMaxSteps ( HYPRE_Solver solver, HYPRE_Int max_steps );
 HYPRE_Int HYPRE_BoomerAMGSetFSAIMaxStepSize ( HYPRE_Solver solver, HYPRE_Int max_step_size );
@@ -1450,6 +1673,8 @@ HYPRE_Int HYPRE_BoomerAMGSetIsolatedFPoints( HYPRE_Solver solver, HYPRE_Int num_
                                              HYPRE_BigInt *isolated_fpt_index );
 HYPRE_Int HYPRE_BoomerAMGSetFPoints( HYPRE_Solver solver, HYPRE_Int num_fpt,
                                      HYPRE_BigInt *fpt_index );
+HYPRE_Int HYPRE_BoomerAMGSetCumNnzAP ( HYPRE_Solver solver, HYPRE_Real cum_nnz_AP );
+HYPRE_Int HYPRE_BoomerAMGGetCumNnzAP ( HYPRE_Solver solver, HYPRE_Real *cum_nnz_AP );
 
 /* HYPRE_parcsr_amgdd.c */
 HYPRE_Int HYPRE_BoomerAMGDDSetup ( HYPRE_Solver solver, HYPRE_ParCSRMatrix A, HYPRE_ParVector b,
@@ -2006,6 +2231,9 @@ HYPRE_Int hypre_BoomerAMGSetEuBJ ( void *data, HYPRE_Int eu_bj );
 HYPRE_Int hypre_BoomerAMGSetILUType( void *data, HYPRE_Int ilu_type);
 HYPRE_Int hypre_BoomerAMGSetILULevel( void *data, HYPRE_Int ilu_lfil);
 HYPRE_Int hypre_BoomerAMGSetILUDroptol( void *data, HYPRE_Real ilu_droptol);
+HYPRE_Int hypre_BoomerAMGSetILUTriSolve( void *data, HYPRE_Int ilu_tri_solve);
+HYPRE_Int hypre_BoomerAMGSetILULowerJacobiIters( void *data, HYPRE_Int ilu_lower_jacobi_iters);
+HYPRE_Int hypre_BoomerAMGSetILUUpperJacobiIters( void *data, HYPRE_Int ilu_upper_jacobi_iters);
 HYPRE_Int hypre_BoomerAMGSetILUMaxIter( void *data, HYPRE_Int ilu_max_iter);
 HYPRE_Int hypre_BoomerAMGSetILUMaxRowNnz( void *data, HYPRE_Int ilu_max_row_nnz);
 HYPRE_Int hypre_BoomerAMGSetILULocalReordering( void *data, HYPRE_Int ilu_reordering_type);
@@ -2048,6 +2276,8 @@ HYPRE_Int hypre_BoomerAMGSetCPoints( void *data, HYPRE_Int cpt_coarse_level,
                                      HYPRE_Int  num_cpt_coarse, HYPRE_BigInt *cpt_coarse_index );
 HYPRE_Int hypre_BoomerAMGSetFPoints( void *data, HYPRE_Int isolated, HYPRE_Int num_points,
                                      HYPRE_BigInt *indices );
+HYPRE_Int hypre_BoomerAMGSetCumNnzAP ( void *data, HYPRE_Real cum_nnz_AP );
+HYPRE_Int hypre_BoomerAMGGetCumNnzAP ( void *data, HYPRE_Real *cum_nnz_AP );
 
 /* par_amg_setup.c */
 HYPRE_Int hypre_BoomerAMGSetup ( void *amg_vdata, hypre_ParCSRMatrix *A, hypre_ParVector *f,
@@ -2456,7 +2686,8 @@ HYPRE_Int hypre_NonGalerkinIJBufferNewRow ( HYPRE_BigInt *ijbuf_rownums, HYPRE_I
 HYPRE_Int hypre_NonGalerkinIJBufferCompressRow ( HYPRE_Int *ijbuf_cnt, HYPRE_Int ijbuf_rowcounter,
                                                  HYPRE_Real *ijbuf_data, HYPRE_BigInt *ijbuf_cols, HYPRE_BigInt *ijbuf_rownums,
                                                  HYPRE_Int *ijbuf_numcols );
-HYPRE_Int hypre_NonGalerkinIJBufferCompress ( HYPRE_Int ijbuf_size, HYPRE_Int *ijbuf_cnt,
+HYPRE_Int hypre_NonGalerkinIJBufferCompress ( HYPRE_MemoryLocation memory_location,
+                                              HYPRE_Int ijbuf_size, HYPRE_Int *ijbuf_cnt,
                                               HYPRE_Int *ijbuf_rowcounter, HYPRE_Real **ijbuf_data, HYPRE_BigInt **ijbuf_cols,
                                               HYPRE_BigInt **ijbuf_rownums, HYPRE_Int **ijbuf_numcols );
 HYPRE_Int hypre_NonGalerkinIJBufferWrite ( HYPRE_IJMatrix B, HYPRE_Int *ijbuf_cnt,
@@ -2489,7 +2720,7 @@ HYPRE_Int hypre_GenerateSendMapAndCommPkg ( MPI_Comm comm, HYPRE_Int num_sends, 
 /* par_relax.c */
 HYPRE_Int hypre_BoomerAMGRelax ( hypre_ParCSRMatrix *A, hypre_ParVector *f, HYPRE_Int *cf_marker,
                                  HYPRE_Int relax_type, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real omega,
-                                 HYPRE_Real *l1_norms, hypre_ParVector *u, hypre_ParVector *Vtemp, hypre_ParVector *Ztemp, HYPRE_Int zero_u );
+                                 HYPRE_Real *l1_norms, hypre_ParVector *u, hypre_ParVector *Vtemp, hypre_ParVector *Ztemp );
 HYPRE_Int hypre_GaussElimSetup ( hypre_ParAMGData *amg_data, HYPRE_Int level,
                                  HYPRE_Int relax_type );
 HYPRE_Int hypre_GaussElimSolve ( hypre_ParAMGData *amg_data, HYPRE_Int level,
@@ -2502,6 +2733,11 @@ HYPRE_Int hypre_BoomerAMGRelaxHybridGaussSeidel_core( hypre_ParCSRMatrix *A, hyp
 HYPRE_Int hypre_BoomerAMGRelax0WeightedJacobi( hypre_ParCSRMatrix *A, hypre_ParVector *f,
                                                HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, hypre_ParVector *u,
                                                hypre_ParVector *Vtemp );
+
+HYPRE_Int hypre_BoomerAMGRelaxHybridSOR( hypre_ParCSRMatrix *A, hypre_ParVector *f,
+                                         HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real omega,
+                                         HYPRE_Real *l1_norms, hypre_ParVector *u, hypre_ParVector *Vtemp, hypre_ParVector *Ztemp,
+                                         HYPRE_Int direction, HYPRE_Int symm, HYPRE_Int skip_diag, HYPRE_Int force_seq );
 
 HYPRE_Int hypre_BoomerAMGRelax1GaussSeidel( hypre_ParCSRMatrix *A, hypre_ParVector *f,
                                             HYPRE_Int *cf_marker, HYPRE_Int relax_points, hypre_ParVector *u );
@@ -2526,7 +2762,7 @@ HYPRE_Int hypre_BoomerAMGRelax6HybridSSOR( hypre_ParCSRMatrix *A, hypre_ParVecto
 
 HYPRE_Int hypre_BoomerAMGRelax7Jacobi( hypre_ParCSRMatrix *A, hypre_ParVector *f,
                                        HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real *l1_norms,
-                                       hypre_ParVector *u, hypre_ParVector *Vtemp, HYPRE_Int zero_u );
+                                       hypre_ParVector *u, hypre_ParVector *Vtemp );
 
 HYPRE_Int hypre_BoomerAMGRelax8HybridL1SSOR( hypre_ParCSRMatrix *A, hypre_ParVector *f,
                                              HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real omega,
@@ -2546,7 +2782,7 @@ HYPRE_Int hypre_BoomerAMGRelax14HybridL1GaussSeidel( hypre_ParCSRMatrix *A, hypr
 
 HYPRE_Int hypre_BoomerAMGRelax18WeightedL1Jacobi( hypre_ParCSRMatrix *A, hypre_ParVector *f,
                                                   HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real *l1_norms,
-                                                  hypre_ParVector *u, hypre_ParVector *Vtemp, HYPRE_Int zero_u );
+                                                  hypre_ParVector *u, hypre_ParVector *Vtemp );
 
 HYPRE_Int hypre_BoomerAMGRelax19GaussElim( hypre_ParCSRMatrix *A, hypre_ParVector *f,
                                            hypre_ParVector *u );
@@ -2558,32 +2794,36 @@ HYPRE_Int hypre_BoomerAMGRelaxKaczmarz( hypre_ParCSRMatrix *A, hypre_ParVector *
                                         HYPRE_Real *l1_norms, hypre_ParVector *u );
 
 HYPRE_Int hypre_BoomerAMGRelaxTwoStageGaussSeidelDevice ( hypre_ParCSRMatrix *A, hypre_ParVector *f,
-                                                          HYPRE_Real relax_weight, HYPRE_Real omega, hypre_ParVector *u, hypre_ParVector *r,
-                                                          hypre_ParVector *z, HYPRE_Int choice);
-
-HYPRE_Int hypre_BoomerAMGRelaxTwoStageGaussSeidel( hypre_ParCSRMatrix *A, hypre_ParVector *f,
-                                                   HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real omega,
-                                                   hypre_ParVector *u, hypre_ParVector *Vtemp, hypre_ParVector *Ztemp, HYPRE_Int num_inner_iters );
+                                                          HYPRE_Real relax_weight, HYPRE_Real omega,
+                                                          HYPRE_Real *A_diag_diag, hypre_ParVector *u,
+                                                          hypre_ParVector *r, hypre_ParVector *z,
+                                                          HYPRE_Int choice );
 
 HYPRE_Int hypre_BoomerAMGRelax11TwoStageGaussSeidel( hypre_ParCSRMatrix *A, hypre_ParVector *f,
-                                                     HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real omega,
-                                                     hypre_ParVector *u, hypre_ParVector *Vtemp, hypre_ParVector *Ztemp );
+                                                     HYPRE_Int *cf_marker, HYPRE_Int relax_points,
+                                                     HYPRE_Real relax_weight, HYPRE_Real omega,
+                                                     HYPRE_Real *A_diag_diag, hypre_ParVector *u,
+                                                     hypre_ParVector *Vtemp, hypre_ParVector *Ztemp );
 
 HYPRE_Int hypre_BoomerAMGRelax12TwoStageGaussSeidel( hypre_ParCSRMatrix *A, hypre_ParVector *f,
-                                                     HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real omega,
-                                                     hypre_ParVector *u, hypre_ParVector *Vtemp, hypre_ParVector *Ztemp );
+                                                     HYPRE_Int *cf_marker, HYPRE_Int relax_points,
+                                                     HYPRE_Real relax_weight, HYPRE_Real omega,
+                                                     HYPRE_Real *A_diag_diag, hypre_ParVector *u,
+                                                     hypre_ParVector *Vtemp, hypre_ParVector *Ztemp );
 
 /* par_realx_device.c */
 HYPRE_Int hypre_BoomerAMGRelaxHybridGaussSeidelDevice( hypre_ParCSRMatrix *A, hypre_ParVector *f,
-                                                       HYPRE_Int *cf_marker, HYPRE_Int relax_points, HYPRE_Real relax_weight, HYPRE_Real omega,
-                                                       HYPRE_Real *l1_norms, hypre_ParVector *u, hypre_ParVector *Vtemp, hypre_ParVector *Ztemp,
+                                                       HYPRE_Int *cf_marker, HYPRE_Int relax_points,
+                                                       HYPRE_Real relax_weight, HYPRE_Real omega,
+                                                       HYPRE_Real *l1_norms, hypre_ParVector *u,
+                                                       hypre_ParVector *Vtemp, hypre_ParVector *Ztemp,
                                                        HYPRE_Int GS_order, HYPRE_Int Symm );
 
 /* par_relax_interface.c */
 HYPRE_Int hypre_BoomerAMGRelaxIF ( hypre_ParCSRMatrix *A, hypre_ParVector *f, HYPRE_Int *cf_marker,
                                    HYPRE_Int relax_type, HYPRE_Int relax_order, HYPRE_Int cycle_type, HYPRE_Real relax_weight,
                                    HYPRE_Real omega, HYPRE_Real *l1_norms, hypre_ParVector *u, hypre_ParVector *Vtemp,
-                                   hypre_ParVector *Ztemp, HYPRE_Int zero_u );
+                                   hypre_ParVector *Ztemp );
 
 /* par_relax_more.c */
 HYPRE_Int hypre_ParCSRMaxEigEstimate ( hypre_ParCSRMatrix *A, HYPRE_Int scale, HYPRE_Real *max_eig,
@@ -2598,7 +2838,8 @@ HYPRE_Int hypre_ParCSRRelax_Cheby ( hypre_ParCSRMatrix *A, hypre_ParVector *f, H
                                     HYPRE_Real min_eig, HYPRE_Real fraction, HYPRE_Int order, HYPRE_Int scale, HYPRE_Int variant,
                                     hypre_ParVector *u, hypre_ParVector *v, hypre_ParVector *r );
 HYPRE_Int hypre_BoomerAMGRelax_FCFJacobi ( hypre_ParCSRMatrix *A, hypre_ParVector *f,
-                                           HYPRE_Int *cf_marker, HYPRE_Real relax_weight, hypre_ParVector *u, hypre_ParVector *Vtemp );
+                                           HYPRE_Int *cf_marker, HYPRE_Real relax_weight,
+                                           hypre_ParVector *u, hypre_ParVector *Vtemp );
 HYPRE_Int hypre_ParCSRRelax_CG ( HYPRE_Solver solver, hypre_ParCSRMatrix *A, hypre_ParVector *f,
                                  hypre_ParVector *u, HYPRE_Int num_its );
 HYPRE_Int hypre_LINPACKcgtql1 ( HYPRE_Int *n, HYPRE_Real *d, HYPRE_Real *e, HYPRE_Int *ierr );
@@ -2871,9 +3112,9 @@ HYPRE_Int hypre_SLUDistDestroy( void* solver);
 void *hypre_MGRCreate ( void );
 HYPRE_Int hypre_MGRDestroy ( void *mgr_vdata );
 HYPRE_Int hypre_MGRCycle( void *mgr_vdata, hypre_ParVector **F_array, hypre_ParVector **U_array );
-void *hypre_MGRCreateFrelaxVcycleData();
+void *hypre_MGRCreateFrelaxVcycleData( void );
 HYPRE_Int hypre_MGRDestroyFrelaxVcycleData( void *mgr_vdata );
-void *hypre_MGRCreateGSElimData();
+void *hypre_MGRCreateGSElimData( void );
 HYPRE_Int hypre_MGRDestroyGSElimData( void *mgr_vdata );
 HYPRE_Int hypre_MGRSetupFrelaxVcycleData( void *mgr_vdata, hypre_ParCSRMatrix *A,
                                           hypre_ParVector *f, hypre_ParVector *u, HYPRE_Int level);
@@ -2936,7 +3177,7 @@ HYPRE_Int hypre_MGRSolve( void *mgr_vdata, hypre_ParCSRMatrix *A, hypre_ParVecto
 HYPRE_Int hypre_block_jacobi_scaling(hypre_ParCSRMatrix *A, hypre_ParCSRMatrix **B_ptr,
                                      void               *mgr_vdata, HYPRE_Int             debug_flag);
 HYPRE_Int hypre_MGRBlockRelaxSolve(hypre_ParCSRMatrix *A, hypre_ParVector *f, hypre_ParVector *u,
-                                   HYPRE_Real blk_size, HYPRE_Int n_block, HYPRE_Int left_size, HYPRE_Int method, HYPRE_Real *diaginv,
+                                   HYPRE_Int blk_size, HYPRE_Int n_block, HYPRE_Int left_size, HYPRE_Int method, HYPRE_Real *diaginv,
                                    hypre_ParVector *Vtemp);
 HYPRE_Int hypre_MGRBlockRelaxSetup(hypre_ParCSRMatrix *A, HYPRE_Int blk_size,
                                    HYPRE_Real **diaginvptr);
@@ -3019,6 +3260,9 @@ HYPRE_Int hypre_ILUSetDropThresholdArray( void *ilu_vdata, HYPRE_Real *threshold
 HYPRE_Int hypre_ILUSetType( void *ilu_vdata, HYPRE_Int ilu_type );
 HYPRE_Int hypre_ILUSetMaxIter( void *ilu_vdata, HYPRE_Int max_iter );
 HYPRE_Int hypre_ILUSetTol( void *ilu_vdata, HYPRE_Real tol );
+HYPRE_Int hypre_ILUSetTriSolve( void *ilu_vdata, HYPRE_Int tri_solve );
+HYPRE_Int hypre_ILUSetLowerJacobiIters( void *ilu_vdata, HYPRE_Int lower_jacobi_iters );
+HYPRE_Int hypre_ILUSetUpperJacobiIters( void *ilu_vdata, HYPRE_Int upper_jacobi_iters );
 HYPRE_Int hypre_ILUSetup( void *ilu_vdata, hypre_ParCSRMatrix *A, hypre_ParVector    *f,
                           hypre_ParVector    *u );
 HYPRE_Int hypre_ILUSolve( void *ilu_vdata, hypre_ParCSRMatrix *A, hypre_ParVector *f,
@@ -3106,6 +3350,10 @@ HYPRE_Int hypre_ILUSetupILUTRAS(hypre_ParCSRMatrix *A, HYPRE_Int lfil, HYPRE_Rea
 HYPRE_Int hypre_ILUSolveLU(hypre_ParCSRMatrix *A, hypre_ParVector *f, hypre_ParVector *u,
                            HYPRE_Int *perm, HYPRE_Int nLU, hypre_ParCSRMatrix *L, HYPRE_Real* D, hypre_ParCSRMatrix *U,
                            hypre_ParVector *utemp, hypre_ParVector *ftemp);
+HYPRE_Int hypre_ILUSolveLUIter(hypre_ParCSRMatrix *A, hypre_ParVector *f, hypre_ParVector *u,
+                               HYPRE_Int *perm, HYPRE_Int nLU, hypre_ParCSRMatrix *L, HYPRE_Real* D, hypre_ParCSRMatrix *U,
+                               hypre_ParVector *utemp, hypre_ParVector *ftemp, hypre_Vector *xtemp, HYPRE_Int lower_jacobi_iters,
+                               HYPRE_Int upper_jacobi_iters);
 HYPRE_Int hypre_ILUSolveSchurGMRES(hypre_ParCSRMatrix *A, hypre_ParVector *f, hypre_ParVector *u,
                                    HYPRE_Int *perm, HYPRE_Int *qperm, HYPRE_Int nLU, hypre_ParCSRMatrix *L, HYPRE_Real* D,
                                    hypre_ParCSRMatrix *U, hypre_ParCSRMatrix *S, hypre_ParVector *ftemp, hypre_ParVector *utemp,
@@ -3151,7 +3399,7 @@ HYPRE_Int hypre_ILULocalRCMQsort(HYPRE_Int *perm, HYPRE_Int start, HYPRE_Int end
                                  HYPRE_Int *degree);
 HYPRE_Int hypre_ILULocalRCMReverse(HYPRE_Int *perm, HYPRE_Int start, HYPRE_Int end);
 // Newton-Schultz-Hotelling (NSH) functions
-void * hypre_NSHCreate();
+void * hypre_NSHCreate( void );
 HYPRE_Int hypre_NSHDestroy( void *data );
 HYPRE_Int hypre_NSHSetup( void *nsh_vdata, hypre_ParCSRMatrix *A, hypre_ParVector *f,
                           hypre_ParVector *u );
@@ -3257,13 +3505,13 @@ HYPRE_Int hypre_BoomerAMGDD_FAC_CFL1JacobiDevice ( void *amgdd_vdata, HYPRE_Int 
                                                    HYPRE_Int relax_set );
 
 /* par_amgdd_comp_grid.c */
-hypre_AMGDDCompGridMatrix* hypre_AMGDDCompGridMatrixCreate();
+hypre_AMGDDCompGridMatrix* hypre_AMGDDCompGridMatrixCreate( void );
 HYPRE_Int hypre_AMGDDCompGridMatrixDestroy ( hypre_AMGDDCompGridMatrix *matrix );
 HYPRE_Int hypre_AMGDDCompGridMatvec ( HYPRE_Complex alpha, hypre_AMGDDCompGridMatrix *A,
                                       hypre_AMGDDCompGridVector *x, HYPRE_Complex beta, hypre_AMGDDCompGridVector *y );
 HYPRE_Int hypre_AMGDDCompGridRealMatvec ( HYPRE_Complex alpha, hypre_AMGDDCompGridMatrix *A,
                                           hypre_AMGDDCompGridVector *x, HYPRE_Complex beta, hypre_AMGDDCompGridVector *y );
-hypre_AMGDDCompGridVector* hypre_AMGDDCompGridVectorCreate();
+hypre_AMGDDCompGridVector* hypre_AMGDDCompGridVectorCreate( void );
 HYPRE_Int hypre_AMGDDCompGridVectorInitialize ( hypre_AMGDDCompGridVector *vector,
                                                 HYPRE_Int num_owned, HYPRE_Int num_nonowned, HYPRE_Int num_real );
 HYPRE_Int hypre_AMGDDCompGridVectorDestroy ( hypre_AMGDDCompGridVector *vector );
@@ -3285,7 +3533,7 @@ HYPRE_Int hypre_AMGDDCompGridVectorCopy ( hypre_AMGDDCompGridVector *x,
                                           hypre_AMGDDCompGridVector *y );
 HYPRE_Int hypre_AMGDDCompGridVectorRealCopy ( hypre_AMGDDCompGridVector *x,
                                               hypre_AMGDDCompGridVector *y );
-hypre_AMGDDCompGrid *hypre_AMGDDCompGridCreate();
+hypre_AMGDDCompGrid *hypre_AMGDDCompGridCreate( void );
 HYPRE_Int hypre_AMGDDCompGridDestroy ( hypre_AMGDDCompGrid *compGrid );
 HYPRE_Int hypre_AMGDDCompGridInitialize ( hypre_ParAMGDDData *amgdd_data, HYPRE_Int padding,
                                           HYPRE_Int level );
@@ -3334,7 +3582,7 @@ HYPRE_Int hypre_BoomerAMGDD_FixUpRecvMaps ( hypre_AMGDDCompGrid **compGrid,
                                             hypre_AMGDDCommPkg *compGridCommPkg, HYPRE_Int start_level, HYPRE_Int num_levels );
 
 /* par_fsai.c */
-void* hypre_FSAICreate();
+void* hypre_FSAICreate( void );
 HYPRE_Int hypre_FSAIDestroy ( void *data );
 HYPRE_Int hypre_FSAISetAlgoType ( void *data, HYPRE_Int algo_type );
 HYPRE_Int hypre_FSAISetMaxSteps ( void *data, HYPRE_Int max_steps );

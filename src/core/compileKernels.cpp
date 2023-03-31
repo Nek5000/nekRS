@@ -1,4 +1,6 @@
-#include <compileKernels.hpp>
+#include "nrssys.hpp"
+#include "compileKernels.hpp"
+#include "bcMap.hpp"
 #include "elliptic.h"
 #include "mesh.h"
 #include "ogs.hpp"
@@ -6,6 +8,9 @@
 #include "udf.hpp"
 #include <vector>
 #include <tuple>
+#include "findpts.hpp"
+#include "fileUtils.hpp"
+
 
 std::string createOptionsPrefix(std::string section) {
   std::string prefix = section + std::string(" ");
@@ -23,16 +28,21 @@ void compileKernels() {
 
   MPI_Barrier(platform->comm.mpiComm);
 
-  const occa::properties kernelInfoBC = compileUDFKernels();
+  bcMap::addKernelConstants(platform->kernelInfo);
+
+  occa::properties kernelInfoBC = compileUDFKernels();
 
   const double tStart = MPI_Wtime();
   if (platform->comm.mpiRank == 0)
-    printf("loading kernels (this may take awhile) ...\n");
-  fflush(stdout);
+    std::cout << "benchmarking hot kernels ..." << std::endl;
 
   registerLinAlgKernels();
 
+  registerNekNekKernels();
+
   registerPostProcessingKernels();
+
+  registerCvodeKernels(kernelInfoBC);
 
   registerMeshKernels(kernelInfoBC);
 
@@ -40,14 +50,11 @@ void compileKernels() {
 
   int Nscalars;
   platform->options.getArgs("NUMBER OF SCALARS", Nscalars);
-  const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
 
   if (Nscalars) {
     registerCdsKernels(kernelInfoBC);
     for(int is = 0; is < Nscalars; is++){
-      std::stringstream ss;
-      ss << std::setfill('0') << std::setw(scalarWidth) << is;
-      std::string sid = ss.str();
+      std::string sid = scalarDigitStr(is);
       const std::string section = "scalar" + sid;
       const int poisson = 0;
 
@@ -62,27 +69,46 @@ void compileKernels() {
   // as pressure section kernels are the same.
   const std::vector<std::pair<std::string,int>> sections = {
       {"pressure", 1},
-      {"velocity", 0}
+      {"velocity", 0},
+      {"mesh", 1},
   };
 
   std::string section;
   int poissonEquation;
   for (auto&& entry : sections) {
+    if ((entry.first == "velocity" || entry.first == "pressure") &&
+        platform->options.compareArgs("VELOCITY SOLVER", "NONE"))
+      continue;
+
+    if (entry.first == "mesh" && 
+        platform->options.compareArgs("MESH SOLVER", "NONE")) 
+      continue;
+
     std::tie(section, poissonEquation) = entry;
     registerEllipticKernels(section, poissonEquation);
     registerEllipticPreconditionerKernels(section, poissonEquation);
   }
 
+  if (platform->comm.mpiRank == 0)
+    printf("JIT compiling kernels (this may take awhile if they are not in cache) ...\n");
+  fflush(stdout);
 
-  {
-    const bool buildNodeLocal = useNodeLocalCache();
-    const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
-    auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
-    oogs::compile(
-        platform->device.occaDevice(), platform->device.mode(), communicator, buildOnly);
-  }
 
   platform->kernels.compile();
+
+  // compile ogs kernels
+  {
+    const bool buildNodeLocal = platform->cacheLocal;
+    const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
+    auto communicator = buildNodeLocal ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
+    auto &plat = platform;
+    ogsBuildKernel_t buildKernel = 
+      [plat](const std::string &fileName, const std::string &kernelName, const occa::properties &props) 
+      {
+        return plat->device.buildKernel(fileName, kernelName, props);
+      };
+    oogs::compile(platform->device.occaDevice(), buildKernel, platform->device.mode(), communicator, buildOnly);
+  }
 
   // load platform related kernels
   std::string kernelName;

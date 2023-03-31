@@ -1,7 +1,6 @@
 //
 // nekRS User Defined File
 //
-#include <math.h>
 #include "udf.hpp"
 
 static dfloat Re_tau;
@@ -9,7 +8,11 @@ static dfloat zLength;
 
 #include "ci.inc"
 
-/* User Functions */
+#ifdef __okl__
+
+#include "turbPipe.oudf"
+
+#endif
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
@@ -22,12 +25,6 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 
   occa::memory o_FUz = o_FU + 2*nrs->fieldOffset*sizeof(dfloat);
   platform->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
-}
-
-/* UDF Functions */                                                      
-
-void UDF_LoadKernels(occa::properties& kernelInfo)
-{
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)

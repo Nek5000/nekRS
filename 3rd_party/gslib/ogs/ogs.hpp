@@ -137,6 +137,10 @@ SOFTWARE.
 
 //#define OGS_ENABLE_TIMER
 
+typedef std::function<occa::kernel(const std::string &fileName,
+                                   const std::string &kernelName,
+                                   const occa::properties &props)> ogsBuildKernel_t;
+
 // OCCA+gslib gather scatter
 typedef struct {
   
@@ -149,6 +153,7 @@ typedef struct {
   int         NlocalGather;   //  number of local gathered nodes 
   int         Nhalo;          //  number of halo nodes
   int         NhaloGather;    //  number of gathered nodes on halo
+  hlong       NhaloGatherGlobal;
   int         NownedHalo;     //  number of owned halo nodes
   int         NrowBlocks;
 
@@ -263,11 +268,6 @@ typedef struct {
   occa::memory o_scatterOffsets, o_gatherOffsets;
   occa::memory o_scatterIds, o_gatherIds;
 
-  occa::kernel packBufFloatAddKernel, unpackBufFloatAddKernel;  
-  occa::kernel packBufDoubleAddKernel, unpackBufDoubleAddKernel;
-  occa::kernel packBufDoubleMinKernel, unpackBufDoubleMinKernel;
-  occa::kernel packBufDoubleMaxKernel, unpackBufDoubleMaxKernel;
-
   int earlyPrepostRecv;
 
   oogs_mode mode;
@@ -283,7 +283,7 @@ void start(occa::memory &o_v, const int k, const int stride, const char *type, c
 void finish(occa::memory &o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
 void startFinish(void *v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
 void startFinish(occa::memory &o_v, const int k, const int stride, const char *type, const char *op, oogs_t *h);
-void compile(const occa::device& device, std::string mode, MPI_Comm comm, bool verbose = false);
+void compile(const occa::device& device, ogsBuildKernel_t buildKernel, std::string mode, MPI_Comm comm, bool verbose = false);
 oogs_t *setup(ogs_t *ogs, int nVec, int stride, const char *type, std::function<void()> callback, oogs_mode gsMode);
 oogs_t *setup(int N, long long int *ids, const int k, const int stride, const char *type, MPI_Comm &comm,
               int verbose, occa::device device, std::function<void()> callback, oogs_mode mode);

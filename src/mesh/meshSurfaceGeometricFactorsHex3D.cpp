@@ -199,7 +199,7 @@ void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
         mesh->sgeo[base + WIJID] = 1. / (J * mesh->gllw[0]);
         mesh->sgeo[base + WSJID] = sJ * mesh->gllw[i % mesh->Nq] * mesh->gllw[i / mesh->Nq];
 
-        const dfloat tol = 1e-4;
+        const dfloat tol = 1e-04;
         dfloat vt1x = 0, vt1y = 0, vt1z = 0;
         dfloat vt2x = 0, vt2y = 0, vt2z = 0;
         if (std::abs(std::abs(nz) - 1.0) < tol) {

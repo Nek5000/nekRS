@@ -8,7 +8,9 @@
 #include "bdry.hpp"
 
 namespace {
-static dfloat constantFlowScale = 0.0;
+
+dfloat constantFlowScale = 0.0;
+
 inline dfloat distance(
     dfloat x1, dfloat x2, dfloat y1, dfloat y2, dfloat z1, dfloat z2) {
   const dfloat dist_x = x1 - x2;
@@ -16,7 +18,8 @@ inline dfloat distance(
   const dfloat dist_z = z1 - z2;
   return std::sqrt(dist_x * dist_x + dist_y * dist_y + dist_z * dist_z);
 }
-inline void computeDirection(dfloat x1,
+
+void computeDirection(dfloat x1,
     dfloat x2,
     dfloat y1,
     dfloat y2,
@@ -34,19 +37,121 @@ inline void computeDirection(dfloat x1,
   direction[2] /= magnitude;
 }
 
-static dfloat lengthScale;
-static dfloat baseFlowRate;
-static dfloat currentFlowRate;
-static dfloat postCorrectionFlowRate;
-static dfloat flowRate;
+dfloat lengthScale;
+dfloat baseFlowRate;
+dfloat currentFlowRate;
+dfloat postCorrectionFlowRate;
+dfloat flowRate;
 
-static int fromBID;
-static int toBID;
-static dfloat flowDirection[3];
+int fromBID;
+int toBID;
+dfloat flowDirection[3];
 
-} // namespace
+void compute(nrs_t *nrs, dfloat time) {
 
-namespace ConstantFlowRate {
+  constexpr int ndim = 3;
+  mesh_t *mesh = nrs->meshV;
+
+  double flops = 0.0;
+
+  platform->timer.tic("pressure rhs", 1);
+  occa::memory &o_gradPCoeff = platform->o_mempool.slice0;
+  occa::memory &o_Prhs = platform->o_mempool.slice3;
+
+  nrs->setEllipticCoeffPressureKernel(
+      mesh->Nlocal, nrs->fieldOffset, nrs->o_rho, nrs->o_ellipticCoeff);
+
+  nrs->wgradientVolumeKernel(mesh->Nelements,
+      mesh->o_vgeo,
+      mesh->o_D,
+      nrs->fieldOffset,
+      nrs->o_ellipticCoeff,
+      o_gradPCoeff);
+
+  double flopsGrad = 6 * mesh->Np * mesh->Nq + 18 * mesh->Np;
+  flopsGrad *= static_cast<double>(mesh->Nelements);
+  flops += flopsGrad;
+
+  nrs->computeFieldDotNormalKernel(mesh->Nlocal,
+      nrs->fieldOffset,
+      flowDirection[0],
+      flowDirection[1],
+      flowDirection[2],
+      o_gradPCoeff,
+      o_Prhs);
+
+  flops += 5 * mesh->Nlocal;
+  platform->timer.toc("pressure rhs");
+
+  platform->timer.tic("pressureSolve", 1);
+  ellipticSolve(nrs->pSolver, o_Prhs, nrs->o_Pc);
+  platform->timer.toc("pressureSolve");
+
+  // solve homogenous Stokes problem
+  platform->timer.tic("velocity rhs", 1);
+  occa::memory &o_RhsVel = platform->o_mempool.slice0;
+  nrs->gradientVolumeKernel(mesh->Nelements,
+      mesh->o_vgeo,
+      mesh->o_D,
+      nrs->fieldOffset,
+      nrs->o_Pc,
+      o_RhsVel); 
+
+  flopsGrad = 6 * mesh->Np * mesh->Nq + 18 * mesh->Np;
+  flopsGrad *= static_cast<double>(mesh->Nelements);
+  flops += flopsGrad;
+
+  platform->linAlg->scaleMany(
+      mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, -1.0, o_RhsVel);
+
+  occa::memory &o_BF = platform->o_mempool.slice3;
+  o_BF.copyFrom(mesh->o_LMM,
+      mesh->Nlocal * sizeof(dfloat),
+      0 * nrs->fieldOffset * sizeof(dfloat),
+      0);
+  o_BF.copyFrom(mesh->o_LMM,
+      mesh->Nlocal * sizeof(dfloat),
+      1 * nrs->fieldOffset * sizeof(dfloat),
+      0);
+  o_BF.copyFrom(mesh->o_LMM,
+      mesh->Nlocal * sizeof(dfloat),
+      2 * nrs->fieldOffset * sizeof(dfloat),
+      0);
+
+  for (int dim = 0; dim < ndim; ++dim) {
+    const dlong offset = dim * nrs->fieldOffset;
+    const dfloat n_dim = flowDirection[dim];
+    platform->linAlg->axpby(
+        mesh->Nlocal, n_dim, o_BF, 1.0, o_RhsVel, offset, offset);
+  }
+
+  platform->timer.toc("velocity rhs");
+
+  platform->timer.tic("velocitySolve", 1);
+  nrs->setEllipticCoeffKernel(mesh->Nlocal,
+      nrs->g0 * nrs->idt,
+      0 * nrs->fieldOffset,
+      nrs->fieldOffset,
+      0,
+      nrs->o_mue,
+      nrs->o_rho,
+      o_NULL,
+      nrs->o_ellipticCoeff);
+
+  if (nrs->uvwSolver) {
+    ellipticSolve(nrs->uvwSolver, o_RhsVel, nrs->o_Uc);
+  } else {
+    occa::memory o_Ucx = nrs->o_Uc + (0 * sizeof(dfloat)) * nrs->fieldOffset;
+    occa::memory o_Ucy = nrs->o_Uc + (1 * sizeof(dfloat)) * nrs->fieldOffset;
+    occa::memory o_Ucz = nrs->o_Uc + (2 * sizeof(dfloat)) * nrs->fieldOffset;
+    ellipticSolve(nrs->uSolver, platform->o_mempool.slice0, o_Ucx);
+    ellipticSolve(nrs->vSolver, platform->o_mempool.slice1, o_Ucy);
+    ellipticSolve(nrs->wSolver, platform->o_mempool.slice2, o_Ucz);
+  }
+  platform->timer.toc("velocitySolve");
+
+  platform->flopCounter->add("ConstantFlowRate::compute", flops);
+}
 
 bool checkIfRecompute(nrs_t *nrs, int tstep) {
 
@@ -88,7 +193,12 @@ bool checkIfRecomputeDirection(nrs_t *nrs, int tstep) {
   return platform->options.compareArgs("MOVING MESH", "TRUE") || tstep < 2;
 }
 
-bool apply(nrs_t *nrs, int tstep, dfloat time) {
+} // namespace
+
+
+namespace ConstantFlowRate {
+
+bool adjust(nrs_t *nrs, int tstep, dfloat time) {
 
   double flops = 0.0;
 
@@ -106,19 +216,13 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
       platform->options.compareArgs("CONSTANT FLOW DIRECTION", "Z");
   const bool directionAligned = X_aligned || Y_aligned || Z_aligned;
 
-  if (!directionAligned) {
-    if (platform->comm.mpiRank == 0)
-      printf("Flow direction is not aligned in (X,Y,Z).\n"
-             "Currently, only (X,Y,Z) aligned flow directions are supported in "
-             "the "
-             "constant flow rate driver.\n");
-    ABORT(1);
-  }
+  nrsCheck(!directionAligned, platform->comm.mpiComm, EXIT_FAILURE,
+           "Flow direction is not aligned in (X,Y,Z)\n", "");
 
   const bool recomputeBaseFlowRate =
-      ConstantFlowRate::checkIfRecompute(nrs, tstep);
+      checkIfRecompute(nrs, tstep);
   const bool recomputeDirection =
-      ConstantFlowRate::checkIfRecomputeDirection(nrs, tstep);
+      checkIfRecomputeDirection(nrs, tstep);
 
   if (recomputeDirection) {
     if (directionAligned) {
@@ -275,7 +379,7 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
     res0NormP = nrs->pSolver->res0Norm;
     resNormP = nrs->pSolver->resNorm;
 
-    ConstantFlowRate::compute(nrs, lengthScale, time);
+    compute(nrs, time);
 
     if(nrs->uvwSolver){
       nrs->uvwSolver->Niter += NiterUVW;
@@ -353,7 +457,7 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
 
   constantFlowScale = deltaFlowRate / baseFlowRate;
 
-  // vx += scale * vxc
+  // add corrections 
   platform->linAlg->axpbyMany(mesh->Nlocal,
       nrs->NVfields,
       nrs->fieldOffset,
@@ -361,6 +465,7 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
       nrs->o_Uc,
       1.0,
       nrs->o_U);
+
   platform->linAlg->axpby(mesh->Nlocal, constantFlowScale, nrs->o_Pc, 1.0, nrs->o_P);
 
   // compute flow rate after correction as diagnostic
@@ -382,7 +487,7 @@ bool apply(nrs_t *nrs, int tstep, dfloat time) {
           mesh->Nlocal, o_currentFlowRate, platform->comm.mpiComm) /
       lengthScale;
 
-  platform->flopCounter->add("ConstantFlowRate::apply", flops);
+  platform->flopCounter->add("ConstantFlowRate::adjust", flops);
 
   return recomputeBaseFlowRate;
 }
@@ -391,256 +496,6 @@ dfloat scaleFactor(){
   return constantFlowScale;
 }
 
-void compute(nrs_t *nrs, double lengthScale, dfloat time) {
-
-  constexpr int ndim = 3;
-  mesh_t *mesh = nrs->meshV;
-
-  double flops = 0.0;
-
-  platform->timer.tic("pressureSolve", 1);
-  {
-    platform->timer.tic("pressure rhs", 1);
-    occa::memory &o_gradPCoeff = platform->o_mempool.slice0;
-    occa::memory &o_Prhs = platform->o_mempool.slice3;
-
-    nrs->setEllipticCoeffPressureKernel(
-        mesh->Nlocal, nrs->fieldOffset, nrs->o_rho, nrs->o_ellipticCoeff);
-
-    nrs->gradientVolumeKernel(mesh->Nelements,
-        mesh->o_vgeo,
-        mesh->o_D,
-        nrs->fieldOffset,
-        nrs->o_ellipticCoeff,
-        o_gradPCoeff);
-
-    double flopsGrad = 6 * mesh->Np * mesh->Nq + 18 * mesh->Np;
-    flopsGrad *= static_cast<double>(mesh->Nelements);
-    flops += flopsGrad;
-
-    nrs->computeFieldDotNormalKernel(mesh->Nlocal,
-        nrs->fieldOffset,
-        flowDirection[0],
-        flowDirection[1],
-        flowDirection[2],
-        o_gradPCoeff,
-        o_Prhs);
-
-    flops += 5 * mesh->Nlocal;
-
-    // enforce Dirichlet BCs
-    platform->linAlg->fill(nrs->fieldOffset,
-        -1.0*std::numeric_limits<dfloat>::max(),
-        platform->o_mempool.slice6);
-    for (int sweep = 0; sweep < 2; sweep++) {
-      nrs->pressureDirichletBCKernel(mesh->Nelements,
-          time,
-          nrs->fieldOffset,
-          mesh->o_sgeo,
-          mesh->o_x,
-          mesh->o_y,
-          mesh->o_z,
-          mesh->o_vmapM,
-          mesh->o_EToB,
-          nrs->o_EToB,
-          nrs->o_usrwrk,
-          nrs->o_U,
-          platform->o_mempool.slice6);
-
-      // take care of Neumann-Dirichlet shared edges across elements
-      if (sweep == 0)
-        oogs::startFinish(platform->o_mempool.slice6,
-            1,
-            nrs->fieldOffset,
-            ogsDfloat,
-            ogsMax,
-            nrs->gsh);
-      if (sweep == 1)
-        oogs::startFinish(platform->o_mempool.slice6,
-            1,
-            nrs->fieldOffset,
-            ogsDfloat,
-            ogsMin,
-            nrs->gsh);
-    }
-
-    if (nrs->pSolver->Nmasked)
-      nrs->maskCopyKernel(nrs->pSolver->Nmasked,
-          0,
-          nrs->pSolver->o_maskIds,
-          platform->o_mempool.slice6,
-          nrs->o_Pc);
-
-    platform->timer.toc("pressure rhs");
-    ellipticSolve(nrs->pSolver, o_Prhs, nrs->o_Pc);
-  }
-  platform->timer.toc("pressureSolve");
-
-  platform->timer.tic("velocitySolve", 1);
-  {
-    platform->timer.tic("velocity rhs", 1);
-    nrs->setEllipticCoeffKernel(mesh->Nlocal,
-        nrs->g0 * nrs->idt,
-        0 * nrs->fieldOffset,
-        nrs->fieldOffset,
-        nrs->o_mue,
-        nrs->o_rho,
-        nrs->o_ellipticCoeff);
-    occa::memory &o_RhsVel = platform->o_mempool.slice0;
-    occa::memory &o_BF = platform->o_mempool.slice3;
-    o_BF.copyFrom(mesh->o_LMM,
-        mesh->Nlocal * sizeof(dfloat),
-        0 * nrs->fieldOffset * sizeof(dfloat),
-        0);
-    o_BF.copyFrom(mesh->o_LMM,
-        mesh->Nlocal * sizeof(dfloat),
-        1 * nrs->fieldOffset * sizeof(dfloat),
-        0);
-    o_BF.copyFrom(mesh->o_LMM,
-        mesh->Nlocal * sizeof(dfloat),
-        2 * nrs->fieldOffset * sizeof(dfloat),
-        0);
-    nrs->gradientVolumeKernel(mesh->Nelements,
-        mesh->o_vgeo,
-        mesh->o_D,
-        nrs->fieldOffset,
-        nrs->o_Pc,
-        o_RhsVel // <- rhs = -\grad{P_c}
-    );
-
-    double flopsGrad = 6 * mesh->Np * mesh->Nq + 18 * mesh->Np;
-    flopsGrad *= static_cast<double>(mesh->Nelements);
-    flops += flopsGrad;
-
-    // rhs = -\grad{P_c} + BF n_i
-    platform->linAlg->scaleMany(
-        mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, -1.0, o_RhsVel);
-
-    for (int dim = 0; dim < ndim; ++dim) {
-      const dlong offset = dim * nrs->fieldOffset;
-      const dfloat n_dim = flowDirection[dim];
-      platform->linAlg->axpby(
-          mesh->Nlocal, n_dim, o_BF, 1.0, o_RhsVel, offset, offset);
-    }
-
-    if (nrs->uvwSolver) {
-      if(nrs->uvwSolver->Nmasked)
-        nrs->maskKernel(
-            nrs->uvwSolver->Nmasked, nrs->uvwSolver->o_maskIds, o_RhsVel);
-    } else {
-      if (nrs->uSolver->Nmasked)
-        nrs->maskKernel(nrs->uSolver->Nmasked,
-                        nrs->uSolver->o_maskIds,
-                        o_RhsVel + (0 * sizeof(dfloat)) * nrs->fieldOffset);
-      if (nrs->vSolver->Nmasked)
-        nrs->maskKernel(nrs->vSolver->Nmasked,
-                        nrs->vSolver->o_maskIds,
-                        o_RhsVel + (1 * sizeof(dfloat)) * nrs->fieldOffset);
-      if (nrs->wSolver->Nmasked)
-        nrs->maskKernel(nrs->wSolver->Nmasked,
-                        nrs->wSolver->o_maskIds,
-                        o_RhsVel + (2 * sizeof(dfloat)) * nrs->fieldOffset);
-    }
-
-    platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset,
-        -1.0*std::numeric_limits<dfloat>::max(),
-        platform->o_mempool.slice3);
-    for (int sweep = 0; sweep < 2; sweep++) {
-
-      nrs->velocityDirichletBCKernel(mesh->Nelements,
-          nrs->fieldOffset,
-          time,
-          mesh->o_sgeo,
-          nrs->o_zeroNormalMaskVelocity,
-          mesh->o_x,
-          mesh->o_y,
-          mesh->o_z,
-          mesh->o_vmapM,
-          mesh->o_EToB,
-          nrs->o_EToB,
-          nrs->o_usrwrk,
-          nrs->o_Uc,
-          platform->o_mempool.slice3);
-
-      nrs->velocityNeumannBCKernel(mesh->Nelements,
-          nrs->fieldOffset,
-          mesh->o_sgeo,
-          mesh->o_vmapM,
-          mesh->o_EToB,
-          nrs->o_EToB,
-          time,
-          mesh->o_x,
-          mesh->o_y,
-          mesh->o_z,
-          nrs->o_usrwrk,
-          nrs->o_U,
-          platform->o_mempool.slice3);
-
-      // take care of Neumann-Dirichlet shared edges across elements
-      if (sweep == 0)
-        oogs::startFinish(platform->o_mempool.slice3,
-            nrs->NVfields,
-            nrs->fieldOffset,
-            ogsDfloat,
-            ogsMax,
-            nrs->gsh);
-      if (sweep == 1)
-        oogs::startFinish(platform->o_mempool.slice3,
-            nrs->NVfields,
-            nrs->fieldOffset,
-            ogsDfloat,
-            ogsMin,
-            nrs->gsh);
-    }
-    if (nrs->uvwSolver) {
-
-      if (nrs->uvwSolver->Nmasked)
-        nrs->maskCopyKernel(nrs->uvwSolver->Nmasked,
-            0 * nrs->fieldOffset,
-            nrs->uvwSolver->o_maskIds,
-            platform->o_mempool.slice3,
-            nrs->o_Uc);
-      if (bcMap::unalignedBoundary(mesh->cht, "velocity")) {
-        applyZeroNormalMask(nrs, nrs->uvwSolver->o_EToB, nrs->o_zeroNormalMaskVelocity, nrs->o_Uc);
-      }
-    } else {
-      if (nrs->uSolver->Nmasked)
-        nrs->maskCopyKernel(nrs->uSolver->Nmasked,
-            0 * nrs->fieldOffset,
-            nrs->uSolver->o_maskIds,
-            platform->o_mempool.slice3,
-            nrs->o_Uc);
-      if (nrs->vSolver->Nmasked)
-        nrs->maskCopyKernel(nrs->vSolver->Nmasked,
-            1 * nrs->fieldOffset,
-            nrs->vSolver->o_maskIds,
-            platform->o_mempool.slice3,
-            nrs->o_Uc);
-      if (nrs->wSolver->Nmasked)
-        nrs->maskCopyKernel(nrs->wSolver->Nmasked,
-            2 * nrs->fieldOffset,
-            nrs->wSolver->o_maskIds,
-            platform->o_mempool.slice3,
-            nrs->o_Uc);
-    }
-    platform->timer.toc("velocity rhs");
-
-    if (nrs->uvwSolver) {
-      ellipticSolve(nrs->uvwSolver, o_RhsVel, nrs->o_Uc);
-    } else {
-      occa::memory o_Ucx = nrs->o_Uc + (0 * sizeof(dfloat)) * nrs->fieldOffset;
-      occa::memory o_Ucy = nrs->o_Uc + (1 * sizeof(dfloat)) * nrs->fieldOffset;
-      occa::memory o_Ucz = nrs->o_Uc + (2 * sizeof(dfloat)) * nrs->fieldOffset;
-      ellipticSolve(nrs->uSolver, platform->o_mempool.slice0, o_Ucx);
-      ellipticSolve(nrs->vSolver, platform->o_mempool.slice1, o_Ucy);
-      ellipticSolve(nrs->wSolver, platform->o_mempool.slice2, o_Ucz);
-    }
-  }
-  platform->timer.toc("velocitySolve");
-
-  platform->flopCounter->add("ConstantFlowRate::compute", flops);
-
-}
 
 void printInfo(mesh_t* mesh, bool verboseInfo)
 {
@@ -667,7 +522,7 @@ void printInfo(mesh_t* mesh, bool verboseInfo)
     err = std::abs(userSpecifiedFlowRate - finalFlowRate);
   }
   if(verboseInfo) 
-    printf("  flowRate : %s0 %.2e  %s %.2e  err %.2e  scale %.2e\n",
+    printf("flowRate : %s0 %.2e  %s %.2e  err %.2e  scale %.5e\n",
       flowRateType.c_str(), currentRate, flowRateType.c_str(), finalFlowRate, err, scale);
 }
 

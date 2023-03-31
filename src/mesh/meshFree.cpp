@@ -83,9 +83,8 @@ void meshFree(mesh_t* mesh)
 
   // face node info
   if(mesh->faceNodes) free(mesh->faceNodes);   // list of element reference interpolation nodes on element faces
-  if(mesh->vmapM) free(mesh->vmapM);       // list of volume nodes that are face nodes
-  if(mesh->vmapP) free(mesh->vmapP);       // list of volume nodes that are paired with face nodes
-  if(mesh->mapP) free(mesh->mapP);       // list of surface nodes that are paired with -ve surface  nodes
+  if (mesh->vmapM)
+    free(mesh->vmapM);                               // list of volume nodes that are face nodes
   if(mesh->faceVertices) free(mesh->faceVertices);   // list of mesh vertices on each face
 
   if(mesh->sgeo) free(mesh->sgeo);

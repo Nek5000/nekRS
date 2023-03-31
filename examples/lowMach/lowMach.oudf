@@ -1,45 +1,50 @@
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
 {
-  bc->u = 0.5*(3.0 + tanh(bc->x/p_DELTA)); 
-  bc->v = 0.0; 
+  bc->u = 0.5 * (3.0 + tanh(bc->x / p_DELTA));
+  bc->v = 0.0;
   bc->w = 0.0;
 }
 
-void scalarDirichletConditions(bcData *bc)
-{
-  bc->s = 0.5*(3.0 + tanh(bc->x/p_DELTA));
+void scalarDirichletConditions(bcData *bc) 
+{ 
+  bc->s = 0.5 * (3.0 + tanh(bc->x / p_DELTA)); 
 }
 
-
-@kernel void userQ(const dlong Nelements,
-                   @restrict const dfloat * X,
-                   @restrict dfloat * QVOL)
+@kernel void fillQ(const dlong Nelements, @ restrict const dfloat *X, @ restrict dfloat *QVOL)
 {
-  for(dlong e=0;e<Nelements;++e;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-      const int id = e*p_Np + n;
-      const dfloat xd = X[id]/p_DELTA;
-      const dfloat sech = 1/cosh(xd);
-      QVOL[id] = sech*sech/p_DELTA * (0.5 + tanh(xd)/p_DELTA); 
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    for (int n = 0; n < p_Np; ++n; @inner(0)) {
+      const int id = e * p_Np + n;
+      const dfloat xd = X[id] / p_DELTA;
+      const dfloat sech = 1 / cosh(xd);
+      QVOL[id] = sech * sech / p_DELTA * (0.5 + tanh(xd) / p_DELTA);
     }
   }
 }
 
-@kernel void userVp(const dlong Nelements,
-                    const dlong uOffset,
-                    const dlong sOffset,
-                    @restrict const dfloat * TEMP,
-                    @restrict dfloat * UPROP,
-                    @restrict dfloat * SPROP)
+@kernel void fillProp(const dlong Nelements,
+                     const dlong uOffset,
+                     const dlong sOffset,
+                     const double p0th,
+                     @ restrict const dfloat *TEMP,
+                     @ restrict dfloat *UPROP,
+                     @ restrict dfloat *SPROP,
+                     @ restrict dfloat *BETA,
+                     @ restrict dfloat *KAPPA)
 {
-  for(dlong e=0;e<Nelements;++e;@outer(0)){
-    for(int n=0;n<p_Np;++n;@inner(0)){
-      const int id = e*p_Np + n;
-      UPROP[id + 0*uOffset] = 1.0;
-      SPROP[id + 0*sOffset] = 1.0;
-      UPROP[id + 1*uOffset] = 1/TEMP[id];
-      SPROP[id + 1*sOffset] = 1/TEMP[id];
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    for (int n = 0; n < p_Np; ++n; @inner(0)) {
+      const int id = e * p_Np + n;
+      const dfloat rcpTemp = 1 / TEMP[id];
+
+      UPROP[id + 0 * uOffset] = 1.0;
+      SPROP[id + 0 * sOffset] = 1.0;
+      UPROP[id + 1 * uOffset] = rcpTemp;
+      SPROP[id + 1 * sOffset] = rcpTemp;
+
+      BETA[id] = rcpTemp;
+      KAPPA[id] = 1 / p0th;
     }
   }
 }

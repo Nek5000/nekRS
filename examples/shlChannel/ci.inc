@@ -2,9 +2,6 @@
 
 static int ciMode = 0;
 
-#define PASS { if (rank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
-#define FAIL { if (rank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
-
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", std::string("7"));
@@ -16,11 +13,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("DT", std::string("1e-3"));
   options.setArgs("SUBCYCLING STEPS", std::string("0"));
   options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-  options.setArgs("TIME INTEGRATOR", "TOMBO3");
+  options.setArgs("BDF ORDER", "3");
+  options.setArgs("EXT ORDER", "3");
   options.setArgs("ADVECTION", "FALSE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-08"));
-  options.setArgs("STRESSFORMULATION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE");
 
   if(ciMode == 1){
@@ -89,5 +86,5 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     std::cout << "LInfError in Vy: " << LInfError_y << "\n";
   }
  
-  (LInfError_x < tol && LInfError_y < tol) ? (PASS) : (FAIL); 
+  (LInfError_x < tol && LInfError_y < tol) ? (CIPASS) : (CIFAIL); 
 }

@@ -6,35 +6,32 @@
 
 #include "randomVector.hpp"
 #include "kernelBenchmarker.hpp"
-#include "omp.h"
 #include <tuple>
 #include <map>
 
-namespace{
-struct CallParameters{
+namespace {
+struct CallParameters {
   int Nelements;
   int Nq_e;
   size_t wordSize;
   bool useRAS;
   std::string suffix;
 };
-}
+} // namespace
 
-namespace std
-{
-  template<> struct less<CallParameters>
+namespace std {
+template <> struct less<CallParameters> {
+  bool operator()(const CallParameters &lhs, const CallParameters &rhs) const
   {
-    bool operator() (const CallParameters& lhs, const CallParameters& rhs) const
-    {
-      auto tier = [](const CallParameters &v) {
-        return std::tie(v.Nelements, v.Nq_e, v.wordSize, v.useRAS, v.suffix);
-      };
-      return tier(lhs) < tier(rhs);
-    }
-  };
-}
+    auto tier = [](const CallParameters &v) {
+      return std::tie(v.Nelements, v.Nq_e, v.wordSize, v.useRAS, v.suffix);
+    };
+    return tier(lhs) < tier(rhs);
+  }
+};
+} // namespace std
 
-namespace{
+namespace {
 std::map<CallParameters, occa::kernel> cachedResults;
 }
 
@@ -48,13 +45,13 @@ occa::kernel benchmarkFDM(int Nelements,
                           bool requiresBenchmark,
                           std::string suffix)
 {
-  if(platform->options.compareArgs("BUILD ONLY", "TRUE")){
+  if (platform->options.compareArgs("BUILD ONLY", "TRUE")) {
     Nelements = 1;
   }
 
   CallParameters params{Nelements, Nq_e, wordSize, useRAS, suffix};
 
-  if(cachedResults.count(params) > 0){
+  if (cachedResults.count(params) > 0) {
     return cachedResults.at(params);
   }
 
@@ -94,16 +91,17 @@ occa::kernel benchmarkFDM(int Nelements,
       }
     }
 
-    const std::string installDir(getenv("NEKRS_HOME"));
+    const std::string oklpath(getenv("NEKRS_KERNEL_DIR"));
+
     // only a single choice, no need to run benchmark
-    if (kernelVariants.size() == 1 && !requiresBenchmark) {
+    if (kernelVariants.size() == 1 || !requiresBenchmark) {
       auto newProps = props;
       if (!platform->serial)
-        newProps["defines/p_knl"] = kernelVariants.back();
+        newProps["defines/p_knl"] = kernelVariants.front();
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = oklpath + "/elliptic/" + kernelName + ext;
 
       return std::make_pair(platform->device.buildKernel(fileName, newProps, suffix, true), -1.0);
     }
@@ -137,7 +135,7 @@ occa::kernel benchmarkFDM(int Nelements,
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = oklpath + "/elliptic/" + kernelName + ext;
 
       referenceKernel = platform->device.buildKernel(fileName, newProps, suffix, true);
     }
@@ -156,10 +154,11 @@ occa::kernel benchmarkFDM(int Nelements,
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = installDir + "/okl/elliptic/" + kernelName + ext;
+      const std::string fileName = oklpath + "/elliptic/" + kernelName + ext;
 
       auto kernel = platform->device.buildKernel(fileName, newProps, suffix, true);
-      if(platform->options.compareArgs("BUILD ONLY", "TRUE")) return kernel;
+      if (platform->options.compareArgs("BUILD ONLY", "TRUE"))
+        return kernel;
 
       auto dumpResult = [&]() {
         std::vector<FPType> result;
@@ -189,15 +188,22 @@ occa::kernel benchmarkFDM(int Nelements,
       kernelRunner(kernel);
       auto result = dumpResult();
 
-      FPType err = 0.0;
+      double err = 0.0;
       for (int i = 0; i < result.size(); ++i) {
-        err = std::max(err, std::abs(result[i] - referenceResult[i]));
+        err = std::max(err, (double) std::abs(result[i] - referenceResult[i]));
       }
+      MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
 
-      const auto tol = 100. * std::numeric_limits<dfloat>::epsilon();
-      if (platform->comm.mpiRank == 0 && verbosity > 1 && err > tol) {
-        std::cout << "Error in kernel compared to reference implementation " << kernelVariant << ": " << err
-                  << std::endl;
+      const auto tol = 100. * std::numeric_limits<FPType>::epsilon();
+      if (err > tol) {
+        if (platform->comm.mpiRank == 0 && verbosity > 1) {
+          std::cout << "fdm: Ignore kernel " << kernelVariant
+                    << " because error of " << err
+                    << " is too large compared to reference\n";
+        }
+
+        // pass un-initialized kernel to skip this kernel variant
+        kernel = occa::kernel();
       }
 
       return kernel;
@@ -212,7 +218,12 @@ occa::kernel benchmarkFDM(int Nelements,
 
       double flopsPerElem = 12 * Nq_e * Np_e + Np_e;
       const double gflops = (Nelements * flopsPerElem / elapsed) / 1.e9;
+
+#ifdef _OPENMP
       const int Nthreads = omp_get_max_threads();
+#else
+      const int Nthreads = 1;
+#endif
 
       if (platform->comm.mpiRank == 0 && !skipPrint) {
         if (verbosity > 0) {
@@ -244,7 +255,8 @@ occa::kernel benchmarkFDM(int Nelements,
     auto kernelAndTime =
         benchmarkKernel(fdmKernelBuilder, kernelRunner, printCallBack, kernelVariants, NtestsOrTargetTime);
 
-    if (kernelAndTime.first.properties().has("defines/p_knl") && platform->options.compareArgs("BUILD ONLY","FALSE")) {
+    if (kernelAndTime.first.properties().has("defines/p_knl") &&
+        platform->options.compareArgs("BUILD ONLY", "FALSE")) {
       int bestKernelVariant = static_cast<int>(kernelAndTime.first.properties()["defines/p_knl"]);
 
       // print only the fastest kernel

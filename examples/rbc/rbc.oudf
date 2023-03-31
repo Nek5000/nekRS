@@ -6,10 +6,10 @@ void scalarDirichletConditions(bcData *bc) {
 
 // Kernels
 
-@kernel void fillFU(const dlong Ntotal,
-                    const dlong offset,
-                    @restrict const dfloat *S,
-                    @restrict dfloat * FU) { 
+@kernel void cfill(const dlong Ntotal,
+                   const dlong offset,
+                   @restrict const dfloat *S,
+                   @restrict dfloat * FU) { 
   for (dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)) {
     if (n<Ntotal) {
       FU[n + 0*offset] = 0.0;

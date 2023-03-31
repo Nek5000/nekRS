@@ -13,6 +13,9 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
   cds->NVfields = nrs->NVfields;
   cds->NSfields = nrs->Nscalar;
 
+  cds->g0 = nrs->g0;
+  cds->idt = nrs->idt;
+
   cds->coeffEXT = nrs->coeffEXT;
   cds->coeffBDF = nrs->coeffBDF;
   cds->coeffSubEXT = nrs->coeffSubEXT;
@@ -37,6 +40,8 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
   }
   cds->fieldOffsetSum = sum;
 
+  cds->o_fieldOffsetScan = platform->device.malloc(cds->NSfields * sizeof(dlong), cds->fieldOffsetScan);
+
   cds->gsh = nrs->gsh;
   cds->gshT = (nrs->cht) ? oogs::setup(mesh->ogs, 1, nrs->fieldOffset, ogsDfloat, NULL, OOGS_AUTO) : cds->gsh;
 
@@ -60,10 +65,7 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
   cds->prop = (dfloat *)calloc(2 * cds->fieldOffsetSum, sizeof(dfloat));
 
   for (int is = 0; is < cds->NSfields; is++) {
-    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
-    std::stringstream ss;
-    ss << std::setfill('0') << std::setw(scalarWidth) << is;
-    std::string sid = ss.str();
+    std::string sid = scalarDigitStr(is);
 
     if (options.compareArgs("SCALAR" + sid + " SOLVER", "NONE"))
       continue;
@@ -98,49 +100,25 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
   cds->o_relUrst = nrs->o_relUrst;
   cds->o_Urst = nrs->o_Urst;
 
+  cds->anyCvodeSolver = false;
+  cds->anyEllipticSolver = false;
+
   for (int is = 0; is < cds->NSfields; is++) {
-    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
-    std::stringstream ss;
-    ss << std::setfill('0') << std::setw(scalarWidth) << is;
-    std::string sid = ss.str();
+    std::string sid = scalarDigitStr(is);
 
     cds->compute[is] = 1;
     if (options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) {
       cds->compute[is] = 0;
+      cds->cvodeSolve[is] = 0;
       continue;
     }
 
+    cds->cvodeSolve[is] = options.compareArgs("SCALAR" + sid + " SOLVER", "CVODE");
+    cds->anyCvodeSolver |= cds->cvodeSolve[is];
+    cds->anyEllipticSolver |= (!cds->cvodeSolve[is] && cds->compute[is]);
+
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
-
-    cds->options[is] = options;
-
-    cds->options[is].setArgs("REGULARIZATION RAMP CONSTANT",
-                             options.getArgs("SCALAR" + sid + " REGULARIZATION RAMP CONSTANT"));
-    cds->options[is].setArgs("REGULARIZATION AVM C0",
-                             options.getArgs("SCALAR" + sid + " REGULARIZATION AVM C0"));
-    cds->options[is].setArgs("REGULARIZATION METHOD",
-                             options.getArgs("SCALAR" + sid + " REGULARIZATION METHOD"));
-    cds->options[is].setArgs("REGULARIZATION VISMAX COEFF",
-                             options.getArgs("SCALAR" + sid + " REGULARIZATION VISMAX COEFF"));
-    cds->options[is].setArgs("REGULARIZATION SCALING COEFF",
-                             options.getArgs("SCALAR" + sid + " REGULARIZATION SCALING COEFF"));
-    cds->options[is].setArgs("HPFRT STRENGTH", options.getArgs("SCALAR" + sid + " HPFRT STRENGTH"));
-    cds->options[is].setArgs("HPFRT MODES", options.getArgs("SCALAR" + sid + " HPFRT MODES"));
-    cds->options[is].setArgs("KRYLOV SOLVER", options.getArgs("SCALAR" + sid + " KRYLOV SOLVER"));
-    cds->options[is].setArgs("PGMRES RESTART", options.getArgs("SCALAR" + sid + " PGMRES RESTART"));
-    cds->options[is].setArgs("DISCRETIZATION", options.getArgs("SCALAR DISCRETIZATION"));
-    cds->options[is].setArgs("BASIS", options.getArgs("SCALAR BASIS"));
-    cds->options[is].setArgs("PRECONDITIONER", options.getArgs("SCALAR" + sid + " PRECONDITIONER"));
-    cds->options[is].setArgs("SOLVER TOLERANCE", options.getArgs("SCALAR" + sid + " SOLVER TOLERANCE"));
-    cds->options[is].setArgs("LINEAR SOLVER STOPPING CRITERION",
-                             options.getArgs("SCALAR" + sid + " LINEAR SOLVER STOPPING CRITERION"));
-    cds->options[is].setArgs("INITIAL GUESS", options.getArgs("SCALAR" + sid + " INITIAL GUESS"));
-    cds->options[is].setArgs("RESIDUAL PROJECTION VECTORS",
-                             options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION VECTORS"));
-    cds->options[is].setArgs("RESIDUAL PROJECTION START",
-                             options.getArgs("SCALAR" + sid + " RESIDUAL PROJECTION START"));
-    cds->options[is].setArgs("MAXIMUM ITERATIONS", options.getArgs("SCALAR" + sid + " MAXIMUM ITERATIONS"));
 
     dfloat largeNumber = 1 << 20;
     cds->EToB[is] = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
@@ -155,15 +133,21 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     cds->o_EToB[is] = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), EToB);
   }
 
+  cds->o_compute = platform->device.malloc(cds->NSfields * sizeof(dlong), cds->compute);
+  cds->o_cvodeSolve = platform->device.malloc(cds->NSfields * sizeof(dlong), cds->cvodeSolve);
+
   bool scalarFilteringEnabled = false;
   bool avmEnabled = false;
   {
     for (int is = 0; is < cds->NSfields; is++) {
-      if (!cds->options[is].compareArgs("REGULARIZATION METHOD", "NONE"))
+      std::string sid = scalarDigitStr(is);
+
+      if (!options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "NONE"))
         scalarFilteringEnabled = true;
-      if (cds->options[is].compareArgs("REGULARIZATION METHOD", "HPF_RESIDUAL"))
+
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_RESIDUAL"))
         avmEnabled = true;
-      if (cds->options[is].compareArgs("REGULARIZATION METHOD", "HIGHEST_MODAL_DECAY"))
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_HIGHEST_MODAL_DECAY"))
         avmEnabled = true;
     }
   }
@@ -172,28 +156,33 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     const dlong Nmodes = cds->mesh[0]->N + 1;
     cds->o_filterMT = platform->device.malloc(cds->NSfields * Nmodes * Nmodes, sizeof(dfloat));
     for (int is = 0; is < cds->NSfields; is++) {
-      if (cds->options[is].compareArgs("REGULARIZATION METHOD", "NONE"))
+      std::string sid = scalarDigitStr(is);
+
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "NONE"))
         continue;
       if (!cds->compute[is])
         continue;
-      int filterNc = -1;
-      cds->options[is].getArgs("HPFRT MODES", filterNc);
-      dfloat filterS;
-      cds->options[is].getArgs("HPFRT STRENGTH", filterS);
-      filterS = -1.0 * fabs(filterS);
-      cds->filterS[is] = filterS;
 
-      dfloat *A = filterSetup(cds->mesh[is], filterNc);
-
-      const dlong Nmodes = cds->mesh[is]->N + 1;
-      cds->o_filterMT.copyFrom(A, Nmodes * Nmodes * sizeof(dfloat), is * Nmodes * Nmodes * sizeof(dfloat));
-
-      free(A);
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPF_RELAXATION")) { 
+        int filterNc = -1;
+        options.getArgs("SCALAR" + sid + " HPFRT MODES", filterNc);
+        dfloat filterS;
+        options.getArgs("SCALAR" + sid + " HPFRT STRENGTH", filterS);
+        filterS = -1.0 * fabs(filterS);
+        cds->filterS[is] = filterS;
+ 
+        dfloat *A = filterSetup(cds->mesh[is], filterNc);
+ 
+        const dlong Nmodes = cds->mesh[is]->N + 1;
+        cds->o_filterMT.copyFrom(A, Nmodes * Nmodes * sizeof(dfloat), is * Nmodes * Nmodes * sizeof(dfloat));
+ 
+        free(A);
+      }
     }
-  }
 
-  if (avmEnabled)
-    avm::setup(cds);
+    if (avmEnabled)
+      avm::setup(cds);
+  }
 
   std::string kernelName;
   const std::string suffix = "Hex3D";
@@ -210,11 +199,14 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     kernelName = "maskCopy";
     cds->maskCopyKernel = platform->kernels.get(section + kernelName);
 
+    kernelName = "maskCopy2";
+    cds->maskCopy2Kernel = platform->kernels.get(section + kernelName);
+
     kernelName = "sumMakef";
     cds->sumMakefKernel = platform->kernels.get(section + kernelName);
 
-    kernelName = "helmholtzBC" + suffix;
-    cds->helmholtzRhsBCKernel = platform->kernels.get(section + kernelName);
+    kernelName = "neumannBC" + suffix;
+    cds->neumannBCKernel = platform->kernels.get(section + kernelName);
     kernelName = "dirichletBC";
     cds->dirichletBCKernel = platform->kernels.get(section + kernelName);
 
@@ -244,6 +236,8 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
       cds->subCycleInitU0Kernel = platform->kernels.get(section + kernelName);
     }
   }
+
+  cds->cvode = nullptr;
 
   return cds;
 }

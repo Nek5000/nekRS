@@ -1,0 +1,113 @@
+void exact(dfloat *uu, dfloat *vv, dfloat *ww, dfloat xx, dfloat yy, dfloat zz, dfloat time, dfloat visc)
+{
+  const dfloat a[10] = {-.2, -.2, .25, 0.0, 0, 0, 0, 0, 0, 0};
+  const dfloat cpsi[10] = {0, 5, 3, 4, 0, 0, 0, 0, 0, 0};
+
+  const dfloat aa = cpsi[1] * cpsi[1];
+  const dfloat arg = -visc * time * aa; // domain is [0:2pi]
+  const dfloat e = exp(arg);
+
+  const dfloat x = xx - p_U0 * time;
+  const dfloat y = yy - p_V0 * time;
+  const dfloat z = 0.0;
+
+  const dfloat sx = sin(cpsi[1] * x);
+  const dfloat cx = cos(cpsi[1] * x);
+  const dfloat sy = sin(cpsi[1] * y);
+  const dfloat cy = cos(cpsi[1] * y);
+  dfloat u = a[0] * cpsi[1] * cy;
+  dfloat v = a[1] * cpsi[1] * sx;
+
+  for (int k = 2; k <= 5; ++k) {
+
+    const dfloat s1x = sin(cpsi[0 + 2 * (k - 1)] * x);
+    const dfloat c1x = cos(cpsi[0 + 2 * (k - 1)] * x);
+    const dfloat s2x = sin(cpsi[1 + 2 * (k - 1)] * x);
+    const dfloat c2x = cos(cpsi[1 + 2 * (k - 1)] * x);
+
+    const dfloat s1y = sin(cpsi[0 + 2 * (k - 1)] * y);
+    const dfloat c1y = cos(cpsi[0 + 2 * (k - 1)] * y);
+    const dfloat s2y = sin(cpsi[1 + 2 * (k - 1)] * y);
+    const dfloat c2y = cos(cpsi[1 + 2 * (k - 1)] * y);
+
+    const dfloat c1 = cpsi[0 + 2 * (k - 1)];
+    const dfloat c2 = cpsi[1 + 2 * (k - 1)];
+
+    if (k == 2) {
+      u = u + a[0 + 2 * (k - 1)] * s1x * c2y * c2;
+      v = v - a[0 + 2 * (k - 1)] * c1x * s2y * c1;
+      u = u - a[1 + 2 * (k - 1)] * s2x * c1y * c1;
+      v = v + a[1 + 2 * (k - 1)] * c2x * s1y * c2;
+    }
+
+    if (k == 3) {
+      u = u - a[0 + 2 * (k - 1)] * s1x * c2y * c2;
+      v = v + a[0 + 2 * (k - 1)] * c1x * s2y * c1;
+      u = u - a[1 + 2 * (k - 1)] * c2x * c1y * c1;
+      v = v - a[1 + 2 * (k - 1)] * s2x * s1y * c2;
+    }
+
+    if (k == 4) {
+      u = u + a[0 + 2 * (k - 1)] * c1x * c2y * c2;
+      v = v + a[0 + 2 * (k - 1)] * s1x * s2y * c1;
+      u = u + a[1 + 2 * (k - 1)] * c2x * c1y * c1;
+      v = v + a[1 + 2 * (k - 1)] * s2x * s1y * c2;
+    }
+
+    if (k == 5) {
+      u = u - a[0 + 2 * (k - 1)] * s1x * c2y * c2;
+      v = v + a[0 + 2 * (k - 1)] * c1x * s2y * c1;
+      u = u - a[1 + 2 * (k - 1)] * s2x * c1y * c1;
+      v = v + a[1 + 2 * (k - 1)] * c2x * s1y * c2;
+    }
+  }
+  (*uu) = u * e + p_U0;
+  (*vv) = v * e + p_V0;
+  (*ww) = 0.0;
+}
+
+// Boundary conditions
+void velocityDirichletConditions(bcData *bc)
+{
+  bc->u = bc->uinterp;
+  bc->v = bc->vinterp;
+  bc->w = bc->winterp;
+}
+
+@kernel void exactUVW(const dlong Ntotal,
+                      const dlong offset,
+                      const dfloat time,
+                      @ restrict const dfloat *X,
+                      @ restrict const dfloat *Y,
+                      @ restrict const dfloat *Z,
+                      @ restrict dfloat *U)
+{
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    dfloat u, v, w;
+    const dfloat x = X[n];
+    const dfloat y = Y[n];
+    const dfloat z = Z[n];
+    exact(&u, &v, &w, x, y, z, time, p_visc);
+    U[n + 0 * offset] = u;
+    U[n + 1 * offset] = v;
+    U[n + 2 * offset] = w;
+  }
+}
+
+@kernel void userMeshVelocity(const dlong Ntotal,
+                              const dlong offset,
+                              @ restrict const dfloat *x,
+                              @ restrict const dfloat *y,
+                              @ restrict const dfloat *z,
+                              @ restrict dfloat *W)
+{
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dfloat xc = (x[n] - p_pi);
+    const dfloat yc = (y[n] - p_pi);
+    const dfloat rc = sqrt(xc * xc + yc * yc);
+    const dfloat thv = atan2(yc, xc);
+    W[n + 0 * offset] = p_omega * rc * sin(thv);
+    W[n + 1 * offset] = -p_omega * rc * cos(thv);
+    W[n + 2 * offset] = 0.0;
+  }
+}

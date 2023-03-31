@@ -5,7 +5,9 @@
 #include <occa/internal/utils/sys.hpp>
 #include <occa/internal/modes/hip/device.hpp>
 #include <occa/internal/modes/hip/kernel.hpp>
+#include <occa/internal/modes/hip/buffer.hpp>
 #include <occa/internal/modes/hip/memory.hpp>
+#include <occa/internal/modes/hip/memoryPool.hpp>
 #include <occa/internal/modes/hip/stream.hpp>
 #include <occa/internal/modes/hip/streamTag.hpp>
 #include <occa/internal/modes/hip/utils.hpp>
@@ -51,10 +53,10 @@ namespace occa {
         compiler = "hipcc";
       }
 
-      if (env::var("OCCA_HIP_COMPILER_FLAGS").size()) {
-        compilerFlags = env::var("OCCA_HIP_COMPILER_FLAGS");
-      } else if (kernelProps.get<std::string>("compiler_flags").size()) {
+      if (kernelProps.get<std::string>("compiler_flags").size()) {
         compilerFlags = (std::string) kernelProps["compiler_flags"];
+      } else if (env::var("OCCA_HIP_COMPILER_FLAGS").size()) {
+        compilerFlags = env::var("OCCA_HIP_COMPILER_FLAGS");
       } else {
         compilerFlags = "-O3";
       }
@@ -83,11 +85,6 @@ namespace occa {
     }
 
     device::~device() { }
-
-    void device::finish() const {
-      OCCA_HIP_ERROR("Device: Finish",
-                     hipStreamSynchronize(getHipStream()));
-    }
 
     bool device::hasSeparateMemorySpace() const {
       return true;
@@ -121,9 +118,20 @@ namespace occa {
 
       OCCA_HIP_ERROR("Device: Setting Device",
                      hipSetDevice(deviceID));
-      OCCA_HIP_ERROR("Device: createStream",
-                     hipStreamCreate(&hipStream));
+      if (props.get<bool>("nonblocking", false)) {
+        OCCA_HIP_ERROR("Device: createStream - NonBlocking",
+                       hipStreamCreateWithFlags(&hipStream, hipStreamNonBlocking));
+      } else {
+        OCCA_HIP_ERROR("Device: createStream",
+                       hipStreamCreate(&hipStream));
+      }
 
+      return new stream(this, props, hipStream);
+    }
+
+    modeStream_t* device::wrapStream(void* ptr, const occa::json &props) {
+      OCCA_ERROR("A nullptr was passed to hip::device::wrapStream",nullptr != ptr);
+      hipStream_t hipStream = *static_cast<hipStream_t*>(ptr);
       return new stream(this, props, hipStream);
     }
 
@@ -159,7 +167,7 @@ namespace occa {
 
       waitFor(endTag);
 
-      float msTimeTaken = 0;
+      float msTimeTaken = 0.0;
       OCCA_HIP_ERROR("Device: Timing Between Tags",
                      hipEventElapsedTime(&msTimeTaken,
                                          hipStartTag->hipEvent,
@@ -184,43 +192,36 @@ namespace occa {
       const bool usingOkl,
       lang::sourceMetadata_t &launcherMetadata,
       lang::sourceMetadata_t &deviceMetadata,
-      const occa::json &kernelProps,
-      io::lock_t lock
+      const occa::json &kernelProps
     ) {
       compileKernel(hashDir,
                     kernelName,
-                    kernelProps,
-                    lock);
+                    sourceFilename,
+                    binaryFilename,
+                    kernelProps);
 
       if (usingOkl) {
         return buildOKLKernelFromBinary(kernelHash,
                                         hashDir,
                                         kernelName,
+                                        sourceFilename,
+                                        binaryFilename,
                                         launcherMetadata,
                                         deviceMetadata,
-                                        kernelProps,
-                                        lock);
+                                        kernelProps);
       }
 
       // Regular HIP Kernel
       hipModule_t hipModule = NULL;
       hipFunction_t hipFunction = NULL;
-      hipError_t error;
 
-      error = hipModuleLoad(&hipModule, binaryFilename.c_str());
-      if (error) {
-        lock.release();
-        OCCA_HIP_ERROR("Kernel [" + kernelName + "]: Loading Module",
-                       error);
-      }
-      error = hipModuleGetFunction(&hipFunction,
-                                   hipModule,
-                                   kernelName.c_str());
-      if (error) {
-        lock.release();
-        OCCA_HIP_ERROR("Kernel [" + kernelName + "]: Loading Function",
-                       error);
-      }
+      OCCA_HIP_ERROR("Kernel [" + kernelName + "]: Loading Module",
+                     hipModuleLoad(&hipModule, binaryFilename.c_str()));
+
+      OCCA_HIP_ERROR("Kernel [" + kernelName + "]: Loading Function",
+                     hipModuleGetFunction(&hipFunction,
+                                          hipModule,
+                                          kernelName.c_str()));
 
       return new kernel(this,
                         kernelName,
@@ -249,14 +250,12 @@ namespace occa {
 
     void device::compileKernel(const std::string &hashDir,
                                const std::string &kernelName,
-                               const occa::json &kernelProps,
-                               io::lock_t &lock) {
+                               const std::string &sourceFilename,
+                               const std::string &binaryFilename,
+                               const occa::json &kernelProps) {
 
       occa::json allProps = kernelProps;
       const bool verbose = allProps.get("verbose", false);
-
-      std::string sourceFilename = hashDir + kc::sourceFile;
-      std::string binaryFilename = hashDir + kc::binaryFile;
 
       setArchCompilerFlags(allProps);
 
@@ -291,55 +290,52 @@ namespace occa {
               /* NC: hipcc doesn't seem to like linking a library in */
               //<< " -L"        << env::OCCA_INSTALL_DIR << "lib -locca"
               << ' '    << sourceFilename
-              << " -o " << binaryFilename;
+              << " -o " << binaryFilename
+              << " 2>&1";
 
-#if 0
-      if (!verbose) {
-        command << " > /dev/null 2>&1";
-      }
-#endif
       const std::string &sCommand = command.str();
       if (verbose) {
-        io::stdout << sCommand << '\n';
+        io::stdout << "Compiling [" << kernelName << "]\n" << sCommand << "\n";
       }
 
-      const int compileError = system(sCommand.c_str());
+      std::string commandOutput;
+      const int commandExitCode = sys::call(
+        sCommand.c_str(),
+        commandOutput
+      );
 
+      if (commandExitCode) {
+        OCCA_FORCE_ERROR(
+          "Error compiling [" << kernelName << "],"
+          " Command: [" << sCommand << "] exited with code " << commandExitCode << "\n\n"
+          << "Output:\n\n"
+          << commandOutput << "\n"
+        );
+      } else if (verbose) {
+          io::stdout << "Output:\n\n" << commandOutput << "\n";
+      }
+      
       io::sync(binaryFilename);
-
-      lock.release();
-      if (compileError) {
-        OCCA_FORCE_ERROR("Error compiling [" << kernelName << "],"
-                         " Command: [" << sCommand << ']');
-      }
-      //================================
     }
 
     modeKernel_t* device::buildOKLKernelFromBinary(const hash_t kernelHash,
                                                    const std::string &hashDir,
                                                    const std::string &kernelName,
+                                                   const std::string &sourceFilename,
+                                                   const std::string &binaryFilename,
                                                    lang::sourceMetadata_t &launcherMetadata,
                                                    lang::sourceMetadata_t &deviceMetadata,
-                                                   const occa::json &kernelProps,
-                                                   io::lock_t lock) {
-
-      const std::string sourceFilename = hashDir + kc::sourceFile;
-      const std::string binaryFilename = hashDir + kc::binaryFile;
-
+                                                   const occa::json &kernelProps) {
       hipModule_t hipModule = NULL;
-      hipError_t error;
 
-      error = hipModuleLoad(&hipModule, binaryFilename.c_str());
-      if (error) {
-        lock.release();
-        OCCA_HIP_ERROR("Kernel [" + kernelName + "]: Loading Module",
-                       error);
-      }
+      OCCA_HIP_ERROR("Kernel [" + kernelName + "]: Loading Module",
+                     hipModuleLoad(&hipModule, binaryFilename.c_str()));
 
       // Create wrapper kernel and set launcherKernel
       kernel &k = *(new kernel(this,
                                kernelName,
                                sourceFilename,
+                               hipModule,
                                kernelProps));
 
       k.launcherKernel = buildLauncherKernel(kernelHash,
@@ -349,7 +345,7 @@ namespace occa {
 
       // Find device kernels
       orderedKernelMetadata launchedKernelsMetadata = getLaunchedKernelsMetadata(
-        kernelName + kernelProps.get<std::string>("kernelNameSuffix", ""),
+        kernelName,
         deviceMetadata
       );
 
@@ -358,19 +354,15 @@ namespace occa {
         lang::kernelMetadata_t &metadata = launchedKernelsMetadata[i];
 
         hipFunction_t hipFunction = NULL;
-        error = hipModuleGetFunction(&hipFunction,
-                                     hipModule,
-                                     metadata.name.c_str());
-        if (error) {
-          lock.release();
-          OCCA_HIP_ERROR("Kernel [" + metadata.name + "]: Loading Function",
-                         error);
-        }
+
+        OCCA_HIP_ERROR("Kernel [" + metadata.name + "]: Loading Function",
+                       hipModuleGetFunction(&hipFunction,
+                                            hipModule,
+                                            metadata.name.c_str()));
 
         kernel *hipKernel = new kernel(this,
                                        metadata.name,
                                        sourceFilename,
-                                       hipModule,
                                        hipFunction,
                                        kernelProps);
         hipKernel->metadata = metadata;
@@ -407,62 +399,45 @@ namespace occa {
                                  const void *src,
                                  const occa::json &props) {
 
-      if (props.get("host", false)) {
-        return hostAlloc(bytes, src, props);
-      }
-
-      hip::memory &mem = *(new hip::memory(this, bytes, props));
-
       OCCA_HIP_ERROR("Device: Setting Device",
                      hipSetDevice(deviceID));
 
-      OCCA_HIP_ERROR("Device: malloc",
-                     hipMalloc((void**) &(mem.hipPtr), bytes));
+      buffer *buf = new hip::buffer(this, bytes, props);
 
-      if (src != NULL) {
-        mem.copyFrom(src, bytes, 0);
-      }
-      return &mem;
-    }
+      //create allocation
+      buf->malloc(bytes);
 
-    modeMemory_t* device::hostAlloc(const udim_t bytes,
-                                    const void *src,
-                                    const occa::json &props) {
+      //create slice
+      memory *mem = new hip::memory(buf, bytes, 0);
 
-      hip::memory &mem = *(new hip::memory(this, bytes, props));
+      if (src != NULL)
+        mem->copyFrom(src, bytes, 0, props);
 
-      OCCA_HIP_ERROR("Device: Setting Device",
-                     hipSetDevice(deviceID));
-      OCCA_HIP_ERROR("Device: malloc host",
-                     hipHostMalloc((void**) &(mem.ptr), bytes));
-      OCCA_HIP_ERROR("Device: get device pointer from host",
-                     hipHostGetDevicePointer((void**) &(mem.hipPtr),
-                                             mem.ptr,
-                                             0));
-
-      mem.useHostPtr=true;
-
-      if (src != NULL) {
-        ::memcpy(mem.ptr, src, bytes);
-      }
-      return &mem;
+      return mem;
     }
 
     modeMemory_t* device::wrapMemory(const void *ptr,
                                      const udim_t bytes,
                                      const occa::json &props) {
-      memory *mem = new memory(this,
-                               bytes,
-                               props);
+      //create allocation
+      buffer *buf = new hip::buffer(this, bytes, props);
 
-      mem->ptr = (char*) ptr;
+      buf->wrapMemory(ptr, bytes);
 
-      return mem;
+      return new hip::memory(buf, bytes, 0);
+    }
+
+    modeMemoryPool_t* device::createMemoryPool(const occa::json &props) {
+      return new hip::memoryPool(this, props);
     }
 
     udim_t device::memorySize() const {
       return hip::getDeviceMemorySize(hipDevice);
     }
     //==================================
+
+    void* device::unwrap() {
+      return static_cast<void*>(&hipDevice);
+    }
   }
 }

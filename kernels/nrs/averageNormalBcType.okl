@@ -1,0 +1,50 @@
+@kernel void averageNormalBcType(const dlong Nelements,
+                                 const dlong offset,
+                                 const int bcTypeCheck,
+                                 @ restrict const dfloat *sgeo,
+                                 @ restrict const dlong *vmapM,
+                                 @ restrict const int *EToB,
+                                 @ restrict dfloat *normal)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+
+    for (int f = 0; f < p_Nfaces; f++) {
+      for (int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const int n = m + f * p_Nfp;
+        const int sk = e * p_Nfp * p_Nfaces + n;
+        const dlong idM = vmapM[sk];
+
+        normal[idM + 0 * offset] = 0;
+        normal[idM + 1 * offset] = 0;
+        normal[idM + 2 * offset] = 0;
+        // last component is count
+        normal[idM + 3 * offset] = 0;
+      }
+      @barrier();
+    }
+
+    for (int f = 0; f < p_Nfaces; f++) {
+      for (int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const int n = m + f * p_Nfp;
+        const int sk = e * p_Nfp * p_Nfaces + n;
+        const dlong sid = e * p_Nfaces * p_Nfp + n;
+        const dlong idM = vmapM[sk];
+        const dlong bcType = EToB[f + p_Nfaces * e];
+
+        if (bcType == bcTypeCheck) {
+
+          const dfloat nx = sgeo[sid * p_Nsgeo + p_NXID];
+          const dfloat ny = sgeo[sid * p_Nsgeo + p_NYID];
+          const dfloat nz = sgeo[sid * p_Nsgeo + p_NZID];
+
+          normal[idM + 0 * offset] += nx;
+          normal[idM + 1 * offset] += ny;
+          normal[idM + 2 * offset] += nz;
+          // last component is count
+          normal[idM + 3 * offset] += 1;
+        }
+      }
+      @barrier();
+    }
+  }
+}

@@ -4,7 +4,9 @@
 #include <occa/internal/utils/sys.hpp>
 #include <occa/internal/modes/serial/device.hpp>
 #include <occa/internal/modes/serial/kernel.hpp>
+#include <occa/internal/modes/serial/buffer.hpp>
 #include <occa/internal/modes/serial/memory.hpp>
+#include <occa/internal/modes/serial/memoryPool.hpp>
 #include <occa/internal/modes/serial/stream.hpp>
 #include <occa/internal/modes/serial/streamTag.hpp>
 #include <occa/internal/lang/modes/serial.hpp>
@@ -13,10 +15,6 @@ namespace occa {
   namespace serial {
     device::device(const occa::json &properties_) :
       occa::modeDevice_t(properties_) {}
-
-    device::~device() {}
-
-    void device::finish() const {}
 
     bool device::hasSeparateMemorySpace() const {
       return false;
@@ -43,6 +41,10 @@ namespace occa {
 
     //---[ Stream ]---------------------
     modeStream_t* device::createStream(const occa::json &props) {
+      return new stream(this, props);
+    }
+
+    modeStream_t* device::wrapStream(void* ptr, const occa::json &props) {
       return new stream(this, props);
     }
 
@@ -80,13 +82,14 @@ namespace occa {
         return false;
       }
 
-      if (!io::isFile(outputFile)) {
-        hash_t hash = occa::hash(outputFile);
-        io::lock_t lock(hash, "serial-parser");
-        if (lock.isMine()) {
-          parser.writeToFile(outputFile);
+      io::stageFile(
+        outputFile,
+        true,
+        [&](const std::string &tempFilename) -> bool {
+          parser.writeToFile(tempFilename);
+          return true;
         }
-      }
+      );
 
       parser.setSourceMetadata(metadata);
 
@@ -122,16 +125,7 @@ namespace occa {
       std::string binaryFilename = hashDir + kcBinaryFile;
 
       // Check if binary exists and is finished
-      bool foundBinary = (
-        io::cachedFileIsComplete(hashDir, kcBinaryFile)
-        && io::isFile(binaryFilename)
-      );
-
-      io::lock_t lock;
-      if (!foundBinary) {
-        lock = io::lock_t(kernelHash, "serial-kernel");
-        foundBinary = !lock.isMine();
-      }
+      const bool foundBinary = io::isFile(binaryFilename);
 
       const bool verbose = kernelProps.get("verbose", false);
       if (foundBinary) {
@@ -139,8 +133,8 @@ namespace occa {
           io::stdout << "Loading cached ["
                      << kernelName
                      << "] from ["
-                     << io::shortname(filename)
-                     << "] in [" << io::shortname(binaryFilename) << "]\n";
+                     << filename
+                     << "] in [" << binaryFilename << "]\n";
         }
         modeKernel_t *k = buildKernelFromBinary(binaryFilename,
                                                 kernelName,
@@ -198,12 +192,12 @@ namespace occa {
 #endif
       }
 
-      if (compilerLanguageFlag == sys::language::CPP && env::var("OCCA_CXXFLAGS").size()) {
+      if (kernelProps.get<std::string>("compiler_flags").size()) {
+        compilerFlags = (std::string) kernelProps["compiler_flags"];
+      } else if (compilerLanguageFlag == sys::language::CPP && env::var("OCCA_CXXFLAGS").size()) {
         compilerFlags = env::var("OCCA_CXXFLAGS");
       } else if (compilerLanguageFlag == sys::language::C && env::var("OCCA_CFLAGS").size()) {
         compilerFlags = env::var("OCCA_CFLAGS");
-      } else if (kernelProps.get<std::string>("compiler_flags").size()) {
-        compilerFlags = (std::string) kernelProps["compiler_flags"];
       } else if (compilerLanguageFlag == sys::language::CPP && env::var("CXXFLAGS").size()) {
         compilerFlags = env::var("CXXFLAGS");
       } else if (compilerLanguageFlag == sys::language::C && env::var("CFLAGS").size()) {
@@ -321,58 +315,75 @@ namespace occa {
         sys::addCompilerLibraryFlags(compilerFlags);
       }
 
+      io::stageFile(
+        binaryFilename,
+        true,
+        [&](const std::string &tempFilename) -> bool {
 #if (OCCA_OS & (OCCA_LINUX_OS | OCCA_MACOS_OS))
-      command << compiler
-              << ' '    << compilerFlags
-              << ' '    << sourceFilename
-              << " -o " << binaryFilename
-              << " -I"  << env::OCCA_DIR << "include"
-              << " -I"  << env::OCCA_INSTALL_DIR << "include"
-              << " -L"  << env::OCCA_INSTALL_DIR << "lib -locca"
-              << ' '    << compilerLinkerFlags
-              << std::endl;
+          command << compiler
+                  << ' '    << compilerFlags
+                  << ' '    << sourceFilename
+                  << " -o " << tempFilename
+                  << " -I"  << env::OCCA_DIR << "include"
+                  << " -I"  << env::OCCA_INSTALL_DIR << "include"
+                  << " -L"  << env::OCCA_INSTALL_DIR << "lib -locca"
+                  << ' '    << compilerLinkerFlags
+                  << " 2>&1"
+                  << std::endl;
 #else
-      command << kernelProps["compiler"]
-              << " /D MC_CL_EXE"
-              << " /D OCCA_OS=OCCA_WINDOWS_OS"
-              << " /EHsc"
-              << " /wd4244 /wd4800 /wd4804 /wd4018"
-              << ' '       << compilerFlags
-              << " /I"     << env::OCCA_DIR << "include"
-              << " /I"     << env::OCCA_INSTALL_DIR << "include"
-              << ' '       << sourceFilename
-              << " /link " << env::OCCA_INSTALL_DIR << "lib/libocca.lib",
-              << ' '       << compilerLinkerFlags
-              << " /OUT:"  << binaryFilename
-              << std::endl;
+          command << kernelProps["compiler"]
+                  << " /D MC_CL_EXE"
+                  << " /D OCCA_OS=OCCA_WINDOWS_OS"
+                  << " /EHsc"
+                  << " /wd4244 /wd4800 /wd4804 /wd4018"
+                  << ' '       << compilerFlags
+                  << " /I"     << env::OCCA_DIR << "include"
+                  << " /I"     << env::OCCA_INSTALL_DIR << "include"
+                  << ' '       << sourceFilename
+                  << " /link " << env::OCCA_INSTALL_DIR << "lib/libocca.lib",
+                  << ' '       << compilerLinkerFlags
+                  << " /OUT:"  << tempFilename
+                  << std::endl;
 #endif
 
-      const std::string &sCommand = strip(command.str());
+          const std::string &sCommand = strip(command.str());
+          if (verbose) {
+            io::stdout << "Compiling [" << kernelName << "]\n" << sCommand << "\n";
+          }
 
-      if (verbose) {
-        io::stdout << "Compiling [" << kernelName << "]\n" << sCommand << "\n";
-      }
-
+          std::string commandOutput;
 #if (OCCA_OS & (OCCA_LINUX_OS | OCCA_MACOS_OS))
-      const int compileError = system(sCommand.c_str());
+          const int commandExitCode = sys::call(
+            sCommand.c_str(),
+            commandOutput
+          );
 #else
-      const int compileError = system(("\"" +  sCommand + "\"").c_str());
+          const int commandExitCode = sys::call(
+            ("\"" +  sCommand + "\"").c_str(),
+            commandOutput
+          );
 #endif
 
+          if (commandExitCode) {
+            OCCA_FORCE_ERROR(
+              "Error compiling [" << kernelName << "],"
+              " Command: [" << sCommand << "]\n"
+              << "Output:\n\n"
+              << commandOutput << "\n"
+            );
+          }
+
+          return true;
+        }
+      );
+      
       io::sync(binaryFilename);
-
-      lock.release();
-      if (compileError) {
-        OCCA_FORCE_ERROR("Error compiling [" << kernelName << "],"
-                         " Command: [" << sCommand << ']');
-      }
 
       modeKernel_t *k = buildKernelFromBinary(binaryFilename,
                                               kernelName,
                                               kernelProps,
                                               metadata.kernelsMetadata[kernelName]);
       if (k) {
-        io::markCachedFileComplete(hashDir, kcBinaryFile);
         k->sourceFilename = filename;
       }
       return k;
@@ -397,10 +408,9 @@ namespace occa {
     }
 
     modeKernel_t* device::buildKernelFromBinary(const std::string &filename,
-                                                const std::string &kernelName_,
+                                                const std::string &kernelName,
                                                 const occa::json &kernelProps,
                                                 lang::kernelMetadata_t &metadata) {
-      std::string kernelName = kernelName_ + kernelProps.get<std::string>("kernelNameSuffix", "");
       kernel &k = *(new kernel(this,
                                kernelName,
                                filename,
@@ -420,16 +430,20 @@ namespace occa {
     modeMemory_t* device::malloc(const udim_t bytes,
                                  const void *src,
                                  const occa::json &props) {
-      memory *mem = new memory(this, bytes, props);
+      //create allocation
+      buffer *buf = new serial::buffer(this, bytes, props);
 
       if (src && props.get("use_host_pointer", false)) {
-        mem->ptr = (char*) const_cast<void*>(src);
-        mem->isOrigin = props.get("own_host_pointer", false);
+        buf->wrapMemory(src, bytes);
       } else {
-        mem->ptr = (char*) sys::malloc(bytes);
-        if (src) {
-          ::memcpy(mem->ptr, src, bytes);
-        }
+        buf->malloc(bytes);
+      }
+
+      //create slice
+      memory *mem = new serial::memory(buf, bytes, 0);
+
+      if (src && !props.get("use_host_pointer", false)) {
+        mem->copyFrom(src, bytes, 0, props);
       }
 
       return mem;
@@ -438,19 +452,26 @@ namespace occa {
     modeMemory_t* device::wrapMemory(const void *ptr,
                                      const udim_t bytes,
                                      const occa::json &props) {
-      memory *mem = new memory(this,
-                               bytes,
-                               props);
 
-      mem->ptr = (char*) const_cast<void*>(ptr);
-      mem->isOrigin = props.get("own_host_pointer", false);
+      //create allocation
+      buffer *buf = new serial::buffer(this, bytes, props);
+      buf->wrapMemory(ptr, bytes);
 
-      return mem;
+      return new serial::memory(buf, bytes, 0);
+    }
+
+    modeMemoryPool_t* device::createMemoryPool(const occa::json &props) {
+      return new serial::memoryPool(this, props);
     }
 
     udim_t device::memorySize() const {
       return sys::SystemInfo::load().memory.total;
     }
     //==================================
+
+    void* device::unwrap() {
+      OCCA_FORCE_ERROR("device::unwrap is not defined for serial mode");
+      return nullptr;
+    }
   }
 }

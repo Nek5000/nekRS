@@ -5,9 +5,6 @@ static int NELGX;
 static int NELGY;
 static int NELGZ;
 
-#define PASS { if (platform->comm.mpiRank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
-#define FAIL { if (platform->comm.mpiRank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
-
 #define EPS 1e-2
 
 void ciSetup(MPI_Comm comm, setupAide &options)
@@ -19,11 +16,33 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("DT", std::string("1e-3"));
   options.setArgs("SUBCYCLING STEPS", std::string("0"));
   if (ciMode == 2) options.setArgs("SUBCYCLING STEPS", std::string("1"));
-  options.setArgs("TIME INTEGRATOR", "TOMBO2");
+  options.setArgs("BDF ORDER", "2");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-08"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", std::string("1e-12"));
+
+  // set up CVODE solver details
+  if(ciMode == 3){
+    options.setArgs("CVODE", "TRUE");
+    options.setArgs("CVODE INTEGRATOR", "BDF");
+    options.setArgs("CVODE MAX TIMESTEPPER ORDER", "3");
+    options.setArgs("CVODE EPS LIN", "0.05");
+    options.setArgs("CVODE STOP TIME", "TRUE");
+
+    const auto hmaxRatio = 1;
+    options.setArgs("CVODE HMAX RATIO", to_string_f(hmaxRatio));
+
+    const auto maxSteps = 10000;
+    options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
+
+    options.setArgs("CVODE RELATIVE TOLERANCE", "1e-08");
+    options.setArgs("CVODE ABSOLUTE TOLERANCE", "1e-12");
+    options.setArgs("CVODE GMR VECTORS", "20");
+
+    options.setArgs("SCALAR00 SOLVER", "CVODE");
+
+  }
 }
 
 dfloat computeLInfError(nrs_t * nrs, occa::memory o_a, occa::memory o_b)
@@ -95,7 +114,7 @@ void testDirection(nrs_t* nrs, std::string dir)
 
   auto LInfError = computeLInfError(nrs, o_fields, o_refFields);
   if(LInfError > tol){
-    FAIL;
+    CIFAIL;
   }
 
   o_fields.free();
@@ -105,7 +124,7 @@ void testDirection(nrs_t* nrs, std::string dir)
 void testFusedPlanarAvg(nrs_t * nrs, std::string dir)
 {
   if(dir.size() != 2){
-    FAIL;
+    CIFAIL;
   }
 
   auto o_fields = platform->device.malloc((nrs->NVfields  * sizeof(dfloat))*nrs->fieldOffset);
@@ -129,7 +148,7 @@ void testFusedPlanarAvg(nrs_t * nrs, std::string dir)
 
   auto LInfError = computeLInfError(nrs, o_fields, o_refFields);
   if(LInfError > tol){
-    FAIL;
+    CIFAIL;
   }
 
   // (2) xz == x, z, e.g.
@@ -144,7 +163,7 @@ void testFusedPlanarAvg(nrs_t * nrs, std::string dir)
 
   LInfError = computeLInfError(nrs, o_fields, o_refFields);
   if(LInfError > tol){
-    FAIL;
+    CIFAIL;
   }
 
   // (3) xz, zx both work
@@ -159,7 +178,7 @@ void testFusedPlanarAvg(nrs_t * nrs, std::string dir)
 
   LInfError = computeLInfError(nrs, o_fields, o_refFields);
   if(LInfError > tol){
-    FAIL;
+    CIFAIL;
   }
 
   o_fields.free();
@@ -216,5 +235,5 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (rank == 0)
     printf("relative error to target: vx=%g pr=%g s=%g\n", vxErr, prErr, sErr);
 
-  (vxErr < EPS && prErr < EPS && sErr < EPS) ? (PASS) : (FAIL); 
+  (vxErr < EPS && prErr < EPS && sErr < EPS) ? (CIPASS) : (CIFAIL); 
 }

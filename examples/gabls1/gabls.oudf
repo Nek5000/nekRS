@@ -9,13 +9,12 @@ void velocityDirichletConditions(bcData *bc)
 
 void velocityNeumannConditions(bcData *bc)
 {
-  const dfloat invMagUWall = 1/bc->wrk[9*bc->fieldOffset + 1];
-  const dfloat uTau = bc->wrk[9*bc->fieldOffset + 3];
+  const dfloat invMagUWall = 1/bc->usrwrk[1];
+  const dfloat uTau = bc->usrwrk[3];
 
   const dfloat ut1x = bc->u*bc->t1x +  bc->v*bc->t1y +  bc->w*bc->t1z;
   const dfloat ut2x = bc->u*bc->t2x +  bc->v*bc->t2y +  bc->w*bc->t2z;
 
-  bc->trn  = 0;
   bc->tr1  = -ut1x*invMagUWall * uTau*uTau; 
   bc->tr2  = -ut2x*invMagUWall * uTau*uTau;
 }
@@ -24,10 +23,10 @@ void scalarNeumannConditions(bcData *bc)
 {
   bc->flux = p_cond * p_TsGrad; 
   if(bc->id == 2) {
-    const dfloat thts = bc->wrk[9*bc->fieldOffset + 0];
-    const dfloat dtempWall = fabs(bc->wrk[9*bc->fieldOffset + 2] - (thts - 1));
-    const dfloat uTau = bc->wrk[9*bc->fieldOffset + 3];
-    const dfloat thetaTau = bc->wrk[9*bc->fieldOffset + 4];
+    const dfloat thts = bc->usrwrk[0];
+    const dfloat dtempWall = fabs(bc->usrwrk[2] - (thts - 1));
+    const dfloat uTau = bc->usrwrk[3];
+    const dfloat thetaTau = bc->usrwrk[4];
     const dfloat dtemp = bc->s - (thts - 1);
 
     bc->flux = 0;
@@ -100,7 +99,7 @@ void scalarNeumannConditions(bcData *bc)
         s_D[j][i] = D[id];
       }
     }
-    @barrier("local");
+    @barrier();
 
 
     for(int j = 0; j < p_Nq; ++j; @inner(1)) {
@@ -113,7 +112,7 @@ void scalarNeumannConditions(bcData *bc)
         }
       }
     }
-    @barrier("local");
+    @barrier();
 
     #pragma unroll p_Nq
     for(int k = 0; k < p_Nq; ++k) {
@@ -143,7 +142,7 @@ void scalarNeumannConditions(bcData *bc)
 
         }
       } 
-      @barrier("local");
+      @barrier();
 
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
@@ -167,7 +166,7 @@ void scalarNeumannConditions(bcData *bc)
           }
         }
       }
-      @barrier("local");
+      @barrier();
     } //k loop
 
     //write out
@@ -229,7 +228,7 @@ void scalarNeumannConditions(bcData *bc)
         }
       }
   
-    @barrier("local");
+    @barrier();
       for(int j = 0; j < p_Nq; ++j; @inner(1)) {
         for(int i = 0; i < p_Nq; ++i; @inner(0)) {
           const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -268,7 +267,7 @@ void scalarNeumannConditions(bcData *bc)
           gradP[id + 2 * offset] = w * (drdy * dp3dr + dsdy * dp3ds + dtdy * dp3dt);
         }
       }
-      @barrier("local");
+      @barrier();
     } // k-loop
   }
 }
@@ -288,7 +287,7 @@ void scalarNeumannConditions(bcData *bc)
     @shared dfloat s_area[p_blockSize];
 
     for (int f = 0; f < p_Nfaces; f++) {
-      @barrier("local");
+      @barrier();
 
       for (int m = 0; m < p_blockSize; ++m; @inner(0)) {
         s_sum[0][m] = 0.0;
@@ -310,7 +309,7 @@ void scalarNeumannConditions(bcData *bc)
       }
 
       // compute reduction
-      @barrier("local");
+      @barrier();
 
 #if p_blockSize > 512
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
@@ -321,7 +320,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 512];
         }
       }
-      @barrier("local");
+      @barrier();
 #endif
 
 #if p_blockSize > 256
@@ -333,7 +332,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 256];
         }
       }
-      @barrier("local");
+      @barrier();
 #endif
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
@@ -344,7 +343,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 128];
         }
       }
-      @barrier("local");
+      @barrier();
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
         if (t < 64) {
@@ -354,7 +353,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 64];
         }
       }
-      @barrier("local");
+      @barrier();
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
         if (t < 32) {
@@ -364,7 +363,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 32];
         }
       }
-      @barrier("local");
+      @barrier();
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
         if (t < 16) {
@@ -374,7 +373,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 16];
         }
       }
-      @barrier("local");
+      @barrier();
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
         if (t < 8) {
@@ -384,7 +383,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 8];
         }
       }
-      @barrier("local");
+      @barrier();
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
         if (t < 4) {
@@ -394,7 +393,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 4];
         }
       }
-      @barrier("local");
+      @barrier();
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
         if (t < 2) {
@@ -404,7 +403,7 @@ void scalarNeumannConditions(bcData *bc)
           s_area[t] += s_area[t + 2];
         }
       }
-      @barrier("local");
+      @barrier();
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
         if (t < 1) {

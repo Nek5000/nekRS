@@ -7,7 +7,7 @@
 export NVME_HOME="/mnt/bb/$USER/"
 
 if [ $# -ne 3 ]; then
-  echo "usage: [PROJ_ID] [QUEUE] $0 <casename> <number of compute nodes> <hh:mm:ss>"
+  echo "usage: [PROJ_ID=value] [QUEUE=value] $0 <casename> <number of compute nodes> <hh:mm:ss>"
   exit 0
 fi
 
@@ -25,7 +25,7 @@ bin=${NEKRS_HOME}/bin/nekrs
 case=$1
 nodes=$2
 gpu_per_node=8
-cores_per_socket=8
+cores_per_socket=7
 let nn=$nodes*$gpu_per_node
 let ntasks=nn
 time=$3
@@ -44,11 +44,6 @@ fi
 
 if [ ! -f $case.udf ]; then
   echo "Cannot find" $case.udf
-  exit 1
-fi
-
-if [ ! -f $case.oudf ]; then
-  echo "Cannot find" $case.oudf
   exit 1
 fi
 
@@ -111,6 +106,7 @@ echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 
 echo "export NVME_HOME=$NVME_HOME" >>$SFILE
 echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
+echo "export MPICH_OFI_NIC_POLICY=NUMA" >>$SFILE
 
 echo "# actual run" >>$SFILE
 echo "date" >>$SFILE

@@ -2,29 +2,53 @@
 polynomialOrder = 7
 cubaturePolynomialOrder = 9 
 
-#startFrom = "restart.fld"
+#startFrom = "r.fld"
 stopAt = endTime
 endTime = 20
 
-#timeStepper = tombo3
-#dt = targetCFL=0.5
+timeStepper = tombo3
+dt = 3e-3
 
-timeStepper = tombo2
-dt = targetCFL=2 + max=2e-2
+#timeStepper = tombo2
+#dt = targetCFL=2.5 + max=3e-3
+#subcyclingSteps = 1
 
 writeControl = simulationTime 
 writeInterval = 0
 
-regularization = hpfrt + nModes=1 + scalingCoeff=10 
+regularization = hpfrt + nModes=1 + scalingCoeff=1
 
 [PRESSURE]
-solver = pfcg
 residualTol = 1e-04
-preconditioner = multigrid+additive
-smootherType = ASM 
+
+#solver = pfgmres
+#smootherType = RAS+OptFourthChebyshev 
+#pMGSchedule = p=7+degree=2, p=3+degree=2, p=1, p=3+degree=2, p=7+degree=2
+
+solver = pfcg 
+smootherType = Jac+Cheby
 
 [VELOCITY]
 boundaryTypeMap = none
 density = 1.0
 viscosity = -1600
 residualTol = 1e-06
+
+[SCALAR00] #lambda2
+solver = none
+
+[CASEDATA]
+eps = 1.0
+U0 = 0
+V0 = 0
+W0 = 0 
+
+#eps = 0.3
+#U0 = 2.0
+#V0 = 2.0
+#W0 = 2.0
+
+[BOOMERAMG]
+#smootherType = 18
+iterations = 1
+chebyshevRelaxOrder = 1

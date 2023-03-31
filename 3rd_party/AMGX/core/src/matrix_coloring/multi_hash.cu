@@ -41,7 +41,7 @@
 namespace amgx
 {
 
-__host__ __device__ unsigned int hash(unsigned int a, unsigned int seed)
+__host__ __device__ unsigned int myhash(unsigned int a, unsigned int seed)
 {
     a ^= seed;
     a = (a + 0x7ed55d16) + (a << 12);
@@ -93,8 +93,8 @@ void colorRowsMultiHashKernel_1step(const IndexType *A_offsets, const IndexType 
 
                 if (j >= num_rows) { continue; }
 
-                hash_j = hash(j, k);
-                hash_i = hash(i, k);
+                hash_j = myhash(j, k);
+                hash_i = myhash(i, k);
 
                 // There is an uncolored neighbour that is greater
                 if ( hash_j > hash_i)
@@ -122,7 +122,7 @@ void colorRowsMultiHashKernel_1step(const IndexType *A_offsets, const IndexType 
 
         if (num_possible_colors)
         {
-            int rand_pick = hash(i, 0) % num_possible_colors;
+            int rand_pick = myhash(i, 0) % num_possible_colors;
             my_row_color = my_colors[rand_pick];
         }
         else
@@ -151,7 +151,7 @@ void colorRowsMultiHashKernel(const IndexType *A_offsets, const IndexType *A_col
 #pragma unroll
         for (t = 0; t < num_hash; t++)
         {
-            i_rand[t] = hash(i, seed + 1043 * t);
+            i_rand[t] = myhash(i, seed + 1043 * t);
         }
 
         // have we been proved to be not min or max
@@ -179,7 +179,7 @@ void colorRowsMultiHashKernel(const IndexType *A_offsets, const IndexType *A_col
 #pragma unroll
             for (t = 0; t < num_hash; t++)
             {
-                unsigned int j_rand = hash(j, seed + 1043 * t);
+                unsigned int j_rand = myhash(j, seed + 1043 * t);
 
                 // bail if any neighbor is greater
                 if (i_rand[t] <= j_rand && !(not_max & (0x1 << t)  ))
@@ -410,7 +410,7 @@ void MultiHashMatrixColoring<TemplateConfig<AMGX_device, t_vecPrec, t_matPrec, t
             }
 
             cudaCheckError();
-            seed = hash(seed, 0);
+            seed = myhash(seed, 0);
             next_color += 2 * this->num_hash;
             num_uncolored = (int) thrust::count_if( this->m_row_colors.begin(), this->m_row_colors.begin() + num_rows, is_less_than_zero() );
             cudaCheckError();

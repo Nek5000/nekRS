@@ -2,7 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
+#ifdef _OPENMP
 #include "omp.h"
+#endif
 #include <unistd.h>
 #include "mpi.h"
 
@@ -113,7 +116,7 @@ int main(int argc, char** argv)
 
   if(err || cmdCheck != 3) {
     if(rank == 0)
-      printf("Usage: ./nekrs-bench-advsub  --p-order <n> --elements <n> --backend <CPU|CUDA|HIP|OPENCL>\n"
+      printf("Usage: ./nekrs-bench-advsub  --p-order <n> --elements <n> --backend <CPU|CUDA|HIP|DPCPP|OPENCL>\n"
              "                    [--block-dim <n>] [--c-order <n>] [--no-cubature] [--ext-order <n>] [--iterations <n>]\n"); 
     exit(1); 
   }
@@ -149,7 +152,11 @@ int main(int argc, char** argv)
 
   platform = platform_t::getInstance(options, MPI_COMM_WORLD, MPI_COMM_WORLD); 
   platform->options.setArgs("BUILD ONLY", "FALSE");
-  const int Nthreads =  omp_get_max_threads();
+#ifdef _OPENMP
+  const int Nthreads = omp_get_max_threads();
+#else
+  const int Nthreads = 1;
+#endif
 
   bool isScalar = Nfields == 1;
 

@@ -4,9 +4,7 @@
 #include "nrs.hpp"
 
 namespace ConstantFlowRate{
-bool apply(nrs_t *nrs, int tstep, dfloat time);
-void compute(nrs_t *nrs, dfloat lengthScale, dfloat time);
-bool checkIfRecompute(nrs_t* nrs, int tstep);
+bool adjust(nrs_t *nrs, int tstep, dfloat time);
 void printInfo(mesh_t* mesh, bool verboseInfo);
 dfloat scaleFactor();
 }

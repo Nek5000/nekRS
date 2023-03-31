@@ -100,6 +100,7 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
 
   mesh->volume = 0;
 
+  int invalidJ = 0;
   for(dlong e = 0; e < mesh->Nelements; ++e) {
     dlong id = e * mesh->Nverts;
 
@@ -115,8 +116,8 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
       zte[n] = 0;
     }
 
-    for(int k = 0; k < mesh->Nq; ++k)
-      for(int j = 0; j < mesh->Nq; ++j)
+    for (int k = 0; k < mesh->Nq; ++k) {
+      for (int j = 0; j < mesh->Nq; ++j) {
         for(int i = 0; i < mesh->Nq; ++i) {
           int n = i + j * mesh->Nq + k * mesh->Nq * mesh->Nq;
 
@@ -147,17 +148,21 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
           /* compute geometric factors for affine coordinate transform*/
           dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr * (xs * yt - ys * xt);
 
+          if (std::isnan(J) || std::isinf(J)) {
+            invalidJ++;
+          }
+
           dfloat hr = sqrt(xr * xr + yr * yr + zr * zr);
           dfloat hs = sqrt(xs * xs + ys * ys + zs * zs);
           dfloat ht = sqrt(xt * xt + yt * yt + zt * zt);
-          minJ = mymin(J, minJ);
-          maxJ = mymax(J, maxJ);
-          maxSkew = mymax(maxSkew, hr / hs);
-          maxSkew = mymax(maxSkew, hr / ht);
-          maxSkew = mymax(maxSkew, hs / hr);
-          maxSkew = mymax(maxSkew, hs / ht);
-          maxSkew = mymax(maxSkew, ht / hr);
-          maxSkew = mymax(maxSkew, ht / hs);
+          minJ = std::min(J, minJ);
+          maxJ = std::max(J, maxJ);
+          maxSkew = std::max(maxSkew, hr / hs);
+          maxSkew = std::max(maxSkew, hr / ht);
+          maxSkew = std::max(maxSkew, hs / hr);
+          maxSkew = std::max(maxSkew, hs / ht);
+          maxSkew = std::max(maxSkew, ht / hr);
+          maxSkew = std::max(maxSkew, ht / hs);
 
           //if(J<1e-12) printf("J = %g !!!!!!!!!!!!!\n", J);
 
@@ -209,6 +214,8 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
                                                                            tz);
           mesh->ggeo[mesh->Nggeo * mesh->Np * e + n + mesh->Np * GWJID] = JW;
         }
+      }
+    }
 
 #if 1
     interpolateHex3D(mesh->cubInterp, xre, mesh->Nq, cubxre, mesh->cubNq);
@@ -224,8 +231,8 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
     interpolateHex3D(mesh->cubInterp, zte, mesh->Nq, cubzte, mesh->cubNq);
 
     //geometric data for quadrature
-    for(int k = 0; k < mesh->cubNq; ++k)
-      for(int j = 0; j < mesh->cubNq; ++j)
+    for (int k = 0; k < mesh->cubNq; ++k) {
+      for (int j = 0; j < mesh->cubNq; ++j) {
         for(int i = 0; i < mesh->cubNq; ++i) {
           int n = k * mesh->cubNq * mesh->cubNq + j * mesh->cubNq + i;
 
@@ -268,8 +275,14 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
           mesh->cubvgeo[base + mesh->cubNp * JWID] = JW;
           mesh->cubvgeo[base + mesh->cubNp * IJWID] = 1. / JW;
         }
+      }
+    }
 #endif
   }
+
+  MPI_Allreduce(MPI_IN_PLACE, &invalidJ, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
+  nrsCheck(invalidJ, platform->comm.mpiComm, EXIT_FAILURE,
+          "encountered nan or inf Jacobian!\n", "");
 
   {
     dfloat globalMinJ = 0, globalMaxJ = 0, globalMaxSkew = 0;
@@ -283,9 +296,8 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
       //printf("J [%g,%g] and max Skew = %g\n", globalMinJ, globalMaxJ, globalMaxSkew);
 
     if(globalMinJ < 0 || globalMaxJ < 0) {
-      if (platform->comm.mpiRank == 0) printf("Jacobian < 0 !!! ");
-      //EXIT_AND_FINALIZE(EXIT_FAILURE);
-    }  
+      if (platform->comm.mpiRank == 0) printf("Jacobian < 0!\n");
+    }
 
     dfloat globalVolume;
     MPI_Allreduce(&mesh->volume, &globalVolume, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);

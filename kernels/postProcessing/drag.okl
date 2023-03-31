@@ -1,0 +1,121 @@
+
+#define REDUCE(bs)                                                                                           \
+if (t < bs) {                                                                                                \
+s_sum[t] += s_sum[t + bs];                                                                                   \
+}
+
+@kernel void drag(const dlong Nelements,
+                  const dlong offset,
+                  const dlong nbID,
+                  const dlong *bID,
+                  @ restrict const dfloat *sgeo,
+                  @ restrict const dlong *vmapM,
+                  @ restrict const int *EToBM,
+                  @ restrict const dfloat *mue,
+                  @ restrict const dfloat *SIJ,
+                  @ restrict dfloat *sum)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    @shared volatile dfloat s_sum[p_blockSize];
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      s_sum[t] = 0.0;
+      if (t < p_Nfp) {
+        for (int f = 0; f < p_Nfaces; f++) {
+          const dlong bIDM = EToBM[f + p_Nfaces * e];
+
+          for (int ibID = 0; ibID < nbID; ibID++) {
+            if (bIDM == bID[ibID]) {
+              const int n = t + f * p_Nfp;
+              const dlong sid = e * p_Nfaces * p_Nfp + n;
+
+              const dlong idM = vmapM[sid];
+              const dfloat sWJ = sgeo[sid * p_Nsgeo + p_WSJID];
+
+              const dfloat n1 = sgeo[sid * p_Nsgeo + p_NXID];
+              const dfloat n2 = sgeo[sid * p_Nsgeo + p_NYID];
+              const dfloat n3 = sgeo[sid * p_Nsgeo + p_NZID];
+
+              const dfloat s11 = SIJ[idM + 0 * offset];
+              const dfloat s21 = SIJ[idM + 3 * offset];
+              const dfloat s31 = SIJ[idM + 5 * offset];
+
+              const dfloat s12 = s21;
+              const dfloat s22 = SIJ[idM + 1 * offset];
+              const dfloat s32 = SIJ[idM + 4 * offset];
+
+              const dfloat s13 = s31;
+              const dfloat s23 = s32;
+              const dfloat s33 = SIJ[idM + 2 * offset];
+
+              const dfloat scale = -2 * mue[idM] * sWJ;
+
+              const dfloat dragx = scale*(s11 * n1 + s12 * n2 + s13 * n3);
+              const dfloat dragy = scale*(s21 * n1 + s22 * n2 + s23 * n3);
+              const dfloat dragz = scale*(s31 * n1 + s32 * n2 + s33 * n3);
+
+              s_sum[t] += sqrt(dragx * dragx + dragy * dragy + dragz * dragz);
+            }
+          }
+          @barrier();
+        }
+      }
+    }
+    @barrier();
+
+#if p_blockSize > 512
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(512);
+    }
+    @barrier();
+#endif
+
+#if p_blockSize > 256
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(256);
+    }
+    @barrier();
+#endif
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(128);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(64);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(32);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(16);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(8);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(4);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(2);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      if (t < 1) {
+        sum[e] = s_sum[0] + s_sum[1];
+      }
+    }
+    @barrier();
+  }
+}

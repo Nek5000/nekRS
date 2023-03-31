@@ -1,0 +1,26 @@
+@kernel void extrapolateDirichlet(
+  const dlong maskFieldOffset,
+  const dlong fieldOffset,
+  const dlong Nfields,
+  const dlong Nstages,
+  @ restrict const dlong *Nmasked,
+  @ restrict const dlong *maskIds,
+  @ restrict const dfloat *c,
+  @ restrict const dfloat *maskValues,
+  @ restrict dfloat *values)
+{
+  for (dlong n = 0; n < maskFieldOffset; ++n; @tile(p_blockSize, @outer, @inner)) {
+    for(int field = 0; field < Nfields; ++field){
+      const dlong NmaskField = Nmasked[field];
+      if(n < NmaskField){
+        dfloat extValue = 0.0;
+        for(int s = 0; s < Nstages; ++s){
+          extValue += c[s] * maskValues[n + field * maskFieldOffset + s * maskFieldOffset * Nfields];
+        }
+        const dlong id = maskIds[n + field * maskFieldOffset];
+        //printf("field=%d, n=%d, id=%d, extValue=%f\n", field, n, id, extValue);
+        values[id + field * fieldOffset] = extValue;
+      }
+    }
+  }
+}

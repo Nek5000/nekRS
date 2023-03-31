@@ -12,123 +12,86 @@
 #include "avm.hpp"
 
 #include "cdsSetup.cpp"
+#include <algorithm>
 
-std::vector<int> determineMGLevels(std::string section)
+
+void printICMinMax(nrs_t *nrs)
 {
-  const std::string optionsPrefix = [section]() {
-    std::string prefix = section + std::string(" ");
-    if (section.find("temperature") != std::string::npos) {
-      prefix = std::string("scalar00 ");
-    }
-    std::transform(prefix.begin(), prefix.end(), prefix.begin(), [](unsigned char c) {
-      return std::toupper(c);
-    });
-    return prefix;
-  }();
+  if(platform->comm.mpiRank == 0)
+    printf("================= INITIAL CONDITION ====================\n");
 
-  std::vector<int> levels;
-  int N;
-  platform->options.getArgs("POLYNOMIAL DEGREE", N);
+  if(platform->options.compareArgs("MOVING MESH", "TRUE")) {
+    auto mesh = nrs->meshV;
+    auto o_ux = mesh->o_U + 0*nrs->fieldOffset*sizeof(dfloat);
+    auto o_uy = mesh->o_U + 1*nrs->fieldOffset*sizeof(dfloat);
+    auto o_uz = mesh->o_U + 2*nrs->fieldOffset*sizeof(dfloat);
+    const auto uxMin = platform->linAlg->min(mesh->Nlocal, o_ux, platform->comm.mpiComm);
+    const auto uyMin = platform->linAlg->min(mesh->Nlocal, o_uy, platform->comm.mpiComm);
+    const auto uzMin = platform->linAlg->min(mesh->Nlocal, o_uz, platform->comm.mpiComm);
+    const auto uxMax = platform->linAlg->max(mesh->Nlocal, o_ux, platform->comm.mpiComm);
+    const auto uyMax = platform->linAlg->max(mesh->Nlocal, o_uy, platform->comm.mpiComm);
+    const auto uzMax = platform->linAlg->max(mesh->Nlocal, o_uz, platform->comm.mpiComm);
+    if(platform->comm.mpiRank == 0) 
+      printf("UM  min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
+  }
 
-  std::string p_mglevels;
-  if (platform->options.getArgs(optionsPrefix + "MULTIGRID COARSENING", p_mglevels)) {
-    const std::vector<std::string> mgLevelList = serializeString(p_mglevels, ',');
-    for (auto &&s : mgLevelList) {
-      levels.push_back(std::stoi(s));
-    }
 
-    bool invalid = false;
-    invalid |= (levels[0] != N); // top level order must match
-    for (unsigned i = 0U; i < levels.size(); ++i) {
-      invalid |= (levels[i] < 0); // each level must be positive
-      if (i > 0)
-        invalid |= (levels[i] >= levels[i - 1]); // each successive level must be smaller
-    }
+  {
+    auto mesh = nrs->meshV;
+    auto o_ux = nrs->o_U + 0*nrs->fieldOffset*sizeof(dfloat);
+    auto o_uy = nrs->o_U + 1*nrs->fieldOffset*sizeof(dfloat);
+    auto o_uz = nrs->o_U + 2*nrs->fieldOffset*sizeof(dfloat);
+    const auto uxMin = platform->linAlg->min(mesh->Nlocal, o_ux, platform->comm.mpiComm);
+    const auto uyMin = platform->linAlg->min(mesh->Nlocal, o_uy, platform->comm.mpiComm);
+    const auto uzMin = platform->linAlg->min(mesh->Nlocal, o_uz, platform->comm.mpiComm);
+    const auto uxMax = platform->linAlg->max(mesh->Nlocal, o_ux, platform->comm.mpiComm);
+    const auto uyMax = platform->linAlg->max(mesh->Nlocal, o_uy, platform->comm.mpiComm);
+    const auto uzMax = platform->linAlg->max(mesh->Nlocal, o_uz, platform->comm.mpiComm);
+    if(platform->comm.mpiRank == 0) 
+      printf("U   min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
+  }
 
-    if (invalid) {
-      if (platform->comm.mpiRank == 0)
-        printf("ERROR: Invalid multigrid coarsening!\n");
-      ABORT(EXIT_FAILURE);
-      ;
-    }
-    if (levels.back() > 1) {
-      if (platform->options.compareArgs(optionsPrefix + "MULTIGRID COARSE SOLVE", "TRUE")) {
-        // if the coarse level has p > 1 and requires solving the coarsest level,
-        // rather than just smoothing, SEMFEM must be used for the discretization
-        const auto usesSEMFEM =
-            platform->options.compareArgs(optionsPrefix + "MULTIGRID SEMFEM", "TRUE");
+  {
+    auto mesh = nrs->meshV;
+    const auto prMin = platform->linAlg->min(mesh->Nlocal, nrs->o_P, platform->comm.mpiComm);
+    const auto prMax = platform->linAlg->max(mesh->Nlocal, nrs->o_P, platform->comm.mpiComm);
+    if(platform->comm.mpiRank == 0) 
+      printf("P   min/max: %g %g\n", prMin, prMax);
+  }
 
-        if (!usesSEMFEM) {
-          if (platform->comm.mpiRank == 0) {
-            printf("Error! FEM coarse discretization only supports p=1 for the coarsest level!\n");
-          }
-          ABORT(1);
-        }
+  if (nrs->Nscalar) {
+    auto cds = nrs->cds;
+    if(platform->comm.mpiRank == 0) 
+      printf("S   min/max:"); 
+ 
+    int cnt = 0; 
+    for (int is = 0; is < cds->NSfields; is++) {
+      if (!cds->compute[is])
+        continue;
+      else
+        cnt++;
+      
+      mesh_t *mesh;
+      (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
+
+      auto o_si = nrs->cds->o_S + nrs->cds->fieldOffsetScan[is] * sizeof(dfloat);
+      const auto siMin = platform->linAlg->min(mesh->Nlocal, o_si, platform->comm.mpiComm);
+      const auto siMax = platform->linAlg->max(mesh->Nlocal, o_si, platform->comm.mpiComm);
+      if (platform->comm.mpiRank == 0) { 
+        if(cnt > 1)
+          printf("  ");          
+        else
+          printf(" ");          
+        printf("%g %g", siMin, siMax);
       }
     }
-
-    return levels;
-  }
-  else if (platform->options.compareArgs(optionsPrefix + "MULTIGRID DOWNWARD SMOOTHER", "ASM") ||
-           platform->options.compareArgs(optionsPrefix + "MULTIGRID DOWNWARD SMOOTHER", "RAS")) {
-    std::map<int, std::vector<int>> mg_level_lookup = {
-        {1, {1}},
-        {2, {2, 1}},
-        {3, {3, 1}},
-        {4, {4, 2, 1}},
-        {5, {5, 3, 1}},
-        {6, {6, 3, 1}},
-        {7, {7, 3, 1}},
-        {8, {8, 5, 1}},
-        {9, {9, 5, 1}},
-        {10, {10, 6, 1}},
-        {11, {11, 6, 1}},
-        {12, {12, 7, 1}},
-        {13, {13, 7, 1}},
-        {14, {14, 8, 1}},
-        {15, {15, 9, 1}},
-    };
-
-    return mg_level_lookup.at(N);
-  }
-  else {
-    std::map<int, std::vector<int>> mg_level_lookup = {
-        {1, {1}},
-        {2, {2, 1}},
-        {3, {3, 1}},
-        {4, {4, 2, 1}},
-        {5, {5, 3, 1}},
-        {6, {6, 4, 2, 1}},
-        {7, {7, 5, 3, 1}},
-        {8, {8, 6, 4, 1}},
-        {9, {9, 7, 5, 1}},
-        {10, {10, 8, 5, 1}},
-        {11, {11, 9, 5, 1}},
-        {12, {12, 10, 5, 1}},
-        {13, {13, 11, 5, 1}},
-        {14, {14, 12, 5, 1}},
-        {15, {15, 13, 5, 1}},
-    };
-
-    return mg_level_lookup.at(N);
+    if(platform->comm.mpiRank == 0) 
+      printf("\n");  
   }
 }
 
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 {
-  {
-    int N;
-    platform->options.getArgs("POLYNOMIAL DEGREE", N);
-    const int Nq = N + 1;
-    if (BLOCKSIZE < Nq * Nq) {
-      if (platform->comm.mpiRank == 0)
-        printf("ERROR: several kernels requires BLOCKSIZE >= Nq * Nq."
-               "BLOCKSIZE = %d, Nq*Nq = %d\n",
-               BLOCKSIZE,
-               Nq * Nq);
-      ABORT(EXIT_FAILURE);
-    }
-  }
   platform_t *platform = platform_t::getInstance();
   device_t &device = platform->device;
   nrs->kernelInfo = new occa::properties();
@@ -146,17 +109,26 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   platform->options.getArgs("NUMBER OF SCALARS", nrs->Nscalar);
   platform->options.getArgs("MESH DIMENSION", nrs->dim);
   platform->options.getArgs("ELEMENT TYPE", nrs->elementType);
-  if (platform->device.mode() == "Serial")
-    platform->options.setArgs("GS OVERLAP", "FALSE");
+
+  {
+#if 1
+    if (platform->device.mode() == "Serial")
+      platform->options.setArgs("GS OVERLAP", "FALSE");
+#endif
+
+    if (platform->comm.mpiCommSize == 1)
+      platform->options.setArgs("GS OVERLAP", "FALSE");
+
+    if (platform->comm.mpiRank == 0 && platform->options.compareArgs("GS OVERLAP", "FALSE"))
+      std::cout << "gs comm overlap disabled\n\n";
+  }
 
   nrs->flow = 1;
-  if (platform->options.compareArgs("VELOCITY", "FALSE"))
-    nrs->flow = 0;
   if (platform->options.compareArgs("VELOCITY SOLVER", "NONE"))
     nrs->flow = 0;
 
   if (nrs->flow) {
-    if (platform->options.compareArgs("STRESSFORMULATION", "TRUE"))
+    if (platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
       platform->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   }
 
@@ -176,51 +148,43 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   }
 
   nrs->cht = 0;
-  if (nekData.nelv != nekData.nelt && nrs->Nscalar)
-    nrs->cht = 1;
-  if (nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
-    if (platform->comm.mpiRank == 0)
-      std::cout << "Conjugate heat transfer requires solving for temperature!\n";
-    ABORT(EXIT_FAILURE);
-    ;
-  }
-  if (nrs->cht && options.compareArgs("MOVING MESH", "TRUE")) {
-    if (platform->comm.mpiRank == 0){
-      std::cout << "Conjugate heat transfer + moving mesh is not supported\n";
-    }
-    ABORT(EXIT_FAILURE);
+  {
+    hlong NelementsV = nekData.nelv; 
+    hlong NelementsT = nekData.nelt;
+    MPI_Allreduce(MPI_IN_PLACE, &NelementsV, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+    MPI_Allreduce(MPI_IN_PLACE, &NelementsT, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+    if ((NelementsT > NelementsV) && nrs->Nscalar) nrs->cht = 1;
+
+    nrsCheck(nrs->cht && NelementsT <= NelementsV, MPI_COMM_SELF, EXIT_FAILURE,
+             "Invalid solid element partitioning", "");
+
+    nrsCheck(nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE"),
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "Conjugate heat transfer requires solving for temperature!\n", "");
   }
 
   nrs->_mesh = createMesh(comm, N, cubN, nrs->cht, kernelInfo);
   nrs->meshV = (mesh_t *)nrs->_mesh->fluid;
   mesh_t *mesh = nrs->meshV;
 
-  {
-    double val = (double)mesh->NlocalGatherElements / mesh->Nelements;
-    MPI_Allreduce(MPI_IN_PLACE, &val, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
-      printf("min %2.0f%% of the local elements are internal\n", 100 * val);
-  }
-
   nrs->NVfields = 3;
-  nrs->NTfields = nrs->NVfields + 1; // Total Velocity + Pressure
   mesh->Nfields = 1;
 
   platform->options.getArgs("SUBCYCLING STEPS", nrs->Nsubsteps);
   platform->options.getArgs("DT", nrs->dt[0]);
 
-  if (platform->options.compareArgs("TIME INTEGRATOR", "TOMBO1")) {
-    nrs->nBDF = 1;
-  }
-  else if (platform->options.compareArgs("TIME INTEGRATOR", "TOMBO2")) {
-    nrs->nBDF = 2;
-  }
-  else if (platform->options.compareArgs("TIME INTEGRATOR", "TOMBO3")) {
-    nrs->nBDF = 3;
-  }
-  nrs->nEXT = 3;
+  nrs->idt = 1 / nrs->dt[0];
+  nrs->g0 = 1;
+
+  platform->options.getArgs("BDF ORDER", nrs->nBDF);
+  platform->options.getArgs("EXT ORDER", nrs->nEXT);
   if (nrs->Nsubsteps)
     nrs->nEXT = nrs->nBDF;
+
+  nrsCheck(nrs->nEXT < nrs->nBDF, platform->comm.mpiComm, EXIT_FAILURE,
+           "EXT order needs to be >= BDF order!\n", ""); 
+
   nrs->coeffEXT = (dfloat *)calloc(nrs->nEXT, sizeof(dfloat));
   nrs->coeffBDF = (dfloat *)calloc(nrs->nBDF, sizeof(dfloat));
 
@@ -237,7 +201,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   { // setup fieldOffset
     nrs->fieldOffset = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
     mesh_t *meshT = nrs->_mesh;
-    nrs->fieldOffset = mymax(nrs->fieldOffset, meshT->Np * (meshT->Nelements + meshT->totalHaloPairs));
+    nrs->fieldOffset = std::max(nrs->fieldOffset, meshT->Np * (meshT->Nelements + meshT->totalHaloPairs));
 
     const int pageW = ALIGN_SIZE / sizeof(dfloat);
     if (nrs->fieldOffset % pageW)
@@ -273,9 +237,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->nodesRK, rkc, nrs->nRK * sizeof(dfloat));
     }
     else {
-      if (platform->comm.mpiRank == 0)
-        std::cout << "Unsupported subcycling scheme!\n";
-      ABORT(1);
+      nrsCheck(true, platform->comm.mpiComm, EXIT_FAILURE, "Unsupported subcycling scheme!\n", "");
     }
     nrs->o_coeffsfRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->coeffsfRK);
     nrs->o_weightsRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->weightsRK);
@@ -314,16 +276,18 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const int nAB = std::max(nrs->nEXT, mesh->nAB);
     mesh->U = (dfloat *)calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
     mesh->o_U = platform->device.malloc((nrs->NVfields * nAB * sizeof(dfloat)) * nrs->fieldOffset, mesh->U);
+    mesh->o_Ue = platform->device.malloc((nrs->NVfields * nAB * sizeof(dfloat)) * nrs->fieldOffset, mesh->U);
     if (nrs->Nsubsteps)
       mesh->o_divU = platform->device.malloc(nrs->fieldOffset * nAB, sizeof(dfloat));
   }
 
   {
     const dlong Nstates = nrs->Nsubsteps ? std::max(nrs->nBDF, nrs->nEXT) : 1;
-    if (nrs->Nsubsteps && platform->options.compareArgs("MOVING MESH", "TRUE"))
+    bool useCVODE = platform->options.compareArgs("CVODE", "TRUE");
+    if ((useCVODE || nrs->Nsubsteps) && platform->options.compareArgs("MOVING MESH", "TRUE"))
       nrs->o_relUrst =
           platform->device.malloc((Nstates * nrs->NVfields * sizeof(dfloat)) * nrs->cubatureOffset);
-    else
+    if (!nrs->Nsubsteps || platform->options.compareArgs("MOVING MESH", "FALSE"))
       nrs->o_Urst = platform->device.malloc((Nstates * nrs->NVfields * sizeof(dfloat)) * nrs->cubatureOffset);
   }
 
@@ -346,22 +310,26 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->o_ellipticCoeff = device.malloc((2 * sizeof(dfloat)) * nrs->fieldOffset);
 
   int nProperties = 2;
-  if (options.compareArgs("MESH SOLVER", "ELASTICITY"))
+  if (!options.compareArgs("MESH SOLVER", "NONE"))
     nProperties = 4;
   nrs->prop = (dfloat *)calloc(nProperties * nrs->fieldOffset, sizeof(dfloat));
   for (int e = 0; e < mesh->Nelements; e++)
     for (int n = 0; n < mesh->Np; n++) {
       nrs->prop[0 * nrs->fieldOffset + e * mesh->Np + n] = mue;
       nrs->prop[1 * nrs->fieldOffset + e * mesh->Np + n] = rho;
+      if (!options.compareArgs("MESH SOLVER", "NONE")) {
+        nrs->prop[2 * nrs->fieldOffset + e * mesh->Np + n] = 1.0;
+        nrs->prop[3 * nrs->fieldOffset + e * mesh->Np + n] = 0;
+      }
     }
 
   nrs->o_prop = device.malloc((nProperties * sizeof(dfloat)) * nrs->fieldOffset, nrs->prop);
   nrs->o_mue = nrs->o_prop.slice((0 * sizeof(dfloat)) * nrs->fieldOffset);
   nrs->o_rho = nrs->o_prop.slice((1 * sizeof(dfloat)) * nrs->fieldOffset);
-  if (options.compareArgs("MESH SOLVER", "ELASTICITY")) {
+  if (!options.compareArgs("MESH SOLVER", "NONE")) {
     nrs->o_meshMue = nrs->o_prop.slice((2 * sizeof(dfloat)) * nrs->fieldOffset);
     nrs->o_meshRho = nrs->o_prop.slice((3 * sizeof(dfloat)) * nrs->fieldOffset);
-  }
+ }
 
   if (platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")) {
     nrs->o_Uc = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
@@ -380,18 +348,24 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   // 0);
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
 
-  nrs->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
-  int cnt = 0;
-  for (int e = 0; e < mesh->Nelements; e++) {
-    for (int f = 0; f < mesh->Nfaces; f++) {
-      nrs->EToB[cnt] = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "velocity");
-      cnt++;
-    }
+  if (!options.compareArgs("MESH SOLVER", "NONE")) { 
+    mesh_t *meshT = nrs->_mesh;
+    nrs->gshMesh = oogs::setup(meshT->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
   }
-  nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), nrs->EToB);
 
-  if (platform->options.compareArgs("MESH SOLVER", "ELASTICITY")) {
+  if (nrs->flow) {
+    nrs->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
+    int cnt = 0;
+    for (int e = 0; e < mesh->Nelements; e++) {
+      for (int f = 0; f < mesh->Nfaces; f++) {
+        nrs->EToB[cnt] = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "velocity");
+        cnt++;
+      }
+    }
+    nrs->o_EToB = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), nrs->EToB);
+  }
 
+  if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
     nrs->EToBMeshVelocity = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
     int cnt = 0;
     for (int e = 0; e < mesh->Nelements; e++) {
@@ -405,7 +379,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), nrs->EToBMeshVelocity);
   }
 
-  if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "RELAXATION")) {
+  if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "HPF_RELAXATION")) {
 
     nrs->filterNc = -1;
     dfloat filterS;
@@ -446,6 +420,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
     kernelName = "curl" + suffix;
     nrs->curlKernel = platform->kernels.get(section + kernelName);
+
+    kernelName = "SijOij" + suffix;
+    nrs->SijOijKernel = platform->kernels.get(section + kernelName);
 
     kernelName = "gradientVolume" + suffix;
     nrs->gradientVolumeKernel = platform->kernels.get(section + kernelName);
@@ -527,6 +504,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
     kernelName = "maskCopy";
     nrs->maskCopyKernel = platform->kernels.get(section + kernelName);
+
+    kernelName = "maskCopy2";
+    nrs->maskCopy2Kernel = platform->kernels.get(section + kernelName);
+
     kernelName = "mask";
     nrs->maskKernel = platform->kernels.get(section + kernelName);
 
@@ -547,6 +528,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if (nrs->Nscalar) {
     nrs->cds = cdsSetup(nrs, platform->options);
+    if(nrs->cds->anyCvodeSolver){
+      nrs->cvode = new cvode_t(nrs);
+      nrs->cds->cvode = nrs->cvode;
+    }
   }
 
   // get IC + t0 from nek
@@ -562,6 +547,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     printf("done\n");
   fflush(stdout);
 
+  nrs->p0the = nrs->p0th[0];
+
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
   nrs->o_prop.copyFrom(nrs->prop);
@@ -569,25 +556,39 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->cds->o_S.copyFrom(nrs->cds->S);
     nrs->cds->o_prop.copyFrom(nrs->cds->prop);
   }
+  if (options.compareArgs("MOVING MESH", "TRUE")) {
+    mesh->o_U.copyFrom(mesh->U);
+  }
 
   evaluateProperties(nrs, startTime);
+
   nrs->o_prop.copyTo(nrs->prop);
   if (nrs->Nscalar)
     nrs->cds->o_prop.copyTo(nrs->cds->prop);
 
   nek::ocopyToNek(startTime, 0);
 
+  // CVODE can only be initialized once the initial condition
+  // is known, however, a user may need to set function ptrs
+  // on to cvode_t object.
+  // Hence, the actual CVODE initialization part of cvode_t
+  // is done below.
+  if (nrs->cvode) {
+    nrs->cvode->initialize(nrs);
+  }
+
+  if (platform->comm.mpiRank == 0) std::cout << std::endl;
+  printMeshMetrics(nrs->_mesh);
+  
+  printICMinMax(nrs);
+
   // setup elliptic solvers
 
   if (nrs->Nscalar) {
     cds_t *cds = nrs->cds;
 
-    const int scalarWidth = getDigitsRepresentation(NSCALAR_MAX - 1);
-
     for (int is = 0; is < cds->NSfields; is++) {
-      std::stringstream ss;
-      ss << std::setfill('0') << std::setw(scalarWidth) << is;
-      std::string sid = ss.str();
+      std::string sid = scalarDigitStr(is);
 
       if (!cds->compute[is])
         continue;
@@ -595,146 +596,104 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       mesh_t *mesh;
       (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
 
+      const auto solverName = cds->cvodeSolve[is] ? "CVODE" : "ELLIPTIC";
       if (platform->comm.mpiRank == 0)
-        std::cout << "================= ELLIPTIC SETUP SCALAR" << sid << " ===============\n";
+        std::cout << "================= " << solverName << " SETUP SCALAR" << sid << " ===============\n";
 
       int nbrBIDs = bcMap::size(0);
       if (nrs->cht && is == 0)
         nbrBIDs = bcMap::size(1);
       for (int bID = 1; bID <= nbrBIDs; bID++) {
         std::string bcTypeText(bcMap::text(bID, "scalar" + sid));
-        if (platform->comm.mpiRank == 0)
+        if (platform->comm.mpiRank == 0 && bcTypeText.size())
           printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
       }
+
+      if (cds->cvodeSolve[is])
+        continue;
 
       cds->solver[is] = new elliptic_t();
       cds->solver[is]->name = "scalar" + sid;
       cds->solver[is]->blockSolver = 0;
       cds->solver[is]->Nfields = 1;
-      cds->solver[is]->Ntotal = nrs->fieldOffset;
+      cds->solver[is]->fieldOffset = nrs->fieldOffset;
       cds->solver[is]->o_wrk = o_mempoolElliptic;
       cds->solver[is]->mesh = mesh;
-      cds->solver[is]->dim = cds->dim;
       cds->solver[is]->elementType = cds->elementType;
 
-      const int coeffField = platform->options.compareArgs("SCALAR" + sid + " COEFF FIELD", "TRUE");
-      cds->solver[is]->coeffField = coeffField;
-      cds->solver[is]->coeffFieldPreco = coeffField;
       cds->solver[is]->poisson = 0;
 
-      platform->linAlg->fill(2 * nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
-      cds->solver[is]->o_lambda = cds->o_ellipticCoeff;
-      cds->solver[is]->loffset = 0;
-      cds->solver[is]->options = cds->options[is];
+      cds->setEllipticCoeffKernel(mesh->Nlocal,
+          cds->g0 * cds->idt,
+          cds->fieldOffsetScan[is],
+          nrs->fieldOffset,
+          0,
+          cds->o_diff,
+          cds->o_rho,
+          o_NULL,
+          cds->o_ellipticCoeff);
+
+      cds->solver[is]->o_lambda0 = cds->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
+      cds->solver[is]->o_lambda1 = cds->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
 
       cds->solver[is]->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
       for (dlong e = 0; e < mesh->Nelements; e++) {
         for (int f = 0; f < mesh->Nfaces; f++) {
           const int bID = mesh->EToB[f + e * mesh->Nfaces];
-          cds->solver[is]->EToB[f + e * mesh->Nfaces] = bcMap::type(bID, "scalar" + sid);
+          cds->solver[is]->EToB[f + e * mesh->Nfaces] = bcMap::ellipticType(bID, "scalar" + sid);
         }
       }
+
 
       ellipticSolveSetup(cds->solver[is]);
     }
   }
 
   if (nrs->flow) {
-
     if (platform->comm.mpiRank == 0)
       printf("================ ELLIPTIC SETUP VELOCITY ================\n");
 
     nrs->uvwSolver = NULL;
 
-    bool unalignedBoundary = bcMap::unalignedBoundary(mesh->cht, "velocity");
-    if (unalignedBoundary) {
-      if (!options.compareArgs("STRESSFORMULATION", "TRUE")) {
-        if (platform->comm.mpiRank == 0)
-          printf("ERROR: unaligned SHL/SYM boundaries require STRESSFORMULATION = TRUE\n");
-        ABORT(EXIT_FAILURE);
-      }
-    }
+    bool unalignedBoundary = bcMap::unalignedMixedBoundary("velocity");
+
+    nrsCheck(unalignedBoundary && !options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"),
+             platform->comm.mpiComm, 
+             EXIT_FAILURE, 
+             "SHL or unaligned SYM boundaries require solver = pcg+block\n", "");
 
     if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       nrs->uvwSolver = new elliptic_t();
 
     for (int bID = 1; bID <= bcMap::size(0); bID++) {
       std::string bcTypeText(bcMap::text(bID, "velocity"));
-      if (platform->comm.mpiRank == 0)
+      if (platform->comm.mpiRank == 0 && bcTypeText.size())
         printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
     }
 
-    nrs->vOptions = options;
-    nrs->vOptions.setArgs("PGMRES RESTART", options.getArgs("VELOCITY PGMRES RESTART"));
-    nrs->vOptions.setArgs("KRYLOV SOLVER", options.getArgs("VELOCITY KRYLOV SOLVER"));
-    nrs->vOptions.setArgs("SOLVER TOLERANCE", options.getArgs("VELOCITY SOLVER TOLERANCE"));
-    nrs->vOptions.setArgs("LINEAR SOLVER STOPPING CRITERION",
-                          options.getArgs("VELOCITY LINEAR SOLVER STOPPING CRITERION"));
-    nrs->vOptions.setArgs("DISCRETIZATION", options.getArgs("VELOCITY DISCRETIZATION"));
-    nrs->vOptions.setArgs("BASIS", options.getArgs("VELOCITY BASIS"));
-    nrs->vOptions.setArgs("PRECONDITIONER", options.getArgs("VELOCITY PRECONDITIONER"));
-    nrs->vOptions.setArgs("INITIAL GUESS", options.getArgs("VELOCITY INITIAL GUESS"));
-    nrs->vOptions.setArgs("RESIDUAL PROJECTION VECTORS",
-                          options.getArgs("VELOCITY RESIDUAL PROJECTION VECTORS"));
-    nrs->vOptions.setArgs("RESIDUAL PROJECTION START", options.getArgs("VELOCITY RESIDUAL PROJECTION START"));
-    nrs->vOptions.setArgs("MULTIGRID COARSENING", options.getArgs("VELOCITY MULTIGRID COARSENING"));
-    nrs->vOptions.setArgs("MULTIGRID SMOOTHER", options.getArgs("VELOCITY MULTIGRID SMOOTHER"));
-    nrs->vOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",
-                          options.getArgs("VELOCITY MULTIGRID CHEBYSHEV DEGREE"));
-    nrs->vOptions.setArgs("PARALMOND CYCLE", options.getArgs("VELOCITY PARALMOND CYCLE"));
-    nrs->vOptions.setArgs("PARALMOND SMOOTHER", options.getArgs("VELOCITY PARALMOND SMOOTHER"));
-    nrs->vOptions.setArgs("PARALMOND PARTITION", options.getArgs("VELOCITY PARALMOND PARTITION"));
-    nrs->vOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",
-                          options.getArgs("VELOCITY PARALMOND CHEBYSHEV DEGREE"));
-    nrs->vOptions.setArgs("PARALMOND AGGREGATION STRATEGY",
-                          options.getArgs("VELOCITY PARALMOND AGGREGATION STRATEGY"));
-    nrs->vOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("VELOCITY MAXIMUM ITERATIONS"));
-    nrs->vOptions.setArgs("STABILIZATION METHOD", options.getArgs("VELOCITY STABILIZATION METHOD"));
-    nrs->vOptions.setArgs("HPFRT STRENGTH", options.getArgs("VELOCITY HPFRT STRENGTH"));
-    nrs->vOptions.setArgs("HPFRT MODES", options.getArgs("VELOCITY HPFRT MODES"));
-
-    nrs->mOptions = options;
-    nrs->mOptions.setArgs("PGMRES RESTART", options.getArgs("MESH PGMRES RESTART"));
-    nrs->mOptions.setArgs("KRYLOV SOLVER", options.getArgs("MESH KRYLOV SOLVER"));
-    nrs->mOptions.setArgs("SOLVER TOLERANCE", options.getArgs("MESH SOLVER TOLERANCE"));
-    nrs->mOptions.setArgs("DISCRETIZATION", options.getArgs("MESH DISCRETIZATION"));
-    nrs->mOptions.setArgs("BASIS", options.getArgs("MESH BASIS"));
-    nrs->mOptions.setArgs("PRECONDITIONER", options.getArgs("MESH PRECONDITIONER"));
-    nrs->mOptions.setArgs("INITIAL GUESS", options.getArgs("MESH INITIAL GUESS"));
-    nrs->mOptions.setArgs("RESIDUAL PROJECTION VECTORS", options.getArgs("MESH RESIDUAL PROJECTION VECTORS"));
-    nrs->mOptions.setArgs("RESIDUAL PROJECTION START", options.getArgs("MESH RESIDUAL PROJECTION START"));
-    nrs->mOptions.setArgs("MULTIGRID COARSENING", options.getArgs("MESH MULTIGRID COARSENING"));
-    nrs->mOptions.setArgs("MULTIGRID SMOOTHER", options.getArgs("MESH MULTIGRID SMOOTHER"));
-    nrs->mOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE", options.getArgs("MESH MULTIGRID CHEBYSHEV DEGREE"));
-    nrs->mOptions.setArgs("PARALMOND CYCLE", options.getArgs("MESH PARALMOND CYCLE"));
-    nrs->mOptions.setArgs("PARALMOND SMOOTHER", options.getArgs("MESH PARALMOND SMOOTHER"));
-    nrs->mOptions.setArgs("PARALMOND PARTITION", options.getArgs("MESH PARALMOND PARTITION"));
-    nrs->mOptions.setArgs("PARALMOND CHEBYSHEV DEGREE", options.getArgs("MESH PARALMOND CHEBYSHEV DEGREE"));
-    nrs->mOptions.setArgs("PARALMOND AGGREGATION STRATEGY",
-                          options.getArgs("MESH PARALMOND AGGREGATION STRATEGY"));
-    nrs->mOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("MESH MAXIMUM ITERATIONS"));
-
-    // coeff used by ellipticSetup to detect allNeumann
-    platform->linAlg->fill(2 * nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
-
-    const int velCoeffField = platform->options.compareArgs("VELOCITY COEFF FIELD", "TRUE");
+    nrs->setEllipticCoeffKernel(mesh->Nlocal,
+      nrs->g0 * nrs->idt,
+      0 * nrs->fieldOffset,
+      nrs->fieldOffset,
+      0,
+      nrs->o_mue,
+      nrs->o_rho,
+      o_NULL,
+      nrs->o_ellipticCoeff);
 
     if (nrs->uvwSolver) {
+      nrs->uvwSolver->name = "velocity";
       nrs->uvwSolver->blockSolver = 1;
       nrs->uvwSolver->stressForm = 0;
-      if (options.compareArgs("STRESSFORMULATION", "TRUE"))
+      if (options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
         nrs->uvwSolver->stressForm = 1;
       nrs->uvwSolver->Nfields = nrs->NVfields;
-      nrs->uvwSolver->Ntotal = nrs->fieldOffset;
+      nrs->uvwSolver->fieldOffset = nrs->fieldOffset;
       nrs->uvwSolver->o_wrk = o_mempoolElliptic;
       nrs->uvwSolver->mesh = mesh;
-      nrs->uvwSolver->options = nrs->vOptions;
-      nrs->uvwSolver->dim = nrs->dim;
       nrs->uvwSolver->elementType = nrs->elementType;
-      nrs->uvwSolver->coeffField = velCoeffField;
-      nrs->uvwSolver->coeffFieldPreco = velCoeffField;
-      nrs->uvwSolver->o_lambda = nrs->o_ellipticCoeff;
-      nrs->uvwSolver->loffset = 0; // use same ellipticCoeff for u,v and w
+      nrs->uvwSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
+      nrs->uvwSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
       nrs->uvwSolver->poisson = 0;
       nrs->uvwSolver->EToB =
           (int *)calloc(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields, sizeof(int));
@@ -750,21 +709,24 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
           for (int f = 0; f < mesh->Nfaces; f++) {
             const int offset = fld * mesh->Nelements * mesh->Nfaces;
             const int bID = mesh->EToB[f + e * mesh->Nfaces];
-            nrs->uvwSolver->EToB[f + e * mesh->Nfaces + offset] = bcMap::type(bID, key);
+            nrs->uvwSolver->EToB[f + e * mesh->Nfaces + offset] = bcMap::ellipticType(bID, key);
           }
         }
       }
 
-      ellipticSolveSetup(nrs->uvwSolver);
       if (unalignedBoundary) {
-        nrs->o_zeroNormalMaskVelocity = platform->device.malloc((3 * sizeof(dfloat)) * nrs->fieldOffset);
-        nrs->o_EToBVVelocity = platform->device.malloc(nrs->meshV->Nlocal * sizeof(dlong));
+        nrs->o_zeroNormalMaskVelocity =
+            platform->device.malloc((nrs->uvwSolver->Nfields * sizeof(dfloat)) * nrs->uvwSolver->fieldOffset);
+        nrs->o_EToBVVelocity = platform->device.malloc(nrs->meshV->Nlocal * sizeof(int));
         createEToBV(nrs->meshV, nrs->uvwSolver->EToB, nrs->o_EToBVVelocity);
-        createZeroNormalMask(nrs, nrs->uvwSolver->o_EToB, nrs->o_EToBVVelocity, nrs->o_zeroNormalMaskVelocity);
+        auto o_EToB = 
+          platform->device.malloc(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields * sizeof(int), nrs->uvwSolver->EToB); 
+        createZeroNormalMask(nrs, mesh, o_EToB, nrs->o_EToBVVelocity, nrs->o_zeroNormalMaskVelocity);
 
         nrs->uvwSolver->applyZeroNormalMask =
-            [nrs](dlong Nelements, occa::memory &o_elementList, occa::memory &o_x) {
+            [nrs, mesh](dlong Nelements, occa::memory &o_elementList, occa::memory &o_x) {
               applyZeroNormalMask(nrs,
+                                  mesh,
                                   Nelements,
                                   o_elementList,
                                   nrs->uvwSolver->o_EToB,
@@ -772,88 +734,71 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
                                   o_x);
             };
       }
+      ellipticSolveSetup(nrs->uvwSolver);
     }
     else {
       nrs->uSolver = new elliptic_t();
+      nrs->uSolver->name = "velocity";
       nrs->uSolver->blockSolver = 0;
       nrs->uSolver->Nfields = 1;
-      nrs->uSolver->Ntotal = nrs->fieldOffset;
+      nrs->uSolver->fieldOffset = nrs->fieldOffset;
       nrs->uSolver->o_wrk = o_mempoolElliptic;
       nrs->uSolver->mesh = mesh;
-      nrs->uSolver->options = nrs->vOptions;
-      nrs->uSolver->dim = nrs->dim;
       nrs->uSolver->elementType = nrs->elementType;
-      nrs->uSolver->coeffField = velCoeffField;
-      nrs->uSolver->coeffFieldPreco = velCoeffField;
-      nrs->uSolver->o_lambda = nrs->o_ellipticCoeff;
-      nrs->uSolver->loffset = 0;
+      nrs->uSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
+      nrs->uSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
       nrs->uSolver->poisson = 0;
       nrs->uSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
       for (dlong e = 0; e < mesh->Nelements; e++) {
         for (int f = 0; f < mesh->Nfaces; f++) {
           const int bID = mesh->EToB[f + e * mesh->Nfaces];
-          nrs->uSolver->EToB[f + e * mesh->Nfaces] = bcMap::type(bID, "x-velocity");
+          nrs->uSolver->EToB[f + e * mesh->Nfaces] = bcMap::ellipticType(bID, "x-velocity");
         }
       }
 
       ellipticSolveSetup(nrs->uSolver);
 
       nrs->vSolver = new elliptic_t();
+      nrs->vSolver->name = "velocity";
       nrs->vSolver->blockSolver = 0;
       nrs->vSolver->Nfields = 1;
-      nrs->vSolver->Ntotal = nrs->fieldOffset;
+      nrs->vSolver->fieldOffset = nrs->fieldOffset;
       nrs->vSolver->o_wrk = o_mempoolElliptic;
       nrs->vSolver->mesh = mesh;
-      nrs->vSolver->options = nrs->vOptions;
-      nrs->vSolver->dim = nrs->dim;
       nrs->vSolver->elementType = nrs->elementType;
-      nrs->vSolver->coeffField = velCoeffField;
-      nrs->vSolver->coeffFieldPreco = velCoeffField;
-      nrs->vSolver->o_lambda = nrs->o_ellipticCoeff;
-      nrs->vSolver->loffset = 0;
+      nrs->vSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
+      nrs->vSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
       nrs->vSolver->poisson = 0;
       nrs->vSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
       for (dlong e = 0; e < mesh->Nelements; e++) {
         for (int f = 0; f < mesh->Nfaces; f++) {
           const int bID = mesh->EToB[f + e * mesh->Nfaces];
-          nrs->vSolver->EToB[f + e * mesh->Nfaces] = bcMap::type(bID, "y-velocity");
+          nrs->vSolver->EToB[f + e * mesh->Nfaces] = bcMap::ellipticType(bID, "y-velocity");
         }
       }
 
       ellipticSolveSetup(nrs->vSolver);
 
       nrs->wSolver = new elliptic_t();
+      nrs->wSolver->name = "velocity";
       nrs->wSolver->blockSolver = 0;
       nrs->wSolver->Nfields = 1;
-      nrs->wSolver->Ntotal = nrs->fieldOffset;
+      nrs->wSolver->fieldOffset = nrs->fieldOffset;
       nrs->wSolver->o_wrk = o_mempoolElliptic;
       nrs->wSolver->mesh = mesh;
-      nrs->wSolver->options = nrs->vOptions;
-      nrs->wSolver->dim = nrs->dim;
       nrs->wSolver->elementType = nrs->elementType;
-      nrs->wSolver->coeffField = velCoeffField;
-      nrs->wSolver->coeffFieldPreco = velCoeffField;
-      nrs->wSolver->o_lambda = nrs->o_ellipticCoeff;
-      nrs->wSolver->loffset = 0;
+      nrs->wSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
+      nrs->wSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
       nrs->wSolver->poisson = 0;
       nrs->wSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
       for (dlong e = 0; e < mesh->Nelements; e++) {
         for (int f = 0; f < mesh->Nfaces; f++) {
           const int bID = mesh->EToB[f + e * mesh->Nfaces];
-          nrs->wSolver->EToB[f + e * mesh->Nfaces] = bcMap::type(bID, "z-velocity");
+          nrs->wSolver->EToB[f + e * mesh->Nfaces] = bcMap::ellipticType(bID, "z-velocity");
         }
       }
 
       ellipticSolveSetup(nrs->wSolver);
-    }
-
-    if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE")) {
-      nrs->uvwSolver->name = "velocity";
-    }
-    else {
-      nrs->uSolver->name = "x-velocity";
-      nrs->vSolver->name = "y-velocity";
-      nrs->wSolver->name = "z-velocity";
     }
   } // flow
 
@@ -861,168 +806,121 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if (platform->comm.mpiRank == 0)
       printf("================ ELLIPTIC SETUP PRESSURE ================\n");
 
-    nrs->pOptions = options;
-    nrs->pOptions.setArgs("PGMRES RESTART", options.getArgs("PRESSURE PGMRES RESTART"));
-    nrs->pOptions.setArgs("KRYLOV SOLVER", options.getArgs("PRESSURE KRYLOV SOLVER"));
-    nrs->pOptions.setArgs("SOLVER TOLERANCE", options.getArgs("PRESSURE SOLVER TOLERANCE"));
-    nrs->pOptions.setArgs("LINEAR SOLVER STOPPING CRITERION",
-                          options.getArgs("PRESSURE LINEAR SOLVER STOPPING CRITERION"));
-    nrs->pOptions.setArgs("DISCRETIZATION", options.getArgs("PRESSURE DISCRETIZATION"));
-    nrs->pOptions.setArgs("BASIS", options.getArgs("PRESSURE BASIS"));
-    nrs->pOptions.setArgs("PRECONDITIONER", options.getArgs("PRESSURE PRECONDITIONER"));
-    nrs->pOptions.setArgs("COARSE SOLVER", options.getArgs("PRESSURE COARSE SOLVER"));
-    nrs->pOptions.setArgs("COARSE SOLVER PRECISION", options.getArgs("PRESSURE COARSE SOLVER PRECISION"));
-    if (platform->device.mode() == "Serial")
-     options.setArgs("PRESSURE COARSE SOLVER LOCATION","CPU"); 
-    nrs->pOptions.setArgs("COARSE SOLVER LOCATION", options.getArgs("PRESSURE COARSE SOLVER LOCATION"));
-    nrs->pOptions.setArgs("GALERKIN COARSE OPERATOR", options.getArgs("PRESSURE GALERKIN COARSE OPERATOR"));
-    nrs->pOptions.setArgs("MULTIGRID COARSENING", options.getArgs("PRESSURE MULTIGRID COARSENING"));
-    nrs->pOptions.setArgs("MULTIGRID SMOOTHER", options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
-    nrs->pOptions.setArgs("MULTIGRID COARSE SOLVE", options.getArgs("PRESSURE MULTIGRID COARSE SOLVE"));
-    nrs->pOptions.setArgs("MULTIGRID SEMFEM", options.getArgs("PRESSURE MULTIGRID SEMFEM"));
-    nrs->pOptions.setArgs("MULTIGRID DOWNWARD SMOOTHER",
-                          options.getArgs("PRESSURE MULTIGRID DOWNWARD SMOOTHER"));
-    nrs->pOptions.setArgs("MULTIGRID UPWARD SMOOTHER", options.getArgs("PRESSURE MULTIGRID UPWARD SMOOTHER"));
-    nrs->pOptions.setArgs("MULTIGRID CHEBYSHEV DEGREE",
-                          options.getArgs("PRESSURE MULTIGRID CHEBYSHEV DEGREE"));
-    nrs->pOptions.setArgs("PARALMOND CYCLE", options.getArgs("PRESSURE PARALMOND CYCLE"));
-    nrs->pOptions.setArgs("PARALMOND SMOOTHER", options.getArgs("PRESSURE MULTIGRID SMOOTHER"));
-    nrs->pOptions.setArgs("PARALMOND PARTITION", options.getArgs("PRESSURE PARALMOND PARTITION"));
-    nrs->pOptions.setArgs("PARALMOND CHEBYSHEV DEGREE",
-                          options.getArgs("PRESSURE PARALMOND CHEBYSHEV DEGREE"));
-    nrs->pOptions.setArgs("PARALMOND AGGREGATION STRATEGY",
-                          options.getArgs("PRESSURE PARALMOND AGGREGATION STRATEGY"));
-    nrs->pOptions.setArgs("INITIAL GUESS", options.getArgs("PRESSURE INITIAL GUESS"));
-    nrs->pOptions.setArgs("RESIDUAL PROJECTION VECTORS",
-                          options.getArgs("PRESSURE RESIDUAL PROJECTION VECTORS"));
-    nrs->pOptions.setArgs("RESIDUAL PROJECTION START", options.getArgs("PRESSURE RESIDUAL PROJECTION START"));
-    nrs->pOptions.setArgs("MULTIGRID VARIABLE COEFFICIENT", "FALSE");
-    nrs->pOptions.setArgs("MAXIMUM ITERATIONS", options.getArgs("PRESSURE MAXIMUM ITERATIONS"));
-    nrs->pOptions.setArgs("MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR",
-                          options.getArgs("PRESSURE MULTIGRID CHEBYSHEV MAX EIGENVALUE BOUND FACTOR"));
-    nrs->pOptions.setArgs("MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR",
-                          options.getArgs("PRESSURE MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR"));
-
     nrs->pSolver = new elliptic_t();
     nrs->pSolver->name = "pressure";
     nrs->pSolver->blockSolver = 0;
     nrs->pSolver->Nfields = 1;
-    nrs->pSolver->Ntotal = nrs->fieldOffset;
+    nrs->pSolver->fieldOffset = nrs->fieldOffset;
     nrs->pSolver->o_wrk = o_mempoolElliptic;
     nrs->pSolver->mesh = mesh;
-    nrs->pSolver->dim = nrs->dim;
     nrs->pSolver->elementType = nrs->elementType;
 
-    int pCoeffField = 0;
-    if (platform->options.compareArgs("LOWMACH", "TRUE"))
-      pCoeffField = 1; // rho varies in space
-
-    nrs->pSolver->coeffField = pCoeffField;
-    nrs->pSolver->coeffFieldPreco = pCoeffField;
     nrs->pSolver->poisson = 1;
 
     // lambda0 = 1/rho  lambda1 = 0
-    platform->linAlg->fill(2 * nrs->fieldOffset, 0.0, nrs->o_ellipticCoeff);
-    nrs->o_ellipticCoeff.copyFrom(nrs->o_rho, nrs->fieldOffset * sizeof(dfloat));
-    platform->linAlg->ady(mesh->Nlocal, 1.0, nrs->o_ellipticCoeff);
-    nrs->pSolver->o_lambda = nrs->o_ellipticCoeff;
-    nrs->pSolver->loffset = 0; // Poisson
-    nrs->pSolver->options = nrs->pOptions;
-    {
-      const std::vector<int> levels = determineMGLevels("pressure");
-      nrs->pSolver->nLevels = levels.size();
-      nrs->pSolver->levels = (int *)calloc(nrs->pSolver->nLevels, sizeof(int));
-      for (int i = 0; i < nrs->pSolver->nLevels; ++i)
-        nrs->pSolver->levels[i] = levels.at(i);
-    }
+    nrs->setEllipticCoeffPressureKernel(
+      mesh->Nlocal, 
+      nrs->fieldOffset, 
+      nrs->o_rho, 
+      nrs->o_ellipticCoeff);
+
+    nrs->pSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
+    nrs->pSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+
     nrs->pSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
     for (dlong e = 0; e < mesh->Nelements; e++) {
       for (int f = 0; f < mesh->Nfaces; f++) {
         const int bID = mesh->EToB[f + e * mesh->Nfaces];
-        nrs->pSolver->EToB[f + e * mesh->Nfaces] = bcMap::type(bID, "pressure");
+        nrs->pSolver->EToB[f + e * mesh->Nfaces] = bcMap::ellipticType(bID, "pressure");
       }
     }
 
     ellipticSolveSetup(nrs->pSolver);
 
   } // flow
-  if (nrs->flow) {
 
-    if (options.compareArgs("MESH SOLVER", "ELASTICITY")) {
+  if (!options.compareArgs("MESH SOLVER", "NONE")) {
+    mesh_t *mesh = nrs->_mesh;
 
-      bool unalignedBoundary = bcMap::unalignedBoundary(mesh->cht, "mesh");
-      if (unalignedBoundary) {
-        if (platform->comm.mpiRank == 0) {
-          printf("ERROR: unaligned SYM/SHL boundary condition are currently not supported with the mesh "
-                 "solver.\n");
-        }
-        ABORT(EXIT_FAILURE);
-      }
+    if (platform->comm.mpiRank == 0)
+      printf("================ ELLIPTIC SETUP MESH ================\n");
 
-      if (platform->comm.mpiRank == 0)
-        printf("================ ELLIPTIC SETUP MESH ================\n");
+    int nbrBIDs = bcMap::size(0);
+    if (nrs->cht)
+      nbrBIDs = bcMap::size(1);
 
-      for (int bID = 1; bID <= bcMap::size(0); bID++) {
-        std::string bcTypeText(bcMap::text(bID, "mesh"));
-        if (platform->comm.mpiRank == 0)
-          printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
-      }
+    for (int bID = 1; bID <= nbrBIDs; bID++) {
+      std::string bcTypeText(bcMap::text(bID, "mesh"));
+      if (platform->comm.mpiRank == 0 && bcTypeText.size())
+        printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
+    }
 
-      const int meshCoeffField = platform->options.compareArgs("MESH COEFF FIELD", "TRUE");
-      platform->linAlg->fill(2 * nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
+    nrs->setEllipticCoeffKernel(
+      mesh->Nlocal,
+      1.0,
+      0 * nrs->fieldOffset,
+      nrs->fieldOffset,
+      0,
+      nrs->o_meshMue,
+      nrs->o_meshRho,
+      o_NULL,
+      nrs->o_ellipticCoeff);
 
-      nrs->meshSolver = new elliptic_t();
-      nrs->meshSolver->name = "mesh";
-      nrs->meshSolver->blockSolver = 1;
+    nrs->meshSolver = new elliptic_t();
+    nrs->meshSolver->name = "mesh";
+    nrs->meshSolver->blockSolver = 1;
+    nrs->meshSolver->stressForm = 0;
+    if (options.compareArgs("MESH STRESSFORMULATION", "TRUE"))
       nrs->meshSolver->stressForm = 1;
-      nrs->meshSolver->Nfields = nrs->NVfields;
-      nrs->meshSolver->Ntotal = nrs->fieldOffset;
-      nrs->meshSolver->o_wrk = o_mempoolElliptic;
-      nrs->meshSolver->mesh = mesh;
-      nrs->meshSolver->options = nrs->mOptions;
-      nrs->meshSolver->dim = nrs->dim;
-      nrs->meshSolver->elementType = nrs->elementType;
-      nrs->meshSolver->coeffField = meshCoeffField;
-      nrs->meshSolver->coeffFieldPreco = meshCoeffField;
-      nrs->meshSolver->o_lambda = nrs->o_ellipticCoeff;
-      nrs->meshSolver->loffset = 0; // use same ellipticCoeff for u,v and w
-      nrs->meshSolver->poisson = 0;
+    nrs->meshSolver->Nfields = nrs->NVfields;
+    nrs->meshSolver->fieldOffset = nrs->fieldOffset;
+    nrs->meshSolver->o_wrk = o_mempoolElliptic;
+    nrs->meshSolver->mesh = mesh;
+    nrs->meshSolver->elementType = nrs->elementType;
+    nrs->meshSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
+    nrs->meshSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+    nrs->meshSolver->poisson = 0;
 
-      nrs->meshSolver->EToB =
-          (int *)calloc(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields, sizeof(int));
-      for (int fld = 0; fld < nrs->meshSolver->Nfields; fld++) {
-        std::string key;
-        if (fld == 0)
-          key = "x-mesh";
-        if (fld == 1)
-          key = "y-mesh";
-        if (fld == 2)
-          key = "z-mesh";
-        for (dlong e = 0; e < mesh->Nelements; e++) {
-          for (int f = 0; f < mesh->Nfaces; f++) {
-            const int offset = fld * mesh->Nelements * mesh->Nfaces;
-            const int bID = mesh->EToB[f + e * mesh->Nfaces];
-            nrs->meshSolver->EToB[f + e * mesh->Nfaces + offset] = bcMap::type(bID, key);
-          }
+    nrs->meshSolver->EToB =
+        (int *)calloc(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields, sizeof(int));
+    for (int fld = 0; fld < nrs->meshSolver->Nfields; fld++) {
+      std::string key;
+      if (fld == 0)
+        key = "x-mesh";
+      if (fld == 1)
+        key = "y-mesh";
+      if (fld == 2)
+        key = "z-mesh";
+      for (dlong e = 0; e < mesh->Nelements; e++) {
+        for (int f = 0; f < mesh->Nfaces; f++) {
+          const int offset = fld * mesh->Nelements * mesh->Nfaces;
+          const int bID = mesh->EToB[f + e * mesh->Nfaces];
+          nrs->meshSolver->EToB[f + e * mesh->Nfaces + offset] = bcMap::ellipticType(bID, key);
         }
-      }
-
-      ellipticSolveSetup(nrs->meshSolver);
-      if (unalignedBoundary) {
-        nrs->o_zeroNormalMaskMeshVelocity = platform->device.malloc((3 * sizeof(dfloat)) * nrs->fieldOffset);
-        nrs->o_EToBVMeshVelocity = platform->device.malloc(nrs->meshV->Nlocal * sizeof(dlong));
-        createEToBV(nrs->meshV, nrs->meshSolver->EToB, nrs->o_EToBVMeshVelocity);
-        createZeroNormalMask(nrs, nrs->meshSolver->o_EToB, nrs->o_EToBVMeshVelocity, nrs->o_zeroNormalMaskMeshVelocity);
-        nrs->meshSolver->applyZeroNormalMask =
-            [nrs](dlong Nelements, occa::memory &o_elementList, occa::memory &o_x) {
-              applyZeroNormalMask(nrs,
-                                  Nelements,
-                                  o_elementList,
-                                  nrs->meshSolver->o_EToB,
-                                  nrs->o_zeroNormalMaskMeshVelocity,
-                                  o_x);
-            };
       }
     }
+
+    bool unalignedBoundary = bcMap::unalignedMixedBoundary("mesh");
+    if (unalignedBoundary) {
+      nrs->o_zeroNormalMaskMeshVelocity = 
+        platform->device.malloc((nrs->meshSolver->Nfields * sizeof(dfloat)) * 
+                                nrs->meshSolver->fieldOffset);
+      nrs->o_EToBVMeshVelocity = platform->device.malloc(mesh->Nlocal * sizeof(int));
+      auto o_EToB =
+          platform->device.malloc(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields * sizeof(int), nrs->meshSolver->EToB);
+      createEToBV(mesh, nrs->meshSolver->EToB, nrs->o_EToBVMeshVelocity);
+      createZeroNormalMask(nrs, mesh, o_EToB, nrs->o_EToBVMeshVelocity, nrs->o_zeroNormalMaskMeshVelocity);
+      nrs->meshSolver->applyZeroNormalMask =
+          [nrs, mesh](dlong Nelements, occa::memory &o_elementList, occa::memory &o_x) {
+            applyZeroNormalMask(nrs,
+                                mesh,
+                                Nelements,
+                                o_elementList,
+                                nrs->meshSolver->o_EToB,
+                                nrs->o_zeroNormalMaskMeshVelocity,
+                                o_x);
+          };
+    }
+    ellipticSolveSetup(nrs->meshSolver);
   }
 }

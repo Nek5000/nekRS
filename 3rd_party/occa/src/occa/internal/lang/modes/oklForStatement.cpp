@@ -44,6 +44,19 @@ namespace occa {
           && hasValidCheck()
           && hasValidUpdate()
         );
+
+        if(valid) {
+          exprNode* loop_range_node = getIterationCount();
+          if (loop_range_node->canEvaluate()) {
+            int loop_range = loop_range_node->evaluate();
+            if (!(0 < loop_range)) {
+              valid = false;
+              if(printErrors_)
+                forSmnt_.printError("OKL for loop range is empty or infinite!");
+            }
+          }
+          delete loop_range_node;
+        }
       }
 
       bool oklForStatement::isValid() {
@@ -62,36 +75,62 @@ namespace occa {
 
       bool oklForStatement::hasValidInit() {
         statement_t &initSmnt = *(forSmnt.init);
-        // Check for declaration
-        if (initSmnt.type() != statementType::declaration) {
-          if (printErrors) {
-            initSmnt.printError(sourceStr() + "Expected a declaration statement");
-          }
+        const auto init_statement_type = initSmnt.type();
+        
+        if(statementType::empty == init_statement_type) {
+          if(printErrors)
+            initSmnt.printError(sourceStr() 
+              + "OKL for loop init-statement cannot be be a null statement");
           return false;
         }
+
+        if(statementType::declaration != init_statement_type) {
+          if(printErrors)
+            initSmnt.printError(sourceStr()
+              + "OKL for loop init-statement must be a simple declaration with initializer");
+          return false;
+        }
+
         // Can only have one declaration
         declarationStatement &declSmnt = (declarationStatement&) initSmnt;
+        
         if (declSmnt.declarations.size() > 1) {
           if (printErrors) {
             declSmnt.declarations[1].printError(
-              sourceStr() + "Can only have 1 iterator variable"
+              sourceStr() + "OKL for loops can only have 1 iterator variable"
             );
           }
           return false;
         }
+        
         // Get iterator and value
         variableDeclaration &decl = declSmnt.declarations[0];
         iterator  = &decl.variable();
+        if(!(iterator->isNamed())) {
+          if(printErrors)
+            declSmnt.printError(sourceStr() 
+              + "OKL for loop variable does not have a name.");
+          return false;
+        }
+
+        if(!decl.hasValue()) {
+          if(printErrors)
+            decl.printError(sourceStr()
+              + "OKL for loop variable is not initialized.");
+          return false;
+        }
         initValue = decl.value;
-        // Valid types: {char, short, int, long}
+        // Valid types: {char, short, int, long, ptrdiff_t, size_t}
         const type_t *type = iterator->vartype.flatten().type;
         if (!type ||
             ((*type != char_)  &&
              (*type != short_) &&
-             (*type != int_))) {
+             (*type != int_) &&
+             (*type != ptrdiff_t_) &&
+             (*type != size_t_))) {
           if (printErrors) {
             iterator->printError(sourceStr() + "Iterator variable needs to be of type"
-                                 " [char, short, int, long]");
+                                 " [char, short, int, long, ptrdiff_t, size_t]");
           }
           return false;
         }
@@ -263,14 +302,17 @@ namespace occa {
         if (!valid) {
           return NULL;
         }
-
         exprNode *initInParen = initValue->wrapInParentheses();
-        exprNode *count = (
-          new binaryOpNode(iterator->source,
-                           positiveUpdate ? op::sub : op::add,
-                           *checkValue,
-                           *initInParen)
-        );
+        
+        //If incrementing, assume loop bound is large than initial value
+        //If decrementing: assume initial value is larger than loop bound
+        exprNode *smaller = (positiveUpdate) ? initInParen : checkValue;
+        exprNode *larger  = (positiveUpdate) ? checkValue : initInParen;
+        exprNode *count = (new binaryOpNode(iterator->source,
+                           op::sub,
+                           *larger,
+                           *smaller)
+        );  
         delete initInParen;
 
         if (checkIsInclusive) {
@@ -278,29 +320,34 @@ namespace occa {
 
           exprNode *countWithInc = (
             new binaryOpNode(iterator->source,
-                             positiveUpdate ? op::sub : op::add,
-                             *count,
-                             inc)
+                             op::add,
+                             inc,
+                             *count)
           );
           delete count;
           count = countWithInc;
         }
 
         if (updateValue) {
+          // ceil(n/m) = floor((n+m-1)/m)
           exprNode *updateInParen = updateValue->wrapInParentheses();
+          binaryOpNode countPlusUpdate(
+            iterator->source,
+            op::add,
+            *count,
+            *updateInParen
+          );
 
           primitiveNode one(iterator->source, 1);
-          binaryOpNode boundCheck(iterator->source,
-                                  positiveUpdate ? op::add : op::sub,
-                                  *count,
-                                  *updateInParen);
-          binaryOpNode boundCheck2(iterator->source,
-                                   positiveUpdate ? op::sub : op::add,
-                                   boundCheck,
-                                   one);
-          exprNode *boundCheckInParen = boundCheck2.wrapInParentheses();
+          binaryOpNode countPlusUpdateMinusOne(
+            iterator->source,
+            op::sub,
+            countPlusUpdate,
+            one
+          );
+          exprNode *boundCheckInParen = countPlusUpdateMinusOne.wrapInParentheses();
 
-          exprNode *countWithUpdate = (
+          exprNode *ceilingQuotient = (
             new binaryOpNode(iterator->source,
                              op::div,
                              *boundCheckInParen,
@@ -309,7 +356,7 @@ namespace occa {
           delete count;
           delete updateInParen;
           delete boundCheckInParen;
-          count = countWithUpdate;
+          count = ceilingQuotient;
         }
 
         return count;
@@ -389,7 +436,8 @@ namespace occa {
               + path.filter(isInnerOklLoop).length()
             );
 
-            if (innerCount > maxInnerCount) {
+            if (innerCount > maxInnerCount)
+            {
               maxInnerCount = innerCount;
             }
           });

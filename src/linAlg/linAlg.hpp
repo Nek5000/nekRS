@@ -163,6 +163,11 @@ public:
   // \max o_a
   dfloat max(const dlong N, occa::memory& o_a, MPI_Comm _comm);
 
+  // ||o_a||_\infty
+  dfloat amax(const dlong N, occa::memory &o_a, MPI_Comm _comm);
+  dfloat
+  amaxMany(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory &o_a, MPI_Comm _comm);
+
   // ||o_a||_2
   dfloat norm2(const dlong N, occa::memory& o_a, MPI_Comm _comm);
   dfloat norm2Many(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, MPI_Comm _comm);
@@ -216,6 +221,9 @@ public:
                     occa::memory &o_z);
 
   void unitVector(const dlong N, const dlong fieldOffset, occa::memory &o_v);
+  
+  // o_b[n] = \sqrt{\sum_{i=0}^{Nfields-1} o_a[n+i*fieldOffset]^2}
+  void entrywiseMag(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory& o_a, occa::memory& o_b);
 
   occa::kernel fillKernel;
   occa::kernel pfillKernel;
@@ -251,6 +259,8 @@ public:
   occa::kernel sumFieldKernel;
   occa::kernel minKernel;
   occa::kernel maxKernel;
+  occa::kernel amaxKernel;
+  occa::kernel amaxManyKernel;
   occa::kernel norm2Kernel;
   occa::kernel norm2ManyKernel;
   occa::kernel norm1Kernel;
@@ -266,6 +276,7 @@ public:
   occa::kernel weightedInnerProdMultiDeviceKernel;
   occa::kernel crossProductKernel;
   occa::kernel unitVectorKernel;
+  occa::kernel entrywiseMagKernel;
 };
 
 #endif

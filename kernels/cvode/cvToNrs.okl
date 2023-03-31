@@ -1,0 +1,20 @@
+@kernel void cvToNrs(const dlong N,
+                  const dlong NV,
+                  const dlong Nscalars,
+                  const dlong EFieldOffset,
+                  const dlong LFieldOffset,
+                  @restrict const dlong * cvodeFieldToScalarField,
+                  @restrict const dlong * EToL,
+                  @restrict const dfloat* LField,
+                  @restrict dfloat      * EField){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    const dlong lid = EToL[n];
+    for(dlong fld=0;fld<Nscalars;++fld){
+      const dlong scalarField = cvodeFieldToScalarField[fld];
+      bool isInMesh = scalarField == 0 || n < NV;
+      if(isInMesh){
+        EField[n + EFieldOffset * scalarField] = LField[lid + LFieldOffset * fld];
+      }
+    }
+  }
+}

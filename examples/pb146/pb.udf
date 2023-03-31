@@ -1,15 +1,13 @@
 //
 // nekRS User Defined File
 //
-
-#include <math.h>
 #include "udf.hpp"
 
-/* UDF Functions */                                                      
+#ifdef __okl__
 
-void UDF_LoadKernels(occa::properties& kernelInfo)
-{
-}
+#include "pb.oudf"
+
+#endif
 
 void UDF_Setup(nrs_t *nrs)
 {

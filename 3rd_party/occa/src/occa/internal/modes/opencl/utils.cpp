@@ -17,26 +17,6 @@ namespace occa {
       clProgram(NULL),
       clKernel(NULL) {}
 
-    namespace info {
-      std::string deviceType(int type) {
-        if (type & CPU)     return "CPU";
-        if (type & GPU)     return "GPU";
-        if (type & FPGA)    return "FPGA";
-        if (type & XeonPhi) return "Xeon Phi";
-
-        return "N/A";
-      }
-
-      std::string vendor(int type) {
-        if (type & Intel)  return "Intel";
-        if (type & AMD)    return "AMD";
-        if (type & NVIDIA) return "NVIDIA";
-        if (type & Altera) return "Altera";
-
-        return "N/A";
-      }
-    }
-
     bool isEnabled() {
       cl_uint platformCount = 0;
       cl_int error = clGetPlatformIDs(0, NULL, &platformCount);
@@ -51,19 +31,8 @@ namespace occa {
       return false;
     }
 
-    cl_device_type deviceType(int type) {
-      cl_device_type ret = 0;
-
-      if (type & info::CPU)     ret |= CL_DEVICE_TYPE_CPU;
-      if (type & info::GPU)     ret |= CL_DEVICE_TYPE_GPU;
-      if (type & info::FPGA)    ret |= CL_DEVICE_TYPE_ACCELERATOR;
-      if (type & info::XeonPhi) ret |= CL_DEVICE_TYPE_ACCELERATOR;
-
-      return ret;
-    }
-
     int getPlatformCount() {
-      cl_uint platformCount;
+      cl_uint platformCount = 0;
 
       OCCA_OPENCL_ERROR("OpenCL: Get Platform ID Count",
                         clGetPlatformIDs(0, NULL, &platformCount));
@@ -84,7 +53,95 @@ namespace occa {
       return ret;
     }
 
-    int getDeviceCount(int type) {
+    std::string platformStrInfo(cl_platform_id clPID,
+                              cl_platform_info clInfo) {
+      size_t bytes = 0;
+
+      OCCA_OPENCL_ERROR("OpenCL: Getting Platform String Info",
+                        clGetPlatformInfo(clPID,
+                                        clInfo,
+                                        0, NULL, &bytes));
+
+      char *buffer  = new char[bytes + 1];
+      buffer[bytes] = '\0';
+
+      OCCA_OPENCL_ERROR("OpenCL: Getting Platform String Info",
+                        clGetPlatformInfo(clPID,
+                                        clInfo,
+                                        bytes, buffer, NULL));
+
+      std::string ret = buffer;
+
+      delete [] buffer;
+
+      size_t firstNS = ret.size();
+      size_t lastNS  = ret.size();
+
+      size_t i;
+
+      for (i = 0; i < ret.size(); ++i) {
+        if ((ret[i] != ' ') &&
+            (ret[i] != '\t') &&
+            (ret[i] != '\n')) {
+          firstNS = i;
+          break;
+        }
+      }
+
+      if (i == ret.size()) {
+        return "";
+      }
+
+      for (i = (ret.size() - 1); i > firstNS; --i) {
+        if ((ret[i] != ' ') &&
+            (ret[i] != '\t') &&
+            (ret[i] != '\n')) {
+          lastNS = i;
+          break;
+        }
+      }
+
+      if (i == firstNS) {
+        return "";
+      }
+      return ret.substr(firstNS, (lastNS - firstNS + 1));
+    }
+
+     std::string platformName(int pID) {
+      cl_platform_id clPID = platformID(pID);
+      return platformStrInfo(clPID, CL_PLATFORM_NAME);
+    }
+
+    std::string platformVendor(int pID) {
+      cl_platform_id clPID = platformID(pID);
+      return platformStrInfo(clPID, CL_PLATFORM_VENDOR);
+    }
+
+    std::string platformVersion(int pID) {
+      cl_platform_id clPID = platformID(pID);
+      return platformStrInfo(clPID, CL_PLATFORM_VERSION);
+    }
+
+    cl_device_type deviceType(info::device_type type) {
+      cl_device_type dtype = CL_DEVICE_TYPE_DEFAULT;
+      switch (type) {
+        case info::device_type::cpu:
+          dtype = CL_DEVICE_TYPE_CPU;
+          break;
+        case info::device_type::gpu:
+          dtype = CL_DEVICE_TYPE_GPU;
+          break;
+        case info::device_type::accelerator:
+          dtype = CL_DEVICE_TYPE_ACCELERATOR;
+          break;
+        case info::device_type::all:
+          dtype = CL_DEVICE_TYPE_ALL;
+          break;
+      }
+      return dtype;
+    }
+
+    int getDeviceCount(info::device_type type) {
       int pCount = opencl::getPlatformCount();
       int ret = 0;
 
@@ -94,17 +151,16 @@ namespace occa {
       return ret;
     }
 
-    int getDeviceCountInPlatform(int pID, int type) {
+    int getDeviceCountInPlatform(int pID, info::device_type type) {
       cl_platform_id clPID = platformID(pID);
       cl_uint deviceCount = 0;
-      
       clGetDeviceIDs(clPID, deviceType(type),
                      0, NULL, &deviceCount);
 
       return deviceCount;
     }
 
-    cl_device_id deviceID(int pID, int dID, int type) {
+    cl_device_id deviceID(int pID, int dID, info::device_type type) {
       cl_device_id *devices = new cl_device_id[dID + 1];
 
       cl_platform_id clPID = platformID(pID);
@@ -123,7 +179,7 @@ namespace occa {
 
     std::string deviceStrInfo(cl_device_id clDID,
                               cl_device_info clInfo) {
-      size_t bytes;
+      size_t bytes = 0;
 
       OCCA_OPENCL_ERROR("OpenCL: Getting Device String Info",
                         clGetDeviceInfo(clDID,
@@ -180,52 +236,38 @@ namespace occa {
       return deviceStrInfo(clDID, CL_DEVICE_NAME);
     }
 
-    int deviceType(int pID, int dID) {
+    info::device_type deviceType(int pID, int dID) {
       cl_device_id clDID = deviceID(pID, dID);
-      int ret = 0;
+      cl_device_type clDeviceType = CL_DEVICE_TYPE_ALL;
 
-      cl_device_type clDeviceType;
+      OCCA_OPENCL_ERROR(
+        "OpenCL: Get Device Type",
+        clGetDeviceInfo(clDID,CL_DEVICE_TYPE,sizeof(clDeviceType), &clDeviceType, NULL)
+      );
 
-      OCCA_OPENCL_ERROR("OpenCL: Get Device Type",
-                        clGetDeviceInfo(clDID,
-                                        CL_DEVICE_TYPE,
-                                        sizeof(clDeviceType), &clDeviceType, NULL));
-
-      if (clDeviceType & CL_DEVICE_TYPE_CPU) {
-        ret |= info::CPU;
-      } else if (clDeviceType & CL_DEVICE_TYPE_GPU) {
-        ret |= info::GPU;
-      }
-      return ret;
+      if (clDeviceType & CL_DEVICE_TYPE_CPU)
+        return info::device_type::cpu;
+      if (clDeviceType & CL_DEVICE_TYPE_GPU)
+        return info::device_type::gpu;
+      if (clDeviceType & CL_DEVICE_TYPE_ACCELERATOR)
+        return info::device_type::accelerator;
+      
+      return info::device_type::all;
     }
 
-    int deviceVendor(int pID, int dID) {
+    std::string deviceVendor(int pID, int dID) {
       cl_device_id clDID = deviceID(pID, dID);
-      int ret = 0;
+      return deviceStrInfo(clDID, CL_DEVICE_VENDOR);
+    }
 
-      std::string vendor = deviceStrInfo(clDID, CL_DEVICE_VENDOR);
-
-      if (vendor.find("AMD")                    != std::string::npos ||
-          vendor.find("Advanced Micro Devices") != std::string::npos ||
-          vendor.find("ATI")                    != std::string::npos) {
-
-        ret |= info::AMD;
-      } else if (vendor.find("Intel") != std::string::npos) {
-        ret |= info::Intel;
-      } else if (vendor.find("Altera") != std::string::npos) {
-        ret |= info::Altera;
-      } else if (vendor.find("Nvidia") != std::string::npos ||
-                 vendor.find("NVIDIA") != std::string::npos) {
-
-        ret |= info::NVIDIA;
-      }
-
-      return ret;
+    std::string deviceVersion(int pID, int dID) {
+      cl_device_id clDID = deviceID(pID, dID);
+      return deviceStrInfo(clDID, CL_DEVICE_VERSION);
     }
 
     int deviceCoreCount(int pID, int dID) {
       cl_device_id clDID = deviceID(pID, dID);
-      cl_uint ret;
+      cl_uint ret = 0;
 
       OCCA_OPENCL_ERROR("OpenCL: Get Device Core Count",
                         clGetDeviceInfo(clDID,
@@ -235,8 +277,8 @@ namespace occa {
       return ret;
     }
 
-    udim_t getDeviceMemorySize(cl_device_id dID) {
-      cl_ulong ret;
+    udim_t deviceGlobalMemSize(cl_device_id dID) {
+      cl_ulong ret = 0;
 
       OCCA_OPENCL_ERROR("OpenCL: Get Device Available Memory",
                         clGetDeviceInfo(dID,
@@ -246,10 +288,10 @@ namespace occa {
       return ret;
     }
 
-    udim_t getDeviceMemorySize(int pID, int dID) {
+    udim_t deviceGlobalMemSize(int pID, int dID) {
       cl_device_id clDID = deviceID(pID, dID);
 
-      return getDeviceMemorySize(clDID);
+      return deviceGlobalMemSize(clDID);
     }
 
     void buildProgramFromSource(info_t &info,
@@ -257,8 +299,7 @@ namespace occa {
                                 const std::string &kernelName,
                                 const std::string &compilerFlags,
                                 const std::string &sourceFile,
-                                const occa::json &properties,
-                                const io::lock_t &lock) {
+                                const occa::json &properties) {
       cl_int error = 1;
 
       const bool verbose = properties.get("verbose", false);
@@ -271,35 +312,28 @@ namespace occa {
                                                  &error);
 
       if (error) {
-        lock.release();
         OCCA_OPENCL_ERROR("Kernel [" + kernelName + "]: Creating Program",
                           error);
       }
       if (verbose) {
-        if (lock.isInitialized()) {
-          io::stdout << "OpenCL compiling " << kernelName
-                     << " from [" << sourceFile << "]";
+        io::stdout << "OpenCL compiling " << kernelName
+                   << " from [" << sourceFile << "]";
 
-          if (compilerFlags.size()) {
-            io::stdout << " with compiler flags [" << compilerFlags << "]";
-          }
-          io::stdout << '\n';
-        } else {
-          io::stdout << "OpenCL compiling " << kernelName << '\n';
+        if (compilerFlags.size()) {
+          io::stdout << " with compiler flags [" << compilerFlags << "]";
         }
+        io::stdout << '\n';
       }
 
       buildProgram(info,
                    kernelName,
-                   compilerFlags,
-                   lock);
+                   compilerFlags);
     }
 
     void buildProgramFromBinary(info_t &info,
                                 const std::string &binaryFilename,
                                 const std::string &kernelName,
-                                const std::string &compilerFlags,
-                                const io::lock_t &lock) {
+                                const std::string &compilerFlags) {
       cl_int error = 1;
       cl_int binaryError = 1;
 
@@ -312,9 +346,6 @@ namespace occa {
                                                  &binaryError, &error);
       delete [] binary;
 
-      if (binaryError || error) {
-        lock.release();
-      }
       OCCA_OPENCL_ERROR("Kernel [" + kernelName + "]: Creating Program",
                         binaryError);
       OCCA_OPENCL_ERROR("Kernel [" + kernelName + "]: Creating Program",
@@ -322,14 +353,12 @@ namespace occa {
 
       buildProgram(info,
                    kernelName,
-                   compilerFlags,
-                   lock);
+                   compilerFlags);
     }
 
     void buildProgram(info_t &info,
                       const std::string &kernelName,
-                      const std::string &compilerFlags,
-                      const io::lock_t &lock) {
+                      const std::string &compilerFlags) {
       cl_int error = 1;
 
       error = clBuildProgram(info.clProgram,
@@ -365,53 +394,43 @@ namespace occa {
 
           delete [] log;
         }
-        lock.release();
         OCCA_OPENCL_ERROR("Kernel [" + kernelName + "]: Building Program",
                           error);
       }
     }
 
     void buildKernelFromProgram(info_t &info,
-                                const std::string &kernelName,
-                                const io::lock_t &lock) {
+                                const std::string &kernelName) {
       cl_int error = 1;
 
       info.clKernel = clCreateKernel(info.clProgram,
                                      kernelName.c_str(),
                                      &error);
 
-      if (error) {
-        lock.release();
-      }
       OCCA_OPENCL_ERROR("Kernel [" + kernelName + "]: Creating Kernel",
                         error);
     }
 
     bool saveProgramBinary(info_t &info,
-                           const std::string &binaryFile,
-                           const io::lock_t &lock) {
+                           const std::string &binaryFile) {
       cl_int error = 1;
       cl_int binaryError = 1;
 
-      size_t binaryBytes;
-      error = clGetProgramInfo(info.clProgram,
-                               CL_PROGRAM_BINARY_SIZES,
-                               sizeof(size_t), &binaryBytes, NULL);
-      if (error) {
-        lock.release();
-      }
-      OCCA_OPENCL_ERROR("saveProgramBinary: Getting Binary Sizes",
-                        error);
+      size_t binaryBytes = 0;
+      OCCA_OPENCL_ERROR(
+        "saveProgramBinary: Getting Binary Sizes",
+        clGetProgramInfo(info.clProgram,
+                         CL_PROGRAM_BINARY_SIZES,
+                         sizeof(size_t), &binaryBytes, NULL)
+      );
 
       char *binary = new char[binaryBytes + 1];
-      error = clGetProgramInfo(info.clProgram,
-                               CL_PROGRAM_BINARIES,
-                               sizeof(char*), &binary, NULL);
-      if (error) {
-        lock.release();
-      }
-      OCCA_OPENCL_ERROR("saveProgramBinary: Getting Binary",
-                        error);
+      OCCA_OPENCL_ERROR(
+        "saveProgramBinary: Getting Binary",
+        clGetProgramInfo(info.clProgram,
+                         CL_PROGRAM_BINARIES,
+                         sizeof(char*), &binary, NULL)
+      );
 
       // Test to see if device supports reading from its own binary
       cl_program testProgram = clCreateProgramWithBinary(info.clContext,
@@ -420,7 +439,7 @@ namespace occa {
                                                          (const unsigned char**) &binary,
                                                          &binaryError, &error);
 
-      size_t testBinaryBytes;
+      size_t testBinaryBytes = 0;
       error = clGetProgramInfo(testProgram,
                                CL_PROGRAM_BINARY_SIZES,
                                sizeof(size_t), &testBinaryBytes, NULL);
@@ -432,7 +451,6 @@ namespace occa {
       FILE *fp = fopen(binaryFile.c_str(), "wb");
       fwrite(binary, 1, binaryBytes, fp);
       fclose(fp);
-
       io::sync(binaryFile);
 
       delete [] binary;

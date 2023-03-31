@@ -33,6 +33,7 @@ namespace occa {
       }
 
       void metalParser::afterKernelSplit() {
+        setupHeaders();
         addBarriers();
 
         if (!success) return;
@@ -51,6 +52,11 @@ namespace occa {
         std::string name = "_occa_thread_position.";
         name += ('x' + (char) loopIndex);
         return name;
+      }
+
+      // Needs to be implemented: do nothing for now.
+      std::string metalParser::launchBoundsAttribute(const int innerDims[3]) {
+        return "";
       }
 
       void metalParser::setSharedQualifiers() {

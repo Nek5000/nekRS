@@ -1,28 +1,31 @@
 //
 // nekRS User Defined File
 //
-#include <math.h>
 #include "udf.hpp"
 #include "ci.inc"
 
 /* User Functions */
 
-static occa::kernel userfKernel; 
 static dfloat P_ROT;
 static dfloat visc;
+
+#ifdef __okl__
+
+#include "channel.oudf"
+
+#endif
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
   mesh_t* mesh = nrs->meshV;
-  const dfloat DP   = 3.0 * visc;
-  userfKernel(mesh->Nlocal, nrs->fieldOffset, P_ROT, DP, o_FU);
+  const dfloat DP = 3.0 * visc;
+  cfill(mesh->Nlocal, nrs->fieldOffset, P_ROT, DP, o_FU);
 }
 
 void UDF_LoadKernels(occa::properties& kernelInfo)
 {
   platform->options.getArgs("VISCOSITY", visc);
   kernelInfo["defines/p_visc"] = visc;
-  userfKernel = oudfBuildKernel(kernelInfo, "userf");
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide& options){

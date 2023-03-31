@@ -93,8 +93,6 @@ oogs_t *gtpp_gs_setup(nrs_t *nrs, int nelgx, int nelgy, int nelgz, std::string d
 
 void fusedPlanarAvg(nrs_t *nrs, const std::string & direction, int NELGX, int NELGY, int NELGZ, int nflds, occa::memory o_avg)
 {
-  static_assert(std::is_same<dlong,int>::value, "dlong != int");
-
   static bool issueWarning = true;
 
   if (!platform->device.deviceAtomic) {
@@ -115,10 +113,6 @@ void fusedPlanarAvg(nrs_t *nrs, const std::string & direction, int NELGX, int NE
   const auto * mesh = nrs->meshV;
   static occa::memory o_locToGlobE;
 
-  static occa::memory o_scratch;
-  static occa::memory h_scratch;
-  static dfloat * scratch;
-
   int elemDir = -1;
   if(direction == "xy" || direction == "yx"){
     elemDir = NELGZ;
@@ -133,15 +127,17 @@ void fusedPlanarAvg(nrs_t *nrs, const std::string & direction, int NELGX, int NE
   const auto Nwords = nflds * mesh->Nq * elemDir;
   const auto Nbytes = Nwords * sizeof(dfloat);
 
-  if(o_scratch.size() < Nbytes){
-    if(o_scratch.size()) o_scratch.free();
-    if(h_scratch.size()) h_scratch.free();
-    {
-      h_scratch = platform->device.mallocHost(Nbytes);
-      scratch = (dfloat *)h_scratch.ptr();
-    }
-    o_scratch = platform->device.malloc(Nbytes);
+  if (platform->o_mempool.bytesAllocated < Nbytes) {
+    // compute minimum number of fields holding nrs->fieldOffset dfloat elements
+    auto Nfields = Nwords / nrs->fieldOffset;
+    if (Nwords % nrs->fieldOffset)
+      Nfields++;
+
+    platform->mempool.allocate(nrs->fieldOffset, Nfields);
+    platform->o_mempool.allocate(platform->mempool, nrs->fieldOffset, Nfields);
   }
+
+  auto &o_scratch = platform->o_mempool.o_ptr;
 
   if(o_locToGlobE.size() == 0){
     std::vector<dlong> globalElement(mesh->Nelements, 0);
@@ -183,7 +179,6 @@ void fusedPlanarAvg(nrs_t *nrs, const std::string & direction, int NELGX, int NE
     o_locToGlobE,
     o_scratch,
     o_avg);
-
 }
 
 } // namespace
@@ -225,8 +220,7 @@ void postProcessing::planarAvg(nrs_t *nrs, const std::string& dir, int NELGX, in
   } else if(dir == "yz" || dir == "zy") {
     o_wghts = o_avgWeight_yz;
   } else {
-    if (platform->comm.mpiRank == 0) printf("ERROR in planarAvg: Unknown direction!");
-    ABORT(EXIT_FAILURE);
+    nrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "Unknown direction!", "");
   }
 
   if(!gsh && o_wghts.size() == 0) {
@@ -262,8 +256,7 @@ void postProcessing::planarAvg(nrs_t *nrs, const std::string& dir, int NELGX, in
       o_wghts = o_avgWeight_yz;
     }
     else{
-      if (platform->comm.mpiRank == 0) printf("ERROR in planarAvg: Unknown direction!");
-      ABORT(EXIT_FAILURE);
+      nrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "Unknown direction!", "");
     }
 
     o_wghts.copyFrom(mesh->o_LMM, mesh->Nlocal*sizeof(dfloat));

@@ -168,30 +168,6 @@ occaMemory occaTypedMalloc(const occaUDim_t entries,
   return occa::c::newOccaType(memory);
 }
 
-void* occaUMalloc(const occaUDim_t bytes,
-                  const void *src,
-                  occaJson props) {
-  return occaTypedUMalloc(bytes,
-                          occaDtypeByte,
-                          src,
-                          props);
-}
-
-void* occaTypedUMalloc(const occaUDim_t entries,
-                       const occaDtype dtype,
-                       const void *src,
-                       occaJson props) {
-  const occa::dtype_t &dtype_ = occa::c::dtype(dtype);
-
-  if (occa::c::isDefault(props)) {
-    return occa::umalloc(entries, dtype_, src);
-  }
-  return occa::umalloc(entries,
-                       dtype_,
-                       src,
-                       occa::c::json(props));
-}
-
 occaMemory occaWrapMemory(const void *ptr,
                           const occaUDim_t bytes,
                           occaJson props) {
@@ -216,6 +192,20 @@ occaMemory occaTypedWrapMemory(const void *ptr,
   memory.dontUseRefs();
 
   return occa::c::newOccaType(memory);
+}
+//======================================
+
+//---[ MemoryPool ]---------------------
+occaMemoryPool occaCreateMemoryPool(occaJson props) {
+  occa::experimental::memoryPool memPool;
+  if (occa::c::isDefault(props)) {
+    memPool = occa::createMemoryPool();
+  } else {
+    memPool = occa::createMemoryPool(occa::c::json(props));
+  }
+  memPool.dontUseRefs();
+
+  return occa::c::newOccaType(memPool);
 }
 //======================================
 

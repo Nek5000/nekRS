@@ -1,0 +1,136 @@
+@kernel void pressureStressHex3D(const dlong Nelements,
+                                 @ restrict const dfloat *vgeo,
+                                 @ restrict const dfloat *D,
+                                 const dlong offset,
+                                 @ restrict const dfloat *MUE,
+                                 @ restrict const dfloat *U,
+                                 @ restrict const dfloat *DIV,
+                                 @ restrict dfloat *OUT)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @shared dfloat s_U[p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq];
+    @shared dfloat s_MUE[p_Nq][p_Nq];
+
+    @exclusive dfloat r_MUEloc[p_Nq];
+    @exclusive dfloat r_Uloc[p_Nq];
+    @exclusive dfloat r_Vloc[p_Nq];
+    @exclusive dfloat r_Wloc[p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+#ifdef smXX
+#pragma unroll p_Nq
+#endif
+    for (int k = 0; k < p_Nq; ++k) {
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          if (k == 0)
+            s_D[j][i] = D[i + j * p_Nq];
+
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          const dfloat Un = U[id + 0 * offset];
+          const dfloat Vn = U[id + 1 * offset];
+          const dfloat Wn = U[id + 2 * offset];
+
+          const dfloat MUEn = MUE[id];
+
+          s_U[j][i] = Un;
+          s_V[j][i] = Vn;
+          s_W[j][i] = Wn;
+          s_MUE[j][i] = MUEn;
+
+          if (k == 0) {
+#pragma unroll p_Nq
+            for (int l = 0; l < p_Nq; ++l) {
+              const dlong idd = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              r_Uloc[l] = U[idd + 0 * offset];
+              r_Vloc[l] = U[idd + 1 * offset];
+              r_Wloc[l] = U[idd + 2 * offset];
+              r_MUEloc[l] = MUE[idd];
+            }
+          }
+        }
+      }
+
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          const dfloat JW = vgeo[gid + p_JWID * p_Np];
+
+          const dfloat invmue = 1 / MUE[id];
+          const dfloat div = DIV[id];
+
+          dfloat dudr = 0, duds = 0, dudt = 0;
+          dfloat dvdr = 0, dvds = 0, dvdt = 0;
+          dfloat dwdr = 0, dwds = 0, dwdt = 0;
+
+          dfloat dmuedr = 0, dmueds = 0, dmuedt = 0;
+
+#pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; n++) {
+            const dfloat Dr = s_D[i][n];
+            const dfloat Ds = s_D[j][n];
+            const dfloat Dt = s_D[k][n];
+            dudr += Dr * s_U[j][n];
+            duds += Ds * s_U[n][i];
+            dudt += Dt * r_Uloc[n];
+
+            dvdr += Dr * s_V[j][n];
+            dvds += Ds * s_V[n][i];
+            dvdt += Dt * r_Vloc[n];
+
+            dwdr += Dr * s_W[j][n];
+            dwds += Ds * s_W[n][i];
+            dwdt += Dt * r_Wloc[n];
+
+            dmuedr += Dr * s_MUE[j][n];
+            dmueds += Ds * s_MUE[n][i];
+            dmuedt += Dt * r_MUEloc[n];
+          }
+
+          const dfloat dudx = drdx * dudr + dsdx * duds + dtdx * dudt;
+          const dfloat dudy = drdy * dudr + dsdy * duds + dtdy * dudt;
+          const dfloat dudz = drdz * dudr + dsdz * duds + dtdz * dudt;
+
+          const dfloat dvdx = drdx * dvdr + dsdx * dvds + dtdx * dvdt;
+          const dfloat dvdy = drdy * dvdr + dsdy * dvds + dtdy * dvdt;
+          const dfloat dvdz = drdz * dvdr + dsdz * dvds + dtdz * dvdt;
+
+          const dfloat dwdx = drdx * dwdr + dsdx * dwds + dtdx * dwdt;
+          const dfloat dwdy = drdy * dwdr + dsdy * dwds + dtdy * dwdt;
+          const dfloat dwdz = drdz * dwdr + dsdz * dwds + dtdz * dwdt;
+
+          const dfloat dmuedx = (drdx * dmuedr + dsdx * dmueds + dtdx * dmuedt) * invmue;
+          const dfloat dmuedy = (drdy * dmuedr + dsdy * dmueds + dtdy * dmuedt) * invmue;
+          const dfloat dmuedz = (drdz * dmuedr + dsdz * dmueds + dtdz * dmuedt) * invmue;
+
+          const dfloat w1 = dmuedx * 2 * dudx + dmuedy * (dudy + dvdx) + dmuedz * (dudz + dwdx);
+          const dfloat w2 = dmuedx * (dudy + dvdx) + dmuedy * 2 * dvdy + dmuedz * (dvdz + dwdy);
+          const dfloat w3 = dmuedx * (dudz + dwdx) + dmuedy * (dvdz + dwdy) + dmuedz * 2 * dwdz;
+
+          const dfloat scale = -2./3;
+
+          OUT[id + 0 * offset] -= JW * (w1 + scale * div * dmuedx);
+          OUT[id + 1 * offset] -= JW * (w2 + scale * div * dmuedy);
+          OUT[id + 2 * offset] -= JW * (w3 + scale * div * dmuedz);
+        }
+      }
+    }
+  }
+}

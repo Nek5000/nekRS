@@ -100,10 +100,8 @@ void Dmatrix1D(int _N, int NpointsIn, dfloat* _rIn,
                int NpointsOut, dfloat* _rOut, dfloat* _Dr)
 {
   // need NpointsIn = (_N+1)
-  if (NpointsIn != _N + 1) {
-    std::cout << "Invalid Differentiation operator requested.\n";
-    ABORT(EXIT_FAILURE);;
-  }
+  nrsCheck(NpointsIn != _N + 1, MPI_COMM_SELF, EXIT_FAILURE,
+           "Invalid Differentiation operator requested.\n", "");
 
   int _Np = _N + 1;
 
@@ -137,10 +135,8 @@ void InterpolationMatrix1D(int _N,
                            dfloat* I)
 {
   // need NpointsIn = (_N+1)
-  if (NpointsIn != _N + 1) {
-    std::cout << "Invalid Interplation operator requested.\n";
-    ABORT(EXIT_FAILURE);;
-  }
+  nrsCheck(NpointsIn != _N + 1, MPI_COMM_SELF, EXIT_FAILURE,
+           "Invalid Interplation operator requested.\n", "");
 
   dfloat* VIn = (dfloat*) malloc(NpointsIn * (_N + 1) * sizeof(dfloat));
   dfloat* VOut = (dfloat*) malloc(NpointsOut * (_N + 1) * sizeof(dfloat));

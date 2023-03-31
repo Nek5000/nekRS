@@ -22,6 +22,10 @@ occa::properties meshKernelProperties(int N)
   constexpr int Nggeo{7};
   constexpr int Nsgeo{13};
 
+  nrsCheck(BLOCKSIZE < Nq * Nq, MPI_COMM_SELF, EXIT_FAILURE,
+           "BLOCKSIZE of %d < %d (Nq * Nq)\n!",
+           BLOCKSIZE, Nq * Nq);
+
   meshProperties["defines/" "p_dim"] = 3;
   meshProperties["defines/" "p_Nverts"] = 8;
   meshProperties["defines/" "p_Nfields"] = 1;
@@ -105,15 +109,14 @@ mesh_t *createMesh(MPI_Comm comm,
   mesh->cht  = cht;
 
   if (platform->comm.mpiRank == 0)
-    printf("generating t-mesh ...\n");
+    printf("generating mesh ...\n");
 
   // get mesh from nek
   meshNekReaderHex3D(N, mesh);
 
-  if (mesh->Nelements * mesh->Nvgeo * cubN > std::numeric_limits<int>::max()) {
-    if (platform->comm.mpiRank == 0) printf("FATAL ERROR: Local element count too large!");
-    ABORT(EXIT_FAILURE);
-  }
+  nrsCheck((hlong) mesh->Nelements * (mesh->Nvgeo * cubN) > std::numeric_limits<int>::max(),
+           platform->comm.mpiComm, EXIT_FAILURE, 
+           "mesh->Nelements * mesh->Nvgeo * cubN exceeds int limit!", "");
 
   mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
 
@@ -179,7 +182,7 @@ mesh_t *createMesh(MPI_Comm comm,
     }
     free(tmp);
   }
-  if(err) ABORT(1);
+  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "\n", "");
 
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
@@ -194,6 +197,16 @@ mesh_t *createMesh(MPI_Comm comm,
     const int maxTemporalOrder = 3;
     mesh->coeffAB = (dfloat*) calloc(maxTemporalOrder, sizeof(dfloat));
     mesh->o_coeffAB = platform->device.malloc(maxTemporalOrder * sizeof(dfloat), mesh->coeffAB);
+  }
+
+  {
+    double valMin = (double)mesh->NlocalGatherElements / mesh->Nelements;
+    double valMax = (double)mesh->NlocalGatherElements / mesh->Nelements;
+    MPI_Allreduce(MPI_IN_PLACE, &valMin, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
+    MPI_Allreduce(MPI_IN_PLACE, &valMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
+
+    if (platform->comm.mpiRank == 0 && platform->comm.mpiCommSize > 1)
+      printf("number of interior elements min/max: %2.0f%%  %2.0f%%\n", 100*valMin, 100*valMax);
   }
 
   mesh->fluid = mesh;
@@ -274,10 +287,6 @@ mesh_t *createMeshMG(mesh_t* _mesh,
   mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
   mesh->o_z = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->z);
 
-  free(mesh->x);
-  free(mesh->y);
-  free(mesh->z);
-
   mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
 
   dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq, sizeof(dfloat));
@@ -357,7 +366,7 @@ mesh_t *createMeshV(
   mesh->ggeo = meshT->ggeo;
 
   // connect face nodes (find trace indices)
-  // find vmapM, vmapP, mapP based on EToE and EToF
+  // find vmapM, based on EToE and EToF
   meshConnectFaceNodes3D(mesh);
 
   // meshGlobalIds(mesh);
@@ -388,7 +397,7 @@ mesh_t *createMeshV(
     }
     free(tmp);
   }
-  if(err) ABORT(1);
+  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "", "");
 
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
@@ -407,6 +416,15 @@ mesh_t *createMeshV(
   MPI_Allreduce(MPI_IN_PLACE, &volume, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
   mesh->volume = volume;
 
+  {
+    double valMin = (double)mesh->NlocalGatherElements / mesh->Nelements;
+    double valMax = (double)mesh->NlocalGatherElements / mesh->Nelements;
+    MPI_Allreduce(MPI_IN_PLACE, &valMin, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
+    MPI_Allreduce(MPI_IN_PLACE, &valMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
+
+    if (platform->comm.mpiRank == 0 && platform->comm.mpiCommSize > 1)
+      printf("number of interior elements min/max: %2.0f%%  %2.0f%%\n", 100*valMin, 100*valMax);
+  }
 
   return mesh;
 }
@@ -434,11 +452,7 @@ void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
     platform->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),
                         mesh->EToB);
   mesh->o_vmapM =
-    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
-                        mesh->vmapM);
-  mesh->o_vmapP =
-    platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong),
-                        mesh->vmapP);
+      platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong), mesh->vmapM);
   mesh->o_invLMM =
     platform->device.malloc(mesh->Nelements * mesh->Np ,  sizeof(dfloat));
 }
@@ -446,7 +460,7 @@ void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo)
 void loadKernels(mesh_t* mesh)
 {
   const std::string meshPrefix = "mesh-";
-  mesh->avgBIDValueKernel = platform->kernels.get(meshPrefix + "avgBIDValue");
+  mesh->surfaceIntegralKernel = platform->kernels.get(meshPrefix + "surfaceIntegral");
   mesh->velocityDirichletKernel = platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
   mesh->geometricFactorsKernel = platform->kernels.get(meshPrefix + "geometricFactorsHex3D");
   mesh->surfaceGeometricFactorsKernel = platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D");

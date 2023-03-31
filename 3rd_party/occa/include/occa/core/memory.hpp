@@ -11,6 +11,7 @@
 #include <occa/utils/gc.hpp>
 
 namespace occa {
+  class modeBuffer_t; class buffer;
   class modeMemory_t; class memory;
   class modeDevice_t; class device;
   class kernelArg;
@@ -70,7 +71,6 @@ namespace occa {
 
   public:
     memory();
-    memory(void *uvaPtr);
     memory(modeMemory_t *modeMemory_);
 
     memory(const memory &m);
@@ -228,23 +228,6 @@ namespace occa {
     udim_t length() const {
       return size() / sizeof(T);
     }
-
-    //---[ UVA ]------------------------
-    bool isManaged() const;
-    bool inDevice() const;
-    bool isStale() const;
-
-    void setupUva();
-    void startManaging();
-    void stopManaging();
-
-    void syncToDevice(const dim_t bytes, const dim_t offset);
-    void syncToHost(const dim_t bytes, const dim_t offset);
-
-    bool uvaIsStale() const;
-    void uvaMarkStale();
-    void uvaMarkFresh();
-    //==================================
 
     /**
      * @startDoc{operator_equals[0]}
@@ -478,7 +461,22 @@ namespace occa {
 
     void detach();
 
-    void deleteRefs(const bool freeMemory = false);
+    /**
+     * @startDoc{unwrap}
+     * 
+     * Description:
+     *   Retreives the mode-specific object associated with this [[stream]].
+     *   The lifetime of the returned object is the same as this stream.
+     *   Destruction of the returned object during this stream's lifetime results in undefined behavior.   
+     *  
+     *   > An OCCA application is responsible for correctly converting the returned `void*` pointer to the corresponding mode-specific stream type.
+     * 
+     * Returns:
+     *   A pointer to the mode-specific object associated with this stream.
+     * 
+     * @endDoc
+    */
+    void* unwrap();
   };
 
   extern memory null;

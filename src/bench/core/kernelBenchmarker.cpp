@@ -26,13 +26,18 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
 {
   occa::kernel fastestKernel;
   double fastestTime = std::numeric_limits<double>::max();
+
   for (auto &&kernelVariant : kernelVariants) {
 
+    MPI_Barrier(platform->comm.mpiComm);
     auto candidateKernel = kernelBuilder(kernelVariant);
+
+    if (!candidateKernel.isInitialized())
+      continue;
 
     if(platform->options.compareArgs("BUILD ONLY", "FALSE")){
       // warmup
-      double elapsed = run(10, kernelRunner, candidateKernel);
+      double elapsed = run(1, kernelRunner, candidateKernel);
 
       double candidateKernelTiming = run(Ntests, kernelRunner, candidateKernel);
       double tMax;
@@ -42,7 +47,7 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
 
       const double tRatio = tMax/tMin;
       if (platform->comm.mpiRank == 0 && tRatio > 1.1)
-        printf("WARNING: kernel timings differ by up to %.2 across ranks!\n", tRatio);
+        printf("WARNING: kernel timings differ by up to %.2f across ranks!\n", tRatio);
 
       candidateKernelTiming = tMax;
 
@@ -69,16 +74,22 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
 {
   occa::kernel fastestKernel;
   double fastestTime = std::numeric_limits<double>::max();
+
   for (auto &&kernelVariant : kernelVariants) {
 
+    MPI_Barrier(platform->comm.mpiComm);
     auto candidateKernel = kernelBuilder(kernelVariant);
+
+    if (!candidateKernel.isInitialized())
+      continue; // remove variant if it doesn't compile
+
     if(platform->options.compareArgs("BUILD ONLY", "FALSE")){
 
       // warmup
-      double elapsed = run(10, kernelRunner, candidateKernel);
+      double elapsed = run(1, kernelRunner, candidateKernel);
 
       // evaluation
-      int Ntests = static_cast<int>(targetTime / elapsed);
+      int Ntests = std::max(1, static_cast<int>(targetTime / elapsed));
       MPI_Allreduce(MPI_IN_PLACE, &Ntests, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
 
       double candidateKernelTiming = run(Ntests, kernelRunner, candidateKernel);
@@ -89,7 +100,7 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
 
       const double tRatio = tMax/tMin;
       if (platform->comm.mpiRank == 0 && tRatio > 1.1)
-        printf("WARNING: kernel timings differ by up to %.2 across ranks!\n", tRatio);
+        printf("WARNING: kernel timings differ by up to %.2f across ranks!\n", tRatio);
 
       candidateKernelTiming = tMax;
 

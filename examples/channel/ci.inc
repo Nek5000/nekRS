@@ -2,9 +2,6 @@
 
 static int ciMode = 0;
 
-#define PASS { if (rank == 0) printf("TESTS passed \n"); MPI_Finalize(); exit(0); }
-#define FAIL { if (rank == 0) printf("TESTS failed!\n"); MPI_Finalize(); exit(2); }
-
 #define EPS 1e-1
 
 void ciSetup(MPI_Comm comm, setupAide &options)
@@ -18,11 +15,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("DT", std::string("1e-3"));
   options.setArgs("SUBCYCLING STEPS", std::string("0"));
   options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
-  options.setArgs("TIME INTEGRATOR", "TOMBO3");
+  options.setArgs("BDF ORDER", "3");
   options.setArgs("ADVECTION", "FALSE");
   options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-08"));
-  options.setArgs("STRESSFORMULATION", "TRUE");
+  options.setArgs("VELOCITY STRESSFORMULATION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE");
 
   if(ciMode == 1){
@@ -51,5 +48,5 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     printf("relative error to target: vx=%g vy=%g\n", 
            vxErr, vyErr);
 
-  (vxErr < EPS && vyErr < EPS) ? (PASS) : (FAIL); 
+  (vxErr < EPS && vyErr < EPS) ? (CIPASS) : (CIFAIL); 
 }

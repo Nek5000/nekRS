@@ -37,6 +37,13 @@ double query(const std::string tag,std::string metric);
 void printRunStat(int step);
 void printStatEntry(std::string name, std::string tag, std::string type, double tNorm);
 void printStatEntry(std::string name, double time, double tNorm);
+void printStatEntry(std::string name, double tTag, long long int nCalls, double tNorm);
+
+// print every entry in the map
+void printAll();
+
+// obtain all tags registered with the timer
+std::vector<std::string> tags();
 };
 }
 

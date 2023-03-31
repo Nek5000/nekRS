@@ -7,19 +7,20 @@ stopAt = numSteps
 numSteps = 0
 
 [PRESSURE]
-solver = pfgmres+nVector=30
+#solver = pfgmres+nVector=15
 maxIterations = 200
 residualTol = 1e-8+relative
 
 # p-MG multiplicative V-cycle, coarse grid solve
 preconditioner = multigrid
-smootherType = RAS+Chebyshev+degree=2 #+minEigenvalueBoundFactor=0.1+maxEigenvalueBoundFactor=1.1
+smootherType = RAS+OptFourthChebyshev #+maxEigenvalueBoundFactor=1.1
 #coarseSolver = boomerAMG+device #AmgX
 #coarseGridDiscretization = FEM #+Galerkin
-#pMultigridCoarsening = 7,5,3,1
+#pMGSchedule = p=7+degree=3, p=3+degree=3, p=1, p=3+degree=3, p=7+degree=3
 
 # p-MG additive V-cycle, overlapping coarse grid solve
-#preconditioner = multigrid+additive+overlapCrsSolve
+#preconditioner = multigrid+additive
+#coarseSolver = boomerAMG+cpu+overlap
 #smootherType = ASM
 
 # p-MG, solve coarsest level using SEMFEM discretization
@@ -31,7 +32,8 @@ smootherType = RAS+Chebyshev+degree=2 #+minEigenvalueBoundFactor=0.1+maxEigenval
 
 initialGuess = previous
 
-[VELOCITY] # dummy
+[VELOCITY]
+boundaryTypeMap = zeroGradient #zeroValue 
 preconditioner = none
 density = 1.0
 viscosity = 1.0
@@ -45,6 +47,7 @@ viscosity = 1.0
 #strongThreshold = 0.25
 #nonGalerkinTol = 0.0
 #aggressiveCoarseningLevels = 0
+#chebyshevRelaxOrder = 1
 
 #[AMGX]
 #configFile = "amgx.json"

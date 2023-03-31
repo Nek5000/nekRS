@@ -15,7 +15,7 @@
 #include "seq_mv/protos.h"
 #include "_hypre_utilities.hpp"
 
-#if defined(HYPRE_USING_CUDA)
+#if defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
 template<typename T>
 struct functor : public thrust::binary_function<T, T, T>
 {
@@ -212,7 +212,7 @@ hypre_MGRRelaxL1JacobiDevice( hypre_ParCSRMatrix *A,
                               hypre_ParVector    *Vtemp )
 {
    hypre_BoomerAMGRelax(A, f, CF_marker, 18, relax_points, relax_weight, 1.0, l1_norms, u, Vtemp,
-                        NULL, 0);
+                        NULL);
 
    return hypre_error_flag;
 }

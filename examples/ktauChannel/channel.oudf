@@ -1,15 +1,3 @@
-@kernel void cfill(const dlong Ntotal,
-                    const dlong offset,
-                    const dfloat CONST,
-                    @restrict dfloat * NU) 
-{
-  for(dlong n=0;n<Ntotal;++n;@tile(p_blockSize,@outer,@inner)){
-    if(n<Ntotal){
-      const dlong id = n + offset;
-      NU[id] = CONST;
-    }
-  }
-}
 @kernel void scalarScaledAdd(const dlong N,
                              const dfloat a,
                              const dfloat b,

@@ -5,7 +5,7 @@
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
 
 if [ $# -ne 3 ]; then
-  echo "usage: [PROJ_ID] [QUEUE] $0 <casename> <number of compute nodes> <hh:mm:ss>"
+  echo "usage: [PROJ_ID=value] [QUEUE=value] $0 <casename> <number of compute nodes> <hh:mm:ss>"
   exit 0
 fi
 
@@ -42,11 +42,6 @@ fi
 
 if [ ! -f $case.udf ]; then
   echo "Cannot find" $case.udf
-  exit 1
-fi
-
-if [ ! -f $case.oudf ]; then
-  echo "Cannot find" $case.oudf
   exit 1
 fi
 
@@ -96,6 +91,7 @@ echo "nvidia-smi" >>$SFILE
 echo "export SLURM_CPU_BIND=\"cores\"" >> $SFILE
 echo "export CRAY_ACCEL_TARGET=nvidia80" >>$SFILE
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
+echo "export MPICH_OFI_NIC_POLICY=NUMA" >>$SFILE
 
 echo "ulimit -s unlimited " >>$SFILE
 echo "export NEKRS_HOME=$NEKRS_HOME" >>$SFILE

@@ -1,14 +1,9 @@
 #!/bin/bash   
 
-#define NUMA topology
-GPUS=(0 1 2 3)                                             
-CPUS=(0 0 1 1)  
-NICS=(mlx5_0 mlx5_0 mlx5_0 mlx5_0)
-
-#Nvidia A100
-#GPUS=(0 1 2 3 4 5 6 7)                                             
-#CPUS=(3 3 1 1 7 7 5 5)  
-#NICS=(mlx5_0 mlx5_1 mlx5_2 mlx5_3 mlx5_6 mlx5_7 mlx5_8 mlx5_9)
+#Nvidia DGX A100
+GPUS=(0 1 2 3 4 5 6 7)                                             
+CPUS=(3 3 1 1 7 7 5 5)  
+NICS=(mlx5_0 mlx5_1 mlx5_2 mlx5_3 mlx5_6 mlx5_7 mlx5_8 mlx5_9)
 
 #do not edit below here
 APP="$*"
@@ -32,7 +27,6 @@ export CUDA_VISIBLE_DEVICES=$GPU
 
 export UCX_NET_DEVICES=$NIC:1
 export UCX_TLS=rc,sm,cuda
-#export UCX_TLS=rc,sm,rocm
 export UCX_RNDV_SCHEME=put_zcopy
 export UCX_RNDV_THRESH=1024
 export UCX_MEMTYPE_CACHE=n
@@ -42,7 +36,7 @@ export OMPI_MCA_btl="^vader,tcp,openib,smcuda"
 export OMPI_MCA_osc=ucx
 
 export NEKRS_GPU_MPI=0
-if [[ $UCX_TLS == *"cuda"* ]] || [[ $UCX_TLS == *"rocm"* ]]; then
+if [[ $UCX_TLS == *"cuda"* ]]; then
   export NEKRS_GPU_MPI=1
 fi
 

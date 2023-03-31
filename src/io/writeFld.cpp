@@ -1,6 +1,13 @@
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
 
+
+void writeFld(std::string suffix, dfloat t, int step, int outXYZ, int FP64,
+              void* o_s, int NSfields)
+{
+  nek::outfld(suffix.c_str(), t, step, outXYZ, FP64, nullptr, nullptr, o_s, NSfields); 
+}
+
 void writeFld(std::string suffix, dfloat t, int step, int outXYZ, int FP64,
               void* o_u, void* o_p, void* o_s,
               int NSfields)

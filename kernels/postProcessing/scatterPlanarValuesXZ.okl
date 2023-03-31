@@ -1,0 +1,30 @@
+@kernel void scatterPlanarValuesXZ(const dlong Nelements,
+                                   const dlong Nfields,
+                                   const dlong fieldOffset,
+                                   const dlong nelx,
+                                   const dlong nely,
+                                   const dlong nelz,
+                                   @ restrict const dlong *locToGlobE,
+                                   @ restrict const dfloat *field,
+                                   @ restrict dfloat *result)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    dlong ex, ey, ez;
+    get_exyz(&ex, &ey, &ez, locToGlobE[e], nelx, nely, nelz);
+
+    const dfloat invNelz = 1.0 / nelz;
+
+    for (int fld = 0; fld < Nfields; ++fld) {
+      for (int j = 0; j < p_Nq; ++j; @inner(0)) {
+        const dlong offset = nely * p_Nq * fld;
+        const dfloat value = field[ey * p_Nq + j + offset];
+        for (int k = 0; k < p_Nq; ++k) {
+          for (int i = 0; i < p_Nq; ++i) {
+            const dlong id = e * p_Np + i + j * p_Nq + k * p_Nq * p_Nq;
+            result[id + fld * fieldOffset] = value * invNelz;
+          }
+        }
+      }
+    }
+  }
+}

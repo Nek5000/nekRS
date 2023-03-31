@@ -27,12 +27,6 @@
 #ifndef MESH_H
 #define MESH_H 1
 
-#include <unistd.h>
-#include <assert.h>
-
-#include <math.h>
-#include <stdlib.h>
-
 #include "nrssys.hpp"
 #include "ogs.hpp"
 #include "linAlg.hpp"
@@ -46,8 +40,11 @@ struct nrs_t;
 
 struct mesh_t
 {
-  dfloat avgBoundaryValue(int BID, occa::memory o_fld);
-  void avgBoundaryValue(int BID, int Nfields, int offsetFld, occa::memory o_flds, dfloat *avgs);
+  std::vector<dfloat> surfaceIntegral(int nbID, const occa::memory& o_bID, const occa::memory& o_fld);
+
+  std::vector<dfloat> surfaceIntegral(int Nfields, int offsetFld, int nbID,
+                                      const occa::memory o_bID, const occa::memory& o_fld);
+
   void move();
   void update();
   void computeInvLMM();
@@ -149,9 +146,7 @@ struct mesh_t
   // face node info
   int Nfp;        // number of nodes per face
   int* faceNodes; // list of element reference interpolation nodes on element faces
-  dlong* vmapM;     // list of volume nodes that are face nodes
-  dlong* vmapP;     // list of volume nodes that are paired with face nodes
-  dlong* mapP;     // list of surface nodes that are paired with -ve surface  nodes
+  dlong *vmapM;   // list of volume nodes that are face nodes
   int* faceVertices; // list of mesh vertices on each face
 
   dlong Nsgeo;
@@ -184,6 +179,7 @@ struct mesh_t
 
   // mesh velocity
   occa::memory o_U;
+  occa::memory o_Ue;
   dfloat* U; // host shadow of mesh velocity
 
   occa::memory o_D;
@@ -215,8 +211,7 @@ struct mesh_t
   occa::memory o_ggeo; // second order geometric factors
   occa::memory o_ggeoPfloat; // second order geometric factors
 
-  occa::memory o_gllzw;
-
+  occa::memory o_gllz;
   occa::memory o_gllw;
   occa::memory o_cubw;
   occa::memory o_faceNodes;
@@ -232,7 +227,7 @@ struct mesh_t
   occa::kernel nStagesSumVectorKernel;
   occa::kernel velocityDirichletKernel;
 
-  occa::kernel avgBIDValueKernel;
+  occa::kernel surfaceIntegralKernel;
 };
 
 mesh_t *createMeshMG(mesh_t* _mesh,
@@ -248,9 +243,6 @@ void parallelSort(int size, int rank, MPI_Comm comm,
                   int (* compare)(const void*, const void*),
                   void (* match)(void*, void*)
                   );
-
-#define mymax(a,b) (((a) > (b))?(a):(b))
-#define mymin(a,b) (((a) < (b))?(a):(b))
 
 void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage);
 
@@ -301,27 +293,10 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
 mesh_t* meshSetup(char* filename, int N, setupAide &options);
 void meshFree(mesh_t*);
 
+void printMeshMetrics(mesh_t* mesh);
+
 void occaTimerTic(occa::device device,std::string name);
 void occaTimerToc(occa::device device,std::string name);
-
-extern "C"
-{
-void* xxtSetup(uint num_local_rows,
-               void* row_ids,
-               uint nnz,
-               void*   A_i,
-               void*   A_j,
-               void* A_vals,
-               int null_space,
-               const char* inttype,
-               const char* floattype);
-
-void xxtSolve(void* x,
-              void* A,
-              void* rhs);
-
-void xxtFree(void* A);
-}
 
 extern "C"
 {

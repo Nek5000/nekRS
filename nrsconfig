@@ -3,23 +3,12 @@ set -e -a
 
 #########################################################################
 : ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
-
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
-: ${NEKRS_COMPILER_FLAGS:="-O2 -g -march=native -mtune=native -ftree-vectorize"}
-
-: ${OCCA_CXX:="g++"}
-: ${OCCA_CXXFLAGS:="-O3 -g -march=native -mtune=native"}
 #########################################################################
 
-if uname -a | grep 'ppc64'; then
-  NEKRS_COMPILER_FLAGS=$(echo "$NEKRS_COMPILER_FLAGS" | sed -e "s/march/mcpu/g")
-fi
-
-: ${NEKRS_CXXFLAGS:="${NEKRS_COMPILER_FLAGS}"}
-: ${NEKRS_CFLAGS:="${NEKRS_COMPILER_FLAGS}"}
-: ${NEKRS_FFLAGS:="${NEKRS_COMPILER_FLAGS}"}
+: ${NEKRS_CI:=0}
 
 mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
 NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
@@ -34,15 +23,13 @@ cmake -Wno-dev \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
       -DCMAKE_C_COMPILER="${NEKRS_CC}" \
       -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
-      -DCMAKE_Fortran_FLAGS_RELWITHDEBINFO="${NEKRS_FFLAGS}"  \
-      -DCMAKE_C_FLAGS_RELWITHDEBINFO="${NEKRS_CFLAGS}" \
-      -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="${NEKRS_CFLAGS}" \
-      -DOCCA_CXX="${OCCA_CXX}" \
-      -DOCCA_CXXFLAGS="${OCCA_CXXFLAGS}" \
       $@ \
       .. 
 
-if [ $? -eq 0 ]; then
+cd ..
+if [ $? -eq 0 ] && [ ${NEKRS_CI} -eq 0 ]; then
+  cmd="cmake --build ./build --target install -j8"
   echo ""        
-  echo "--> Now just run \`cmake --build ./build --target install -j8\`"
+  read -p "Hit enter to run: $cmd"
+  $cmd
 fi

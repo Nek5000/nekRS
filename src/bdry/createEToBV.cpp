@@ -1,8 +1,6 @@
 #include <vector>
 #include "elliptic.h"
 
-// pre: EToB allocated, capacity mesh->Nfaces * mesh->Nelements dlong words,
-//      o_EToBV allocated, capacity mesh->Nlocal dlong words
 void createEToBV(const mesh_t* mesh, const int* EToB, occa::memory& o_EToBV)
 {
   const int largeNumber = 1 << 20;
@@ -19,10 +17,8 @@ void createEToBV(const mesh_t* mesh, const int* EToB, occa::memory& o_EToBV)
       }
     }
   }
-  ogsGatherScatter(EToBV.data(),
-                       ogsInt,
-                       ogsMin,
-                       mesh->ogs);
+
+  ogsGatherScatter(EToBV.data(), ogsInt, ogsMin, mesh->ogs);
 
   for (dlong n = 0; n < mesh->Nlocal; n++) {
     if (EToBV[n] == largeNumber) {

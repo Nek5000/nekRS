@@ -1,63 +1,111 @@
-name: parRSB CI Tests
-on: [push, pull_request]
+name: parRSB tests
+on:
+  push:
+    branch: [main, next]
+  pull_request:
+    branch: [main, next]
 env:
   GITHUB.TOKEN: ${{ secrets.token }}
+  PARRSB_CI: parRSB-github-ci
+  EXAMPLESDIR: build/examples
 jobs:
-  main:
+  parRSB:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         test: [box_2x2x2, pyramid, tgv, e3q, solid, ethier, vortex, expansion]
         np: [1, 2, 3, 4]
       fail-fast: false
-    name: "${{ matrix.test }}"
+    name: "${{ matrix.test }}, NP = ${{ matrix.np }}"
     env:
       GSVER: 1.0.7
       CC: mpicc
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install apt dependencies
         shell: bash
         run: |
           sudo apt -y update
-          sudo apt install -y mpich libmpich-dev python3-pytest
+          sudo apt install -y mpich libmpich-dev
           sudo apt install -y libblas-dev liblapack-dev
-      - name: Build gslib
+      - name: Build parRSB and clone tests
         shell: bash
         run: |
-          wget --no-check-certificate -O v$GSVER.tar.gz http://github.com/gslib/gslib/archive/v$GSVER.tar.gz
-          mkdir gslib
-          tar -zxvf v$GSVER.tar.gz -C ./gslib --strip-components=1
-          cd gslib
-          make -j4
-      - name: Build parRSB
-        shell: bash
-        run: |
+          # Build gslib
+          git clone https://github.com/Nek5000/gslib.git
+          make -C gslib -j4
+
+          # Build parRSB
           export GSLIBPATH=`pwd`/gslib/build/
-          make -j1
-      - name: Clone tests
-        shell: bash
-        run: |
-          git clone https://github.com/thilinarmtb/parRSB-tests.git
+          make -j4 examples
+
+          # Clone tests
+          git clone https://github.com/thilinarmtb/${PARRSB_CI}.git
+
+          # For MPI
+          echo "localhost:4" > hostfile
       - name: gencon
         shell: bash
         run: |
-          export EXAMPLEDIR=`pwd`/build/examples
+          cp hostfile ${EXAMPLESDIR}/gencon ${PARRSB_CI}/${{ matrix.test }}
+          cd ${PARRSB_CI}/${{ matrix.test }}
 
-          cd parRSB-tests/${{ matrix.test }}
           tol=(`cat test.txt | grep tol`); tol=${tol[2]}
-
-          echo "localhost:4" > hostfile
-          mpirun -np ${{ matrix.np }} --hostfile hostfile ${EXAMPLEDIR}/gencon --mesh ${{ matrix.test }} --tol=${tol} --no-dump --test
-      - name: genmap
+          mpirun -np ${{ matrix.np }} --hostfile hostfile ./gencon \
+            --mesh ${{ matrix.test }} --tol=${tol} --dump=0 --test=1
+      - name: genmap-lanczos
+        if: always()
         shell: bash
         run: |
-          export EXAMPLEDIR=`pwd`/build/examples
           export PARRSB_RSB_PRE=0
           export PARRSB_RSB_ALGO=0
 
-          cd parRSB-tests/${{ matrix.test }}
-          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
+          cp hostfile ${EXAMPLESDIR}/genmap ${PARRSB_CI}/${{ matrix.test }}
+          cd ${PARRSB_CI}/${{ matrix.test }}
 
-          echo "localhost:4" > hostfile
-          mpirun -np ${{ matrix.np }} --hostfile hostfile ${EXAMPLEDIR}/genmap --mesh ${{ matrix.test }} --tol=${tol} --no-dump --test
+          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
+          mpirun -np ${{ matrix.np }} --hostfile hostfile ./genmap \
+            --mesh ${{ matrix.test }} --tol=${tol} --dump=0 --test=1
+      - name: genmap-mg-factor-2
+        if: always()
+        shell: bash
+        run: |
+          export PARRSB_RSB_PRE=0
+          export PARRSB_RSB_ALGO=1
+          export PARRSB_RSB_MG_FACTOR=2
+
+          cp hostfile ${EXAMPLESDIR}/genmap ${PARRSB_CI}/${{ matrix.test }}
+          cd ${PARRSB_CI}/${{ matrix.test }}
+
+          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
+          mpirun -np ${{ matrix.np }} --hostfile hostfile ./genmap \
+            --mesh ${{ matrix.test }} --tol=${tol} --dump=0 --test=1
+      - name: genmap-mg-factor-4
+        if: always()
+        shell: bash
+        run: |
+          export PARRSB_RSB_PRE=0
+          export PARRSB_RSB_ALGO=1
+          export PARRSB_RSB_MG_FACTOR=4
+
+          cp hostfile ${EXAMPLESDIR}/genmap ${PARRSB_CI}/${{ matrix.test }}
+          cd ${PARRSB_CI}/${{ matrix.test }}
+
+          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
+          mpirun -np ${{ matrix.np }} --hostfile hostfile ./genmap \
+            --mesh ${{ matrix.test }} --tol=${tol} --dump=0 --test=1
+      - name: genmap-mg-factor-4-smooth
+        if: always()
+        shell: bash
+        run: |
+          export PARRSB_RSB_PRE=0
+          export PARRSB_RSB_ALGO=1
+          export PARRSB_RSB_MG_FACTOR=4
+          export PARRSB_RSB_MG_SMOOTH_AGGREGATION=1
+
+          cp hostfile ${EXAMPLESDIR}/genmap ${PARRSB_CI}/${{ matrix.test }}
+          cd ${PARRSB_CI}/${{ matrix.test }}
+
+          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
+          mpirun -np ${{ matrix.np }} --hostfile hostfile ./genmap \
+            --mesh ${{ matrix.test }} --tol=${tol} --dump=0 --test=1

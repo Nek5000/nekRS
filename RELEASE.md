@@ -1,34 +1,51 @@
-# Release v22.1
+# Release v23.0
 
 ## What is new? 
 
-* Single source udf+oudf (see ethier example) 
-* Support BoomerAMG on device
+* Point interpolation
+* Coupled multi-session (neknek)
+* Particle tracking 
+* Single source udf+oudf
+* Device support BoomerAMG
+* Improved runtime statistics
+* 4th-kind + opt Chebyshev smoothers
+* Configureable time averaging 
+* Extrapolation initialGuess method
+* Scaleable JIT compilation
+* Real gas support for lowMach
+* More examples
+* Various bug fixes 
 
 ## Good to know
 
-* ... 
+* [udf] Changes in include files do not trigger rebuild 
+* [nrsconfig] Optional build settings have to be passed as a command line arg e.g. `-DENABLE_AMGX=ON`
+* [par] Plugins kernels will be loaded automatically (call in `UDF_LoadKernels` no longer required)
 
 ## Breaking Changes
-* [nrsconfig] Optional build settings have to be passed as a command line arg e.g. `-DENABLE_AMGX=ON`
-* time step was added to `nekRS::outfld(..., int step, ...)`
-
-## Known Bugs / Restrictions
-
+* [udf] Plugin header files need to be included explicitly
+* [udf] Rename `bc->wrk` => `bc->usrwrk`
+* [udf] Update to new API of lowMach plugin (see lowMach example)
+* Time step was added to `nekRS::outfld(..., int step, ...)`
+* [par] Use `pMGSchedule` instead of `pMultigridCoarsening` (see help for more details)
 * [par] Rename writeControl value `runTime` => `simulationTime`
 * [par] Remove multigrid qualifier `coarse`
 * [par] Remove SEMFEM solver specification from key `preconditioner`, use `semfemSolver` instead
+* [par] Replace `stressFormulation = true` by `equation = navierStokes+variableViscosity` 
+* [par] Replace bcType `fixedValue` by `codedFixedValue`
+* [par] Replace `elasticity` by `pcg+block` for mesh solver
+* All `boundaryIDs` need to be assigned (for an internal boundary use `none` in `boundaryTypeMap`)
 
 ## Known Bugs / Restrictions
 
-* Mesh solver does not support CHT and unaligned sym/shl BCs
+* Not fully optimized for Intel GPUs and CPUs yet
+* [485](https://github.com/Nek5000/Nek5000/issues/485)
 * [729](https://github.com/Nek5000/Nek5000/issues/759)
-* [300](https://github.com/Nek5000/nekRS/issues/300)
 * [258](https://github.com/Nek5000/nekRS/issues/258)
 
 ## Thanks to our Contributors
 
-@pwang234
+@neil-lindquist, @kris-rowe, @pwang234, @nandu90, @yhaomin2007
 
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.

@@ -128,7 +128,7 @@ PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 60
 PenaltyIndentedWhitespace: 0
 PointerAlignment: Right
-PPIndentWidth:   -1
+PPIndentWidth:  0 
 ReferenceAlignment: Pointer
 ReflowComments:  true
 ShortNamespaceLines: 1
@@ -166,7 +166,7 @@ StatementAttributeLikeMacros:
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
-TabWidth:        8
+TabWidth:        2
 UseCRLF:         false
 UseTab:          Never
 WhitespaceSensitiveMacros:

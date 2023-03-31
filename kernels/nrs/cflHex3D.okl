@@ -1,0 +1,187 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+// Compute Gradient in weak Form
+// WARNING: This kernel implicitly assumes that p_blockSize > p_Nq * p_Nq.
+// If this is not the case, then the results produced by this kernel will be garbage.
+@kernel void cflHex3D(const dlong Nelements,
+                      const dfloat dt,
+                      @ restrict const dfloat *vgeo,
+                      @ restrict const dfloat *idH,
+                      const dlong offset,
+                      @ restrict const dfloat *U,
+                      @ restrict const dfloat *W,
+                      @ restrict dfloat *cflU)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) { // for all elements
+    @shared dfloat s_idH[p_Nq];
+    @shared dfloat s_cfl[p_blockSize];
+    for (int j = 0; j < p_Nq; ++j; @inner(1))
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        for (int k = j * p_Nq + i; k < p_blockSize; k += p_Nq * p_Nq)
+          s_cfl[k] = -9e30;
+        if (j == 0)
+          s_idH[i] = idH[i];
+      }
+
+    // Make sure all node data is loaded into @shared
+    @barrier();
+
+    for (int k = 0; k < p_Nq; ++k) {
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          //
+          dfloat un = U[id + 0 * offset];
+          dfloat vn = U[id + 1 * offset];
+          dfloat wn = U[id + 2 * offset];
+          if (p_MovingMesh) {
+            un -= W[id + 0 * offset];
+            vn -= W[id + 1 * offset];
+            wn -= W[id + 2 * offset];
+          }
+
+          dfloat ur = fabs((un * drdx + vn * drdy + wn * drdz) * s_idH[i] * dt);
+          dfloat us = fabs((un * dsdx + vn * dsdy + wn * dsdz) * s_idH[j] * dt);
+          dfloat ut = fabs((un * dtdx + vn * dtdy + wn * dtdz) * s_idH[k] * dt);
+
+          // rhsU[id + 0 * offset] = ur + us + ut;
+          const dfloat velMag = ur + us + ut;
+          const dlong tid = j * p_Nq + i;
+          s_cfl[tid] = (velMag > s_cfl[tid]) ? velMag : s_cfl[tid];
+        }
+      }
+    }
+
+    @barrier();
+
+// reduce p_Nq * p_Nq to single value
+#if p_blockSize > 512
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 512) {
+          s_cfl[t] = (s_cfl[t + 512] > s_cfl[t]) ? s_cfl[t + 512] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+#endif
+#if p_blockSize > 256
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 256) {
+          s_cfl[t] = (s_cfl[t + 256] > s_cfl[t]) ? s_cfl[t + 256] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+#endif
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 128) {
+          s_cfl[t] = (s_cfl[t + 128] > s_cfl[t]) ? s_cfl[t + 128] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 64) {
+          s_cfl[t] = (s_cfl[t + 64] > s_cfl[t]) ? s_cfl[t + 64] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 32) {
+          s_cfl[t] = (s_cfl[t + 32] > s_cfl[t]) ? s_cfl[t + 32] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 16) {
+          s_cfl[t] = (s_cfl[t + 16] > s_cfl[t]) ? s_cfl[t + 16] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 8) {
+          s_cfl[t] = (s_cfl[t + 8] > s_cfl[t]) ? s_cfl[t + 8] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 4) {
+          s_cfl[t] = (s_cfl[t + 4] > s_cfl[t]) ? s_cfl[t + 4] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 2) {
+          s_cfl[t] = (s_cfl[t + 2] > s_cfl[t]) ? s_cfl[t + 2] : s_cfl[t];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 1) {
+          cflU[e] = (s_cfl[t + 1] > s_cfl[t]) ? s_cfl[t + 1] : s_cfl[t];
+        }
+      }
+    }
+  }
+}

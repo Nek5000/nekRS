@@ -30,12 +30,41 @@ C-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
+      call lambda2(t(1,1,1,1,1))
+
       return
       end
 c-----------------------------------------------------------------------
       subroutine usrdat()   ! This routine to modify element vertices
       include 'SIZE'
       include 'TOTAL'
+
+      COMMON /SCNRS/ sc_nrs(10)
+      real           sc_nrs
+      real P_EPS
+
+      P_EPS = sc_nrs(1)
+
+      epsy = P_EPS
+      epsz = P_EPS
+      if (nid.eq.0) then
+        write(6, *) 'epsy=',epsy,'epsz=',epsz
+      endif
+
+      n = nelt*(2**ldim)
+      xmax = glmax(xc,n)
+      ymax = glmax(yc,n)
+      zmax = glmax(zc,n)
+
+      do i = 1, n
+        x = xc(i, 1)/xmax
+        y = yc(i, 1)/ymax
+        z = zc(i, 1)/zmax
+        call kershaw(epsy, epsz, x, y, z, xx, yy, zz)
+        xc(i, 1) = xx
+        yc(i, 1) = yy
+        zc(i, 1) = zz
+      enddo
 
       return
       end
@@ -58,5 +87,85 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
 
       return
+      end
+c-----------------------------------------------------------------------
+      subroutine right(eps, x, xx)
+        real eps, x, xx
+
+        if (x.le.0.5) then
+          xx = (2.0 - eps)*x
+        else
+          xx = 1.0 + eps*(x - 1.0)
+        endif
+
+        return
+      end
+c-----------------------------------------------------------------------
+      subroutine left(eps, x, xx)
+        real eps, x, xx
+
+        call right(eps, 1.0 - x, xx)
+        xx = 1.0 - xx
+
+        return
+      end
+c-----------------------------------------------------------------------
+      subroutine step(a, b, x, xx)
+        real a, b, x, xx
+
+        if (x.le.0.0) then
+          xx = a
+        else if (x.ge.1.0) then
+          xx = b
+        else
+          !xx = a + (b - a)*x
+          xx = a + (b-a) * x*x*x*(x *(6*x - 15) + 10)
+        endif
+
+        return
+      end
+c-----------------------------------------------------------------------
+      subroutine kershaw(epsy, epsz, x, y, z, xx, yy, zz)
+        real epsy, epsz, x, y, z, xx, yy, zz
+        real a, b
+        real lambda, t_lambda
+
+        integer layer
+
+        xx = x
+
+        layer = x*3.0
+        lambda = (x - layer/3.0)*3
+
+        if (layer.eq.0 .or. layer.eq.3) then
+            t_lambda = lambda
+            call left(epsy, y, a)
+            call right(epsy, y, b)
+            call step(a, b, t_lambda, yy)
+
+            call left(epsz, z, a)
+            call right(epsz, z, b)
+            call step(a, b, t_lambda, zz)
+        else if (layer.eq.1) then
+            t_lambda = lambda/2.0
+
+            call left(epsy, y, b)
+            call right(epsy, y, a)
+            call step(a, b, t_lambda, yy)
+
+            call left(epsz, z, b)
+            call right(epsz, z, a)
+            call step(a, b, t_lambda, zz)
+        else if (layer.eq.2) then
+            t_lambda = (1.0 + lambda)/2.0
+
+            call left(epsy, y, b)
+            call right(epsy, y, a)
+            call step(a, b, t_lambda, yy)
+
+            call left(epsz, z, b)
+            call right(epsz, z, a)
+            call step(a, b, t_lambda, zz)
+        endif
       end
 c-----------------------------------------------------------------------

@@ -1,15 +1,6 @@
 #if !defined(nekrs_nekrs_hpp_)
 #define nekrs_nekrs_hpp_
 
-#include <cstdio>
-#include <cstdlib>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <unistd.h>
-#include <getopt.h>
-#include <vector>
-
 #include "nrssys.hpp"
 #include "mesh3D.h"
 #include "elliptic.h"
@@ -17,6 +8,8 @@
 #include "linAlg.hpp"
 #include "timer.hpp"
 #include "platform.hpp"
+#include "neknek.hpp"
+#include "cvode.hpp"
 #include "fldFile.hpp"
 
 struct nrs_t {
@@ -27,29 +20,32 @@ struct nrs_t {
 
   int dim, elementType;
 
-  mesh_t *_mesh;
-  mesh_t *meshV;
+  mesh_t *_mesh = nullptr;
+  mesh_t *meshV = nullptr;
 
-  elliptic_t *uSolver;
-  elliptic_t *vSolver;
-  elliptic_t *wSolver;
-  elliptic_t *uvwSolver;
-  elliptic_t *pSolver;
-  elliptic_t *meshSolver;
+  elliptic_t *uSolver = nullptr;
+  elliptic_t *vSolver = nullptr;
+  elliptic_t *wSolver = nullptr;
+  elliptic_t *uvwSolver = nullptr;
+  elliptic_t *pSolver = nullptr;
+  elliptic_t *meshSolver = nullptr;
 
-  cds_t *cds;
+  cds_t *cds = nullptr;
 
-  oogs_t *gsh;
+  neknek_t *neknek = nullptr;
+  cvode_t *cvode = nullptr;
+
+  oogs_t *gsh = nullptr;
+  oogs_t *gshMesh = nullptr;
 
   dlong ellipticWrkOffset;
 
   int flow;
   int cht;
   int Nscalar;
-  int NVfields, NTfields;
+  int NVfields;
   dlong fieldOffset;
   dlong cubatureOffset;
-  setupAide vOptions, pOptions, mOptions;
 
   int timeStepConverged;
 
@@ -57,11 +53,18 @@ struct nrs_t {
   dfloat g0, ig0;
   dfloat CFL, unitTimeCFL;
 
+  dfloat timePrevious;
+
   dfloat p0th[3] = {0.0, 0.0, 0.0};
+  dfloat p0the = 0.0;
   dfloat dp0thdt;
+
+  dfloat alpha0Ref;
 
   int nEXT;
   int nBDF;
+
+  int tstep;
   int lastStep;
   int isOutputStep;
   int outputForceStep;
@@ -167,7 +170,11 @@ struct nrs_t {
   occa::kernel setEllipticCoeffPressureKernel;
 
   occa::kernel curlKernel;
+
+  occa::kernel SijOijKernel;
+
   occa::kernel maskCopyKernel;
+  occa::kernel maskCopy2Kernel;
   occa::kernel maskKernel;
 
   occa::memory o_zeroNormalMaskVelocity;
@@ -179,34 +186,11 @@ struct nrs_t {
   occa::kernel applyZeroNormalMaskKernel;
 };
 
-// std::to_string might be not accurate enough
-static std::string to_string_f(double a)
-{
-  std::stringstream s;
-  s << std::scientific << a;
-  return s.str();
-}
-
-static std::vector<std::string> serializeString(const std::string sin, char dlim)
-{
-  std::vector<std::string> slist;
-  std::string s(sin);
-  s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
-  std::stringstream ss;
-  ss.str(s);
-  while (ss.good()) {
-    std::string substr;
-    std::getline(ss, substr, dlim);
-    slist.push_back(substr);
-  }
-  return slist;
-}
+int nrsFinalize(nrs_t *nrs);
 
 void evaluateProperties(nrs_t *nrs, const double timeNew);
 
 void compileKernels();
-
-std::vector<int> determineMGLevels(std::string section);
 
 int numberActiveFields(nrs_t *nrs);
 

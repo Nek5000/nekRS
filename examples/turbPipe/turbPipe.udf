@@ -1,7 +1,6 @@
 //
 // nekRS User Defined File
 //
-#include <math.h>
 #include "udf.hpp"
 #include "plugins/velRecycling.hpp"
 #include "plugins/tavg.hpp"
@@ -10,13 +9,12 @@ static dfloat ZLENGTH;
 static int NSLABS;
 static int NELSLAB;
 
-/* UDF Functions */                                                      
 
-void UDF_LoadKernels(occa::properties& kernelInfo)
-{
-  velRecycling::buildKernel(kernelInfo);
-  tavg::buildKernel(kernelInfo);
-}
+#ifdef __okl__
+
+#include "turbPipe.oudf"
+
+#endif
 
 void UDF_Setup(nrs_t *nrs)
 {

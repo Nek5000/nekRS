@@ -71,10 +71,11 @@ namespace occa {
   }
 
   bool dim::hasNegativeEntries() const {
-    bool retVal = hasNegativeBitSet(x);      
-    if(dims > 1) retVal = retVal || hasNegativeBitSet(y);
-    if(dims > 2) retVal = retVal || hasNegativeBitSet(z); 
-    return retVal; 
+    return (
+      hasNegativeBitSet(x) ||
+      hasNegativeBitSet(y) ||
+      hasNegativeBitSet(z)
+    );
   }
 
   udim_t& dim::operator [] (int i) {

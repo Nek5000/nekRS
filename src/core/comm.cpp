@@ -36,7 +36,11 @@ MPI_Datatype comm_t::toMPI_Datatype(comm_t::type t) const
       return MPI_DLONG;
     case comm_t::type::hlong:
       return MPI_HLONG;
+    default:
+      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "Unkown datatype!", "");
   }
+ 
+  return 0;
 }
 
 MPI_Op comm_t::toMPI_Op(comm_t::op o)const
@@ -49,7 +53,11 @@ MPI_Op comm_t::toMPI_Op(comm_t::op o)const
       return MPI_MAX;
     case comm_t::op::min:
       return MPI_MIN;
+    default:
+      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "Unkown operation!", "");
   }
+
+  return 0;
 }
 
 void comm_t::reallocScratch(size_t Nbytes) const
@@ -90,6 +98,7 @@ int comm_t::allreduce(occa::memory sendbuf, occa::memory recvbuf, int count,
   reallocScratch(Nbytes);
 
   if(useGPUAware || platform->serial){
+    platform->device.finish();
     return MPI_Allreduce((void*) sendbuf.ptr(), (void*) recvbuf.ptr(), count, mpiDataType, mpiOp, comm);
   } else {
     int retVal = 0;
@@ -117,6 +126,7 @@ int comm_t::allreduce(occa::memory recvbuf, int count,
   reallocScratch(Nbytes);
 
   if(useGPUAware || platform->serial){
+    platform->device.finish();
     return MPI_Allreduce(MPI_IN_PLACE, (void*) recvbuf.ptr(), count, mpiDataType, mpiOp, comm);
   } else {
     int retVal = 0;
