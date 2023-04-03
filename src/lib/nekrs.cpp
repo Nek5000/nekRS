@@ -37,6 +37,15 @@ static int enforceOutputStep = 0;
 
 namespace nekrs
 {
+
+void reset()
+{
+  lastOutputTime = 0;
+  firstOutfld = 1;
+  enforceLastStep = 0;
+  enforceOutputStep = 0;
+}
+
 double startTime(void)
 {
   double val = 0;

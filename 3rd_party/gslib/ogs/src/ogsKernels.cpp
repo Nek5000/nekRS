@@ -193,10 +193,6 @@ void ogs::initKernels(MPI_Comm comm, occa::device device, ogsBuildKernel_t build
 
   occa::properties props = ogs::kernelInfo;
 
-  if (verbose) {
-    props["verbose"] = true;
-  }
-
   {
     occa::properties props2 = ogs::kernelInfo;
     props2["includes"] += std::string(getenv("OGS_HOME")) + "/include/ogsDefs.h";

@@ -16,7 +16,7 @@
 | sym BC                  |     |  x  |     |     |  x  |  x  |     |     |
 | turbulent outflow       |     |     |     |     |     |  x  |     |     |
 | variable dt             |  x  |     |     |  x  |     |     |     |     |
-| OIFS                    |  x  |     |     |  x  |     |     |     |     |
+| OIFS                    |  x  |     |     |  x  |     |     |  x  |     |
 | Lagrangian particles    |     |     |     |     |     |  x  |     |     |
 | Point interpolation     |     |     |     |     |     |  x  |     |     |
 | usrchk postprocessing   |  x  |     |     |     |     |     |     |     |
@@ -24,7 +24,7 @@
 | planar average          |  x  |     |     |     |     |     |     |     |
 | conjugate heat transfer |     |     |     |     |     |     |     |  x  |
 | RANS (k-tau)            |     |  x  |     |     |     |     |     |     |
-| drag                    |     |  x  |     |     |     |     |     |     |
+| surfaceIntegral (drag)  |     |  x  |     |     |     |     |     |     |
 | mesh manipulation       |     |     |     |     |     |     |     |     |
 | moving mesh (ALE)       |     |     |     |     |  x  |  x  |     |     |
 | constant flow rate      |     |  x  |     |     |     |     |     |     |

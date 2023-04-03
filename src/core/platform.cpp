@@ -69,8 +69,12 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
   if(getenv("NEKRS_CACHE_BCAST"))
     cacheBcast = std::stoi(getenv("NEKRS_CACHE_BCAST"));
 
+  // build-only mode has to use cacheBcast as well otherwise include paths 
+  // change triggering a re-build 
+#if 0
   if (options.compareArgs("BUILD ONLY", "TRUE"))
     cacheBcast = 0;
+#endif
 
   nrsCheck(cacheLocal && cacheBcast,
            _comm, EXIT_FAILURE, 
@@ -124,8 +128,9 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
                         fs::path("nekInterface"),
                         fs::path("include"),
                         fs::path("gatherScatter"),
-                        fs::path("3rdParty"),
+                        fs::path("3rd_party"),
                         fs::path("kernels")}) {
+      
       fileBcast(srcPath / entry, NEKRS_HOME_NEW, comm.mpiComm, verbose);
     }
     setenv("NEKRS_HOME", std::string(NEKRS_HOME_NEW).c_str(), 1);

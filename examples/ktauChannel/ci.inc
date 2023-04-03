@@ -6,7 +6,7 @@
 
 static int ciMode = 0;
 
-#define EPS 3.5e-2
+#define EPS 4e-3
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
@@ -20,10 +20,10 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VISCOSITY", std::to_string(1.0 / 43500.0));
   options.setArgs("DENSITY", std::string("1.0"));
   options.setArgs("NUMBER TIMESTEPS", std::string("-1"));
-  options.setArgs("END TIME", std::string("10"));
+  options.setArgs("END TIME", std::string("20"));
   options.setArgs("TIME INTEGRATOR", "TOMBO2");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
-  options.setArgs("DT", std::string("2e-2"));
+  options.setArgs("DT", std::string("5e-2"));
   options.setArgs("SUBCYCLING STEPS", std::string("0"));
 
   options.setArgs("PRESSURE KRYLOV SOLVER", "PGMRES+FLEXIBLE");

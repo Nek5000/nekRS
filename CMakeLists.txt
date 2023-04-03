@@ -471,6 +471,8 @@ configure_file(
   ${CMAKE_INSTALL_PREFIX}/nekrs.conf
   @ONLY)
 
+file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/3rd_party)
+
 install(
   TARGETS nekrs-lib nekrs-hypre nekrs-hypre-device nekrs-bin axhelm-bin advsub-bin fdm-bin
   RUNTIME DESTINATION bin

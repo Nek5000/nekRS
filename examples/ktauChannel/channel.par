@@ -2,13 +2,13 @@
 polynomialOrder = 7
 startFrom = "r.fld"+time=0
 stopAt = endTime
-endTime = 20
+endTime = 50
 #numSteps = 5
-dt = 2e-02
+dt = 5e-02
 timeStepper = tombo2
 
 writeControl = simulationTime 
-writeInterval = 20
+writeInterval = 50
 
 constFlowRate = meanVelocity=1.0 + direction=X
 

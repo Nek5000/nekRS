@@ -275,9 +275,6 @@ void oogs::compile(const occa::device &device, ogsBuildKernel_t buildKernel, std
   ogs::initKernels(comm, device, buildKernel, verbose);
 
   occa::properties props = ogs::kernelInfo;
-  if (verbose) {
-    props["verbose"] = true;
-  }
 
   packBufFloatAddKernel    = buildKernel(oklpath + "oogs.okl", "packBuf_floatAdd", props);
   unpackBufFloatAddKernel  = buildKernel(oklpath + "oogs.okl", "unpackBuf_floatAdd", props);

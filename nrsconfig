@@ -2,33 +2,27 @@
 set -e -a
 
 #########################################################################
-: ${NEKRS_INSTALL_DIR:=${HOME}/.local/nekrs}
+
+: ${NEKRS_HOME:=${HOME}/.local/nekrs}
 : ${NEKRS_CC:="mpicc"}
 : ${NEKRS_CXX:="mpic++"}
 : ${NEKRS_FC:="mpif77"}
+
 #########################################################################
 
-: ${NEKRS_CI:=0}
+: ${NRSCONFIG_NOBUILD:=0}
 
-mkdir -p ${NEKRS_INSTALL_DIR} > /dev/null 2>&1
-NEKRS_INSTALL_DIR=`echo "$(cd "$(dirname "${NEKRS_INSTALL_DIR}")"; pwd)/$(basename "${NEKRS_INSTALL_DIR}")"`
-
-NEKRS_BUILD_DIR=`pwd`/build
-mkdir -p "${NEKRS_BUILD_DIR}" > /dev/null 2>&1
-cd ${NEKRS_BUILD_DIR}
-
-cmake -Wno-dev \
+cmake -S . -B build \
+      -Wno-dev \
       -Wfatal-errors \
-      -DCMAKE_INSTALL_PREFIX="${NEKRS_INSTALL_DIR}" \
+      -DCMAKE_INSTALL_PREFIX="${NEKRS_HOME}" \
       -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
       -DCMAKE_C_COMPILER="${NEKRS_CC}" \
       -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
-      $@ \
-      .. 
+      $@
 
-cd ..
-if [ $? -eq 0 ] && [ ${NEKRS_CI} -eq 0 ]; then
-  cmd="cmake --build ./build --target install -j8"
+if [ $? -eq 0 ] && [ ${NRSCONFIG_NOBUILD} -eq 0 ]; then
+  cmd="cmake --build ./build --target install -j8 -v"
   echo ""        
   read -p "Hit enter to run: $cmd"
   $cmd

@@ -86,8 +86,6 @@ occa::kernel device_t::buildNativeKernel(const std::string &fileName,
 {
   occa::properties nativeProperties = props;
   nativeProperties["okl/enabled"] = false;
-  if (_verbose)
-    nativeProperties["verbose"] = true;
   if (this->mode() == "OpenMP")
     nativeProperties["defines/__NEKRS__OMP__"] = 1;
   return _device.buildKernel(fileName, kernelName, nativeProperties);
@@ -137,8 +135,6 @@ occa::kernel device_t::buildKernel(const std::string &fileName,
   if (fileName.find(".okl") != std::string::npos) {
     occa::properties propsWithSuffix = props;
     propsWithSuffix["kernelNameSuffix"] = suffix;
-    if (_verbose)
-      propsWithSuffix["verbose"] = true;
 
     if (this->mode() == "CUDA")
       propsWithSuffix["defines/smXX"] = 1;
@@ -322,8 +318,6 @@ occa::memory device_t::malloc(size_t Nword, size_t wordSize)
 
 device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
 {
-  _verbose = options.compareArgs("BUILD ONLY", "TRUE");
-
   // OCCA build stuff
   char deviceConfig[4096];
   int worldRank = _comm.mpiRank;
@@ -342,8 +336,8 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
   options.getArgs("THREAD MODEL", requestedOccaMode);
 
   if (strcasecmp(requestedOccaMode.c_str(), "CUDA") == 0) {
-    if(!getenv("CUDA_DISABLE_PTX_JIT"))
-      setenv("CUDA_DISABLE_PTX_JIT", "1", 1);
+    if(!getenv("CUDA_CACHE_DISABLE"))
+      setenv("CUDA_CACHE_DISABLE", "1", 1);
     sprintf(deviceConfig, "{mode: 'CUDA', device_id: %d}", device_id);
   }
   else if (strcasecmp(requestedOccaMode.c_str(), "HIP") == 0) {
@@ -375,6 +369,13 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
              "Invalid requested backend!\n", ""); 
   }
 
+#if 0
+  if (options.compareArgs("BUILD ONLY", "TRUE")) {
+    if (!getenv("OCCA_VERBOSE")) {
+      setenv("OCCA_VERBOSE", "1", 1);
+    }
+  }
+#endif
   setOccaVars();
 
   if (worldRank == 0)

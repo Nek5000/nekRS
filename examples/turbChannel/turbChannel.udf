@@ -42,19 +42,21 @@ void useric(nrs_t *nrs)
   dfloat mue;
   platform->options.getArgs("VISCOSITY", mue);
 
-  for(int i = 1; i < mesh->Nlocal; i++) {
-    const auto x = mesh->x[i];
-    const auto y = mesh->y[i];
-    const auto z = mesh->z[i];
-    const auto yp = (y < 0) ? (1+y)*ReTau : (1-y)*ReTau;
-
-    dfloat ux = 1/k*log(1+k*yp) + (C - (1/k)*log(k)) *
-                (1 - exp(-yp/11) - yp/11*exp(-yp/3));
-    ux *= ReTau*mue;
-
-    nrs->U[i + 0*nrs->fieldOffset] = ux  + eps*beta  * sin(alpha*x)*cos(beta*z);
-    nrs->U[i + 1*nrs->fieldOffset] =       eps       * sin(alpha*x)*sin(beta*z);
-    nrs->U[i + 2*nrs->fieldOffset] =     - eps*alpha * cos(alpha*x)*sin(beta*z);
+  if(platform->options.compareArgs("RESTART FROM FILE", "0")) {
+    for(int i = 1; i < mesh->Nlocal; i++) {
+      const auto x = mesh->x[i];
+      const auto y = mesh->y[i];
+      const auto z = mesh->z[i];
+      const auto yp = (y < 0) ? (1+y)*ReTau : (1-y)*ReTau;
+ 
+      dfloat ux = 1/k*log(1+k*yp) + (C - (1/k)*log(k)) *
+                  (1 - exp(-yp/11) - yp/11*exp(-yp/3));
+      ux *= ReTau*mue;
+ 
+      nrs->U[i + 0*nrs->fieldOffset] = ux  + eps*beta  * sin(alpha*x)*cos(beta*z);
+      nrs->U[i + 1*nrs->fieldOffset] =       eps       * sin(alpha*x)*sin(beta*z);
+      nrs->U[i + 2*nrs->fieldOffset] =     - eps*alpha * cos(alpha*x)*sin(beta*z);
+    }
   }
 }
 

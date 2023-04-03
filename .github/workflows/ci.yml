@@ -11,7 +11,6 @@ on:
 env:
   GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
   NEKRS_HOME: "${{ github.workspace }}/.local/nekrs"
-  NEKRS_INSTALL_DIR: "${{ github.workspace }}/.local/nekrs"
   MPICH_FC: "gfortran"
   NEKRS_EXAMPLES: "${{ github.workspace }}/.local/nekrs/examples"
   ENABLE_CUDA: "0"
@@ -19,7 +18,7 @@ env:
   NEKRS_COMPILER_FLAGS: "-O2"
   OCCA_CXXFLAGS: "-O2"
   NEKRS_OCCA_MODE_DEFAULT: "SERIAL"
-  NEKRS_CI: "1"
+  NRSCONFIG_NOBUILD: "1"
   RUNNER_ARCH: "X86"
 
 defaults:
@@ -51,7 +50,7 @@ jobs:
       with:
         name: install-dir
         retention-days: 2 
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
         if-no-files-found: error
 
   ethier:
@@ -72,10 +71,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'ethier default'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
@@ -167,10 +166,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'lowMach default'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
@@ -199,10 +198,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'mv_cyl'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
@@ -271,10 +270,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'conj_ht'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
@@ -307,10 +306,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'channelStress (no rotation)'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
@@ -338,10 +337,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'traction channel (no rotation)'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
@@ -369,10 +368,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'eddyNekNek'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
@@ -400,10 +399,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'ktauChannel'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ktauChannel

@@ -59,6 +59,5 @@ class device_t {
     comm_t& _comm;
     occa::device _device;
     int _device_id;
-    bool _verbose;
 };
 #endif

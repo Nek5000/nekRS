@@ -124,7 +124,6 @@ void fileBcast(const fs::path &srcPathIn,
   }
 
   MPI_Bcast(&maxFileSize, 1, MPI_INT, nodeRankRoot, comm);
-  printf("maxFileSize: %d\n", maxFileSize);
 
   auto fileBuf = (char *) std::malloc(maxFileSize * sizeof(char)); 
   nrsCheck(fileBuf == nullptr, MPI_COMM_SELF, 
