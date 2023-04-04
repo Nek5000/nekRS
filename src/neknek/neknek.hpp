@@ -10,21 +10,12 @@
 
 struct nrs_t;
 
-struct session_data_t {
-  dlong nsessions, sessionID;
-  MPI_Comm globalComm;
-  MPI_Comm localComm;
-  bool coupled;
-};
-
 bool checkCoupled(nrs_t *nrs);
 
 class neknek_t {
 public:
-  neknek_t(nrs_t *nrs, const session_data_t &session);
+  neknek_t(nrs_t *nrs, dlong _nsessions, dlong _sessionID);
   dlong nsessions, sessionID;
-  MPI_Comm globalComm;
-  MPI_Comm localComm;
 
   dlong Nscalar;
   dlong nEXT;

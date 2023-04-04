@@ -117,10 +117,10 @@ double* filterSetup(mesh_t* mesh, const dlong filterNc)
     iV[n] = V[n];
 
   dgetrf_(&N,&N,(double*)iV,&N,IPIV,&INFO);
-  nrsCheck(INFO, MPI_COMM_SELF, EXIT_FAILURE, "dgetrf failed", "");
+  nrsCheck(INFO, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "dgetrf failed");
 
   dgetri_(&N,(double*)iV,&N,IPIV,(double*)WORK,&LWORK,&INFO);
-  nrsCheck(INFO, MPI_COMM_SELF, EXIT_FAILURE, " dgetrifailed", "");
+  nrsCheck(INFO, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "dgetri failed");
 
   // V*A*V^-1 in row major
   char TRANSA = 'T';

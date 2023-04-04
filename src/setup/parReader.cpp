@@ -42,12 +42,12 @@ std::optional<int> parseScalarIntegerFromString(const std::string &scalarString)
     catch (std::invalid_argument &e) {
       std::cout << "Hit an invalid_argument error for scalarString=\"" << scalarString << "\". It said\n"
                 << e.what() << "\n";
-      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "\n", "");
+      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "");
       return {};
     }
   }
   else {
-    nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "\n", "");
+    nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "");
     return {};
   }
 }

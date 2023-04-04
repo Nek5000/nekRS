@@ -65,7 +65,7 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity)
     }
   }
   
-  nrsCheck(iErr, platform->comm.mpiComm, EXIT_FAILURE, "", "");
+  nrsCheck(iErr, platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
 
   const auto n = nPoints;
 

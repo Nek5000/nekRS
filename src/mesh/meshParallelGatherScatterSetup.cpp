@@ -151,7 +151,7 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
     }
     o_tmp.free();
  
-    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "sanity check failed", "");
+    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "sanity check failed");
     free(tmp);
   }
 }

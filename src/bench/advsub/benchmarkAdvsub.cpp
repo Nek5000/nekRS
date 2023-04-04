@@ -86,7 +86,7 @@ occa::kernel benchmarkAdvsub(int Nfields,
   }
 
   nrsCheck(Nq > 14, platform->comm.mpiComm, EXIT_FAILURE, 
-           "Nq > 14 is unsupported\n", "");
+           "%s\n", "Nq > 14 is unsupported");
 
   const auto largestCubNq = maximumCubaturePoints.at(Nq);
 

@@ -127,7 +127,7 @@ SEMFEMSolver_t::SEMFEMSolver_t(elliptic_t* elliptic_)
   }
   else if(elliptic->options.compareArgs("COARSE SOLVER", "AMGX")){
     nrsCheck(platform->device.mode() != "CUDA", platform->comm.mpiComm, EXIT_FAILURE,
-             "AmgX only supports CUDA!\n", "");
+             "%s\n", "AmgX only supports CUDA!");
       
     std::string configFile;
     elliptic->options.getArgs("AMGX CONFIG FILE", configFile);
@@ -150,7 +150,7 @@ SEMFEMSolver_t::SEMFEMSolver_t(elliptic_t* elliptic_)
     std::string amgSolver;
     elliptic->options.getArgs("COARSE SOLVER", amgSolver);
     nrsAbort(platform->comm.mpiComm, EXIT_FAILURE,
-             "COARSE SOLVER %s is not supported!\n", amgSolver.c_str(), "");
+             "COARSE SOLVER %s is not supported!\n", amgSolver.c_str());
   }
 
   free(matrix);
@@ -213,7 +213,7 @@ void SEMFEMSolver_t::run(occa::memory& o_r, occa::memory& o_z)
   } else {
 
     nrsAbort(platform->comm.mpiComm, EXIT_FAILURE,
-             "Trying to call an unknown SEMFEM solver!\n", "");
+             "%s\n", "Trying to call an unknown SEMFEM solver!");
 
   }
 

@@ -37,7 +37,7 @@ MPI_Datatype comm_t::toMPI_Datatype(comm_t::type t) const
     case comm_t::type::hlong:
       return MPI_HLONG;
     default:
-      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "Unkown datatype!", "");
+      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "Unkown datatype!");
   }
  
   return 0;
@@ -54,7 +54,7 @@ MPI_Op comm_t::toMPI_Op(comm_t::op o)const
     case comm_t::op::min:
       return MPI_MIN;
     default:
-      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "Unkown operation!", "");
+      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "Unknown operation!");
   }
 
   return 0;

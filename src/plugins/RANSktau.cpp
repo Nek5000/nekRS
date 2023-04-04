@@ -119,7 +119,7 @@ void RANSktau::buildKernel(occa::properties _kernelInfo)
   platform->options.getArgs("NUMBER OF SCALARS", Nscalar);
 
   nrsCheck(Nscalar < 2, platform->comm.mpiComm, EXIT_FAILURE,
-           "Nscalar needs to be >= 2!\n", "");
+           "%s\n", "Nscalar needs to be >= 2!");
   platform->options.setArgs("VELOCITY STRESSFORMULATION", "TRUE");
 }
 

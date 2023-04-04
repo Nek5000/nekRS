@@ -283,7 +283,7 @@ strip_lines(const char *src)
    char buffer[BUFFER_SIZE];
 
    int last = 0;
-   for (char c = getc(fi); c != EOF; c = getc(fi)) {
+   for (int c = getc(fi); c != EOF; c = getc(fi)) {
      if (c == '\n') last++;
    }
    rewind(fi);

@@ -122,7 +122,7 @@ void ellipticOgs(mesh_t *mesh,
 
   if(! *ogs) {
     nrsCheck(nFields > 1, platform->comm.mpiComm, EXIT_FAILURE,
-             "Creating a masked gs handle for nFields > 1 is currently not supported!\n", "");
+             "%s\n", "Creating a masked gs handle for nFields > 1 is currently not supported!");
 
     hlong* maskedGlobalIds = (hlong*) calloc(mesh->Nlocal,sizeof(hlong));
     memcpy(maskedGlobalIds, mesh->globalIds, mesh->Nlocal * sizeof(hlong));

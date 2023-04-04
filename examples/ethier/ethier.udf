@@ -371,7 +371,8 @@ void UDF_Setup(nrs_t *nrs)
     for(auto&& x : xPoint) {
       for(auto&& y : yPoint) {
         for(auto&& z : zPoint) {
-          if(pid % platform->comm.mpiCommSize == platform->comm.mpiRank) {
+          // only add particles to rank 0
+          if(platform->comm.mpiRank == 0) {
             xp0.push_back(x);
             yp0.push_back(y);
             zp0.push_back(z);
@@ -402,7 +403,9 @@ void UDF_Setup(nrs_t *nrs)
     particles->initialize(np, t0, y0);
 
     auto o_pid = particles->getProp("gid");
-    o_pid.copyFrom(pid0.data(), particles->numParticles() * sizeof(dfloat)); // set global particle id
+    if(particles->numParticles() > 0){
+      o_pid.copyFrom(pid0.data(), particles->numParticles() * sizeof(dfloat)); // set global particle id
+    }
   }
 
   mesh_t *mesh = nrs->meshV;
@@ -429,23 +432,31 @@ void setParticleSolution(nrs_t *nrs, dfloat time)
     yp0_g[i] = ypg0[gid];
     zp0_g[i] = zpg0[gid];
   }
+
   auto o_y0 = platform->device.malloc(nrs->dim * xp0_g.size() * sizeof(dfloat));
-  auto o_x0coord = o_y0 + 0 * xp0_g.size() * sizeof(dfloat);
-  auto o_y0coord = o_y0 + 1 * yp0_g.size() * sizeof(dfloat);
-  auto o_z0coord = o_y0 + 2 * zp0_g.size() * sizeof(dfloat);
-  o_x0coord.copyFrom(xp0_g.data(), xp0_g.size() * sizeof(dfloat));
-  o_y0coord.copyFrom(yp0_g.data(), yp0_g.size() * sizeof(dfloat));
-  o_z0coord.copyFrom(zp0_g.data(), zp0_g.size() * sizeof(dfloat));
+
+  if(particles->numParticles() > 0){
+    auto o_x0coord = o_y0 + 0 * xp0_g.size() * sizeof(dfloat);
+    auto o_y0coord = o_y0 + 1 * yp0_g.size() * sizeof(dfloat);
+    auto o_z0coord = o_y0 + 2 * zp0_g.size() * sizeof(dfloat);
+    o_x0coord.copyFrom(xp0_g.data(), xp0_g.size() * sizeof(dfloat));
+    o_y0coord.copyFrom(yp0_g.data(), yp0_g.size() * sizeof(dfloat));
+    o_z0coord.copyFrom(zp0_g.data(), zp0_g.size() * sizeof(dfloat));
+  }
+
   auto o_y = solveODE(nrs, 0.0, time, 1e-3 * nrs->dt[0], o_y0, exactUVWP, RK);
-  auto o_xcoord = o_y + 0 * xp0_g.size() * sizeof(dfloat);
-  auto o_ycoord = o_y + 1 * xp0_g.size() * sizeof(dfloat);
-  auto o_zcoord = o_y + 2 * xp0_g.size() * sizeof(dfloat);
-  auto o_xp = particles->o_y + 0 * particles->fieldOffset() * sizeof(dfloat);
-  auto o_yp = particles->o_y + 1 * particles->fieldOffset() * sizeof(dfloat);
-  auto o_zp = particles->o_y + 2 * particles->fieldOffset() * sizeof(dfloat);
-  o_xp.copyFrom(o_xcoord, xp0_g.size() * sizeof(dfloat));
-  o_yp.copyFrom(o_ycoord, yp0_g.size() * sizeof(dfloat));
-  o_zp.copyFrom(o_zcoord, zp0_g.size() * sizeof(dfloat));
+
+  if(particles->numParticles() > 0){
+    auto o_xcoord = o_y + 0 * xp0_g.size() * sizeof(dfloat);
+    auto o_ycoord = o_y + 1 * xp0_g.size() * sizeof(dfloat);
+    auto o_zcoord = o_y + 2 * xp0_g.size() * sizeof(dfloat);
+    auto o_xp = particles->o_y + 0 * particles->fieldOffset() * sizeof(dfloat);
+    auto o_yp = particles->o_y + 1 * particles->fieldOffset() * sizeof(dfloat);
+    auto o_zp = particles->o_y + 2 * particles->fieldOffset() * sizeof(dfloat);
+    o_xp.copyFrom(o_xcoord, xp0_g.size() * sizeof(dfloat));
+    o_yp.copyFrom(o_ycoord, yp0_g.size() * sizeof(dfloat));
+    o_zp.copyFrom(o_zcoord, zp0_g.size() * sizeof(dfloat));
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

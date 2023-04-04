@@ -116,7 +116,7 @@ mesh_t *createMesh(MPI_Comm comm,
 
   nrsCheck((hlong) mesh->Nelements * (mesh->Nvgeo * cubN) > std::numeric_limits<int>::max(),
            platform->comm.mpiComm, EXIT_FAILURE, 
-           "mesh->Nelements * mesh->Nvgeo * cubN exceeds int limit!", "");
+           "%s\n", "mesh->Nelements * mesh->Nvgeo * cubN exceeds int limit!");
 
   mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
 
@@ -182,7 +182,7 @@ mesh_t *createMesh(MPI_Comm comm,
     }
     free(tmp);
   }
-  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "\n", "");
+  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
 
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
@@ -397,7 +397,7 @@ mesh_t *createMeshV(
     }
     free(tmp);
   }
-  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "", "");
+  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
 
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 

@@ -34,6 +34,8 @@ occa::memory solveODE(nrs_t *nrs,
     auto n = o_y.size() / sizeof(dfloat);
     n /= 3;
 
+    if(n == 0) return;
+
     auto o_xcoord = o_y + 0 * n * sizeof(dfloat);
     auto o_ycoord = o_y + 1 * n * sizeof(dfloat);
     auto o_zcoord = o_y + 2 * n * sizeof(dfloat);
@@ -56,6 +58,8 @@ occa::memory solveODE(nrs_t *nrs,
   auto o_tmp = platform->device.malloc(o_y0.size());
 
   const auto n = o_y0.size() / sizeof(dfloat);
+
+  if(n == 0) return o_y;
 
   o_y.copyFrom(o_y0);
 
@@ -327,21 +331,25 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
   std::vector<dfloat> zExpected(zp0_g.size(), 0.0);
 
   auto o_y0 = platform->device.malloc(nrs->dim * xp0_g.size() * sizeof(dfloat));
-  auto o_x0coord = o_y0 + 0 * xp0_g.size() * sizeof(dfloat);
-  auto o_y0coord = o_y0 + 1 * yp0_g.size() * sizeof(dfloat);
-  auto o_z0coord = o_y0 + 2 * zp0_g.size() * sizeof(dfloat);
-  o_x0coord.copyFrom(xp0_g.data(), xp0_g.size() * sizeof(dfloat));
-  o_y0coord.copyFrom(yp0_g.data(), yp0_g.size() * sizeof(dfloat));
-  o_z0coord.copyFrom(zp0_g.data(), zp0_g.size() * sizeof(dfloat));
+  if(particles->numParticles() > 0){
+    auto o_x0coord = o_y0 + 0 * xp0_g.size() * sizeof(dfloat);
+    auto o_y0coord = o_y0 + 1 * yp0_g.size() * sizeof(dfloat);
+    auto o_z0coord = o_y0 + 2 * zp0_g.size() * sizeof(dfloat);
+    o_x0coord.copyFrom(xp0_g.data(), xp0_g.size() * sizeof(dfloat));
+    o_y0coord.copyFrom(yp0_g.data(), yp0_g.size() * sizeof(dfloat));
+    o_z0coord.copyFrom(zp0_g.data(), zp0_g.size() * sizeof(dfloat));
+  }
 
   auto o_y = solveODE(nrs, 0.0, endTime, 5e-3 * nrs->dt[0], o_y0, exactUVWPKernel, RKKernel);
-  auto o_xcoord = o_y + 0 * xp0_g.size() * sizeof(dfloat);
-  auto o_ycoord = o_y + 1 * xp0_g.size() * sizeof(dfloat);
-  auto o_zcoord = o_y + 2 * xp0_g.size() * sizeof(dfloat);
+  if(particles->numParticles() > 0){
+    auto o_xcoord = o_y + 0 * xp0_g.size() * sizeof(dfloat);
+    auto o_ycoord = o_y + 1 * xp0_g.size() * sizeof(dfloat);
+    auto o_zcoord = o_y + 2 * xp0_g.size() * sizeof(dfloat);
 
-  o_xcoord.copyTo(xExpected.data(), xExpected.size() * sizeof(dfloat));
-  o_ycoord.copyTo(yExpected.data(), yExpected.size() * sizeof(dfloat));
-  o_zcoord.copyTo(zExpected.data(), zExpected.size() * sizeof(dfloat));
+    o_xcoord.copyTo(xExpected.data(), xExpected.size() * sizeof(dfloat));
+    o_ycoord.copyTo(yExpected.data(), yExpected.size() * sizeof(dfloat));
+    o_zcoord.copyTo(zExpected.data(), zExpected.size() * sizeof(dfloat));
+  }
 
   if (xExpected.size() != particles->numParticles()) {
     if (platform->comm.mpiRank == 0) {

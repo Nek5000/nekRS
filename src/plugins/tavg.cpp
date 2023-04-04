@@ -100,7 +100,7 @@ void tavg::reset()
 void tavg::run(dfloat time)
 {
   nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
-           "called prior to tavg::setup()!\n", "");
+           "%s\n", "called prior to tavg::setup()!");
 
   if (!nrs->timeStepConverged)
     return;
@@ -181,7 +181,7 @@ void tavg::setup(nrs_t *nrs_, const fields& flds)
 
   for(auto& entry : userFieldList) {
     nrsCheck(entry.size() < 1 || entry.size() > 4, platform->comm.mpiComm, EXIT_FAILURE,
-             "tavg::setup() invalid number of vectors!\n", "");
+             "%s\n", "tavg::setup() invalid number of vectors!");
   }
  
   setup(nrs_);
@@ -190,10 +190,10 @@ void tavg::setup(nrs_t *nrs_, const fields& flds)
 void tavg::setup(nrs_t *nrs_)
 {
   nrsCheck(setupCalled, MPI_COMM_SELF, EXIT_FAILURE,
-           "invalid second call\n", "");
+           "%s\n", "invalid second call");
 
   nrsCheck(!buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
-           "called prior tavg::buildKernel()!\n", "");
+           "%s\n", "called prior tavg::buildKernel()!");
 
   nrs = nrs_;
   mesh_t *mesh = nrs->meshV;
@@ -229,7 +229,7 @@ void tavg::setup(nrs_t *nrs_)
 void tavg::outfld(int _outXYZ, int FP64)
 {
   nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
-           "called prior to tavg::setup()!\n", "");
+           "%s\n", "called prior to tavg::setup()!");
 
   if (!nrs->timeStepConverged)
     return;
@@ -271,7 +271,7 @@ void tavg::outfld()
 occa::memory tavg::userFieldAvg()
 {
   nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
-           "called prior to tavg::setup()!\n", "");
+           "%s\n", "called prior to tavg::setup()!");
 
   return o_userFieldAvg;
 }

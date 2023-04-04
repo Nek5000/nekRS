@@ -64,7 +64,7 @@ void lowMach::setup(nrs_t *nrs, dfloat alpha_, occa::memory& o_beta_, occa::memo
     err = 0;
 
   nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE,
-           "requires solving for temperature!\n", "");
+           "%s\n", "requires solving for temperature!");
 
   platform->options.setArgs("LOWMACH", "TRUE");
 }

@@ -60,7 +60,7 @@ void registerAxKernels(const std::string &section, int N, int poissonEquation)
                                 false, // no stress formulation in preconditioner
                                 verbosity,
                                 elliptic_t::targetTimeBenchmark,
-                                false,
+                                platform->options.compareArgs("AUTOTUNING", "FALSE") ? false : true,
                                 kernelSuffix);
 
     const std::string suffix = "CoeffHex3D";
@@ -189,7 +189,7 @@ void registerSchwarzKernels(const std::string &section, int N)
                                   useRAS,
                                   verbosity,
                                   elliptic_t::targetTimeBenchmark,
-                                  false,
+                                  platform->options.compareArgs("AUTOTUNING", "FALSE") ? false : true,
                                   suffix);
     platform->kernels.add("fusedFDM" + suffix, fdmKernel);
 

@@ -841,7 +841,7 @@ void pMGLevel::generate_weights()
 void pMGLevel::build(elliptic_t *pSolver)
 {
   nrsCheck(elliptic->elementType != HEXAHEDRA, platform->comm.mpiComm, EXIT_FAILURE, 
-           "Unsupported element type!", "");
+           "%s\n", "Unsupported element type!");
 
   const dlong Nelements = elliptic->mesh->Nelements;
   const int Nq = elliptic->mesh->Nq;

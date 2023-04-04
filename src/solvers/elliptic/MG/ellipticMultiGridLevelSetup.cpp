@@ -43,7 +43,7 @@ convertSmootherType(SmootherType s){
       return ChebyshevSmootherType::JACOBI;
     default:
       nrsAbort(platform->comm.mpiComm, EXIT_FAILURE,
-               "Invalid configuration hit in convertSmootherType!\n", "");
+               "%s\n", "Invalid configuration hit in convertSmootherType!");
   }
 
   return ChebyshevSmootherType::ASM;
@@ -115,7 +115,7 @@ void pMGLevel::setupSmoother(elliptic_t* ellipticBase)
     build(ellipticBase);
   } else {
     nrsCheck(!useJacobi, platform->comm.mpiComm, EXIT_FAILURE,
-             "Invalid pMGLevel smoother!\n", "");
+             "%s\n", "Invalid pMGLevel smoother!");
     smootherType = SmootherType::JACOBI;
     o_invDiagA = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
     ellipticUpdateJacobi(elliptic, o_invDiagA); // required to compute eigenvalues 
@@ -268,14 +268,14 @@ static void eigenValue(const int Nrows, double* A, double* WR, double* WI)
     if(std::isnan(A[i]) || std::isinf(A[i])) invalid++;
   }
   nrsCheck(invalid, platform->comm.mpiComm, EXIT_FAILURE,
-           "invalid matrix entries!\n", "");
+           "%s\n", "invalid matrix entries!");
 
   int INFO = -999;
   dgeev_ (&JOBVL, &JOBVR, &N, A, &LDA, WR, WI,
           VL, &LDA, VR, &LDA, WORK, &LWORK, &INFO);
 
   nrsCheck(INFO != 0, platform->comm.mpiComm, EXIT_FAILURE,
-           "dgeev failed", "");
+           "%s\n", "dgeev failed");
 
   delete [] VL;
   delete [] VR;

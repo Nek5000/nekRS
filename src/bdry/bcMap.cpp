@@ -210,7 +210,7 @@ static void v_setup(std::string field, std::vector<std::string> slist)
   }
 
   nrsCheck(foundAligned && foundUnaligned, MPI_COMM_WORLD, EXIT_FAILURE,
-           "Aligned together with unaligned mixed boundary types are not supported!\n", "");
+           "%s\n", "Aligned together with unaligned mixed boundary types are not supported!");
 }
 
 static void s_setup(std::string field, std::vector<std::string> slist)
@@ -473,7 +473,7 @@ std::string text(int bid, std::string field)
     return sBcIDToText.at(bcID);
 
   nrsAbort(MPI_COMM_SELF, EXIT_FAILURE,
-           "Unexpected error occured!", "");
+           "%s\n", "Unexpected error occured!");
 
   return 0;
 }
@@ -660,7 +660,7 @@ void checkBoundaryAlignment(mesh_t *mesh)
     }
   }
 
-  nrsCheck(bail, platform->comm.mpiComm, EXIT_FAILURE, "\n", "");
+  nrsCheck(bail, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
 }
 
 void remapUnalignedBoundaries(mesh_t *mesh)

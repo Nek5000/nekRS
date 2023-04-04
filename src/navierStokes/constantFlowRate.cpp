@@ -217,7 +217,7 @@ bool adjust(nrs_t *nrs, int tstep, dfloat time) {
   const bool directionAligned = X_aligned || Y_aligned || Z_aligned;
 
   nrsCheck(!directionAligned, platform->comm.mpiComm, EXIT_FAILURE,
-           "Flow direction is not aligned in (X,Y,Z)\n", "");
+           "%s\n", "Flow direction is not aligned in (X,Y,Z)");
 
   const bool recomputeBaseFlowRate =
       checkIfRecompute(nrs, tstep);

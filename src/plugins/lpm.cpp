@@ -10,6 +10,8 @@
 #include "tuple_for_each.hpp"
 #include "gslib.h" // needed for sarray_transfer
 
+#include <inttypes.h>
+
 namespace {
 
 int computeFieldOffset(int n)
@@ -367,7 +369,7 @@ void lpm_t::initialize(int nParticles, dfloat t0, occa::memory o_y0)
   nrsCheck(o_y0.size() != nParticles * nDOFs_ * sizeof(dfloat),
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "o_y0.size() = %llu, while expecting %ld bytes!\n",
+           "o_y0.size() = %" PRId64 ", while expecting %ld bytes!\n",
            o_y0.size(),
            nParticles * nDOFs_ * sizeof(dfloat));
 
@@ -652,8 +654,11 @@ void lpm_t::integrateRK1()
 
 void lpm_t::integrateRK2()
 {
-  auto o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-  auto o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+  occa::memory o_k1, o_k2;
+  if(fieldOffset_ > 0){
+    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+  }
 
   platform->timer.tic(timerName + "integrate::userRHS", 1);
   userRHS_(nrs, this, time, o_y, userdata_, o_k1);
@@ -682,9 +687,12 @@ void lpm_t::integrateRK2()
 
 void lpm_t::integrateRK3()
 {
-  auto o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-  auto o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-  auto o_k3 = o_k + 2 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+  occa::memory o_k1, o_k2, o_k3;
+  if(fieldOffset_ > 0){
+    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k3 = o_k + 2 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+  }
 
   platform->timer.tic(timerName + "integrate::userRHS", 1);
   userRHS_(nrs, this, time, o_y, userdata_, o_k1);
@@ -728,10 +736,13 @@ void lpm_t::integrateRK3()
 
 void lpm_t::integrateRK4()
 {
-  auto o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-  auto o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-  auto o_k3 = o_k + 2 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-  auto o_k4 = o_k + 3 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+  occa::memory o_k1, o_k2, o_k3, o_k4;
+  if(fieldOffset_ > 0){
+    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k3 = o_k + 2 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k4 = o_k + 3 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+  }
 
   platform->timer.tic(timerName + "integrate::userRHS", 1);
   userRHS_(nrs, this, time, o_y, userdata_, o_k1);
@@ -1341,19 +1352,19 @@ void lpm_t::addParticles(int newNParticles,
   nrsCheck(o_yNewPart.size() < expectedYSize,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "o_yNewPart size is %ld but expected %ld bytes!\n",
+           "o_yNewPart size is %" PRId64 " but expected %ld bytes!\n",
            o_yNewPart.size(),
            expectedYSize);
   nrsCheck(o_propNewPart.size() < expectedPropSize,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "o_propNewPart size is %ld but expected %ld bytes!\n",
+           "o_propNewPart size is %" PRId64 " but expected %ld bytes!\n",
            o_propNewPart.size(),
            expectedPropSize);
   nrsCheck(o_ydotNewPart.size() < expectedYdotSize,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "o_ydotNewPart size is %ld but expected %ld bytes!\n",
+           "o_ydotNewPart size is %" PRId64 " but expected %ld bytes!\n",
            o_ydotNewPart.size(),
            expectedYdotSize);
 

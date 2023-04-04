@@ -162,7 +162,7 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 
   }else{
     nrsAbort(platform->comm.mpiComm, EXIT_FAILURE,
-             "NONBLOCKING Krylov solvers currently not supported!", "");
+             "%s\n", "NONBLOCKING Krylov solvers currently not supported!");
   }
 
   if(options.compareArgs("INITIAL GUESS","PROJECTION") ||

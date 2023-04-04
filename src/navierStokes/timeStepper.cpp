@@ -132,8 +132,8 @@ void adjustDt(nrs_t* nrs, int tstep)
         else {
           nrsAbort(platform->comm.mpiComm,
                    EXIT_FAILURE,
-                   "Zero velocity and body force! Please specify an initial timestep!\n",
-                   "");
+                   "%s\n",
+                   "Zero velocity and body force! Please specify an initial timestep!");
         }
       }
     }
@@ -432,8 +432,8 @@ void setDt(nrs_t *nrs, double dt, int tstep)
   nrsCheck(std::isnan(nrs->dt[0]) || std::isinf(nrs->dt[0]),
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "Unreasonable dt! Dying ...\n",
-           "");
+           "%s",
+           "Unreasonable dt! Dying ...\n");
 
   nrs->idt = 1 / nrs->dt[0];
 

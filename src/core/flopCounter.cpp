@@ -39,7 +39,7 @@ dfloat flopCounter_t::get(MPI_Comm comm) const
   total = errAndTotal[1];
 
   if (comm != MPI_COMM_SELF && err > 0)
-    nrsAbort(comm, EXIT_FAILURE, "Encountered error in flopCounter_t::get", "");
+    nrsAbort(comm, EXIT_FAILURE, "%s\n", "Encountered error in flopCounter_t::get");
 
   return total;
 }

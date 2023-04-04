@@ -25,7 +25,7 @@ void configRead(MPI_Comm comm)
   
   char* nekrs_home = getenv("NEKRS_HOME");
   nrsCheck(nekrs_home == nullptr, comm, EXIT_FAILURE, 
-           "\nERROR: The environment variable NEKRS_HOME is not defined!\n", "");
+           "\n%s", "nERROR: The environment variable NEKRS_HOME is not defined!\n");
 
   std::string installDir{nekrs_home};
 

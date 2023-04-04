@@ -355,7 +355,7 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
   }
   else if (strcasecmp(requestedOccaMode.c_str(), "OPENMP") == 0) {
     nrsCheck(true, _comm.mpiComm, EXIT_FAILURE,
-             "OpenMP backend currently not supported!\n", ""); 
+             "%s\n", "OpenMP backend currently not supported!"); 
     sprintf(deviceConfig, "{mode: 'OpenMP'}");
   }
   else if (strcasecmp(requestedOccaMode.c_str(), "CPU") == 0 ||
@@ -366,7 +366,7 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
   }
   else {
     nrsCheck(true, _comm.mpiComm, EXIT_FAILURE,
-             "Invalid requested backend!\n", ""); 
+             "%s\n", "Invalid requested backend!"); 
   }
 
 #if 0
@@ -387,7 +387,7 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
 
   nrsCheck(strcasecmp(requestedOccaMode.c_str(), this->mode().c_str()) != 0, 
            _comm.mpiComm, EXIT_FAILURE,
-           "Active occa mode does not match selected backend!\n", ""); 
+           "%s\n", "Active occa mode does not match selected backend!"); 
 
   // overwrite compiler settings to ensure
   // compatability of libocca and kernelLauchner

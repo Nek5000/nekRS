@@ -156,12 +156,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if ((NelementsT > NelementsV) && nrs->Nscalar) nrs->cht = 1;
 
     nrsCheck(nrs->cht && NelementsT <= NelementsV, MPI_COMM_SELF, EXIT_FAILURE,
-             "Invalid solid element partitioning", "");
+             "%s\n", "Invalid solid element partitioning");
 
     nrsCheck(nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE"),
              platform->comm.mpiComm,
              EXIT_FAILURE,
-             "Conjugate heat transfer requires solving for temperature!\n", "");
+             "%s\n", "Conjugate heat transfer requires solving for temperature!");
   }
 
   nrs->_mesh = createMesh(comm, N, cubN, nrs->cht, kernelInfo);
@@ -183,7 +183,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->nEXT = nrs->nBDF;
 
   nrsCheck(nrs->nEXT < nrs->nBDF, platform->comm.mpiComm, EXIT_FAILURE,
-           "EXT order needs to be >= BDF order!\n", ""); 
+           "%s\n", "EXT order needs to be >= BDF order!"); 
 
   nrs->coeffEXT = (dfloat *)calloc(nrs->nEXT, sizeof(dfloat));
   nrs->coeffBDF = (dfloat *)calloc(nrs->nBDF, sizeof(dfloat));
@@ -237,7 +237,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->nodesRK, rkc, nrs->nRK * sizeof(dfloat));
     }
     else {
-      nrsCheck(true, platform->comm.mpiComm, EXIT_FAILURE, "Unsupported subcycling scheme!\n", "");
+      nrsCheck(true, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "Unsupported subcycling scheme!");
     }
     nrs->o_coeffsfRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->coeffsfRK);
     nrs->o_weightsRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->weightsRK);
@@ -660,7 +660,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrsCheck(unalignedBoundary && !options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"),
              platform->comm.mpiComm, 
              EXIT_FAILURE, 
-             "SHL or unaligned SYM boundaries require solver = pcg+block\n", "");
+             "%s\n", "SHL or unaligned SYM boundaries require solver = pcg+block");
 
     if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       nrs->uvwSolver = new elliptic_t();

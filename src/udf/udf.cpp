@@ -23,11 +23,11 @@ void oudfFindDirichlet(std::string &field)
 {
   nrsCheck(field.find("velocity") != std::string::npos && !velocityDirichletConditions,
            platform->comm.mpiComm, EXIT_FAILURE,
-           "Cannot find velocityDirichletConditions!\n", "");
+           "%s\n", "Cannot find velocityDirichletConditions!");
 
   nrsCheck(field.find("scalar") != std::string::npos && !scalarDirichletConditions,
            platform->comm.mpiComm, EXIT_FAILURE,
-           "Cannot find scalarDirichletConditions!\n", "");
+           "%s\n", "Cannot find scalarDirichletConditions!");
 
   if (field == "pressure" && !pressureDirichletConditions) {
     if (platform->comm.mpiRank == 0)
@@ -35,17 +35,17 @@ void oudfFindDirichlet(std::string &field)
   }
   nrsCheck(field.find("mesh") != std::string::npos && !meshVelocityDirichletConditions &&
            !bcMap::useDerivedMeshBoundaryConditions(), platform->comm.mpiComm, EXIT_FAILURE,
-           "Cannot find meshVelocityDirichletConditions!\n", "");
+           "%s\n", "Cannot find meshVelocityDirichletConditions!");
 }
 
 void oudfFindNeumann(std::string &field)
 {
   nrsCheck(field.find("velocity") != std::string::npos && !velocityNeumannConditions,
            platform->comm.mpiComm, EXIT_FAILURE,
-           "Cannot find velocityNeumannConditions!\n", "");
+           "%s\n", "Cannot find velocityNeumannConditions!");
   nrsCheck(field.find("scalar") != std::string::npos && !scalarNeumannConditions,
            platform->comm.mpiComm, EXIT_FAILURE,
-           "Cannot find scalarNeumannConditions!\n", "");
+           "%s\n", "Cannot find scalarNeumannConditions!");
 }
 
 void adjustOudf(const std::string &filePath)

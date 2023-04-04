@@ -226,7 +226,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
                                               false,
                                               verbosity,
                                               nrs_t::targetTimeBenchmark,
-                                              false);
+                                              platform->options.compareArgs("AUTOTUNING", "FALSE") ? false : true);
 
         kernelName = "subCycleStrongCubatureVolume" + suffix;
         platform->kernels.add(section + kernelName, subCycleKernel);

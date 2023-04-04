@@ -5,15 +5,13 @@
 #include <functional> 
 #include <string>
 
-#include "neknek.hpp"
-
 namespace nekrs
 {
 void setup(MPI_Comm commg_in, MPI_Comm comm_in,
            int buildOnly, int commSizeTarget,
            int ciMode, std::string _setupFile,
            std::string _backend, std::string _deviceID,
-           const session_data_t &session,
+           int _nSessions, int _sessionID,
            int debug);
 void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isOutputStep);

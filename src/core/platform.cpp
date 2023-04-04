@@ -32,7 +32,7 @@ deviceVector_t::deviceVector_t(const size_t _offset,
     : nVectors(_nVectors), wordSize(_wordSize), vectorName(_vectorName), offset(_offset)
 {
   nrsCheck(offset <= 0 || nVectors <= 0 || wordSize <= 0, MPI_COMM_SELF, EXIT_FAILURE,
-           "deviceVector_t invalid input!\n", "");
+           "%s\n", "deviceVector_t invalid input!");
 
   o_vector = platform->device.malloc(nVectors * offset * wordSize);
   for (int s = 0; s < nVectors; ++s) {
@@ -78,7 +78,7 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
 
   nrsCheck(cacheLocal && cacheBcast,
            _comm, EXIT_FAILURE, 
-           "NEKRS_CACHE_LOCAL=1 and NEKRS_CACHE_BCAST=1 is incompatible!", "");
+           "%s\n", "NEKRS_CACHE_LOCAL=1 and NEKRS_CACHE_BCAST=1 is incompatible!");
 
   srand48((long int)comm.mpiRank);
 

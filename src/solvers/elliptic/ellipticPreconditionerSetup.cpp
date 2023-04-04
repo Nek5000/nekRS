@@ -58,7 +58,7 @@ void ellipticPreconditionerSetup(elliptic_t* elliptic, ogs_t* ogs)
   } else if(options.compareArgs("PRECONDITIONER", "NONE")) {
     // nothing 
   } else {
-    nrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "Unknown preconditioner!\n", "");
+    nrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "Unknown preconditioner!");
   }
 
   precon->preconBytes = platform->device.occaDevice().memoryAllocated() - pre;

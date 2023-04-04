@@ -107,8 +107,7 @@ void ellipticSolveSetup(elliptic_t *elliptic)
   nrsCheck(elliptic->name.size() == 0,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "Empty elliptic solver name!",
-           "");
+           "%s\n", "Empty elliptic solver name!");
 
   elliptic->options.setArgs("DISCRETIZATION", "CONTINUOUS");
 
@@ -136,8 +135,7 @@ void ellipticSolveSetup(elliptic_t *elliptic)
   nrsCheck(elliptic->o_wrk.size() < elliptic_t::NScratchFields * offsetBytes,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "mempool assigned for elliptic too small!",
-           "");
+           "%s\n", "mempool assigned for elliptic too small!");
 
   mesh_t *mesh = elliptic->mesh;
   const dlong Nlocal = mesh->Np * mesh->Nelements;
