@@ -80,7 +80,7 @@
 #include <fcntl.h>
 #include <chrono>
 #include <csignal>
-#include "backtrace.hpp"
+#include "stacktrace.hpp"
 #include <filesystem>
 
 #include "nekrs.hpp"
@@ -365,12 +365,12 @@ void signalHandler(int signum)
 {
    std::cerr << "generating backtrace ...\n";
 
-   std::ofstream file;
-   std::string fileName = "backtrace.";
-   fileName += std::to_string(worldRank);
-   file.open (fileName);
-   file << nrsbacktrace(1); 
-   file.close();
+   const std::string fileName = "backtrace." + std::to_string(worldRank);
+
+   FILE *fp;
+   fp = fopen (fileName.c_str(), "w");
+   print_stacktrace(fp);
+   fclose(fp);
 }
 
 } // namespace

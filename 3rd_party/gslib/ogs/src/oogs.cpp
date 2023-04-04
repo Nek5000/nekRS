@@ -568,6 +568,9 @@ oogs_t *oogs::setup(ogs_t *ogs,
     if (gs->rank == 0) {
       if (ogs->NhaloGatherGlobal > 0) {
         switch (gs->mode) {
+        case OOGS_LOCAL:
+          break;
+        case OOGS_AUTO:
         case OOGS_DEFAULT:
           if (ogs->device.mode() != "Serial") configStr += "+host";
           break;
