@@ -144,7 +144,7 @@ while true; do
   case $yn in
     [Yy]* )
       echo $NEKRS_HOME
-      OCCA_VERBOSE=1 mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $case --build-only $ntasks --backend $backend;
+      NEKRS_HOME=$NEKRS_HOME OCCA_VERBOSE=1 mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $case --build-only $ntasks --backend $backend;
       if [ $? -ne 0 ]; then
         # clean-up
         rm -rf $SFILE $ROMIO_HINTS
