@@ -12,42 +12,109 @@
 #include "bdry.hpp"
 #include "Urst.hpp"
 
-void evaluateProperties(nrs_t *nrs, const double timeNew) {
+static void lagFields(nrs_t *nrs)
+{
+  // lag velocity
+  for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
+    const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
+    nrs->o_U.copyFrom(nrs->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+  }
 
-  bool rhsCVODE = false;
-  if(nrs->cvode)
-    rhsCVODE = nrs->cvode->isRhsEvaluation();
+  // lag scalars
+  if (nrs->Nscalar) {
+    auto cds = nrs->cds;
+    for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
+      const auto Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
+      cds->o_S.copyFrom(cds->o_S, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+    }
+  }
 
-  const std::string tag = rhsCVODE ? "udfPropertiesCVODE" : "udfProperties";
+  // lag mesh velocity
+  const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+  if (movingMesh) {
+    auto mesh = nrs->_mesh;
+    for (int s = std::max(nrs->nEXT, mesh->nAB); s > 1; s--) {
+      const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
+      mesh->o_U.copyFrom(mesh->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+    }
+  }
+}
 
-  platform->timer.tic(tag, 1);
+static void extrapolate(nrs_t *nrs)
+{
+  mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
-  if (udf.properties) {
-    occa::memory o_S = platform->o_mempool.slice0;
-    occa::memory o_SProp = platform->o_mempool.slice0;
-    if (nrs->Nscalar) {
-      o_S = cds->o_S;
-      o_SProp = cds->o_prop;
-    }
-    udf.properties(nrs, timeNew, nrs->o_U, o_S, nrs->o_prop, o_SProp);
-  }
+  if (nrs->flow) {
+    nrs->extrapolateKernel(mesh->Nlocal,
+                           nrs->NVfields,
+                           nrs->nEXT,
+                           nrs->fieldOffset,
+                           nrs->o_coeffEXT,
+                           nrs->o_U,
+                           nrs->o_Ue);
 
-  if (nrs->Nscalar) {
-    cds_t *cds = nrs->cds;
-    for (int is = 0; is < cds->NSfields; ++is) {
-      std::string sid = scalarDigitStr(is);
-
-      std::string regularizationMethod;
-      platform->options.getArgs("SCALAR" + sid + " REGULARIZATION METHOD", regularizationMethod);
-      const bool applyAVM = regularizationMethod.find("AVM_RESIDUAL") != std::string::npos ||
-                            regularizationMethod.find("AVM_HIGHEST_MODAL_DECAY") != std::string::npos;
-      if (applyAVM)
-        avm::apply(nrs, timeNew, is, cds->o_S);
+    if (nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE")) {
+      nrs->p0the = 0.0;
+      for (int ext = 0; ext < nrs->nEXT; ++ext) {
+        nrs->p0the += nrs->coeffEXT[ext] * nrs->p0th[ext];
+      }
     }
   }
 
-  platform->timer.toc(tag);
+  if (nrs->Nscalar)
+    nrs->extrapolateKernel(cds->mesh[0]->Nlocal,
+                           cds->NSfields,
+                           cds->nEXT,
+                           cds->fieldOffset[0],
+                           cds->o_coeffEXT,
+                           cds->o_S,
+                           cds->o_Se);
+
+  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
+    if (nrs->cht)
+      mesh = nrs->_mesh;
+    nrs->extrapolateKernel(mesh->Nlocal,
+                           nrs->NVfields,
+                           nrs->nEXT,
+                           nrs->fieldOffset,
+                           nrs->o_coeffEXT,
+                           mesh->o_U,
+                           mesh->o_Ue);
+  }
+}
+
+static void computeDivUErr(nrs_t *nrs, dfloat &divUErrVolAvg, dfloat &divUErrL2)
+{
+  mesh_t *mesh = nrs->meshV;
+  nrs->divergenceVolumeKernel(mesh->Nelements,
+                              mesh->o_vgeo,
+                              mesh->o_D,
+                              nrs->fieldOffset,
+                              nrs->o_U,
+                              platform->o_mempool.slice0);
+
+  double flops = 18 * (mesh->Np * mesh->Nq + mesh->Np);
+  flops *= static_cast<double>(mesh->Nelements);
+
+  platform->flopCounter->add("divergenceVolumeKernel", flops);
+
+  oogs::startFinish(platform->o_mempool.slice0, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+  platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_invLMM, platform->o_mempool.slice0);
+
+  platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->o_div, -1.0, platform->o_mempool.slice0);
+  divUErrL2 = platform->linAlg->weightedNorm2(mesh->Nlocal,
+                                              mesh->o_LMM,
+                                              platform->o_mempool.slice0,
+                                              platform->comm.mpiComm) /
+              sqrt(mesh->volume);
+
+  divUErrVolAvg = platform->linAlg->innerProd(mesh->Nlocal,
+                                              mesh->o_LMM,
+                                              platform->o_mempool.slice0,
+                                              platform->comm.mpiComm) /
+                  mesh->volume;
+  divUErrVolAvg = std::abs(divUErrVolAvg);
 }
 
 namespace timeStepper {
@@ -186,78 +253,6 @@ void adjustDt(nrs_t* nrs, int tstep)
   }
 }
 
-void lagState(nrs_t *nrs)
-{
-  // lag velocity
-  for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
-    const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
-    nrs->o_U.copyFrom(nrs->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
-  }
-
-  // lag scalars
-  if (nrs->Nscalar) {
-    auto cds = nrs->cds;
-    for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
-      const auto Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
-      cds->o_S.copyFrom(cds->o_S, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
-    }
-  }
-
-  // lag mesh velocity
-  const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-  if (movingMesh) {
-    auto mesh = nrs->_mesh;
-    for (int s = std::max(nrs->nEXT, mesh->nAB); s > 1; s--) {
-      const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
-      mesh->o_U.copyFrom(mesh->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
-    }
-  }
-}
-
-void extrapolate(nrs_t *nrs)
-{
-  mesh_t *mesh = nrs->meshV;
-  cds_t *cds = nrs->cds;
-
-  if (nrs->flow) {
-    nrs->extrapolateKernel(mesh->Nlocal,
-                           nrs->NVfields,
-                           nrs->nEXT,
-                           nrs->fieldOffset,
-                           nrs->o_coeffEXT,
-                           nrs->o_U,
-                           nrs->o_Ue);
-
-    if (nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE")) {
-      nrs->p0the = 0.0;
-      for (int ext = 0; ext < nrs->nEXT; ++ext) {
-        nrs->p0the += nrs->coeffEXT[ext] * nrs->p0th[ext];
-      }
-    }
-  }
-
-  if (nrs->Nscalar)
-    nrs->extrapolateKernel(cds->mesh[0]->Nlocal,
-                           cds->NSfields,
-                           cds->nEXT,
-                           cds->fieldOffset[0],
-                           cds->o_coeffEXT,
-                           cds->o_S,
-                           cds->o_Se);
-
-  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    if (nrs->cht)
-      mesh = nrs->_mesh;
-    nrs->extrapolateKernel(mesh->Nlocal,
-                           nrs->NVfields,
-                           nrs->nEXT,
-                           nrs->fieldOffset,
-                           nrs->o_coeffEXT,
-                           mesh->o_U,
-                           mesh->o_Ue);
-  }
-}
-
 void initStep(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
 {
   nrs->timePrevious = time;
@@ -366,6 +361,8 @@ void finishStep(nrs_t *nrs)
     if (nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE"))
       nrs->p0the = nrs->p0th[0];
   }
+
+  platform->device.finish();
 }
 
 bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
@@ -383,14 +380,17 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
   
   if (nrs->cvode)
     scalarSolveCvode(nrs, nrs->timePrevious, timeNew, cds->o_S, stage, tstep);
-
+  
   if (stage == 1)
-    lagState(nrs);
+    lagFields(nrs);
 
   applyDirichlet(nrs, timeNew);
 
   if (nrs->Nscalar)
     scalarSolve(nrs, timeNew, cds->o_S, stage);
+  
+  if(udf.postScalar)
+    udf.postScalar(nrs, timeNew, tstep);
 
   evaluateProperties(nrs, timeNew);
 
@@ -398,6 +398,9 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
     platform->linAlg->fill(mesh->Nlocal, 0.0, nrs->o_div);
     udf.div(nrs, timeNew, nrs->o_div);
   }
+  
+  if(udf.preFluid)
+    udf.preFluid(nrs, timeNew, tstep);
 
   if (nrs->flow)
     fluidSolve(nrs, timeNew, nrs->o_P, nrs->o_U, stage, tstep);
@@ -420,8 +423,6 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
 
   if (!nrs->timeStepConverged)
     printInfo(nrs, timeNew, tstep, false, true);
-
-  platform->device.finish();
 
   return nrs->timeStepConverged;
 }
@@ -493,7 +494,7 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
     const dlong isOffset = cds->fieldOffsetScan[is];
 
-    if (platform->options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPF_RELAXATION")) {
+    if (platform->options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPFRT")) {
       cds->filterRTKernel(cds->meshV->Nelements,
                           is,
                           cds->o_filterMT,
@@ -646,7 +647,7 @@ void makef(
     platform->timer.toc("udfUEqnSource");
   }
 
-  if (platform->options.compareArgs("REGULARIZATION METHOD", "HPF_RELAXATION")) {
+  if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "HPFRT")) {
     nrs->filterRTKernel(mesh->Nelements, nrs->o_filterMT, nrs->filterS, nrs->fieldOffset, nrs->o_U, o_FU);
     double flops = 24 * mesh->Np * mesh->Nq + 3 * mesh->Np;
     flops *= static_cast<double>(mesh->Nelements);
@@ -979,37 +980,5 @@ void printInfo(nrs_t *nrs, dfloat time, int tstep, bool printStepInfo, bool prin
            "Unreasonable CFL!");
 }
 
-void computeDivUErr(nrs_t *nrs, dfloat &divUErrVolAvg, dfloat &divUErrL2)
-{
-  mesh_t *mesh = nrs->meshV;
-  nrs->divergenceVolumeKernel(mesh->Nelements,
-                              mesh->o_vgeo,
-                              mesh->o_D,
-                              nrs->fieldOffset,
-                              nrs->o_U,
-                              platform->o_mempool.slice0);
-
-  double flops = 18 * (mesh->Np * mesh->Nq + mesh->Np);
-  flops *= static_cast<double>(mesh->Nelements);
-
-  platform->flopCounter->add("divergenceVolumeKernel", flops);
-
-  oogs::startFinish(platform->o_mempool.slice0, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
-  platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_invLMM, platform->o_mempool.slice0);
-
-  platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->o_div, -1.0, platform->o_mempool.slice0);
-  divUErrL2 = platform->linAlg->weightedNorm2(mesh->Nlocal,
-                                              mesh->o_LMM,
-                                              platform->o_mempool.slice0,
-                                              platform->comm.mpiComm) /
-              sqrt(mesh->volume);
-
-  divUErrVolAvg = platform->linAlg->innerProd(mesh->Nlocal,
-                                              mesh->o_LMM,
-                                              platform->o_mempool.slice0,
-                                              platform->comm.mpiComm) /
-                  mesh->volume;
-  divUErrVolAvg = std::abs(divUErrVolAvg);
-}
 
 } // namespace timeStepper

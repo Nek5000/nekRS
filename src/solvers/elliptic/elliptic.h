@@ -109,7 +109,7 @@ struct elliptic_t
 
   int* EToB;
 
-  occa::memory o_wrk;
+  static occa::memory o_wrk;
 
   // C0-FEM mask data
   dlong Nmasked;

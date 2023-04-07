@@ -198,8 +198,7 @@ void compute_element_lengths(ElementLengths *lengths, elliptic_t *elliptic)
   }
 
   if (!errorLogger.str().empty()) {
-    auto errTxt = [&]()
-    {
+    auto errTxt = [&]() {
       std::stringstream txt;
       txt << "failed for N = " << N << ":" << std::endl;
       txt << "{\n";
@@ -533,8 +532,7 @@ void compute_1d_matrices(dfloat *S,
     solve_generalized_ev(S, b, lam, nl);
   }
   catch (std::exception &failure) {
-    auto errTxt = [&]()
-    {
+    auto errTxt = [&]() {
       std::stringstream txt;
       txt << "Encountered error:\n";
       txt << failure.what();
@@ -840,8 +838,11 @@ void pMGLevel::generate_weights()
 
 void pMGLevel::build(elliptic_t *pSolver)
 {
-  nrsCheck(elliptic->elementType != HEXAHEDRA, platform->comm.mpiComm, EXIT_FAILURE, 
-           "%s\n", "Unsupported element type!");
+  nrsCheck(elliptic->elementType != HEXAHEDRA,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "%s\n",
+           "Unsupported element type!");
 
   const dlong Nelements = elliptic->mesh->Nelements;
   const int Nq = elliptic->mesh->Nq;
@@ -914,13 +915,11 @@ void pMGLevel::build(elliptic_t *pSolver)
 
   const oogs_mode oogsMode = OOGS_AUTO;
 
-  auto autoOverlap = [&]()
-  {
+  auto autoOverlap = [&]() {
     ogsOverlap = nullptr;
     ogsExtOverlap = nullptr;
 
-    auto timeOperator = [&](occa::memory& o_u, occa::memory& o_Su)
-    {
+    auto timeOperator = [&](occa::memory &o_u, occa::memory &o_Su) {
       const int Nsamples = 10;
       smoothSchwarz(o_u, o_Su, false);
 
@@ -938,90 +937,93 @@ void pMGLevel::build(elliptic_t *pSolver)
       return elapsed;
     };
 
-    if(platform->options.compareArgs("GS OVERLAP", "TRUE")) {
-        occa::memory o_u = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
-        occa::memory o_Su = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
-        const dlong Nelements = elliptic->mesh->Nelements;
+    if (platform->options.compareArgs("GS COMM OVERLAP", "TRUE")) {
+      occa::memory o_u = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
+      occa::memory o_Su = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
+      const dlong Nelements = elliptic->mesh->Nelements;
 
-        auto nonOverlappedTime = timeOperator(o_u, o_Su);
+      auto nonOverlappedTime = timeOperator(o_u, o_Su);
 
-        auto callback = [&]() {
-          if (options.compareArgs("MULTIGRID SMOOTHER", "RAS")) {
-            if (mesh->NlocalGatherElements)
-              fusedFDMKernel(mesh->NlocalGatherElements,
-                             mesh->o_localGatherElementList,
-                             o_Su,
-                             o_Sx,
-                             o_Sy,
-                             o_Sz,
-                             o_invL,
-                             elliptic->o_invDegree,
-                             o_work1);
-
-
-          } else {
-            if (mesh->NlocalGatherElements)
-              fusedFDMKernel(mesh->NlocalGatherElements,
-                             mesh->o_localGatherElementList,
-                             o_work2,
-                             o_Sx,
-                             o_Sy,
-                             o_Sz,
-                             o_invL,
-                             o_work1);
-          }
-        };
-
-        double overlappedTime;     
+      auto callback = [&]() {
         if (options.compareArgs("MULTIGRID SMOOTHER", "RAS")) {
-          auto maskedGlobalIds = (hlong*) calloc(mesh->Nlocal,sizeof(hlong));
-          memcpy(maskedGlobalIds, mesh->globalIds, mesh->Nlocal * sizeof(hlong));
-          auto maskIds = (dlong*) std::malloc(elliptic->o_maskIds.size());
-          if(elliptic->Nmasked) {
-            elliptic->o_maskIds.copyTo(maskIds); 
-            for (dlong n = 0; n < elliptic->Nmasked; n++) maskedGlobalIds[maskIds[n]] = 0;
-          }
+          if (mesh->NlocalGatherElements)
+            fusedFDMKernel(mesh->NlocalGatherElements,
+                           mesh->o_localGatherElementList,
+                           o_Su,
+                           o_Sx,
+                           o_Sy,
+                           o_Sz,
+                           o_invL,
+                           elliptic->o_invDegree,
+                           o_work1);
+        }
+        else {
+          if (mesh->NlocalGatherElements)
+            fusedFDMKernel(mesh->NlocalGatherElements,
+                           mesh->o_localGatherElementList,
+                           o_work2,
+                           o_Sx,
+                           o_Sy,
+                           o_Sz,
+                           o_invL,
+                           o_work1);
+        }
+      };
 
-          ogsOverlap = (void *)oogs::setup(Nelements * Np,
-                                           maskedGlobalIds,
-                                           1,
-                                           0,
-                                           ogsPfloat,
-                                           platform->comm.mpiComm,
-                                           1,
-                                           platform->device.occaDevice(),
-                                           callback,
-                                           oogsMode);
-  
-          overlappedTime = timeOperator(o_u, o_Su); 
-          if(overlappedTime > nonOverlappedTime) ogsOverlap = nullptr;
-        } else {
-          ogsExtOverlap = (void *)oogs::setup(Nelements * Np_e,
-                                              maskedGlobalIdsExt,
-                                              1,
-                                              0,
-                                              ogsPfloat,
-                                              platform->comm.mpiComm,
-                                              1,
-                                              platform->device.occaDevice(),
-                                              callback,
-                                              oogsMode);
-  
-          overlappedTime = timeOperator(o_u, o_Su); 
-          if(overlappedTime > nonOverlappedTime) ogsExtOverlap = nullptr;
+      double overlappedTime;
+      if (options.compareArgs("MULTIGRID SMOOTHER", "RAS")) {
+        auto maskedGlobalIds = (hlong *)calloc(mesh->Nlocal, sizeof(hlong));
+        memcpy(maskedGlobalIds, mesh->globalIds, mesh->Nlocal * sizeof(hlong));
+        auto maskIds = (dlong *)std::malloc(elliptic->o_maskIds.size());
+        if (elliptic->Nmasked) {
+          elliptic->o_maskIds.copyTo(maskIds);
+          for (dlong n = 0; n < elliptic->Nmasked; n++)
+            maskedGlobalIds[maskIds[n]] = 0;
         }
 
-        o_u.free();
-        o_Su.free();
+        ogsOverlap = (void *)oogs::setup(Nelements * Np,
+                                         maskedGlobalIds,
+                                         1,
+                                         0,
+                                         ogsPfloat,
+                                         platform->comm.mpiComm,
+                                         1,
+                                         platform->device.occaDevice(),
+                                         callback,
+                                         oogsMode);
 
-        if(platform->comm.mpiRank == 0) {
-          printf("autotuning overlap in smoothSchwarz: %.2es %.2es ", nonOverlappedTime, overlappedTime);
-          if(ogsExtOverlap)
-            printf("(overlap enabled)");
-
-          printf("\n");
-        }
+        overlappedTime = timeOperator(o_u, o_Su);
+        if (overlappedTime > nonOverlappedTime)
+          ogsOverlap = nullptr;
       }
+      else {
+        ogsExtOverlap = (void *)oogs::setup(Nelements * Np_e,
+                                            maskedGlobalIdsExt,
+                                            1,
+                                            0,
+                                            ogsPfloat,
+                                            platform->comm.mpiComm,
+                                            1,
+                                            platform->device.occaDevice(),
+                                            callback,
+                                            oogsMode);
+
+        overlappedTime = timeOperator(o_u, o_Su);
+        if (overlappedTime > nonOverlappedTime)
+          ogsExtOverlap = nullptr;
+      }
+
+      o_u.free();
+      o_Su.free();
+
+      if (platform->comm.mpiRank == 0) {
+        printf("autotuning overlap in smoothSchwarz: %.2es %.2es ", nonOverlappedTime, overlappedTime);
+        if (ogsExtOverlap)
+          printf("(overlap enabled)");
+
+        printf("\n");
+      }
+    }
   };
 
   ogsExt = (void *)oogs::setup(Nelements * Np_e,
@@ -1034,7 +1036,6 @@ void pMGLevel::build(elliptic_t *pSolver)
                                platform->device.occaDevice(),
                                nullptr,
                                oogsMode);
-
 
   autoOverlap();
 
@@ -1099,13 +1100,15 @@ void pMGLevel::smoothSchwarz(occa::memory &o_u, occa::memory &o_Su, bool xIsZero
                      o_work1);
 
     oogs::finish(o_Su, 1, 0, ogsDataTypeString, ogsAdd, ogsFdm);
-  } else {
+  }
+  else {
     const int overlap = (ogsExtOverlap != nullptr) ? 1 : 0;
     oogs_t *ogsFdm = (overlap) ? (oogs_t *)ogsExtOverlap : (oogs_t *)ogsExt;
 
     if (!overlap) {
       fusedFDMKernel(Nelements, mesh->o_elementList, o_work2, o_Sx, o_Sy, o_Sz, o_invL, o_work1);
-    } else {
+    }
+    else {
       if (mesh->NglobalGatherElements)
         fusedFDMKernel(mesh->NglobalGatherElements,
                        mesh->o_globalGatherElementList,

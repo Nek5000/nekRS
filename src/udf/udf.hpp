@@ -46,6 +46,8 @@ using udfproperties =
     std::function<void(nrs_t *, dfloat, occa::memory, occa::memory, occa::memory, occa::memory)>;
 using udfdiv = std::function<void(nrs_t *, dfloat, occa::memory)>;
 using udfconv = std::function<int(nrs_t *, int)>;
+using udfPreFluid = std::function<void(nrs_t*, dfloat, int)>;
+using udfPostScalar = std::function<void(nrs_t*, dfloat, int)>;
 
 struct UDF {
   udfsetup0 setup0;
@@ -59,6 +61,8 @@ struct UDF {
   udfproperties properties;
   udfdiv div;
   udfconv timeStepConverged;
+  udfPreFluid preFluid;
+  udfPostScalar postScalar;
 };
 
 extern UDF udf;

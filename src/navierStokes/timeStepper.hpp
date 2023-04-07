@@ -7,7 +7,6 @@ namespace timeStepper {
 
 void adjustDt(nrs_t *nrs, int tstep);
 
-void lagState(nrs_t *nrs);
 void initStep(nrs_t *nrs, dfloat time, dfloat dt, int tstep);
 bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage);
 void finishStep(nrs_t *nrs);
@@ -29,8 +28,6 @@ occa::memory scalarStrongSubCycle(cds_t *cds, int nEXT, dfloat time, int is,
 void scalarSolveCvode(nrs_t *nrs, dfloat tn, dfloat time, occa::memory o_S, int stage, int tstep);
 void scalarSolve(nrs_t *nrs, dfloat time, occa::memory o_S, int stage);
 void printInfo(nrs_t *nrs, dfloat time, int tstep, bool printStepInfo, bool printVerboseInfo);
-void computeDivUErr(nrs_t* nrs, dfloat& divUErrL1, dfloat& divUErrL2);
-
 }
 
 #endif

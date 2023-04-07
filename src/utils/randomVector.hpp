@@ -1,5 +1,7 @@
 #ifndef RANDOMVECTOR_HPP
 #define RANDOMVECTOR_HPP
+
+#include <mpi.h>
 #include <random>
 #include <vector>
 #include <algorithm>
@@ -10,6 +12,11 @@ template <typename T> std::vector<T> randomVector(int N)
 
   std::random_device rd;
   std::default_random_engine dev(rd());
+
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  dev.seed(rank);
   std::uniform_real_distribution<T> dist{0.0, 1.0};
 
   auto gen = [&dist, &dev]() { return dist(dev); };

@@ -85,7 +85,6 @@ bool checkForFalse(const std::string &s)
          (s.find("0") != std::string::npos);
 }
 
-
 template <typename Printable> void append_error(Printable message) { errorLogger << "\t" << message << "\n"; }
 template <typename Printable> void append_value_error(Printable message)
 {
@@ -1225,32 +1224,31 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *par, st
       append_error("avm regularization is only enabled for scalars!\n");
     }
 
-    if (usesAVM) {
-      if (regularization.find("hpfresidual") != std::string::npos)
-        options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_RESIDUAL");
-      else if (regularization.find("highestmodaldecay") != std::string::npos)
-        options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_HIGHEST_MODAL_DECAY");
-      else {
-        append_error("avm must be specified with hpfResidual or HighestModalDecay!\n");
-      }
+    if (usesHPFRT) {
+      options.setArgs(parPrefix + "HPFRT MODES", "1");
+      options.setArgs(parPrefix + "REGULARIZATION METHOD", "HPFRT");
+    }
 
+    if (usesAVM) {
+      options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_HIGHEST_MODAL_DECAY");
       options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", "0.5");
-      options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", "1.0");
       options.setArgs(parPrefix + "REGULARIZATION MDH ACTIVATION WIDTH", to_string_f(1.0));
       options.setArgs(parPrefix + "REGULARIZATION MDH THRESHOLD", to_string_f(-4.0));
       options.setArgs(parPrefix + "REGULARIZATION AVM C0", "FALSE");
       options.setArgs(parPrefix + "REGULARIZATION HPF MODES", "1");
-    }
-    if (usesHPFRT) {
-      options.setArgs(parPrefix + "HPFRT MODES", "1");
-      options.setArgs(parPrefix + "REGULARIZATION METHOD", "HPF_RELAXATION");
-    }
 
-    if (usesAVM) {
+      if (regularization.find("hpfresidual") != std::string::npos) {
+        options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_RESIDUAL");
+        options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", "1.0");
+      }
+
       for (std::string s : list) {
 
         const auto nmodeStr = parseValueForKey(s, "nmodes");
         if (!nmodeStr.empty()) {
+          if (regularization.find("highestmodaldecay") != std::string::npos)
+            append_error("nmodes qualifier is invalid for avm highestmodaldecay!\n");
+
           double value = std::stod(nmodeStr);
           value = round(value);
           options.setArgs(parPrefix + "REGULARIZATION HPF MODES", to_string_f(value));
@@ -1325,7 +1323,7 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *par, st
     std::string filtering;
     par->extract(parSection, "filtering", filtering);
     if (filtering == "hpfrt") {
-      options.setArgs(parPrefix + "REGULARIZATION METHOD", "HPF_RELAXATION");
+      options.setArgs(parPrefix + "REGULARIZATION METHOD", "HPFRT");
       if (par->extract(parSection, "filterweight", sbuf)) {
         int err = 0;
         double weight = te_interp(sbuf.c_str(), &err);
@@ -1379,10 +1377,8 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *par, st
                         options.getArgs("REGULARIZATION MDH ACTIVATION WIDTH"));
         options.setArgs(parPrefix + "REGULARIZATION MDH THRESHOLD",
                         options.getArgs("REGULARIZATION MDH THRESHOLD"));
-        options.setArgs(parPrefix + "REGULARIZATION AVM C0", 
-                        options.getArgs("REGULARIZATION AVM C0"));
-        options.setArgs(parPrefix + "REGULARIZATION HPF MODES", 
-                        options.getArgs("REGULARIZATION HPF MODES"));
+        options.setArgs(parPrefix + "REGULARIZATION AVM C0", options.getArgs("REGULARIZATION AVM C0"));
+        options.setArgs(parPrefix + "REGULARIZATION HPF MODES", options.getArgs("REGULARIZATION HPF MODES"));
       }
     }
   }
@@ -1428,7 +1424,7 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank)
   options.setArgs("MESH SOLVER", "NONE");
   options.setArgs("MOVING MESH", "FALSE");
 
-  options.setArgs("GS OVERLAP", "TRUE");
+  options.setArgs("GS COMM OVERLAP", "TRUE");
 
   options.setArgs("VARIABLE DT", "FALSE");
 
@@ -1675,7 +1671,8 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
           int NSubCyclesSpecified = 0;
           if (par->extract("general", "subcyclingsteps", NSubCyclesSpecified)) {
             options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCyclesSpecified));
-          } else {
+          }
+          else {
             options.setArgs("SUBCYCLING STEPS", std::to_string(NSubCycles));
           }
 
@@ -2062,7 +2059,7 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
     }
     else {
 
-      if(solver == "cvode"){
+      if (solver == "cvode") {
         cvodeRequested = true;
         options.setArgs("SCALAR" + sid + " SOLVER", "CVODE");
       }
@@ -2179,7 +2176,7 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
     if (solver == "cvode") {
       cvodeRequested = true;
       options.setArgs("SCALAR" + sid + " SOLVER", "CVODE");
-    } 
+    }
 
     options.setArgs("SCALAR" + sid + " SOLVER", "PCG");
     options.setArgs("SCALAR" + sid + " ELLIPTIC COEFF FIELD", "TRUE");

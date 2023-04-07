@@ -52,7 +52,7 @@ void mesh_t::update()
       platform->linAlg->max(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
 
   nrsCheck(minJ < 0 || maxJ < 0, platform->comm.mpiComm, EXIT_FAILURE,
-           "Invalid element Jacobian < 0 found!\n", "");
+           "%s\n", "Invalid element Jacobian < 0 found!");
 
   volume = platform->linAlg->sum(Nelements * Np, o_LMM, platform->comm.mpiComm);
 

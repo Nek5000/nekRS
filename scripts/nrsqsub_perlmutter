@@ -3,6 +3,8 @@
 : ${PROJ_ID:=""}
 : ${QUEUE:=""}
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
+: ${NEKRS_CACHE_BCAST:=1}
+: ${NEKRS_SKIP_BUILD_ONLY:=0}
 
 if [ $# -ne 3 ]; then
   echo "usage: [PROJ_ID=value] [QUEUE=value] $0 <casename> <number of compute nodes> <hh:mm:ss>"
@@ -102,6 +104,16 @@ echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
 echo "# Workaround for https://github.com/Nek5000/Nek5000/issues/759" >> $SFILE
 echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE
 
+echo "if [ \$NEKRS_CACHE_BCAST -eq 1 ]; then" >> $SFILE
+echo "  export NEKRS_LOCAL_TMP_DIR=\$TMPDIR/nrs" >> $SFILE
+echo "  mkdir \$NEKRS_LOCAL_TMP_DIR" >> $SFILE
+echo "fi" >> $SFILE
+
+if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
+echo "# precompilation" >>$SFILE
+echo "srun -n 1 $bin --backend $backend --device-id 0 --setup $case --build-only $ntasks" >>$SFILE
+fi
+echo "" >> $SFILE
 
 echo "date" >>$SFILE
 echo "srun $bin --backend $backend --setup $case" >>$SFILE

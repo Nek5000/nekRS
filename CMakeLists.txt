@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(NekRS LANGUAGES C CXX Fortran VERSION 23.0.2)
+project(NekRS LANGUAGES C CXX Fortran VERSION 23.0.3)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "In-place builds are not supported. Please create a separate build directory")
@@ -285,6 +285,7 @@ set(SRC
     src/bdry/createEToBV.cpp
     src/navierStokes/applyDirichlet.cpp
     src/navierStokes/timeStepper.cpp
+    src/navierStokes/evaluateProperties.cpp
     src/navierStokes/subCycling.cpp
     src/navierStokes/tombo.cpp
     src/navierStokes/constantFlowRate.cpp

@@ -92,35 +92,38 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
 
   flopCounter = std::make_unique<flopCounter_t>();
 
-  // create tmp dir
-  {
-    int rankLocal;
-    MPI_Comm_rank(comm.mpiCommLocal, &rankLocal);
-
-    char tmp[] = "nrs_XXXXXX";
-    const int tmpSize = sizeof(tmp)/sizeof(tmp[0]);
-    
-    int retVal = 0;
-    if(rankLocal == 0) { 
-      retVal = mkstemp(tmp);
-      fs::remove(fs::path(tmp));
-    }
-   
-    MPI_Bcast(&tmp, tmpSize, MPI_CHAR, 0, comm.mpiComm);
-    if(getenv("NEKRS_TMP_DIR")) 
-      tmpDir = getenv("NEKRS_TMP_DIR");
-    else
-      tmpDir = fs::temp_directory_path() / fs::path(tmp);
-
-    if(rankLocal == 0) { 
-      fs::create_directory(tmpDir);
-      nrsCheck(!fs::exists(tmpDir), MPI_COMM_SELF, EXIT_FAILURE,
-               "Cannot create %s\n", tmpDir.c_str());
-    }
-  }
+  tmpDir = "/";
 
   // bcast install dir 
   if(cacheBcast || cacheLocal) {
+    if(getenv("NEKRS_LOCAL_TMP_DIR")) { 
+      tmpDir = getenv("NEKRS_LOCAL_TMP_DIR");
+    } else {
+      nrsAbort(_comm, EXIT_FAILURE, "%s\n", "NEKRS_LOCAL_TMP_DIR undefined!");
+    }
+
+    int rankLocal;
+    MPI_Comm_rank(comm.mpiCommLocal, &rankLocal);
+
+    if(rankLocal == 0)
+      nrsCheck(!fs::exists(tmpDir), MPI_COMM_SELF, EXIT_FAILURE,
+               "Cannot find NEKRS_LOCAL_TMP_DIR %s\n", tmpDir.c_str());
+  
+    auto nSessions = 1; 
+    options.getArgs("NEKNEK NUMBER OF SESSIONS", nSessions);
+    if(nSessions > 1) {
+      auto sessionID = 0; 
+      options.getArgs("NEKNEK SESSION ID", sessionID);
+
+      tmpDir = fs::path(tmpDir) / fs::path(std::string("nrs_") + std::to_string(sessionID)); 
+
+      if(rankLocal == 0) {
+        fs::create_directory(tmpDir);
+        nrsCheck(!fs::exists(tmpDir), MPI_COMM_SELF, EXIT_FAILURE,
+                 "Cannot create %s\n", tmpDir.c_str());
+      }
+    }
+
     const auto NEKRS_HOME_NEW = fs::path(tmpDir) / "nekrs";
     const auto srcPath = fs::path(getenv("NEKRS_HOME"));
     for (auto &entry : {fs::path("udf"),

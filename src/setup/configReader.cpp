@@ -52,7 +52,7 @@ void configRead(MPI_Comm comm)
     if(rank != 0) rbuf = new char[fsize];
     MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
     is.write(rbuf, fsize);
-    free(rbuf);
+    delete [] rbuf;
   }
   inipp::Ini ini;
   ini.parse(is, false);

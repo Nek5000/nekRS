@@ -3,7 +3,8 @@
 : ${PROJ_ID:=""}
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
 : ${CPUONLY:=0}
-: ${NEKRS_CACHE_BCAST:=0}
+: ${NEKRS_CACHE_BCAST:=1}
+: ${NEKRS_SKIP_BUILD_ONLY:=0}
 
 if [ $# -ne 3 ]; then
   echo "usage: [PROJ_ID] [QUEUE] $0 <casename> <number of compute nodes> <hh:mm>"
@@ -128,33 +129,20 @@ echo "" >> $SFILE
 
 echo "export NVME_HOME=\"/mnt/bb/$USER/\"" >> $SFILE
 echo "if [ \$NEKRS_CACHE_BCAST -eq 1 ]; then" >> $SFILE
-echo "  export NEKRS_TMP_DIR=\$NVME_HOME" >> $SFILE
+echo "  export NEKRS_LOCAL_TMP_DIR=\$NVME_HOME" >> $SFILE
 echo "fi" >> $SFILE
 echo "" >> $SFILE
 
+
+if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
+echo "jsrun --smpiargs='-gpu' -X 1 -n1 -r1 -a1 -c2 -g1 -b rs -d packed \$bin --setup \$case --backend \$backend --device-id 0 --build-only \$nn" >> $SFILE
+fi
 
 echo "if [ \$CPUONLY -eq 1 ]; then" >> $SFILE
 echo "  jsrun -X 1 -n\$nn -a\$cores_per_socket -c\$cores_per_socket -g0 -b packed:1 -d packed \$bin --setup \$case --backend \$backend" >> $SFILE
 echo "else" >> $SFILE
 echo "  jsrun --smpiargs='-gpu' -X 1 -n\$nn -r\$gpu_per_node -a1 -c2 -g1 -b rs -d packed \$bin --setup \$case --backend \$backend --device-id 0" >> $SFILE
 echo "fi" >> $SFILE
-
-while true; do
-  read -p "Do you want precompile (recommended)? [N]" yn
-  case $yn in
-    [Yy]* )
-      echo $NEKRS_HOME
-      OCCA_VERBOSE=1 mpirun -pami_noib -np 1 $NEKRS_HOME/bin/nekrs --setup $case --build-only $ntasks --backend $backend;
-      if [ $? -ne 0 ]; then
-        # clean-up
-        rm -rf $SFILE $ROMIO_HINTS
-        exit 1
-      fi
-      break ;;
-    * )
-      break ;;
-  esac
-done
 
 bsub $SFILE
 

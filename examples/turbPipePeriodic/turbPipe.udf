@@ -5,6 +5,7 @@
 
 static dfloat Re_tau;
 static dfloat zLength;
+static dfloat dt0;
 
 #include "ci.inc"
 
@@ -39,6 +40,8 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
     double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
     nek_cb_scnrs[0] = zLength;
   }
+
+  platform->options.getArgs("DT", dt0);
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -51,6 +54,11 @@ void UDF_Setup(nrs_t *nrs)
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
+  if (tstep < 5)
+    nrs->dt[0] = 0.25 * dt0;
+  else
+    nrs->dt[0] = dt0;
+
   if (nrs->lastStep)
     if (ciMode) ciTestErrors(nrs, time, tstep);
 }

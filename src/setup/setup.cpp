@@ -14,40 +14,38 @@
 #include "cdsSetup.cpp"
 #include <algorithm>
 
-
 void printICMinMax(nrs_t *nrs)
 {
-  if(platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0)
     printf("================= INITIAL CONDITION ====================\n");
 
-  if(platform->options.compareArgs("MOVING MESH", "TRUE")) {
+  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     auto mesh = nrs->meshV;
-    auto o_ux = mesh->o_U + 0*nrs->fieldOffset*sizeof(dfloat);
-    auto o_uy = mesh->o_U + 1*nrs->fieldOffset*sizeof(dfloat);
-    auto o_uz = mesh->o_U + 2*nrs->fieldOffset*sizeof(dfloat);
+    auto o_ux = mesh->o_U + 0 * nrs->fieldOffset * sizeof(dfloat);
+    auto o_uy = mesh->o_U + 1 * nrs->fieldOffset * sizeof(dfloat);
+    auto o_uz = mesh->o_U + 2 * nrs->fieldOffset * sizeof(dfloat);
     const auto uxMin = platform->linAlg->min(mesh->Nlocal, o_ux, platform->comm.mpiComm);
     const auto uyMin = platform->linAlg->min(mesh->Nlocal, o_uy, platform->comm.mpiComm);
     const auto uzMin = platform->linAlg->min(mesh->Nlocal, o_uz, platform->comm.mpiComm);
     const auto uxMax = platform->linAlg->max(mesh->Nlocal, o_ux, platform->comm.mpiComm);
     const auto uyMax = platform->linAlg->max(mesh->Nlocal, o_uy, platform->comm.mpiComm);
     const auto uzMax = platform->linAlg->max(mesh->Nlocal, o_uz, platform->comm.mpiComm);
-    if(platform->comm.mpiRank == 0) 
+    if (platform->comm.mpiRank == 0)
       printf("UM  min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
   }
 
-
   {
     auto mesh = nrs->meshV;
-    auto o_ux = nrs->o_U + 0*nrs->fieldOffset*sizeof(dfloat);
-    auto o_uy = nrs->o_U + 1*nrs->fieldOffset*sizeof(dfloat);
-    auto o_uz = nrs->o_U + 2*nrs->fieldOffset*sizeof(dfloat);
+    auto o_ux = nrs->o_U + 0 * nrs->fieldOffset * sizeof(dfloat);
+    auto o_uy = nrs->o_U + 1 * nrs->fieldOffset * sizeof(dfloat);
+    auto o_uz = nrs->o_U + 2 * nrs->fieldOffset * sizeof(dfloat);
     const auto uxMin = platform->linAlg->min(mesh->Nlocal, o_ux, platform->comm.mpiComm);
     const auto uyMin = platform->linAlg->min(mesh->Nlocal, o_uy, platform->comm.mpiComm);
     const auto uzMin = platform->linAlg->min(mesh->Nlocal, o_uz, platform->comm.mpiComm);
     const auto uxMax = platform->linAlg->max(mesh->Nlocal, o_ux, platform->comm.mpiComm);
     const auto uyMax = platform->linAlg->max(mesh->Nlocal, o_uy, platform->comm.mpiComm);
     const auto uzMax = platform->linAlg->max(mesh->Nlocal, o_uz, platform->comm.mpiComm);
-    if(platform->comm.mpiRank == 0) 
+    if (platform->comm.mpiRank == 0)
       printf("U   min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
   }
 
@@ -55,40 +53,42 @@ void printICMinMax(nrs_t *nrs)
     auto mesh = nrs->meshV;
     const auto prMin = platform->linAlg->min(mesh->Nlocal, nrs->o_P, platform->comm.mpiComm);
     const auto prMax = platform->linAlg->max(mesh->Nlocal, nrs->o_P, platform->comm.mpiComm);
-    if(platform->comm.mpiRank == 0) 
+    if (platform->comm.mpiRank == 0)
       printf("P   min/max: %g %g\n", prMin, prMax);
   }
 
   if (nrs->Nscalar) {
     auto cds = nrs->cds;
-    if(platform->comm.mpiRank == 0) 
-      printf("S   min/max:"); 
- 
-    int cnt = 0; 
+    if (platform->comm.mpiRank == 0)
+      printf("S   min/max:");
+
+    int cnt = 0;
     for (int is = 0; is < cds->NSfields; is++) {
       if (!cds->compute[is])
         continue;
       else
         cnt++;
-      
+
       mesh_t *mesh;
       (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
 
       auto o_si = nrs->cds->o_S + nrs->cds->fieldOffsetScan[is] * sizeof(dfloat);
       const auto siMin = platform->linAlg->min(mesh->Nlocal, o_si, platform->comm.mpiComm);
       const auto siMax = platform->linAlg->max(mesh->Nlocal, o_si, platform->comm.mpiComm);
-      if (platform->comm.mpiRank == 0) { 
-        if(cnt > 1)
-          printf("  ");          
+      if (platform->comm.mpiRank == 0) {
+        if (cnt > 1)
+          printf("  ");
         else
-          printf(" ");          
+          printf(" ");
         printf("%g %g", siMin, siMax);
       }
     }
-    if(platform->comm.mpiRank == 0) 
-      printf("\n");  
+    if (platform->comm.mpiRank == 0)
+      printf("\n");
   }
 }
+
+occa::memory elliptic_t::o_wrk = occa::memory();
 
 void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 {
@@ -113,13 +113,13 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   {
 #if 1
     if (platform->device.mode() == "Serial")
-      platform->options.setArgs("GS OVERLAP", "FALSE");
+      platform->options.setArgs("GS COMM OVERLAP", "FALSE");
 #endif
 
     if (platform->comm.mpiCommSize == 1)
-      platform->options.setArgs("GS OVERLAP", "FALSE");
+      platform->options.setArgs("GS COMM OVERLAP", "FALSE");
 
-    if (platform->comm.mpiRank == 0 && platform->options.compareArgs("GS OVERLAP", "FALSE"))
+    if (platform->comm.mpiRank == 0 && platform->options.compareArgs("GS COMM OVERLAP", "FALSE"))
       std::cout << "gs comm overlap disabled\n\n";
   }
 
@@ -149,19 +149,24 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   nrs->cht = 0;
   {
-    hlong NelementsV = nekData.nelv; 
+    hlong NelementsV = nekData.nelv;
     hlong NelementsT = nekData.nelt;
     MPI_Allreduce(MPI_IN_PLACE, &NelementsV, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
     MPI_Allreduce(MPI_IN_PLACE, &NelementsT, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-    if ((NelementsT > NelementsV) && nrs->Nscalar) nrs->cht = 1;
+    if ((NelementsT > NelementsV) && nrs->Nscalar)
+      nrs->cht = 1;
 
-    nrsCheck(nrs->cht && NelementsT <= NelementsV, MPI_COMM_SELF, EXIT_FAILURE,
-             "%s\n", "Invalid solid element partitioning");
+    nrsCheck(nrs->cht && NelementsT <= NelementsV,
+             MPI_COMM_SELF,
+             EXIT_FAILURE,
+             "%s\n",
+             "Invalid solid element partitioning");
 
     nrsCheck(nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE"),
              platform->comm.mpiComm,
              EXIT_FAILURE,
-             "%s\n", "Conjugate heat transfer requires solving for temperature!");
+             "%s\n",
+             "Conjugate heat transfer requires solving for temperature!");
   }
 
   nrs->_mesh = createMesh(comm, N, cubN, nrs->cht, kernelInfo);
@@ -182,8 +187,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if (nrs->Nsubsteps)
     nrs->nEXT = nrs->nBDF;
 
-  nrsCheck(nrs->nEXT < nrs->nBDF, platform->comm.mpiComm, EXIT_FAILURE,
-           "%s\n", "EXT order needs to be >= BDF order!"); 
+  nrsCheck(nrs->nEXT < nrs->nBDF,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "%s\n",
+           "EXT order needs to be >= BDF order!");
 
   nrs->coeffEXT = (dfloat *)calloc(nrs->nEXT, sizeof(dfloat));
   nrs->coeffBDF = (dfloat *)calloc(nrs->nBDF, sizeof(dfloat));
@@ -261,6 +269,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   // offset mempool available for elliptic because also used it for ellipticSolve input/output
   auto const o_mempoolElliptic =
       platform->o_mempool.o_ptr.slice((2 * nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
+  elliptic_t::o_wrk = o_mempoolElliptic;
 
   if (options.compareArgs("MOVING MESH", "TRUE")) {
     const int nBDF = std::max(nrs->nBDF, nrs->nEXT);
@@ -329,7 +338,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if (!options.compareArgs("MESH SOLVER", "NONE")) {
     nrs->o_meshMue = nrs->o_prop.slice((2 * sizeof(dfloat)) * nrs->fieldOffset);
     nrs->o_meshRho = nrs->o_prop.slice((3 * sizeof(dfloat)) * nrs->fieldOffset);
- }
+  }
 
   if (platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")) {
     nrs->o_Uc = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
@@ -348,7 +357,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   // 0);
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
 
-  if (!options.compareArgs("MESH SOLVER", "NONE")) { 
+  if (!options.compareArgs("MESH SOLVER", "NONE")) {
     mesh_t *meshT = nrs->_mesh;
     nrs->gshMesh = oogs::setup(meshT->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
   }
@@ -379,7 +388,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), nrs->EToBMeshVelocity);
   }
 
-  if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "HPF_RELAXATION")) {
+  if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "HPFRT")) {
 
     nrs->filterNc = -1;
     dfloat filterS;
@@ -528,7 +537,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   if (nrs->Nscalar) {
     nrs->cds = cdsSetup(nrs, platform->options);
-    if(nrs->cds->anyCvodeSolver){
+    if (nrs->cds->anyCvodeSolver) {
       nrs->cvode = new cvode_t(nrs);
       nrs->cds->cvode = nrs->cvode;
     }
@@ -577,9 +586,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->cvode->initialize(nrs);
   }
 
-  if (platform->comm.mpiRank == 0) std::cout << std::endl;
+  if (platform->comm.mpiRank == 0)
+    std::cout << std::endl;
   printMeshMetrics(nrs->_mesh);
-  
+
   printICMinMax(nrs);
 
   // setup elliptic solvers
@@ -614,27 +624,24 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       cds->solver[is] = new elliptic_t();
       cds->solver[is]->name = "scalar" + sid;
-      cds->solver[is]->blockSolver = 0;
       cds->solver[is]->Nfields = 1;
       cds->solver[is]->fieldOffset = nrs->fieldOffset;
-      cds->solver[is]->o_wrk = o_mempoolElliptic;
       cds->solver[is]->mesh = mesh;
-      cds->solver[is]->elementType = cds->elementType;
 
       cds->solver[is]->poisson = 0;
 
       cds->setEllipticCoeffKernel(mesh->Nlocal,
-          cds->g0 * cds->idt,
-          cds->fieldOffsetScan[is],
-          nrs->fieldOffset,
-          0,
-          cds->o_diff,
-          cds->o_rho,
-          o_NULL,
-          cds->o_ellipticCoeff);
+                                  cds->g0 * cds->idt,
+                                  cds->fieldOffsetScan[is],
+                                  nrs->fieldOffset,
+                                  0,
+                                  cds->o_diff,
+                                  cds->o_rho,
+                                  o_NULL,
+                                  cds->o_ellipticCoeff);
 
-      cds->solver[is]->o_lambda0 = cds->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
-      cds->solver[is]->o_lambda1 = cds->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+      cds->solver[is]->o_lambda0 = cds->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+      cds->solver[is]->o_lambda1 = cds->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat));
 
       cds->solver[is]->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
       for (dlong e = 0; e < mesh->Nelements; e++) {
@@ -643,7 +650,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
           cds->solver[is]->EToB[f + e * mesh->Nfaces] = bcMap::ellipticType(bID, "scalar" + sid);
         }
       }
-
 
       ellipticSolveSetup(cds->solver[is]);
     }
@@ -658,9 +664,10 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     bool unalignedBoundary = bcMap::unalignedMixedBoundary("velocity");
 
     nrsCheck(unalignedBoundary && !options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"),
-             platform->comm.mpiComm, 
-             EXIT_FAILURE, 
-             "%s\n", "SHL or unaligned SYM boundaries require solver = pcg+block");
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "%s\n",
+             "SHL or unaligned SYM boundaries require solver = pcg+block");
 
     if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       nrs->uvwSolver = new elliptic_t();
@@ -672,28 +679,25 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     }
 
     nrs->setEllipticCoeffKernel(mesh->Nlocal,
-      nrs->g0 * nrs->idt,
-      0 * nrs->fieldOffset,
-      nrs->fieldOffset,
-      0,
-      nrs->o_mue,
-      nrs->o_rho,
-      o_NULL,
-      nrs->o_ellipticCoeff);
+                                nrs->g0 * nrs->idt,
+                                0 * nrs->fieldOffset,
+                                nrs->fieldOffset,
+                                0,
+                                nrs->o_mue,
+                                nrs->o_rho,
+                                o_NULL,
+                                nrs->o_ellipticCoeff);
 
     if (nrs->uvwSolver) {
       nrs->uvwSolver->name = "velocity";
-      nrs->uvwSolver->blockSolver = 1;
       nrs->uvwSolver->stressForm = 0;
       if (options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
         nrs->uvwSolver->stressForm = 1;
       nrs->uvwSolver->Nfields = nrs->NVfields;
       nrs->uvwSolver->fieldOffset = nrs->fieldOffset;
-      nrs->uvwSolver->o_wrk = o_mempoolElliptic;
       nrs->uvwSolver->mesh = mesh;
-      nrs->uvwSolver->elementType = nrs->elementType;
-      nrs->uvwSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
-      nrs->uvwSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+      nrs->uvwSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+      nrs->uvwSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat));
       nrs->uvwSolver->poisson = 0;
       nrs->uvwSolver->EToB =
           (int *)calloc(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields, sizeof(int));
@@ -719,8 +723,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
             platform->device.malloc((nrs->uvwSolver->Nfields * sizeof(dfloat)) * nrs->uvwSolver->fieldOffset);
         nrs->o_EToBVVelocity = platform->device.malloc(nrs->meshV->Nlocal * sizeof(int));
         createEToBV(nrs->meshV, nrs->uvwSolver->EToB, nrs->o_EToBVVelocity);
-        auto o_EToB = 
-          platform->device.malloc(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields * sizeof(int), nrs->uvwSolver->EToB); 
+        auto o_EToB =
+            platform->device.malloc(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields * sizeof(int),
+                                    nrs->uvwSolver->EToB);
         createZeroNormalMask(nrs, mesh, o_EToB, nrs->o_EToBVVelocity, nrs->o_zeroNormalMaskVelocity);
 
         nrs->uvwSolver->applyZeroNormalMask =
@@ -739,14 +744,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     else {
       nrs->uSolver = new elliptic_t();
       nrs->uSolver->name = "velocity";
-      nrs->uSolver->blockSolver = 0;
       nrs->uSolver->Nfields = 1;
       nrs->uSolver->fieldOffset = nrs->fieldOffset;
-      nrs->uSolver->o_wrk = o_mempoolElliptic;
       nrs->uSolver->mesh = mesh;
-      nrs->uSolver->elementType = nrs->elementType;
-      nrs->uSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
-      nrs->uSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+      nrs->uSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+      nrs->uSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat));
       nrs->uSolver->poisson = 0;
       nrs->uSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
       for (dlong e = 0; e < mesh->Nelements; e++) {
@@ -760,14 +762,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       nrs->vSolver = new elliptic_t();
       nrs->vSolver->name = "velocity";
-      nrs->vSolver->blockSolver = 0;
       nrs->vSolver->Nfields = 1;
       nrs->vSolver->fieldOffset = nrs->fieldOffset;
-      nrs->vSolver->o_wrk = o_mempoolElliptic;
       nrs->vSolver->mesh = mesh;
-      nrs->vSolver->elementType = nrs->elementType;
-      nrs->vSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
-      nrs->vSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+      nrs->vSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+      nrs->vSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat));
       nrs->vSolver->poisson = 0;
       nrs->vSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
       for (dlong e = 0; e < mesh->Nelements; e++) {
@@ -781,14 +780,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
       nrs->wSolver = new elliptic_t();
       nrs->wSolver->name = "velocity";
-      nrs->wSolver->blockSolver = 0;
       nrs->wSolver->Nfields = 1;
       nrs->wSolver->fieldOffset = nrs->fieldOffset;
-      nrs->wSolver->o_wrk = o_mempoolElliptic;
       nrs->wSolver->mesh = mesh;
-      nrs->wSolver->elementType = nrs->elementType;
-      nrs->wSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
-      nrs->wSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+      nrs->wSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+      nrs->wSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat));
       nrs->wSolver->poisson = 0;
       nrs->wSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
       for (dlong e = 0; e < mesh->Nelements; e++) {
@@ -808,24 +804,17 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
     nrs->pSolver = new elliptic_t();
     nrs->pSolver->name = "pressure";
-    nrs->pSolver->blockSolver = 0;
     nrs->pSolver->Nfields = 1;
     nrs->pSolver->fieldOffset = nrs->fieldOffset;
-    nrs->pSolver->o_wrk = o_mempoolElliptic;
     nrs->pSolver->mesh = mesh;
-    nrs->pSolver->elementType = nrs->elementType;
 
     nrs->pSolver->poisson = 1;
 
     // lambda0 = 1/rho  lambda1 = 0
-    nrs->setEllipticCoeffPressureKernel(
-      mesh->Nlocal, 
-      nrs->fieldOffset, 
-      nrs->o_rho, 
-      nrs->o_ellipticCoeff);
+    nrs->setEllipticCoeffPressureKernel(mesh->Nlocal, nrs->fieldOffset, nrs->o_rho, nrs->o_ellipticCoeff);
 
-    nrs->pSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
-    nrs->pSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+    nrs->pSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+    nrs->pSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat));
 
     nrs->pSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
     for (dlong e = 0; e < mesh->Nelements; e++) {
@@ -855,30 +844,26 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
     }
 
-    nrs->setEllipticCoeffKernel(
-      mesh->Nlocal,
-      1.0,
-      0 * nrs->fieldOffset,
-      nrs->fieldOffset,
-      0,
-      nrs->o_meshMue,
-      nrs->o_meshRho,
-      o_NULL,
-      nrs->o_ellipticCoeff);
+    nrs->setEllipticCoeffKernel(mesh->Nlocal,
+                                1.0,
+                                0 * nrs->fieldOffset,
+                                nrs->fieldOffset,
+                                0,
+                                nrs->o_meshMue,
+                                nrs->o_meshRho,
+                                o_NULL,
+                                nrs->o_ellipticCoeff);
 
     nrs->meshSolver = new elliptic_t();
     nrs->meshSolver->name = "mesh";
-    nrs->meshSolver->blockSolver = 1;
     nrs->meshSolver->stressForm = 0;
     if (options.compareArgs("MESH STRESSFORMULATION", "TRUE"))
       nrs->meshSolver->stressForm = 1;
     nrs->meshSolver->Nfields = nrs->NVfields;
     nrs->meshSolver->fieldOffset = nrs->fieldOffset;
-    nrs->meshSolver->o_wrk = o_mempoolElliptic;
     nrs->meshSolver->mesh = mesh;
-    nrs->meshSolver->elementType = nrs->elementType;
-    nrs->meshSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0*nrs->fieldOffset*sizeof(dfloat));
-    nrs->meshSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1*nrs->fieldOffset*sizeof(dfloat));
+    nrs->meshSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+    nrs->meshSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat));
     nrs->meshSolver->poisson = 0;
 
     nrs->meshSolver->EToB =
@@ -902,12 +887,12 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
     bool unalignedBoundary = bcMap::unalignedMixedBoundary("mesh");
     if (unalignedBoundary) {
-      nrs->o_zeroNormalMaskMeshVelocity = 
-        platform->device.malloc((nrs->meshSolver->Nfields * sizeof(dfloat)) * 
-                                nrs->meshSolver->fieldOffset);
+      nrs->o_zeroNormalMaskMeshVelocity =
+          platform->device.malloc((nrs->meshSolver->Nfields * sizeof(dfloat)) * nrs->meshSolver->fieldOffset);
       nrs->o_EToBVMeshVelocity = platform->device.malloc(mesh->Nlocal * sizeof(int));
       auto o_EToB =
-          platform->device.malloc(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields * sizeof(int), nrs->meshSolver->EToB);
+          platform->device.malloc(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields * sizeof(int),
+                                  nrs->meshSolver->EToB);
       createEToBV(mesh, nrs->meshSolver->EToB, nrs->o_EToBVMeshVelocity);
       createZeroNormalMask(nrs, mesh, o_EToB, nrs->o_EToBVMeshVelocity, nrs->o_zeroNormalMaskMeshVelocity);
       nrs->meshSolver->applyZeroNormalMask =

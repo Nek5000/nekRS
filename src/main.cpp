@@ -80,7 +80,7 @@
 #include <fcntl.h>
 #include <chrono>
 #include <csignal>
-#include "backtrace.hpp"
+#include "stacktrace.hpp"
 #include <filesystem>
 
 #include "nekrs.hpp"
@@ -363,14 +363,16 @@ MPI_Comm setupSession(cmdOptions *cmdOpt, const MPI_Comm &comm)
 
 void signalHandler(int signum) 
 {
-   std::cerr << "generating backtrace ...\n";
+   { // needs to be refactored as this is not async-signal-safe
+     std::cerr << "generating stacktrace ...\n";
 
-   std::ofstream file;
-   std::string fileName = "backtrace.";
-   fileName += std::to_string(worldRank);
-   file.open (fileName);
-   file << nrsbacktrace(1); 
-   file.close();
+     const std::string fileName = "stacktrace." + std::to_string(worldRank);
+
+     FILE *fp;
+     fp = fopen (fileName.c_str(), "w");
+     print_stacktrace(fp);
+     fclose(fp);
+   }
 }
 
 } // namespace

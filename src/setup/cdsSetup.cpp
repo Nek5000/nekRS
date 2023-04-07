@@ -163,7 +163,7 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
       if (!cds->compute[is])
         continue;
 
-      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPF_RELAXATION")) { 
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPFRT")) { 
         int filterNc = -1;
         options.getArgs("SCALAR" + sid + " HPFRT MODES", filterNc);
         dfloat filterS;

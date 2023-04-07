@@ -121,12 +121,12 @@ echo "" >> $SFILE
 
 if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
 echo "# precompilation" >>$SFILE
-echo "srun -n 1 $bin --backend $backend --device-id 0 --setup $case --build-only $ntasks" >>$SFILE
+echo "srun -N 1 -n 1 $bin --backend $backend --device-id 0 --setup $case --build-only $ntasks" >>$SFILE
 fi
 echo "" >> $SFILE
 
 echo "# actual run" >>$SFILE
-echo "srun -n $ntasks $bin --backend $backend --device-id 0 --setup $case" >>$SFILE
+echo "srun -N $nodes -n $ntasks $bin --backend $backend --device-id 0 --setup $case" >>$SFILE
 
 sbatch $SFILE
 
