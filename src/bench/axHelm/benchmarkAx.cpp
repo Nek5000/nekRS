@@ -288,7 +288,7 @@ occa::kernel benchmarkAx(int Nelements,
 
       double err = 0.0;
       for (int i = 0; i < refResults.size(); ++i) {
-        err = std::max(err, (double) std::abs(refResults[i] - results[i]));
+        err = std::max(err, (double) std::abs((refResults[i] - results[i])/refResults[i]));
       }
       MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
   

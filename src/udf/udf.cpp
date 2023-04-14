@@ -364,6 +364,27 @@ void udfBuild(const char *_udfFile, setupAide &options)
   MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
 
   nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "see above and cmake.log for more details");
+
+  if(platform->comm.mpiRank == 0) {
+    const auto tmpFile = udfFile + ".unifdef";
+    unifdef("__okl__", udfFile.c_str(), tmpFile.c_str());
+
+    std::ifstream fudf(tmpFile);
+    std::cout << ">>>\n";
+    std::cout << fudf.rdbuf();
+    std::cout << "<<<\n";
+
+    fudf.close();
+    fs::remove(tmpFile);
+
+    std::ifstream foudf(oudfFileCache);
+
+    std::cout << ">>>\n";
+    std::cout << foudf.rdbuf();
+    std::cout << "<<<\n";
+
+    foudf.close();
+  }
 }
 
 void *udfLoadFunction(const char *fname, int errchk)

@@ -219,6 +219,8 @@ void registerSEMFEMKernels(const std::string &section, int N, int poissonEquatio
 
 void registerMultigridLevelKernels(const std::string &section, int Nf, int N, int poissonEquation)
 {
+  const std::string optionsPrefix = createOptionsPrefix(section);
+
   const int Nc = N;
   auto gen_suffix = [N](const char *floatString) {
     const std::string precision = std::string(floatString);
@@ -270,12 +272,12 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N, in
     platform->kernels.add(kernelName + orderSuffix, fileName, coarsenProlongateKernelInfo, orderSuffix);
   }
 
-  const std::string optionsPrefix = createOptionsPrefix(section);
-#if 0
-  if (N == 1 && platform->options.compareArgs(optionsPrefix + "MULTIGRID COARSE SOLVE", "TRUE")) {
-    return;
+  if (N == 1) {
+    if (  platform->options.compareArgs(optionsPrefix + "MULTIGRID COARSE SOLVE", "TRUE") &&
+         !platform->options.compareArgs(optionsPrefix + "MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE") ) { 
+      return;
+    }
   }
-#endif
 
   registerAxKernels(section, N, poissonEquation);
   registerSchwarzKernels(section, N);

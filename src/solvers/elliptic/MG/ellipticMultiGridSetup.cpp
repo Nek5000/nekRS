@@ -207,7 +207,10 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_, precon_t *precon_)
                                            options,
                                            platform->comm.mpiComm,
                                            true);
-    autoOverlap(ellipticCoarse);
+
+    if(options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE") ||
+       options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE"))
+      autoOverlap(ellipticCoarse);
   }
   else {
     ellipticCoarse = elliptic;

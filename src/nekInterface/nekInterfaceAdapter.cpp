@@ -565,8 +565,7 @@ void buildNekInterface(int ldimt, int N, int np, setupAide &options)
       if (buildRequired) {
         const double tStart = MPI_Wtime();
 
-        std::string pipeToNull = (verbose) ? std::string("") : std::string(">/dev/null 2>&1");
-        if(rank != 0) pipeToNull = std::string(">/dev/null 2>&1"); // in case multiple ranks will build
+        const std::string makeOutput = (rank == 0) ? cache_dir + "/make.out" : "/dev/null"; 
         const std::string case_dir(fs::current_path());
         const std::string include_dirs = "./ " + case_dir + " " + installDir + "/include/bdry";
         const std::string nekInterface_dir = installDir + "/nekInterface";
@@ -598,12 +597,18 @@ void buildNekInterface(int ldimt, int N, int np, setupAide &options)
                 casename.c_str(),
                 cache_dir.c_str(),
                 nekInterface_dir.c_str(),
-                pipeToNull.c_str());
+                std::string(">" + makeOutput + " 2>&1").c_str());
 
         if (verbose && rank == 0)
           printf("\n%s\n", buf);
-        if (system(buf))
+        if (system(buf)) {
+          if(rank == 0) {
+            std::ifstream f(makeOutput);
+            std::cerr << f.rdbuf();
+          }
+
           return EXIT_FAILURE;
+        }
         fileSync(libFile.c_str());
 
         if (rank == 0)
@@ -615,7 +620,7 @@ void buildNekInterface(int ldimt, int N, int np, setupAide &options)
           printf("skip building nekInterface (SIZE requires no update)\n");
         fflush(stdout);
       }
-    } // rank0
+    } // buildRank
 
     if (platform->cacheBcast)
       fileBcast(cache_dir, platform->tmpDir, platform->comm.mpiComm, platform->verbose);

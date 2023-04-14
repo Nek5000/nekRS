@@ -190,7 +190,7 @@ occa::kernel benchmarkFDM(int Nelements,
 
       double err = 0.0;
       for (int i = 0; i < result.size(); ++i) {
-        err = std::max(err, (double) std::abs(result[i] - referenceResult[i]));
+        err = std::max(err, (double) std::abs((result[i] - referenceResult[i])/referenceResult[i]));
       }
       MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
 

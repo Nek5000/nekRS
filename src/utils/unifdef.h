@@ -29,6 +29,7 @@
 extern "C" {
 
 void extract_ifdef(const char *symbol, const char *ifilename, const char *ofilename);
+void unifdef(const char *sym_name, const char *ifilename, const char *ofilename);
 
 } 
 

@@ -210,8 +210,8 @@ void SolutionProjection::computePostProjection(occa::memory &o_x)
     numVecsProjection++;
     // xx[m-1] = x
     o_xx.copyFrom(o_x,
-                  Nfields * fieldOffset * sizeof(dfloat),
-                  Nfields * (numVecsProjection - 1) * fieldOffset * sizeof(dfloat),
+                  fieldOffset *  Nfields * sizeof(dfloat),
+                  fieldOffset * (Nfields * sizeof(dfloat) * (numVecsProjection - 1)),
                   0);
     // x = x + xbar
     platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
@@ -224,8 +224,7 @@ void SolutionProjection::computePostProjection(occa::memory &o_x)
   if (numVecsProjection < previousNumVecsProjection) { // Last vector was linearly dependent, reset space
     numVecsProjection = 1;
     o_xx.copyFrom(o_x,
-                  Nfields * fieldOffset *
-                      sizeof(dfloat)); // writes first n words of o_xx, first approximation vector
+                  Nfields * fieldOffset * sizeof(dfloat)); // writes first n words of o_xx, first approximation vector
     matvec(o_bb, 0, o_xx, 0);
     updateProjectionSpace();
   }

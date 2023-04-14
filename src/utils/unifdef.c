@@ -305,11 +305,22 @@ extract_ifdef(const char *sym_name, const char *ifilename, const char *ofilename
 {
         text = true;
         complement = true;
-        addsym1(false, false, (char*) sym_name);
 
+        addsym1(false, false, (char*) sym_name);
 	indirectsym();
 	processinout(ifilename, ofilename);
         strip_lines(ofilename);
+}
+
+void
+unifdef(const char *sym_name, const char *ifilename, const char *ofilename)
+{
+        text = true;
+        complement = false;
+
+        addsym1(false, false, (char*) sym_name);
+	indirectsym();
+	processinout(ifilename, ofilename);
 }
 
 /*
@@ -331,7 +342,7 @@ processinout(const char *ifn, const char *ofn)
 		if (input == NULL)
 			err(2, "can't open %s", ifn);
 	}
-	if (strcmp(ofn, "-") == 0) {
+	if (ofn == NULL || strcmp(ofn, "-") == 0) {
 		output = fbinmode(stdout);
 		process();
 		return;
@@ -706,7 +717,7 @@ process(void)
 		    linenum, linetype_name[lineval],
 		    ifstate_name[ifstate[depth]], depth);
 	}
-	exitstat |= altered;
+        exitstat |= altered;
 }
 
 /*

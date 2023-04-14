@@ -25,9 +25,9 @@ public:
   static constexpr bool enabled = false;
 #endif
   using userRHS_t = std::function<
-      void(nrs_t *nrs, int tstep, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)>;
+      void(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)>;
   using userJacobian_t = std::function<
-      void(nrs_t *nrs, int tstep, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)>;
+      void(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)>;
   using userLocalPointSource_t =
       std::function<void(nrs_t *nrs, dlong LFieldOffset, occa::memory o_y, occa::memory o_ydot)>;
   using userPostNrsToCv_t = std::function<void(nrs_t *nrs, occa::memory o_LField)>;
@@ -60,7 +60,8 @@ public:
   void setIsJacobianEvaluation(bool _jacEval) { jacEval = _jacEval; }
   bool isJacobianEvaluation() const { return jacEval; }
 
-  int timeStep() const { return tstep; }
+  int timeStep() const { return externalTStep; }
+  void setTimeStep(int tstep) { externalTStep = tstep; }
   double time() const { return tnekRS; }
 
   void rhs(nrs_t *nrs, dfloat time, occa::memory o_y, occa::memory o_ydot);
@@ -96,7 +97,7 @@ public:
   // unpack CVODE L-vector into nekRS-style E-vector
   void cvToNrs(nrs_t *nrs, occa::memory o_LField, occa::memory o_EField);
 
-  void defaultRHS(nrs_t *nrs, int tstep, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot);
+  void defaultRHS(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot);
 
 private:
   // package data to pass in as user data to cvode
@@ -117,7 +118,7 @@ private:
 
   // most recent time from nekRS -- used to compute dt in CVODE integration call
   mutable double tnekRS;
-  mutable int tstep;
+  mutable int externalTStep;
   mutable bool localPointSourceEval = false;
   mutable bool jacEval = false;
   mutable bool rhsEval = false;
@@ -145,8 +146,7 @@ private:
 
   void setupEToLMapping(nrs_t *nrs);
   void setupDirichletMask(nrs_t *nrs);
-  void computeDirichlet(nrs_t *nrs, dfloat time, bool applyToMaskedValues);
-  void extrapolateDirichlet(nrs_t *nrs, dfloat time, int tstep);
+  void applyDirichlet(nrs_t *nrs, dfloat time);
 
   userRHS_t userRHS;
   userJacobian_t userJacobian;

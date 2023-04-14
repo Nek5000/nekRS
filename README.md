@@ -10,27 +10,27 @@ COPYRIGHT (c) 2019-2023 UCHICAGO ARGONNE, LLC
 [![Build Status](https://travis-ci.com/Nek5000/nekRS.svg?branch=master)](https://travis-ci.com/Nek5000/nekRS)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-**nekRS** is an open-source Navier Stokes solver based on the spectral element method targeting classical processors and accelerators like GPUs. The code started as an fork of [libParanumal](https://github.com/paranumal/libparanumal) in 2019. For API portable programming [OCCA](https://github.com/libocca/occa) is used.  
+**nekRS** is a fast and scaleable computational fluid dynamics (CFD) solver targeting HPC applications. The code started as an early fork of [libParanumal](https://github.com/paranumal/libparanumal) in 2019.
 
 Capabilities:
 
 * Incompressible and low Mach-number Navier-Stokes + scalar transport 
-* CG-SEM using curvilinear conformal hexaheadral elements 
+* High-order curvilinear conformal spectral elements in space 
 * Variable time step 2nd/3rd order semi-implicit time integration
-* MPI+X hybrid parallelism supporting CPU, CUDA, HIP and OPENCL
-* Various boundary conditions
-* Conjugate fluid-solid heat transfer
+* MPI + [OCCA](https://github.com/libocca/occa) (backends: CUDA, HIP, OPENCL, SERIAL/C++)
 * LES and RANS turbulence models
 * Arbitrary-Lagrangian-Eulerian moving mesh
 * Lagrangian phase model
 * Overlapping overset grids
+* Conjugate fluid-solid heat transfer
+* Various boundary conditions
 * VisIt & Paraview support for data analysis and visualization
-* Interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
+* Legacy interface to [Nek5000](https://github.com/Nek5000/Nek5000) 
 
 ## Build Instructions
 
 Requirements:
-* Linux, Mac OS X (Microsoft Windows is not supported) 
+* Linux, Mac OS X (Microsoft WSL and Windows is not supported) 
 * C++17/C99 compatible compilers + GNU/Intel Fortran
 * MPI-3.1 or later
 * CMake version 3.18 or later 
@@ -54,11 +54,9 @@ To build and install the code run:
 
 ```sh
 ./nrsconfig
-cmake --build ./build --target install -j8
 ```
-Please delete instead of overwriting your old build and install directory before updating. 
-Build settings can be customized by modifying the config script or through CMake options passed to `nrsconfig`. 
-After installation you may want to adjust `$NEKRS_HOME/nekrs.conf` to your environment.
+Please delete your old build and $NEKRS_HOME directory in case of a previous installation. 
+Build settings can be customized through CMake options passed to `nrsconfig`. 
 
 ## Setting the Enviroment
 
@@ -82,7 +80,7 @@ mpirun -np 2 nekrs --setup turbPipe.par
 For convenience we provide various launch scripts in the `bin` directory.
 
 ## Documentation 
-For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/). For now it's just a dummy. We hope to improve documentation to make it more useable for new users. 
+For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/). For now it's just a dummy. We hope to improve soon. 
 
 ## Discussion Group
 Please visit [GitHub Discussions](https://github.com/Nek5000/nekRS/discussions). Here we help, find solutions, share ideas, and follow discussions.
@@ -91,7 +89,7 @@ Please visit [GitHub Discussions](https://github.com/Nek5000/nekRS/discussions).
 Our project is hosted on [GitHub](https://github.com/Nek5000/nekRS). To learn how to contribute, see `CONTRIBUTING.md`.
 
 ## Reporting Bugs
-All bugs are reported and tracked through [Issues](https://github.com/Nek5000/nekRS/issues). If you are having trouble installing the code or getting your model to run properly, you should first vist our discussion group.
+All bugs are reported and tracked through [Issues](https://github.com/Nek5000/nekRS/issues). If you are having trouble installing the code or getting your case to run properly, you should first vist our discussion group.
 
 ## License
 nekRS is released under the BSD 3-clause license (see `LICENSE` file). 
@@ -105,5 +103,3 @@ This research was supported by the Exascale Computing Project (17-SC-20-SC),
 a joint project of the U.S. Department of Energy's Office of Science and National Nuclear Security 
 Administration, responsible for delivering a capable exascale ecosystem, including software, 
 applications, and hardware technology, to support the nation's exascale computing imperative.
-
-

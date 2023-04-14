@@ -24,6 +24,12 @@ cmake -S . -B build \
 if [ $? -eq 0 ] && [ ${NRSCONFIG_NOBUILD} -eq 0 ]; then
   cmd="cmake --build ./build --target install -j8" 
   echo ""        
-  read -p "Hit enter to run: $cmd"
+  read -p "Hit enter to build code: $cmd"
   $cmd
+
+  if [ $? -eq 0 ]; then
+    echo ""
+    echo -e "\033[35mHooray! You're all set. The installation is complete.\033[m"
+    echo ""
+  fi
 fi

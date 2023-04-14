@@ -95,12 +95,18 @@ pMGLevel::pMGLevel(elliptic_t* ellipticBase,   //finest level
   /* build coarsening and prologation operators to connect levels */
   this->buildCoarsenerQuadHex(meshLevels, Nf, Nc);
 
-  this->setupSmoother(ellipticBase);
+  if (!isCoarse) { 
+    this->setupSmoother(ellipticBase);
+  } else {
+    if(options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE") ||
+       options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE")) {
+      this->setupSmoother(ellipticBase);
+    }
+  }
 }
 
 void pMGLevel::setupSmoother(elliptic_t* ellipticBase)
 {
-
   dfloat minMultiplier = 0.1;
   options.getArgs("MULTIGRID CHEBYSHEV MIN EIGENVALUE BOUND FACTOR", minMultiplier);
 

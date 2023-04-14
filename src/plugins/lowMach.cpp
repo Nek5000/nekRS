@@ -45,7 +45,7 @@ void lowMach::buildKernel(occa::properties kernelInfo)
     surfaceFluxKernel = platform->device.buildKernel(fileName, kernelInfo, true);
   }
 
-  platform->options.setArgs("PRESSURE ELLIPTIC COEFF FIELD", "TRUE");
+  platform->options.setArgs("LOWMACH", "TRUE");
 }
 
 void lowMach::setup(nrs_t *nrs, dfloat alpha_, occa::memory& o_beta_, occa::memory& o_kappa_)
@@ -66,7 +66,6 @@ void lowMach::setup(nrs_t *nrs, dfloat alpha_, occa::memory& o_beta_, occa::memo
   nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE,
            "%s\n", "requires solving for temperature!");
 
-  platform->options.setArgs("LOWMACH", "TRUE");
 }
 
 void lowMach::qThermalSingleComponent(dfloat time, occa::memory& o_div)

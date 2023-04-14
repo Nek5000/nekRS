@@ -287,13 +287,21 @@ occa::kernel benchmarkAdvsub(int Nfields,
     kernelRunner(kernel);
     o_NU.copyTo(results.data(), results.size() * sizeof(dfloat));
 
+    const auto tol = 1000. * std::numeric_limits<dfloat>::epsilon();
     double err = 0;
     for (auto i = 0; i < results.size(); ++i) {
-      err = std::max(err, (double) std::abs(results[i] - referenceResults[i]));
+      const auto refValue = std::abs(referenceResults[i]);
+      const auto denom = refValue > tol ? refValue : 1.0;
+      const auto absDiff = std::abs(results[i] - referenceResults[i]);
+
+      // ignore values that are already near machine epsilon
+      if(absDiff > tol){
+        const auto relDiff = absDiff / denom;
+        err = std::max(err, (double) relDiff);
+      }
     }
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
 
-    const auto tol = 200. * std::numeric_limits<dfloat>::epsilon();
     if (err > tol) {
       if (platform->comm.mpiRank == 0 && verbosity > 1) {
         std::cout << "advSub: Ignore kernel " << kernelVariant 

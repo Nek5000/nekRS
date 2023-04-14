@@ -92,10 +92,8 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   const std::string poissonPrefix = elliptic->poisson ? "poisson-" : "";
 
-#if 0
-  if(Nc > 1 || elliptic->options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE"))
-#endif
-  {
+  if(Nc > 1 || (elliptic->options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE") ||
+                elliptic->options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE"))) {
     const std::string AxSuffix = "CoeffHex3D";
     // check for trilinear
     if (elliptic->elementType != HEXAHEDRA) {

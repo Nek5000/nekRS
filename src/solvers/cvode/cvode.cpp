@@ -7,11 +7,11 @@
 #include <limits>
 #include <array>
 #include <numeric>
+#include "ogs.hpp"
 #include "udf.hpp"
 
 #include "timeStepper.hpp"
 #include "plugins/lowMach.hpp"
-#include "nekrs.hpp"
 #include "bdry.hpp"
 
 #ifdef ENABLE_CVODE
@@ -86,10 +86,70 @@ cvode_t::cvode_t(nrs_t *nrs)
 
 void cvode_t::initialize(nrs_t *nrs)
 {
+
+  if (isInitialized)
+    return;
+  isInitialized = true;
+
+  auto *cds = nrs->cds;
+
+  int retval;
+
+#ifdef ENABLE_CVODE
+
+#else
+  nrsCheck(true, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "No cvode installation found. Bailing...");
+
+#endif
 }
 
 cvode_t::~cvode_t()
 {
+  if (o_xyz0.size()) {
+    o_xyz0.free();
+  }
+  if (o_coeffExt.size()) {
+    o_coeffExt.free();
+  }
+  if (o_EToL.size()) {
+    o_EToL.free();
+  }
+  if (o_EToLUnique.size()) {
+    o_EToLUnique.free();
+  }
+  if (o_cvodeScalarIds.size()) {
+    o_cvodeScalarIds.free();
+  }
+  if (o_scalarIds.size()) {
+    o_scalarIds.free();
+  }
+  if (o_absTol.size()) {
+    o_absTol.free();
+  }
+  if (o_invDegree.size()) {
+    o_invDegree.free();
+  }
+
+#ifdef ENABLE_CVODE
+  // despite documentation, this function does not exist?
+  // N_VDestroy_MPIPlusX(cvodeY);
+
+  if (platform->device.mode() == "CUDA") {
+#ifdef ENABLE_CUDA
+    N_VDestroy_Cuda(y);
+#endif
+  }
+  else if (platform->device.mode() == "HIP") {
+#ifdef ENABLE_HIP
+    N_VDestroy_HIP(y);
+#endif
+  }
+  else if (platform->device.mode() == "Serial") {
+    N_VDestroy_Serial(y);
+  }
+
+  CVodeFree(&cvodeMem);
+#endif
 }
 
 void cvode_t::setupEToLMapping(nrs_t *nrs)
@@ -100,27 +160,54 @@ void cvode_t::setupDirichletMask(nrs_t *nrs)
 {
 }
 
-void cvode_t::extrapolateDirichlet(nrs_t *nrs, dfloat time, int tstep)
+void cvode_t::computeErrorWeight(occa::memory o_y, occa::memory o_ewt)
 {
+  this->errorWeightKernel(this->LFieldOffset,
+                          this->Nscalar,
+                          this->relTol,
+                          this->o_invDegree,
+                          this->o_absTol,
+                          o_y,
+                          o_ewt);
 }
 
 void cvode_t::rhs(nrs_t *nrs, dfloat time, occa::memory o_y, occa::memory o_ydot)
 {
+  platform->timer.tic("scalar cvode rhs", 1);
+  this->setIsRhsEvaluation(true);
+
+  if (userRHS) {
+    userRHS(nrs, time, tnekRS, o_y, o_ydot);
+  }
+  else {
+    defaultRHS(nrs, time, tnekRS, o_y, o_ydot);
+  }
+
+  this->setIsRhsEvaluation(false);
+  platform->timer.toc("scalar cvode rhs");
 }
 
 void cvode_t::jtvRHS(nrs_t *nrs, dfloat time, occa::memory o_y, occa::memory o_ydot)
 {
+  platform->timer.tic("scalar cvode jacobian", 1);
+  this->setIsJacobianEvaluation(true);
+
+  if (userJacobian) {
+    userJacobian(nrs, time, tnekRS, o_y, o_ydot);
+  }
+  else {
+    this->rhs(nrs, time, o_y, o_ydot);
+  }
+
+  this->setIsJacobianEvaluation(false);
+  platform->timer.toc("scalar cvode jacobian");
 }
 
-void cvode_t::defaultRHS(nrs_t *nrs, int tstep, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::defaultRHS(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)
 {
 }
 
 void cvode_t::makeq(nrs_t *nrs, dfloat time)
-{
-}
-
-void cvode_t::nrsToCv(nrs_t *nrs, occa::memory o_EField, occa::memory o_LField)
 {
 }
 
@@ -176,4 +263,42 @@ long cvode_t::numLinIters() const { return 0; }
 
 void cvode_t::printInfo(bool printVerboseInfo) const
 {
+  auto cvodeMem = this->cvodeMem;
+
+  const auto nsteps = numSteps();
+  const auto nrhs = numRHSEvals();
+  const auto nni = numNonlinSolveIters();
+  const auto nli = numLinIters();
+
+  constexpr auto lengthToColon = 9;
+  std::string scalars;
+  {
+    std::ostringstream ss;
+    ss << "S" << scalarDigitStr(minCvodeScalarId);
+    if (maxCvodeScalarId > minCvodeScalarId) {
+      ss << "-S" << scalarDigitStr(maxCvodeScalarId);
+    }
+    scalars = ss.str();
+  }
+
+  const auto nliPerNni = nni > 0 ? (dfloat)(nli) / (nni) : 0.0;
+
+  if (platform->comm.mpiRank == 0 && printVerboseInfo) {
+    std::ostringstream ss;
+    ss << "" << scalars;
+    ss << std::setfill(' ') << std::setw(lengthToColon - ss.str().length()) << " ";
+
+    // pad remaining space, lengthToColon long, with spaces
+    printf("%s: nsteps %03ld  nRHS %03ld  nli/nni %.1f  nli %03ld\n",
+           ss.str().c_str(),
+           nsteps,
+           nrhs,
+           nliPerNni,
+           nli);
+  }
+  else if (platform->comm.mpiRank == 0) {
+    std::ostringstream ss;
+    ss << "  " << scalars;
+    printf("%s: %ld %ld %.1f", ss.str().c_str(), nsteps, nrhs, nliPerNni);
+  }
 }

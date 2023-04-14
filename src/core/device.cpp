@@ -369,10 +369,12 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
              "%s\n", "Invalid requested backend!"); 
   }
 
-#if 0
+#if 1
   if (options.compareArgs("BUILD ONLY", "TRUE")) {
     if (!getenv("OCCA_VERBOSE")) {
-      setenv("OCCA_VERBOSE", "1", 1);
+      occa::settings()["device/verbose"] = true;
+      occa::settings()["kernel/verbose"] = true;
+      occa::settings()["memory/verbose"] = true;
     }
   }
 #endif
