@@ -303,24 +303,26 @@ strip_lines(const char *src)
 void
 extract_ifdef(const char *sym_name, const char *ifilename, const char *ofilename)
 {
-        text = true;
-        complement = true;
+    text = true;
+    complement = true;
 
-        addsym1(false, false, (char*) sym_name);
+    addsym1(false, false, (char*) sym_name);
 	indirectsym();
 	processinout(ifilename, ofilename);
-        strip_lines(ofilename);
+#if 0
+    strip_lines(ofilename);
+#endif
 }
 
 void
 unifdef(const char *sym_name, const char *ifilename, const char *ofilename)
 {
-        text = true;
-        complement = false;
+   text = true;
+   complement = false;
 
-        addsym1(false, false, (char*) sym_name);
-	indirectsym();
-	processinout(ifilename, ofilename);
+   addsym1(false, false, (char*) sym_name);
+   indirectsym();
+   processinout(ifilename, ofilename);
 }
 
 /*

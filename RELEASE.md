@@ -23,6 +23,7 @@
 * [par] Plugins kernels will be loaded automatically (call in `UDF_LoadKernels` no longer required)
 
 ## Breaking Changes
+* Ensure env-vars `CC`, `CXX` and `FC` point to the correct MPI compiler wrappers or specify (nrsconfig does no longer overwrite `CMAKE_<LANG>_COMPILER`)
 * [udf] Plugin header files need to be included explicitly
 * [udf] Rename `bc->wrk` => `bc->usrwrk`
 * [udf] Update to new API of lowMach plugin (see lowMach example)

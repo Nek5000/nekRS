@@ -23,9 +23,11 @@ static void lagFields(nrs_t *nrs)
   // lag scalars
   if (nrs->Nscalar) {
     auto cds = nrs->cds;
-    for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
-      const auto Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
-      cds->o_S.copyFrom(cds->o_S, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+    if(cds->anyEllipticSolver){
+      for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
+        const auto Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
+        cds->o_S.copyFrom(cds->o_S, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+      }
     }
   }
 
@@ -62,15 +64,6 @@ static void extrapolate(nrs_t *nrs)
     }
   }
 
-  if (nrs->Nscalar)
-    nrs->extrapolateKernel(cds->mesh[0]->Nlocal,
-                           cds->NSfields,
-                           cds->nEXT,
-                           cds->fieldOffset[0],
-                           cds->o_coeffEXT,
-                           cds->o_S,
-                           cds->o_Se);
-
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     if (nrs->cht)
       mesh = nrs->_mesh;
@@ -82,6 +75,18 @@ static void extrapolate(nrs_t *nrs)
                            mesh->o_U,
                            mesh->o_Ue);
   }
+
+  if(nrs->Nscalar == 0) return;
+  if(!cds->o_Se.isInitialized()) return;
+  
+  nrs->extrapolateKernel(cds->mesh[0]->Nlocal,
+                         cds->NSfields,
+                         cds->nEXT,
+                         cds->fieldOffset[0],
+                         cds->o_coeffEXT,
+                         cds->o_S,
+                         cds->o_Se);
+
 }
 
 static void computeDivUErr(nrs_t *nrs, dfloat &divUErrVolAvg, dfloat &divUErrL2)
@@ -246,10 +251,14 @@ void adjustDt(nrs_t* nrs, int tstep)
     }
 
     // limit dt change
+    dfloat maxAdjustDtRatio = 1;
+    dfloat minAdjustDtRatio = 1;
+    platform->options.getArgs("MAX ADJUST DT RATIO", maxAdjustDtRatio);
+    platform->options.getArgs("MIN ADJUST DT RATIO", minAdjustDtRatio);
     if (tstep > 1)
-      nrs->dt[0] = std::max(nrs->dt[0], 0.5 * nrs->dt[1]);
+      nrs->dt[0] = std::max(nrs->dt[0], minAdjustDtRatio * nrs->dt[1]);
     if (tstep > 1)
-      nrs->dt[0] = std::min(nrs->dt[0], 1.5 * nrs->dt[1]);
+      nrs->dt[0] = std::min(nrs->dt[0], maxAdjustDtRatio * nrs->dt[1]);
   }
 }
 
@@ -258,7 +267,6 @@ void initStep(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
   nrs->timePrevious = time;
   nrs->tstep = tstep;
 
-  mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
   const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
@@ -395,8 +403,10 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
   evaluateProperties(nrs, timeNew);
 
   if (udf.div) {
+    platform->timer.tic("udfDiv", 1);
     platform->linAlg->fill(mesh->Nlocal, 0.0, nrs->o_div);
     udf.div(nrs, timeNew, nrs->o_div);
+    platform->timer.toc("udfDiv");
   }
   
   if(udf.preFluid)
@@ -476,7 +486,6 @@ void setDt(nrs_t *nrs, double dt, int tstep)
 void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t *cds = nrs->cds;
-  mesh_t *mesh = cds->mesh[0];
 
   if (udf.sEqnSource) {
     platform->timer.tic("udfSEqnSource", 1);
@@ -497,9 +506,11 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
     if (platform->options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPFRT")) {
       cds->filterRTKernel(cds->meshV->Nelements,
                           is,
+                          1,
+                          nrs->fieldOffset,
+                          cds->o_applyFilterRT,
                           cds->o_filterMT,
-                          cds->filterS[is],
-                          isOffset,
+                          cds->o_filterS,
                           cds->o_rho,
                           cds->o_S,
                           o_FS);
@@ -536,6 +547,8 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
         if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
           cds->strongAdvectionCubatureVolumeKernel(cds->meshV->Nelements,
                                                    1,
+                                                   0,
+                                                   mesh->o_LMM,
                                                    mesh->o_vgeo,
                                                    mesh->o_cubDiffInterpT,
                                                    mesh->o_cubInterpT,
@@ -552,6 +565,8 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
         else {
           cds->strongAdvectionVolumeKernel(cds->meshV->Nelements,
                                            1,
+                                           0,
+                                           mesh->o_LMM,
                                            mesh->o_vgeo,
                                            mesh->o_D,
                                            cds->o_compute + is * sizeof(dlong),
@@ -747,7 +762,6 @@ void makef(
 void fluidSolve(nrs_t *nrs, dfloat time, occa::memory o_P, occa::memory o_U, int stage, int tstep)
 {
   mesh_t *mesh = nrs->meshV;
-  linAlg_t *linAlg = platform->linAlg;
 
   platform->timer.tic("pressureSolve", 1);
   nrs->setEllipticCoeffPressureKernel(mesh->Nlocal, nrs->fieldOffset, nrs->o_rho, nrs->o_ellipticCoeff);

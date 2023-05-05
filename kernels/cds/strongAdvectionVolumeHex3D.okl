@@ -26,6 +26,8 @@
 
 @kernel void strongAdvectionVolumeHex3D(const dlong Nelements,
                                         const dlong Nscalars,
+                                        const dlong applyWeight,
+                                        @ restrict const dfloat *weight,
                                         @ restrict const dfloat *vgeo,
                                         @ restrict const dfloat *D,
                                         @ restrict const dlong *computeScalar,
@@ -93,7 +95,12 @@
               const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
               const dfloat IJW = vgeo[gid + p_IJWID * p_Np];
 
-              NS[id + fieldOffsetScan[scalarId]] -= IJW * rhoM * (Uhat * dSdr + Vhat * dSds + What * dSdt);
+              dfloat value = NS[id + fieldOffsetScan[scalarId]];
+              value -= IJW * rhoM * (Uhat * dSdr + Vhat * dSds + What * dSdt);
+              if(applyWeight){
+                value *= weight[id];
+              }
+              NS[id + fieldOffsetScan[scalarId]] = value;
             }
           }
         }

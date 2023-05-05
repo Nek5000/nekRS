@@ -294,7 +294,6 @@ dfloat pMGLevel::maxEigSmoothAx()
   const double tStart = MPI_Wtime();
   if(platform->comm.mpiRank == 0)  printf("estimating maxEigenvalue ... "); fflush(stdout);
      
-  const dlong N = Nrows;
   const dlong M = Ncols;
 
   hlong Nlocal = (hlong) Nrows;

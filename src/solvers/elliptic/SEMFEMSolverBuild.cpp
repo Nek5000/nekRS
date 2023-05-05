@@ -131,9 +131,8 @@ void inverse(double invA[3][3], double A[3][3])
 void x_map(double x[3], double q_r[4][3], double x_t[3][4], int q)
 {
   const int n_dim = 3;
-  int i, d;
 
-  for (d = 0; d < n_dim; d++) {
+  for (int d = 0; d < n_dim; d++) {
     x[d] = x_t[d][0] * phi_3D_1(q_r, q);
     x[d] += x_t[d][1] * phi_3D_2(q_r, q);
     x[d] += x_t[d][2] * phi_3D_3(q_r, q);
@@ -168,7 +167,6 @@ occa::memory scratchOrAllocateMemory(int nWords,
                                      size_t &bytesAllocated,
                                      bool &allocated);
 static occa::kernel computeStiffnessMatrixKernel;
-static occa::memory o_stiffness;
 static occa::memory o_x;
 static occa::memory o_y;
 static occa::memory o_z;
@@ -561,7 +559,6 @@ void fem_assembly_host(hypreWrapper::IJ_t &hypreIJ)
   long long *rows = coo_graph.rows;
   long long *rowOffsets = coo_graph.rowOffsets;
   int *ncols = coo_graph.ncols;
-  long long nnz = coo_graph.nnz;
   long long *cols = coo_graph.cols;
   float *vals = coo_graph.vals;
 
@@ -809,9 +806,7 @@ void fem_assembly(hypreWrapper::IJ_t &hypreIJ)
   double tStart = MPI_Wtime();
   if (comm.id == 0)
     printf("building matrix ... ");
-  int i, j, k, e, d, t, q;
   int idx;
-  long long row;
 
   row_start = 0;
   row_end = 0;

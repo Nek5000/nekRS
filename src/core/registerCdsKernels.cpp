@@ -60,6 +60,15 @@ void registerCdsKernels(occa::properties kernelInfoBC)
       occa::properties prop = meshProps;
       prop["defines/p_cubNq"] = cubNq;
       prop["defines/p_cubNp"] = cubNp;
+      prop["includes"].asArray();
+      std::string diffDataFile = oklpath + "/mesh/constantDifferentiationMatrices.h";
+      std::string interpDataFile = oklpath + "/mesh/constantInterpolationMatrices.h";
+      std::string diffInterpDataFile =
+          oklpath + "/mesh/constantDifferentiationInterpolationMatrices.h";
+
+      prop["includes"] += diffDataFile.c_str();
+      prop["includes"] += interpDataFile.c_str();
+      prop["includes"] += diffInterpDataFile.c_str();
 
       kernelName = "strongAdvectionVolume" + suffix;
       fileName = oklpath + "/cds/" + kernelName + ".okl";

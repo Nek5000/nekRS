@@ -78,7 +78,9 @@ void MGSolver_t::coarseLevel_t::setupSolver(
  
     double settings[hypreWrapperDevice::NPARAM+1];
     settings[0]  = 1;    /* custom settings              */
-    settings[1]  = 8;    /* coarsening                   */
+    settings[1]  = 10;   /* coarsening                   */
+    if (useDevice) 
+      settings[1]  = 8;  /*  PMIS currently not supported on device */
     settings[2]  = 6;    /* interpolation                */
     settings[3]  = 1;    /* number of cycles             */
     settings[4]  = 16;   /* smoother for crs level       */

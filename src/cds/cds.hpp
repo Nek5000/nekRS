@@ -57,7 +57,10 @@ struct cds_t
   int filterNc;
   dfloat filterS[NSCALAR_MAX];
   dfloat* filterM;
+  occa::memory o_applyFilterRT;
+  occa::memory o_filterS;
   occa::memory o_filterMT;
+  int applyFilter;
 
   //RK Subcycle Data
   int nRK;
@@ -70,8 +73,9 @@ struct cds_t
   //EXTBDF data
   dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
 
-  int* EToB[NSCALAR_MAX];
-  occa::memory o_EToB[NSCALAR_MAX];
+  int* EToB;
+  occa::memory o_EToB;
+  dlong EToBOffset;
 
   occa::memory* o_usrwrk;
 

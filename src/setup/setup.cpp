@@ -204,8 +204,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho);
 
-  const dlong Nlocal = mesh->Nlocal;
-
   { // setup fieldOffset
     nrs->fieldOffset = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
     mesh_t *meshT = nrs->_mesh;
@@ -265,11 +263,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   const int mempoolNflds = std::max(wrkFields, 2 * nrs->NVfields + ellipticWrkFields);
   platform->create_mempool(nrs->fieldOffset, mempoolNflds);
-
-  // offset mempool available for elliptic because also used it for ellipticSolve input/output
-  auto const o_mempoolElliptic =
-      platform->o_mempool.o_ptr.slice((2 * nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
-  elliptic_t::o_wrk = o_mempoolElliptic;
 
   if (options.compareArgs("MOVING MESH", "TRUE")) {
     const int nBDF = std::max(nrs->nBDF, nrs->nEXT);

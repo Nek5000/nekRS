@@ -120,7 +120,6 @@ void pMGLevel::smoothJacobi (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 
   const pfloat one = 1.0;
   const pfloat mone = -1.0;
-  const pfloat zero = 0.0;
 
   double flopCount = 0.0;
 
@@ -155,7 +154,6 @@ void pMGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZe
   const pfloat invTheta = 1.0 / theta;
   const pfloat sigma = theta / delta;
   pfloat rho_n = 1. / sigma;
-  pfloat rho_np1;
 
   pfloat one = 1., mone = -1., zero = 0.0;
 

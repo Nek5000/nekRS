@@ -131,6 +131,7 @@ void applyDirichletVelocity(nrs_t *nrs, double time, occa::memory& o_U,occa::mem
   if (nrs->pSolver->Nmasked)
     nrs->maskCopyKernel(nrs->pSolver->Nmasked,
                         0,
+                        0,
                         nrs->pSolver->o_maskIds,
                         platform->o_mempool.slice0,
                         o_P);
@@ -138,6 +139,7 @@ void applyDirichletVelocity(nrs_t *nrs, double time, occa::memory& o_U,occa::mem
   if (nrs->uvwSolver) {
     if (nrs->uvwSolver->Nmasked) {
       nrs->maskCopy2Kernel(nrs->uvwSolver->Nmasked,
+                          0 * nrs->fieldOffset,
                           0 * nrs->fieldOffset,
                           nrs->uvwSolver->o_maskIds,
                           platform->o_mempool.slice1,
@@ -147,6 +149,7 @@ void applyDirichletVelocity(nrs_t *nrs, double time, occa::memory& o_U,occa::mem
     if (nrs->uSolver->Nmasked) {
       nrs->maskCopy2Kernel(nrs->uSolver->Nmasked,
                           0 * nrs->fieldOffset,
+                          0 * nrs->fieldOffset,
                           nrs->uSolver->o_maskIds,
                           platform->o_mempool.slice1,
                           o_U, o_Ue);
@@ -154,12 +157,14 @@ void applyDirichletVelocity(nrs_t *nrs, double time, occa::memory& o_U,occa::mem
     if (nrs->vSolver->Nmasked) {
       nrs->maskCopy2Kernel(nrs->vSolver->Nmasked,
                           1 * nrs->fieldOffset,
+                          1 * nrs->fieldOffset,
                           nrs->vSolver->o_maskIds,
                           platform->o_mempool.slice1,
                           o_U, o_Ue);
     }
     if (nrs->wSolver->Nmasked) {
       nrs->maskCopy2Kernel(nrs->wSolver->Nmasked,
+                          2 * nrs->fieldOffset,
                           2 * nrs->fieldOffset,
                           nrs->wSolver->o_maskIds,
                           platform->o_mempool.slice1,
@@ -199,7 +204,7 @@ void applyDirichletScalars(nrs_t *nrs, double time, occa::memory& o_S, occa::mem
                              mesh->o_z,
                              mesh->o_vmapM,
                              mesh->o_EToB,
-                             cds->o_EToB[is],
+                             cds->o_EToB + is * cds->EToBOffset * sizeof(int),
                              cds->o_Ue,
                              o_diff_i,
                              o_rho_i,
@@ -216,15 +221,27 @@ void applyDirichletScalars(nrs_t *nrs, double time, occa::memory& o_S, occa::mem
     }
     occa::memory o_Si =
         o_S.slice(cds->fieldOffsetScan[is] * sizeof(dfloat), cds->fieldOffset[is] * sizeof(dfloat));
-    occa::memory o_Si_e =
-        o_Se.slice(cds->fieldOffsetScan[is] * sizeof(dfloat), cds->fieldOffset[is] * sizeof(dfloat));
+    
+    if(o_Se.isInitialized()){
+      occa::memory o_Si_e =
+          o_Se.slice(cds->fieldOffsetScan[is] * sizeof(dfloat), cds->fieldOffset[is] * sizeof(dfloat));
 
-    if (cds->solver[is]->Nmasked)
-      cds->maskCopy2Kernel(cds->solver[is]->Nmasked,
-                          0,
-                          cds->solver[is]->o_maskIds,
-                          platform->o_mempool.slice0,
-                          o_Si, o_Si_e);
+      if (cds->solver[is]->Nmasked)
+        cds->maskCopy2Kernel(cds->solver[is]->Nmasked,
+                            0,
+                            0,
+                            cds->solver[is]->o_maskIds,
+                            platform->o_mempool.slice0,
+                            o_Si, o_Si_e);
+    } else {
+      if (cds->solver[is]->Nmasked)
+        cds->maskCopyKernel(cds->solver[is]->Nmasked,
+                            0,
+                            0,
+                            cds->solver[is]->o_maskIds,
+                            platform->o_mempool.slice0,
+                            o_Si);
+    }
   }
 }
 
@@ -275,6 +292,7 @@ void applyDirichletMesh(nrs_t *nrs, double time, occa::memory& o_UM, occa::memor
 
   if (nrs->meshSolver->Nmasked)
     nrs->maskCopy2Kernel(nrs->meshSolver->Nmasked,
+                        0 * nrs->fieldOffset,
                         0 * nrs->fieldOffset,
                         nrs->meshSolver->o_maskIds,
                         platform->o_mempool.slice0,

@@ -75,8 +75,4 @@ void udfLoad(void);
 void *udfLoadFunction(const char *fname, int errchk);
 occa::kernel oudfBuildKernel(occa::properties kernelInfo, const char *function);
 
-#ifdef UDF_EXPORTS
-#include "udfAutoLoadKernel.hpp"
-#endif
-
 #endif

@@ -42,7 +42,7 @@ jobs:
 
     - name: nrsconfig and build
       run: |
-        ./nrsconfig
+        CC=mpicc CXX=mpic++ FC=mpif77 ./nrsconfig -DENABLE_CVODE=ON
         cmake --build build --target install -j 2
 
     - name: Upload install dir

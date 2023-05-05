@@ -267,6 +267,9 @@ private:
   dlong nEXT, nBDF;
 
   static constexpr int bootstrapRKOrder = 4;
+  
+  // maximum number of entries valid for lpm_t::migration call
+  static constexpr int maxEntriesPerParticleMigration = 50;
 
   enum class SolverType { AB, RK, INVALID };
 

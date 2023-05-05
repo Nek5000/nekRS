@@ -41,10 +41,7 @@ public:
 
   void setRHS(userRHS_t _userRHS) { userRHS = _userRHS; }
   void setJacobian(userJacobian_t _userJacobian) { userJacobian = _userJacobian; }
-  void setLocalPointSource(userLocalPointSource_t _userLocalPointSource)
-  {
-    userLocalPointSource = _userLocalPointSource;
-  }
+  void setLocalPointSource(userLocalPointSource_t _userLocalPointSource);
 
   void setUserPostCvToNrs(userPostCvToNrs_t _userPostCvToNrs) { userPostCvToNrs = _userPostCvToNrs; }
   void setUserPostNrsToCv(userPostCvToNrs_t _userPostNrsToCv) { userPostNrsToCv = _userPostNrsToCv; }
@@ -71,6 +68,8 @@ public:
   // getters needed for CVLsJacTimesVecFn
   void *getCvodeMem() { return cvodeMem; }
   double sigmaScale() const { return sigScale; }
+
+  bool mixedPrecisionJtv() const { return mixedPrecisionJtvEnabled; }
 
   // returns array in E-vector layout that maps E-vector points
   // to the corresponding L-vector point (if unique),
@@ -99,7 +98,23 @@ public:
 
   void defaultRHS(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot);
 
+  void printTimers();
+  void resetTimers();
+
+  std::string scope() const { return timerScope; }
+  void setTimerScope(std::string scope) { timerScope = scope; }
+
+  occa::memory o_pointSource; // scratch field for point source
+  occa::memory o_vgeoPfloat;
+
 private:
+
+  nrs_t* _nrs;
+
+  std::string timerName = "cvode_t::";
+  std::string timerScope;
+  std::string rhsTagName() const;
+
   // package data to pass in as user data to cvode
   struct userData_t {
 
@@ -125,7 +140,11 @@ private:
 
   bool detailedTimersEnabled = false;
 
+  bool mixedPrecisionJtvEnabled = false;
+
   bool verboseCVODE = false;
+
+  bool sharedRho = false;
 
   int minCvodeScalarId;
   int maxCvodeScalarId;
@@ -184,8 +203,7 @@ private:
 
   // Dirichlet values, extrapolated to the current time
   occa::memory o_maskIds;
-  occa::memory o_Nmasked;
-  std::vector<dlong> Nmasked; // host shadow
+  dlong Nmasked;
   dlong maskOffset;           // page-aligned offset for indexing into o_maskValues
 
   occa::kernel weakLaplacianKernel;
@@ -194,6 +212,7 @@ private:
   occa::kernel mapToMaskedPointKernel;
   occa::kernel extrapolateDirichletKernel;
   occa::kernel errorWeightKernel;
+  occa::kernel fusedAddRhoDivKernel;
 
   dlong nEq;
 

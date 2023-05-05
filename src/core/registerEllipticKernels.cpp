@@ -46,12 +46,14 @@ void registerEllipticKernels(std::string section, int poissonEquation)
   kernelInfo += meshKernelProperties(N);
 
   const bool blockSolver = [&section]() {
-    if (section == "velocity" && platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    if (section == "velocity" && 
+        platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
       return true;
-    if (section == "velocity" && platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
+    if (section == "velocity" && 
+        platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
       return true;
     if (section == "mesh" && 
-        platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+        platform->options.compareArgs("MESH BLOCK SOLVER", "TRUE"))
       return true;
 
     return false;
@@ -118,8 +120,6 @@ void registerEllipticKernels(std::string section, int poissonEquation)
   floatKernelInfo["defines/pfloat"] = pfloatString;
   floatKernelInfo["defines/dfloat"] = pfloatString;
 
-  constexpr int elementType{HEXAHEDRA};
-
   const std::string suffix = "Hex3D";
 
   occa::properties AxKernelInfo = dfloatKernelInfo;
@@ -143,6 +143,11 @@ void registerEllipticKernels(std::string section, int poissonEquation)
   const int NelemBenchmark = nelgv / platform->comm.mpiCommSize;
   bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
   const int verbosity = verbose ? 2 : 1;
+
+  if (section == "pressure" && platform->options.compareArgs("LOWMACH", "TRUE")) {
+    platform->options.setArgs(optionsPrefix + "ELLIPTIC COEFF FIELD", "TRUE");
+    platform->options.setArgs(optionsPrefix + "ELLIPTIC PRECO COEFF FIELD", "TRUE");
+  }
 
   for (auto &&coeffField : {true, false}) {
     if (platform->options.compareArgs(optionsPrefix + "ELLIPTIC COEFF FIELD", "TRUE") != coeffField)

@@ -48,62 +48,73 @@ void oudfFindNeumann(std::string &field)
            "%s\n", "Cannot find scalarNeumannConditions!");
 }
 
-void adjustOudf(const std::string &filePath)
+void adjustOudf(bool buildRequired, const std::string &postOklSource, const std::string &filePath)
 {
-  std::fstream df;
-  df.open(filePath, std::fstream::out | std::fstream::in);
-
   std::stringstream buffer;
-  buffer << df.rdbuf();
+  {
+    std::ifstream f;
+    f.open(postOklSource);
+    buffer << f.rdbuf();
+    f.close();
+  }
+
+  std::ofstream f;
+  f.open(filePath, std::ios_base::app);
+
+  if (buildRequired)
+    f << "#ifdef __okl__\n";
 
   bool found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityDirichletConditions)"));
   velocityDirichletConditions = found;
-  if (!found)
-    df << "void velocityDirichletConditions(bcData *bc){}\n";
+  if (!found && buildRequired)
+    f << "void velocityDirichletConditions(bcData *bc){}\n";
 
   found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+meshVelocityDirichletConditions)"));
   meshVelocityDirichletConditions = found;
-  if (!found)
-    df << "void meshVelocityDirichletConditions(bcData *bc){\n"
-          "  velocityDirichletConditions(bc);\n"
-          "}\n";
+  if (!found && buildRequired)
+    f << "void meshVelocityDirichletConditions(bcData *bc){\n"
+         "  velocityDirichletConditions(bc);\n"
+         "}\n";
 
   found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityNeumannConditions)"));
   velocityNeumannConditions = found;
-  if (!found)
-    df << "void velocityNeumannConditions(bcData *bc){}\n";
+  if (!found && buildRequired)
+    f << "void velocityNeumannConditions(bcData *bc){}\n";
 
   found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+pressureDirichletConditions)"));
   pressureDirichletConditions = found;
-  if (!found)
-    df << "void pressureDirichletConditions(bcData *bc){}\n";
+  if (!found && buildRequired)
+    f << "void pressureDirichletConditions(bcData *bc){}\n";
 
   found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+scalarNeumannConditions)"));
   scalarNeumannConditions = found;
-  if (!found)
-    df << "void scalarNeumannConditions(bcData *bc){}\n";
+  if (!found && buildRequired)
+    f << "void scalarNeumannConditions(bcData *bc){}\n";
 
   found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+scalarDirichletConditions)"));
   scalarDirichletConditions = found;
 
-  if (!found)
-    df << "void scalarDirichletConditions(bcData *bc){}\n";
+  if (!found && buildRequired)
+    f << "void scalarDirichletConditions(bcData *bc){}\n";
 
-  df.close();
+  if (buildRequired)
+    f << "#endif\n";
+
+  f.close();
 }
 
-void udfAutoKernels(const std::string& udfFileCache, const std::string& oudfFileCache)
+void udfAutoKernels(const std::string& udfFileCache, const std::string& postOklSource, const std::string& oudfFileCache)
 {
   const std::string includeFile = fs::path(udfFileCache).parent_path() / fs::path("udfAutoLoadKernel.hpp");
+  std::ofstream f(includeFile);
 
-  std::ifstream stream(oudfFileCache);
+  std::ifstream postOklSourceStream(postOklSource);
   std::regex exp(R"(\s*@kernel\s*void\s*([\S]*)\s*\()");
   std::smatch res;
-  std::ofstream f(includeFile);
 
   std::string line;
   std::vector<std::string> kernelNameList;
-  while (std::getline(stream, line)) {
+  while (std::getline(postOklSourceStream, line)) {
     if (std::regex_search(line, res, exp)) {
       std::string kernelName = res[1];
       kernelNameList.push_back(kernelName);
@@ -122,7 +133,7 @@ void udfAutoKernels(const std::string& udfFileCache, const std::string& oudfFile
 
   f.close();
   fileSync(includeFile.c_str());
-  stream.close();
+  postOklSourceStream.close();
 }
 
 void udfBuild(const char *_udfFile, setupAide &options)
@@ -140,6 +151,9 @@ void udfBuild(const char *_udfFile, setupAide &options)
   const std::string oudfFileCache = cache_dir + "/udf/udf.okl";
   const std::string case_dir(fs::current_path());
   const std::string casename = options.getArgs("CASENAME");
+
+  const std::string cmakeBuildDir = cache_dir + "/udf";
+  const std::string postOklSource = cmakeBuildDir + "/CMakeFiles/OKL.dir/okl.cpp.i";
 
   std::string oudfFile;
   options.getArgs("UDF OKL FILE", oudfFile);
@@ -222,7 +236,9 @@ void udfBuild(const char *_udfFile, setupAide &options)
         // generate udfFileCache
         {
           std::ofstream f(udfFileCache, std::ios::trunc);
-          f << "#include \"" << udfFile << "\"" << std::endl;
+          f << "#include \"udf.hpp\"" << std::endl
+            << "#include \"udfAutoLoadKernel.hpp\"" << std::endl
+            << "#include \"" << udfFile << "\"" << std::endl;
 
           // autoload plugins
           std::map<std::string, std::string> pluginTable =
@@ -253,7 +269,6 @@ void udfBuild(const char *_udfFile, setupAide &options)
         std::string cmakeFlags("-Wno-dev");
         if (verbose)
           cmakeFlags += " --trace-expand";
-        std::string cmakeBuildDir = cache_dir + "/udf";
 
         { // generate dummy to make cmake happy that the file exists
           const std::string includeFile = std::string(cache_dir + std::string("/udf/udfAutoLoadKernel.hpp"));
@@ -295,28 +310,15 @@ void udfBuild(const char *_udfFile, setupAide &options)
 
         { // generate pre-processed okl
           sprintf(cmd, "cd %s && make -j1 okl.i %s", cmakeBuildDir.c_str(), pipeToNull.c_str());
-          const std::string postOklSource = cmakeBuildDir + "/CMakeFiles/OKL.dir/okl.cpp.i";
           const int retVal = system(cmd);
           if (verbose && platform->comm.mpiRank == 0)
             printf("%s (preprocessing retVal: %d)\n", cmd, retVal);
           if (retVal)
             return EXIT_FAILURE;
-          
-          std::smatch match;
-          std::ifstream fi(postOklSource);
-          std::ofstream fo(cache_dir + "/udf/okl.cpp", std::ios::trunc);
-          std::stringstream buffer;
-          buffer << fi.rdbuf();
-
-          // filter line info as not supported by occa's parser
-          fo << std::regex_replace(buffer.str(), std::regex(R"(#\s*\d.*\n)"), "");
-
-          fi.close();
-          fo.close();
         }
 
         if(oklSectionFound)
-          udfAutoKernels(udfFileCache, cache_dir + "/udf/okl.cpp");
+          udfAutoKernels(udfFileCache, postOklSource, cache_dir + "/udf/okl.cpp");
 
         { // build
           sprintf(cmd, "cd %s/udf && make -j1 %s", cache_dir.c_str(), pipeToNull.c_str());
@@ -338,7 +340,7 @@ void udfBuild(const char *_udfFile, setupAide &options)
       if(fs::exists(cache_dir + "/udf/okl.cpp")) 
         fs::rename(cache_dir + "/udf/okl.cpp", oudfFileCache);
 
-      adjustOudf(oudfFileCache); // called every time to check if required device BC functions exist
+      adjustOudf(buildRequired, postOklSource, oudfFileCache); // called every time set BC found flags 
 
       fileSync(oudfFileCache.c_str());
 
@@ -365,23 +367,32 @@ void udfBuild(const char *_udfFile, setupAide &options)
 
   nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "see above and cmake.log for more details");
 
-  if(platform->comm.mpiRank == 0) {
+  const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
+  if(platform->comm.mpiRank == 0 && !buildOnly) {
     const auto tmpFile = udfFile + ".unifdef";
     unifdef("__okl__", udfFile.c_str(), tmpFile.c_str());
 
     std::ifstream fudf(tmpFile);
-    std::cout << ">>>\n";
-    std::cout << fudf.rdbuf();
-    std::cout << "<<<\n";
+    std::string text;
 
+    std::cout << std::endl;
+    while(!fudf.eof()) 
+    {
+      getline(fudf,text);
+      std::cout << "<<< " << text << "\n" ;
+    }
     fudf.close();
     fs::remove(tmpFile);
 
     std::ifstream foudf(oudfFileCache);
 
-    std::cout << ">>>\n";
-    std::cout << foudf.rdbuf();
-    std::cout << "<<<\n";
+    std::cout << std::endl;
+    while(!foudf.eof()) 
+    {
+      getline(foudf,text);
+      std::cout << "<<< " << text << "\n" ;
+    }
+    std::cout << std::endl;
 
     foudf.close();
   }
@@ -424,19 +435,6 @@ void udfLoad()
 
 occa::kernel oudfBuildKernel(occa::properties kernelInfo, const char *function)
 {
-  std::string installDir;
-  installDir.assign(getenv("NEKRS_HOME"));
-  const std::string bcDataFile = installDir + "/include/bdry/bcData.h";
-  kernelInfo["includes"] += bcDataFile.c_str();
-
-  // provide some common kernel args
-  int N;
-  platform->options.getArgs("POLYNOMIAL DEGREE", N);
-  const int Nq = N + 1;
-  const int Np = Nq * Nq * Nq;
-  kernelInfo["defines/p_Nq"] = Nq;
-  kernelInfo["defines/p_Np"] = Np;
-
   std::string oudfCache;
   platform->options.getArgs("OKL FILE CACHE", oudfCache);
 

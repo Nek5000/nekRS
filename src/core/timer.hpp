@@ -10,6 +10,7 @@ struct timer_t
 {
 timer_t(MPI_Comm comm,occa::device device,int ifsync, int enable_sync);
 void init(MPI_Comm comm,occa::device device,int ifsync, int enable_sync);
+void clear();
 void reset();
 void reset(const std::string tag);
 void finalize();

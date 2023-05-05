@@ -135,8 +135,6 @@ void compute_element_lengths(ElementLengths *lengths, elliptic_t *elliptic)
 {
   mesh_t *mesh = elliptic->mesh;
   const dlong Nelements = elliptic->mesh->Nelements;
-  dfloat *gllw = mesh->gllw;
-  dfloat *gllz = mesh->gllz;
   lengths->length_left_x = (dfloat *)calloc(Nelements, sizeof(dfloat));
   lengths->length_left_y = (dfloat *)calloc(Nelements, sizeof(dfloat));
   lengths->length_left_z = (dfloat *)calloc(Nelements, sizeof(dfloat));

@@ -1,9 +1,19 @@
 cmake_minimum_required(VERSION 3.18)
-project(NekRS LANGUAGES C CXX Fortran VERSION 23.0.3)
+project(NekRS LANGUAGES C CXX Fortran VERSION 23.0.4)
+
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
   MESSAGE(FATAL_ERROR "In-place builds are not supported. Please create a separate build directory")
-endif(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/nekrs" CACHE PATH "installation directory" FORCE) 
+endif()
+
+if(${CMAKE_INSTALL_PREFIX} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+    MESSAGE(FATAL_ERROR "The current CMAKE_INSTALL_PREFIX points at the build tree. In-place builds are not supported!")
+endif()
 
 include(CheckCCompilerFlag)
 include(CheckLinkerFlag)
@@ -18,6 +28,9 @@ set(CMAKE_INSTALL_MESSAGE ALWAYS)
 set(FETCHCONTENT_QUIET on)
 set(FETCHCONTENT_UPDATES_DISCONNECTED on)
 set(CMAKE_ENABLE_EXPORTS TRUE)
+
+set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
+set(BUILD_SHARED_LIBS OFF)
 
 if (NOT CMAKE_CONFIGURATION_TYPES AND 
     NOT CMAKE_NO_BUILD_TYPE AND
@@ -36,9 +49,9 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/occa/lib
 set (CMAKE_C_STANDARD 99)
 set (CMAKE_CXX_STANDARD 17)
 
-set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
-set(MPI_CXX_COMPILER ${CMAKE_CXX_COMPILER})
-set(MPI_Fortran_COMPILER ${CMAKE_Fortran_COMPILER})
+#set(MPI_C_COMPILER ${CMAKE_C_COMPILER})
+#set(MPI_CXX_COMPILER ${CMAKE_CXX_COMPILER})
+#set(MPI_Fortran_COMPILER ${CMAKE_Fortran_COMPILER})
 find_package(MPI REQUIRED)
 
 FortranCInterface_VERIFY(CXX QUIET)
@@ -99,6 +112,9 @@ else()
 endif()
 
 set(OCCA_CUDA_COMPILER_FLAGS "-w -O3 -lineinfo --use_fast_math" CACHE STRING "CUDA flags for OCCA JIT compile")
+if(USING_NVHPC)
+  set(OCCA_CUDA_COMPILER_FLAGS "${OCCA_CUDA_COMPILER_FLAGS} -ccbin ${MPI_UNDERLYING_COMPILER}")
+endif()
 set(OCCA_HIP_COMPILER_FLAGS "-w -O3 -g -ffp-contract=fast -funsafe-math-optimizations -ffast-math -munsafe-fp-atomics" CACHE STRING "HIP flags for OCCA JIT compile")
 set(OCCA_DPCPP_COMPILER_FLAGS "-w -O3 -fsycl -fdebug-info-for-profiling -gline-tables-only -ffp-contract=fast" CACHE STRING "DPC++ flags for OCCA JIT compile")
 set(OCCA_OPENCL_COMPILER_FLAGS "-w -cl-std=CL2.0 -cl-unsafe-math-optimizations -cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
@@ -182,8 +198,12 @@ message("-- OCCA_OPENCL_ENABLED: ${OCCA_OPENCL_ENABLED}")
 set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
 
 # amgx
-if(OCCA_CUDA_ENABLED AND ENABLE_AMGX)
-  add_subdirectory(3rd_party/AMGX)
+if(ENABLE_AMGX)
+  if(OCCA_CUDA_ENABLED)
+    add_subdirectory(3rd_party/AMGX)
+  else()
+    message(FATAL_ERROR "ENABLE_AMGX required OCCA_CUDA_ENABLED!")
+  endif()
 endif()
 
 # hypre
@@ -229,11 +249,19 @@ if (ENABLE_CVODE)
   set(BUILD_IDA OFF)
   set(BUILD_IDAS OFF)
   set(BUILD_KINSOL OFF)
-  set(BUILD_EXAMPLES OFF)
+  set(EXAMPLES_ENABLE_C OFF)
+  set(EXAMPLES_ENABLE_CXX OFF) 
+  if(OCCA_CUDA_ENABLED) 
+    set(EXAMPLES_ENABLE_CUDA OFF)
+  endif() 
+  set(EXAMPLES_ENABLE_F2003 OFF)
   set(BUILD_TESTING OFF)
-  set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
+  set(BUILD_SHARED_LIBS ON)
 
   add_subdirectory(3rd_party/cvode)
+ 
+  # restore default
+  set(BUILD_SHARED_LIBS OFF)
 endif()
 
 # blas + lapack

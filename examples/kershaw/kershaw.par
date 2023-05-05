@@ -53,5 +53,11 @@ viscosity = 1.0
 #configFile = "amgx.json"
 
 [CASEDATA]
-P_EPS = 0.3
 gsOverlap = 1
+
+bp5 = true
+bp5Repetitions = 10
+
+bps5 = true
+bps5Repetitions = 20
+eps = 0.3

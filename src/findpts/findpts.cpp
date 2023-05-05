@@ -1027,7 +1027,7 @@ void findpts_t::find(data_t *const findPtsData,
       }
       *proc = id;
       if (*code != CODE_INTERNAL) {
-        const int hi = hash_index_3(&hash, x);
+        const auto hi = hash_index_3(&hash, x);
         for (int d = 0; d < dim; ++d) {
           pt->x[d] = x[d];
         }
@@ -1326,7 +1326,7 @@ void findpts_t::find(data_t *const findPtsData,
       }
       *proc = id;
       if (*code != CODE_INTERNAL) {
-        const int hi = hash_index_3(&hash, x);
+        const auto hi = hash_index_3(&hash, x);
         for (int d = 0; d < dim; ++d) {
           pt->x[d] = x[d];
         }

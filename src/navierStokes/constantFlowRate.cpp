@@ -202,7 +202,6 @@ bool adjust(nrs_t *nrs, int tstep, dfloat time) {
 
   double flops = 0.0;
 
-  constexpr int ndim = 3;
   mesh_t *mesh = nrs->meshV;
   platform->options.getArgs("FLOW RATE", flowRate);
 

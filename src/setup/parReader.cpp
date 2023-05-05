@@ -198,12 +198,14 @@ static std::vector<std::string> scalarKeys = {
 static std::vector<std::string> cvodeKeys = {
     {"relativetol"},
     {"absolutetol"},
-    {"nvectorsgmr"},
     {"hmaxratio"},
     {"epslin"},
     {"sigscale"},
     {"jtvrecycleproperties"},
+    {"sharedrho"},
+    {"jtvmixedprecision"},
     {"cvodeendtimeratio"},
+    {"solver"},
 };
 
 static std::vector<std::string> boomeramgKeys = {
@@ -304,7 +306,7 @@ const std::vector<std::string> &getValidKeys(const std::string &section)
     return nothing;
 }
 
-int validateKeys(const inipp::Ini::Sections &sections)
+void validateKeys(const inipp::Ini::Sections &sections)
 {
   int err = 0;
   bool generalExists = false;
@@ -365,7 +367,6 @@ int validateKeys(const inipp::Ini::Sections &sections)
       }
     }
   }
-  return err;
 }
 
 void printDeprecation(const inipp::Ini::Sections &sections)
@@ -501,13 +502,13 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
   // default values
   double relativeTol = 1e-4;
   double absoluteTol = 1e-6;
-  int nvectorsGMR = 10;
-  int maxSteps = 10000;
+  int maxSteps = 500;
   double hmax = 3;
   double epsLin = 0.1;
   int maxOrder = 3;
   double sigScale = 1.0;
   bool recycleProps = false;
+  bool mixedPrecisionJtv = false;
 
   std::string integrator = "bdf";
 
@@ -520,12 +521,48 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
   if (par->extract(parScope, "absolutetol", absoluteTol)) {
     options.setArgs("CVODE ABSOLUTE TOLERANCE", to_string_f(absoluteTol));
   }
+  
+  options.setArgs("CVODE GMRES RESTART", "10");
+  options.setArgs("CVODE SOLVER", "GMRES");
 
-  par->extract(parScope, "nvectorsgmr", nvectorsGMR);
-  options.setArgs("CVODE GMR VECTORS", std::to_string(nvectorsGMR));
+  // parse cvode linear solver
+  [&](){
+    std::string p_solver;
+    
+    if (!par->extract("cvode", "solver", p_solver))
+      return;
 
-  par->extract(parScope, "hmaxratio", hmax);
-  options.setArgs("CVODE HMAX RATIO", std::to_string(hmax));
+    const std::vector<std::string> validValues = {
+        {"gmres"},
+        {"nvector"},
+    };
+
+    std::vector<std::string> list = serializeString(p_solver, '+');
+    for (const std::string s : list) {
+      checkValidity(rank, validValues, s);
+    }
+
+    if (p_solver.find("gmres") != std::string::npos) {
+      std::vector<std::string> list;
+      list = serializeString(p_solver, '+');
+      std::string n = "10";
+      for (std::string s : list) {
+        const auto nvectorStr = parseValueForKey(s, "nvector");
+        if (!nvectorStr.empty()) {
+          n = nvectorStr;
+        }
+      }
+      options.setArgs("CVODE GMRES RESTART", n);
+      options.setArgs("CVODE SOLVER", "GMRES");
+    }
+  }();
+ 
+  options.setArgs("CVODE STOP TIME", "TRUE");
+ 
+  if(par->extract(parScope, "hmaxratio", hmax)) {
+    options.setArgs("CVODE HMAX RATIO", std::to_string(hmax));
+    options.setArgs("CVODE STOP TIME", "FALSE");
+  }
 
   par->extract(parScope, "epslin", epsLin);
   options.setArgs("CVODE EPS LIN", std::to_string(epsLin));
@@ -551,9 +588,34 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
       options.setArgs("CVODE RECYCLE PROPERTIES", "FALSE");
     }
   }
+  
+  options.setArgs("CVODE SHARED RHO", "FALSE");
+  std::string sharedRhoStr;
+  if (par->extract(parScope, "sharedrho", sharedRhoStr)) {
+    bool sharedRho = checkForTrue(sharedRhoStr);
+    if (sharedRho) {
+      options.setArgs("CVODE SHARED RHO", "TRUE");
+    }
+    else {
+      options.setArgs("CVODE SHARED RHO", "FALSE");
+    }
+  }
 
-  // only integrate to time + dt if true
-  options.setArgs("CVODE STOP TIME", "TRUE");
+  std::string mixedPrecisionStr;
+  if (par->extract(parScope, "jtvmixedprecision", mixedPrecisionStr)) {
+    mixedPrecisionJtv = checkForTrue(mixedPrecisionStr);
+    if (mixedPrecisionJtv) {
+      options.setArgs("CVODE MIXED PRECISION JTV", "TRUE");
+    }
+    else {
+      options.setArgs("CVODE MIXED PRECISION JTV", "FALSE");
+    }
+  }
+
+  if(mixedPrecisionJtv){
+    append_error("cvode::jtvmixedprecision is not supported yet!\n");
+  }
+
 }
 
 void parseSolverTolerance(const int rank, setupAide &options, inipp::Ini *par, std::string parScope)
@@ -1025,14 +1087,12 @@ void parseLinearSolver(const int rank, setupAide &options, inipp::Ini *par, std:
 
   options.setArgs(parSectionName + "MAXIMUM ITERATIONS", "500");
 
+  options.setArgs(parSectionName + "SOLVER", "PCG");
   if (parScope == "pressure") {
     options.setArgs(parSectionName + "SOLVER", "PGMRES+FLEXIBLE");
   }
-  else {
-    options.setArgs(parSectionName + "SOLVER", "PCG");
-    if (parScope == "mesh")
-      options.setArgs(parSectionName + "SOLVER", "NONE");
-  }
+  if (parScope == "mesh")
+    options.setArgs(parSectionName + "SOLVER", "NONE");
 
   if (parScope == "velocity" || parScope == "mesh")
     options.setArgs(parSectionName + "BLOCK SOLVER", "TRUE");
@@ -1069,21 +1129,24 @@ void parseLinearSolver(const int rank, setupAide &options, inipp::Ini *par, std:
       }
     }
     options.setArgs(parSectionName + "PGMRES RESTART", n);
-    if (p_solver.find("fgmres") != std::string::npos || p_solver.find("flexible") != std::string::npos)
+    if (p_solver.find("fgmres") != std::string::npos || p_solver.find("flexible") != std::string::npos) {
       p_solver = "PGMRES+FLEXIBLE";
-    else
+    } else {
       p_solver = "PGMRES";
+    }
   }
   else if (p_solver.find("cg") != std::string::npos) {
-    if (p_solver.find("fcg") != std::string::npos || p_solver.find("flexible") != std::string::npos)
-      p_solver = "PCG+FLEXIBLE";
-    else
-      p_solver = "PCG";
-
-    if (p_solver.find("block") != std::string::npos)
+    if (p_solver.find("block") != std::string::npos) {
       options.setArgs(parSectionName + "BLOCK SOLVER", "TRUE");
-    else
+    } else {
       options.setArgs(parSectionName + "BLOCK SOLVER", "FALSE");
+    }
+
+    if (p_solver.find("fcg") != std::string::npos || p_solver.find("flexible") != std::string::npos) {
+      p_solver = "PCG+FLEXIBLE";
+    } else {
+      p_solver = "PCG";
+    }
   }
   else if (p_solver.find("user") != std::string::npos) {
     p_solver = "USER";
@@ -1093,6 +1156,14 @@ void parseLinearSolver(const int rank, setupAide &options, inipp::Ini *par, std:
   }
   else if (p_solver.find("none") != std::string::npos) {
     p_solver = "NONE";
+
+    // clean all options for this scalar
+    auto keyWordToDataMap = options.keyWordToDataMap;
+    for (auto [key, value] : keyWordToDataMap) {
+      if (key.find(parSectionName) != std::string::npos) {
+        options.removeArgs(key);
+      }
+    }
   }
   else {
     append_error("Invalid solver for " + parScope);
@@ -1421,6 +1492,9 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank)
 
   options.setArgs("START TIME", "0.0");
 
+  options.setArgs("MIN ADJUST DT RATIO", "0.5");
+  options.setArgs("MAX ADJUST DT RATIO", "1.5");
+
   options.setArgs("MESH SOLVER", "NONE");
   options.setArgs("MOVING MESH", "FALSE");
 
@@ -1444,10 +1518,19 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
     nrsCheck(!ptr, MPI_COMM_SELF, EXIT_FAILURE, "Cannot find setup file %s\n", setupFile.c_str());
 
     std::ifstream f(setupFile);
-    std::cout << ">>>\n";
-    std::cout << f.rdbuf();
-    std::cout << "<<<\n";
-    f.close();
+    std::string text;
+
+    const bool buildOnly = options.compareArgs("BUILD ONLY", "TRUE");
+    if(!buildOnly) {
+      std::cout << std::endl;
+      while(!f.eof())
+      {
+        getline(f, text);
+        std::cout << "<<< " << text << "\n" ;
+      }
+      std::cout << std::endl;
+      f.close();
+    }
   }
 
   const std::string casename = setupFile.substr(0, setupFile.find(".par"));
@@ -1474,9 +1557,8 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
   par->parse(is);
   par->interpolate();
 
-  int keysInvalid = 0;
   if (rank == 0) {
-    keysInvalid = validateKeys(par->sections);
+    validateKeys(par->sections);
   }
 
   if (rank == 0) {
@@ -1653,7 +1735,6 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
       bool userSuppliesTargetCFL = false;
       options.setArgs("VARIABLE DT", "TRUE");
       options.setArgs("TARGET CFL", "0.5");
-      const double bigNumber = std::numeric_limits<double>::max();
       std::vector<std::string> entries = serializeString(dtString, '+');
       for (std::string entry : entries) {
         checkValidity(rank, validValues, entry);
@@ -1995,7 +2076,6 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
 
     // VELOCITY
     std::string vsolver;
-    int flow = 1;
 
     options.setArgs("VELOCITY ELLIPTIC COEFF FIELD", "TRUE");
     if (options.getArgs("VELOCITY STRESSFORMULATION").empty())
@@ -2061,6 +2141,15 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
     std::string solver;
     par->extract("temperature", "solver", solver);
     if (solver == "none") {
+
+      // clean all options for this scalar
+      auto keyWordToDataMap = options.keyWordToDataMap;
+      for (auto [key, value] : keyWordToDataMap) {
+        if (key.find("SCALAR" + sid) != std::string::npos) {
+          options.removeArgs(key);
+        }
+      }
+
       options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
     }
     else {
@@ -2175,6 +2264,15 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
     std::string solver;
     par->extract(parScope, "solver", solver);
     if (solver == "none") {
+      
+      // clean all options for this scalar
+      auto keyWordToDataMap = options.keyWordToDataMap;
+      for (auto [key, value] : keyWordToDataMap) {
+        if (key.find("SCALAR" + sid) != std::string::npos) {
+          options.removeArgs(key);
+        }
+      }
+      
       options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
       return;
     }
@@ -2305,7 +2403,7 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
     options.getArgs("NUMBER TIMESTEPS", numSteps);
 
     double endTime;
-    options.getArgs("END TIME", numSteps);
+    options.getArgs("END TIME", endTime);
 
     if (numSteps > 0 || endTime > 0) {
       if (options.compareArgs("VARIABLE DT", "FALSE")) {

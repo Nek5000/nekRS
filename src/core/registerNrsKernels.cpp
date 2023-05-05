@@ -9,7 +9,6 @@ void registerNrsKernels(occa::properties kernelInfoBC)
 {
   const bool serial = platform->serial;
   const std::string extension = serial ? ".c" : ".okl";
-  const device_t &device = platform->device;
   // build kernels
   std::string fileName, kernelName;
   const std::string suffix = "Hex3D";

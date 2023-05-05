@@ -25,7 +25,8 @@ SOFTWARE.
 */
 
 @kernel void maskCopy(const dlong Nmasked,
-                      const dlong offset,
+                      const dlong inOffset,
+                      const dlong outOffset,
                       @ restrict const dlong *maskIds,
                       @ restrict const dfloat *in,
                       @ restrict dfloat *out)
@@ -34,7 +35,7 @@ SOFTWARE.
   for (dlong n = 0; n < Nmasked; ++n; @tile(p_blockSize, @outer, @inner)) {
     if (n < Nmasked) {
       const dlong id = maskIds[n];
-      out[id + offset] = in[id + offset];
+      out[id + outOffset] = in[id + inOffset];
     }
   }
 }

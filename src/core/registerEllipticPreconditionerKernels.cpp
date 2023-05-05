@@ -245,8 +245,6 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N, in
 
   const std::string fileNameExtension = (serial) ? ".c" : ".okl";
 
-  constexpr int elementType = HEXAHEDRA;
-
   {
     // sizes for the coarsen and prolongation kernels. degree NFine to degree N
     int NqFine = (Nf + 1);

@@ -107,6 +107,12 @@ void timer_t::reset()
   ogsResetTime();
 }
 
+void timer_t::clear()
+{
+  m_.clear();
+  ogsResetTime();
+}
+
 void timer_t::enableSync() { enable_sync_ = 1; }
 
 void timer_t::disableSync() { enable_sync_ = 0; }
@@ -463,6 +469,10 @@ void timer_t::printRunStat(int step)
   printStatEntry("        delete          ", "lpm_t::deleteParticles", "DEVICE:MAX", tlpm);
   printStatEntry("      lpm add           ", "lpm_t::addParticles", "DEVICE:MAX", tudf);
   printStatEntry("      lpm write         ", "lpm_t::write", "DEVICE:MAX", tudf);
+  
+  const double tDiv = query("udfDiv", "DEVICE:MAX");
+  printStatEntry("    udfDiv              ", "udfDiv", "DEVICE:MAX", tElapsedTimeSolve);
+  printStatEntry("      udfSEqnSource     ", "udfDiv::udfSEqnSource", "DEVICE:MAX", tDiv);
 
   const double tMakef = query("makef", "DEVICE:MAX");
   printStatEntry("    makef               ", "makef", "DEVICE:MAX", tElapsedTimeSolve);
@@ -524,6 +534,33 @@ void timer_t::printRunStat(int step)
   const double tScalar = query("scalarSolve", "DEVICE:MAX");
   printStatEntry("    scalarSolve         ", "scalarSolve", "DEVICE:MAX", tElapsedTimeSolve);
   printStatEntry("      rhs               ", "scalar rhs", "DEVICE:MAX", tScalar);
+  
+  const double tScalarCvode = query("cvode_t::solve", "DEVICE:MAX");
+
+  auto cvodeMakeQPredicate = [](const std::string &tag) {
+    bool match = tag.find("cvode_t::") != std::string::npos && tag.find("makeq") != std::string::npos;
+    // ensure children of the timer aren't doubly counted
+    return match && tag.find("makeq::") == std::string::npos;
+  };
+  auto [tMakeqCvode, nMakeqCvode] = sumAllMatchingTags(cvodeMakeQPredicate, "DEVICE:MAX");
+  
+  auto cvodeUdfSEqnSourcePredicate = [](const std::string &tag) {
+    bool match = tag.find("cvode_t::") != std::string::npos && tag.find("udfSEqnSource") != std::string::npos;
+    // ensure children of the timer aren't doubly counted
+    return match && tag.find("udfSEqnSource::") == std::string::npos;
+  };
+  auto [tSEqnSourceCvode, nSEqnSourceCvode] = sumAllMatchingTags(cvodeUdfSEqnSourcePredicate, "DEVICE:MAX");
+  
+  auto cvodePropertiesPredicate = [](const std::string &tag) {
+    bool match = tag.find("cvode_t::") != std::string::npos && tag.find("evaluateProperties") != std::string::npos;
+    // ensure children of the timer aren't doubly counted
+    return match && tag.find("evaluateProperties::") == std::string::npos;
+  };
+  auto [tPropCvode, nPropCvode] = sumAllMatchingTags(cvodePropertiesPredicate, "DEVICE:MAX");
+  printStatEntry("    scalarSolveCvode    ", "cvode_t::solve", "DEVICE:MAX", tElapsedTimeSolve);
+  printStatEntry("      makeq             ", tMakeqCvode, nMakeqCvode, tScalarCvode);
+  printStatEntry("        udfSEqnSource   ", tSEqnSourceCvode, nSEqnSourceCvode, tMakeqCvode);
+  printStatEntry("      udfProperties     ", tPropCvode, nPropCvode, tScalarCvode);
 
   auto precoTimeScalars = 0.0;
   auto precoCallsScalars = 0.0;

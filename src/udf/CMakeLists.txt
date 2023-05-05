@@ -45,6 +45,7 @@ set(INCLUDE_DIRS
 # dummy
 add_library(OKL EXCLUDE_FROM_ALL okl.cpp)
 target_include_directories(OKL PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(OKL PRIVATE -D__okl__)
 
 add_library(UDF SHARED udf.cpp)
 target_include_directories(UDF PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})

@@ -53,18 +53,14 @@ if [ ! -f $case.re2 ]; then
   exit 1
 fi
 
-# romio setup
-export ROMIO_HINTS="$(pwd)/.romio_hint"
-if [ ! -f "$ROMIO_HINTS" ]; then
-  echo "romio_no_indep_rw true"   >$ROMIO_HINTS
-  echo "romio_cb_write enable"   >>$ROMIO_HINTS
-  echo "romio_ds_write enable"   >>$ROMIO_HINTS
-  echo "romio_cb_read enable"    >>$ROMIO_HINTS
-  echo "romio_ds_read enable"    >>$ROMIO_HINTS
-  echo "cb_buffer_size 16777216" >>$ROMIO_HINTS
-  echo "cb_config_list *:1"      >>$ROMIO_HINTS
+striping_unit=16777216
+max_striping_factor=128
+let striping_factor=$nodes/2
+if [ $striping_factor -gt $max_striping_factor ]; then
+  striping_factor=$max_striping_factor
 fi
 
+MPICH_MPIIO_HINTS="*:cray_cb_write_lock_mode=2:cray_cb_nodes_multiplier=4:striping_unit=${striping_unit}:striping_factor=${striping_factor}:romio_cb_write=enable:romio_ds_write=disable:romio_no_indep_rw=true"
 
 # sbatch
 SFILE=s.bin
@@ -97,9 +93,11 @@ echo "ulimit -s unlimited " >>$SFILE
 
 echo "export NEKRS_HOME=$NEKRS_HOME" >>$SFILE
 echo "export NEKRS_GPU_MPI=$NEKRS_GPU_MPI" >>$SFILE
-echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
 
-echo "export NEKRS_CACHE_BCAST=${$NEKRS_CACHE_BCAST}" >>$SFILE
+echo "export MPICH_MPIIO_HINTS=$MPICH_MPIIO_HINTS" >>$SFILE
+echo "export MPICH_MPIIO_STATS=1" >>$SFILE
+
+echo "export NEKRS_CACHE_BCAST=$NEKRS_CACHE_BCAST" >>$SFILE
 echo "export NEKRS_LOCAL_TMP_DIR=/local/scratch" >>$SFILE
 
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >> $SFILE
@@ -110,7 +108,7 @@ echo "export MPICH_OFI_NIC_POLICY=NUMA" >> $SFILE
 echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE # >=lelt, large mpi-messsage for restart
 
 
-if [ $NEKRS_SKIP_BUILD_ONLY -eq 0]; then
+if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
 echo "mpiexec -n 1 $bin --setup ${case} --backend ${backend} --device-id 0 --build-only $nn" >>$SFILE
 fi
 

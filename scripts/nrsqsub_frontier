@@ -60,15 +60,13 @@ if [ ! -f $case.re2 ]; then
   exit 1
 fi
 
-striping_factor=256
-striping_unit=67108864
-if [ $nodes -lt 1024 ]; then
-  striping_factor=128
-  striping_unit=16777216
-elif [ $nodes -lt 128 ]; then
-  striping_factor=64
-  striping_unit=16777216
+striping_unit=16777216
+max_striping_factor=400
+let striping_factor=$nodes/2
+if [ $striping_factor -gt $max_striping_factor ]; then
+  striping_factor=$max_striping_factor
 fi
+
 MPICH_MPIIO_HINTS="*:cray_cb_write_lock_mode=2:cray_cb_nodes_multiplier=4:striping_unit=${striping_unit}:striping_factor=${striping_factor}:romio_cb_write=enable:romio_ds_write=disable:romio_no_indep_rw=true"
 
 # sbatch
@@ -97,7 +95,6 @@ echo "module list" >> $SFILE
 echo "rocm-smi" >>$SFILE
 echo "rocm-smi --showpids" >>$SFILE
 
-echo "# which nodes am I running on?" >>$SFILE
 echo "squeue -u \$USER" >>$SFILE
 
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
@@ -112,10 +109,8 @@ echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 
 echo "export NVME_HOME=$NVME_HOME" >>$SFILE
 
-if [ $nodes -gt 32 ]; then
-  echo "export MPICH_MPIIO_HINTS=$MPICH_MPIIO_HINTS" >>$SFILE
-  echo "export MPICH_MPIIO_STATS=1" >>$SFILE
-fi
+echo "export MPICH_MPIIO_HINTS=$MPICH_MPIIO_HINTS" >>$SFILE
+echo "export MPICH_MPIIO_STATS=1" >>$SFILE
 
 echo "export MPICH_OFI_NIC_POLICY=NUMA" >>$SFILE
 echo "export NEKRS_CACHE_BCAST=$NEKRS_CACHE_BCAST" >> $SFILE

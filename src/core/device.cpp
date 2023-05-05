@@ -136,6 +136,8 @@ occa::kernel device_t::buildKernel(const std::string &fileName,
     occa::properties propsWithSuffix = props;
     propsWithSuffix["kernelNameSuffix"] = suffix;
 
+    propsWithSuffix["defines/__okl__"] = 1;
+
     if (this->mode() == "CUDA")
       propsWithSuffix["defines/smXX"] = 1;
     if (this->mode() == "HIP")
@@ -309,7 +311,6 @@ occa::memory device_t::malloc(size_t Nword, size_t wordSize, occa::memory src)
 
 occa::memory device_t::malloc(size_t Nword, size_t wordSize)
 {
-  const size_t Nbytes = Nword * wordSize;
   void *buffer = std::calloc(Nword, wordSize);
   occa::memory o_returnValue = _device.malloc(Nword * wordSize, buffer);
   std::free(buffer);

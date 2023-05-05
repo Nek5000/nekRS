@@ -30,10 +30,7 @@ void compileKernels() {
 
   bcMap::addKernelConstants(platform->kernelInfo);
 
-  occa::properties kernelInfoBC = compileUDFKernels(); // includes plug-ins
-
-  if (platform->options.compareArgs("LOWMACH", "TRUE"))
-    platform->options.setArgs("PRESSURE ELLIPTIC COEFF FIELD", "TRUE");
+  occa::properties kernelInfoBC = compileUDFKernels(); // includes plugins
 
   const double tStart = MPI_Wtime();
   if (platform->comm.mpiRank == 0)

@@ -77,8 +77,12 @@ void lowMach::qThermalSingleComponent(dfloat time, occa::memory& o_div)
   linAlg_t *linAlg = platform->linAlg;
 
   bool rhsCVODE = false;
+  std::string scope = "udfDiv::";
   if(cds->cvode){
     rhsCVODE = cds->cvode->isRhsEvaluation();
+    if(rhsCVODE){
+      scope = cds->cvode->scope() + "::";
+    }
   }
 
   nrs->gradientVolumeKernel(mesh->Nelements,
@@ -98,9 +102,9 @@ void lowMach::qThermalSingleComponent(dfloat time, occa::memory& o_div)
 
   platform->linAlg->fill(mesh->Nelements * mesh->Np, 0.0, platform->o_mempool.slice3);
   if (udf.sEqnSource) {
-    platform->timer.tic("udfSEqnSource", 1);
+    platform->timer.tic(scope + "udfSEqnSource", 1);
     udf.sEqnSource(nrs, time, cds->o_S, platform->o_mempool.slice3);
-    platform->timer.toc("udfSEqnSource");
+    platform->timer.toc(scope + "udfSEqnSource");
   }
 
   qtlKernel(mesh->Nelements,

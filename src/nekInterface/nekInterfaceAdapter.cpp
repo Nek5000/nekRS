@@ -255,16 +255,20 @@ void set_usr_handles(const char *session_in, int verbose)
   if(platform->comm.mpiRank == 0 && platform->verbose)
     std::cout << "\nloading " << lib << std::endl;
   void *handle = dlopen(lib.c_str(), RTLD_NOW | RTLD_LOCAL);
+
   nrsCheck(!handle, MPI_COMM_SELF, EXIT_FAILURE, 
            "%s\n", dlerror());
 
   // check if we need to append an underscore
-  char us[2] = "";
-  {
-    usrdat_ptr = (void (*)(void))dlsym(handle, "usrdat_");
-    if (usrdat_ptr) strcpy(us, "_");
-    dlerror();
-  }
+  auto us = [handle]
+  { 
+    (void (*)(void))dlsym(handle, "usrdat_");
+    if(handle)
+      return "_";
+    else
+      return "";
+  } ();
+  dlerror(); /* Clear any existing error */
 
   char func[100];
 #define fname(s) (strcpy(func, (s)), strcat(func, us), func)
@@ -347,7 +351,7 @@ if (verbose)                                                                    
 printf("Setting function " #s " to noop_func.\n");                                                           \
 }                                                                                                            \
 else if (verbose) {                                                                                          \
-printf("Loading " #s " from lib%s.so\n", session_in);                                                        \
+printf("Loading " #s"\n");                                                                                   \
 }                                                                                                            \
 } while (0)
 
@@ -675,7 +679,7 @@ void bootstrap()
 
     MPI_Fint nek_comm = MPI_Comm_c2f(platform->comm.mpiComm);
 
-    set_usr_handles(usrname.c_str(), 0);
+    set_usr_handles(usrname.c_str(), platform->verbose);
 
     (*nek_bootstrap_ptr)(&nek_comm,
                          (char *)cwd.c_str(),

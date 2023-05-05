@@ -1,10 +1,12 @@
 message(CHECK_START "Checking for a supported Fortran compiler")
 string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "GNU" USING_GNU)
 string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "IntelLLVM" USING_INTEL_LLVM)
-if(USING_GNU OR USING_INTEL_LLVM)
+string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "NVHPC" USING_NVHPC)
+
+if(USING_GNU OR USING_INTEL_LLVM OR USING_NVHPC)
   message(CHECK_PASS "Found the ${CMAKE_Fortran_COMPILER_ID} Fortran compiler")
 else()
-  message(FATAL_ERROR "GNU gfortran or Intel ifx is required to build dependency Nek5000!")
+  message(FATAL_ERROR "No supported Fortran compiles found to build Nek5000 interface!")
 endif()
 
 if (${NEK5000_PPLIST} MATCHES "PARRSB")
@@ -87,15 +89,28 @@ set(PARRSB_LIB_DIR ${PARRSB_DIR}/../lib)
 
 set(FPIC_FLAG "-fPIC")
 
-set(MCMODEL_FLAG "-mcmodel=medium")
+set(PPC FALSE)
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64")
+set(PPC TRUE)
+endif()
+
+set(MCMODEL_FLAG "-mcmodel=medium")
+if(PPC)
   set(MCMODEL_FLAG "-mcmodel=large")
+elseif(APPLE)
+  set(MCMODEL_FLAG "")
 endif()
 
 include(CheckCCompilerFlag)
-CHECK_C_COMPILER_FLAG("${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL)
-if(NOT COMPILER_C_SUPPORTS_MCMODEL OR APPLE) 
-  set(MCMODEL_FLAG "")
+if(NOT MCMODEL_FLAG STREQUAL "")
+  CHECK_C_COMPILER_FLAG("${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL_MEDIUM)
+  if(NOT COMPILER_C_SUPPORTS_MCMODEL_MEDIUM AND NOT PPC)
+    set(MCMODEL_FLAG "-mcmodel=large")
+    CHECK_C_COMPILER_FLAG("${MCMODEL_FLAG}" COMPILER_C_SUPPORTS_MCMODEL_LARGE)
+    if(NOT COMPILER_C_SUPPORTS_MCMODEL_LARGE) 
+      set(MCMODEL_FLAG "")
+    endif()
+  endif()
 endif()
 
 if(NOT MCMODEL_FLAG STREQUAL "")
@@ -106,7 +121,7 @@ if(NOT MCMODEL_FLAG STREQUAL "")
 endif()
 
 include(CheckFortranCompilerFlag)
-if(MCMODEL_FLAG STREQUAL "-mcmodel=medium")
+if(MCMODEL_FLAG STREQUAL "-mcmodel=medium" AND USING_GNU)
   set(LARGE_DATA_THRES_FLAG "-mlarge-data-threshold=0")
   CHECK_Fortran_COMPILER_FLAG("${MCMODEL_FLAG} ${LARGE_DATA_THRES_FLAG}" COMPILER_Fortran_SUPPORTS_LARGE_DATA_THRES)
   if(NOT COMPILER_Fortran_SUPPORTS_LARGE_DATA_THRES) 
@@ -114,13 +129,8 @@ if(MCMODEL_FLAG STREQUAL "-mcmodel=medium")
   endif()
 endif()
 
-if(USING_GNU)
-  CHECK_Fortran_COMPILER_FLAG("-fcray-pointer" COMPILER_Fortran_SUPPORTS_CRAYPTR)
-  if(COMPILER_Fortran_SUPPORTS_CRAYPTR)
-    set(CRAYPTR_FLAG "-fcray-pointer")
-  else()
-    MESSAGE(FATAL_ERROR "Compiler does not support Cray pointers!")
-  endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set(CRAYPTR_FLAG "-fcray-pointer")
 endif()
 
 string(REGEX REPLACE "-O[2,3,fast]" "" _EXTERNAL_C_FLAGS ${EXTERNAL_C_FLAGS})
@@ -129,8 +139,7 @@ string(REGEX REPLACE "-O[2,3,fast]" "" _EXTERNAL_Fortran_FLAGS ${EXTERNAL_Fortra
 ExternalProject_Add(
   nek5000_deps
   SOURCE_DIR ${NEK5000_SOURCE_DIR}
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND 
+  CONFIGURE_COMMAND
     ${CMAKE_CURRENT_LIST_DIR}/run_nekconfig.sh 
     "LDFLAGS=${BSYMBOLIC_FLAG}" 
     "CC=${CMAKE_C_COMPILER}" 
@@ -139,6 +148,8 @@ ExternalProject_Add(
     "FFLAGS=${_EXTERNAL_Fortran_FLAGS} ${FPIC_FLAG} ${MCMODEL_FLAG} ${LARGE_DATA_THRES_FLAG} ${CRAYPTR_FLAG}"
     "NEK5000_SOURCE_DIR=${NEK5000_SOURCE_DIR}"
     "PPLIST=${NEK5000_PPLIST}"
+
+  BUILD_COMMAND ""
   INSTALL_COMMAND ""
   USES_TERMINAL_BUILD on
 )
@@ -146,6 +157,7 @@ ExternalProject_Add(
 unset(MCMODEL_FLAG)
 unset(CRAYPTR_FLAG)
 unset(FPIC_FLAG)
+unset(PPC)
 
 add_library(nek5000_gs STATIC IMPORTED)
 set_target_properties(nek5000_gs PROPERTIES IMPORTED_LOCATION ${NEK5000_GS_LIB_DIR}/libgs.a)

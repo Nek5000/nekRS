@@ -261,6 +261,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("CVODE GMR VECTORS", "20");
 
     options.setArgs("SCALAR01 SOLVER", "CVODE");
+    options.setArgs("SUBCYCLING STEPS", std::string("1"));
   }
 
   options.setArgs("BDF ORDER", "3");

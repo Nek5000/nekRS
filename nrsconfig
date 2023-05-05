@@ -1,32 +1,18 @@
 #!/bin/bash
 set -e -a
 
-#########################################################################
-
-: ${NEKRS_HOME:=${HOME}/.local/nekrs}
-: ${NEKRS_CC:="mpicc"}
-: ${NEKRS_CXX:="mpic++"}
-: ${NEKRS_FC:="mpif77"}
-
-#########################################################################
-
 : ${NRSCONFIG_NOBUILD:=0}
 
-cmake -S . -B build \
-      -Wno-dev \
-      -Wfatal-errors \
-      -DCMAKE_INSTALL_PREFIX="${NEKRS_HOME}" \
-      -DCMAKE_Fortran_COMPILER="${NEKRS_FC}" \
-      -DCMAKE_C_COMPILER="${NEKRS_CC}" \
-      -DCMAKE_CXX_COMPILER="${NEKRS_CXX}" \
-      $@
-
+cmd="cmake -S . -B build -Wfatal-errors $@" 
+echo $cmd
+eval $cmd 
 if [ $? -eq 0 ] && [ ${NRSCONFIG_NOBUILD} -eq 0 ]; then
   cmd="cmake --build ./build --target install -j8" 
-  echo ""        
-  read -p "Hit enter to build code: $cmd"
-  $cmd
+  echo ""    
+  echo $cmd   
+  read -p "Press ENTER to continue or ctrl-c to cancel"
 
+  eval $cmd
   if [ $? -eq 0 ]; then
     echo ""
     echo -e "\033[35mHooray! You're all set. The installation is complete.\033[m"

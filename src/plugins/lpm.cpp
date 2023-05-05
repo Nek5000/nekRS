@@ -7,6 +7,7 @@
 #include <numeric>
 #include <regex>
 #include <tuple>
+#include <filesystem>
 #include "tuple_for_each.hpp"
 #include "gslib.h" // needed for sarray_transfer
 
@@ -938,8 +939,7 @@ lpm_t::sendReceiveData(const std::vector<dfloat> &sendData,
   std::vector<dlong> recvCode;
   std::vector<dlong> recvElem;
 
-  constexpr int maxEntries = 100;
-  auto entries = n_tuple<int, maxEntries>{};
+  auto entries = n_tuple<int, lpm_t::maxEntriesPerParticleMigration>{};
   tuple_for_each(entries, [&](auto T) {
     sendReceiveDataImpl<decltype(T)::value>(sendData,
                                             r,
@@ -962,6 +962,15 @@ lpm_t::sendReceiveData(const std::vector<dfloat> &sendData,
 
 void lpm_t::migrate()
 {
+
+  const int entriesPerParticle = nDOFs_ + solverOrder * nDOFs_ + nProps_ + nInterpFields_;
+  nrsCheck(entriesPerParticle > lpm_t::maxEntriesPerParticleMigration,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "entriesPerParticle (%d) > lpm_t::maxEntriesPerParticleMigration (%d)!\n",
+           entriesPerParticle,
+           lpm_t::maxEntriesPerParticleMigration);
+
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic(timerName + "migrate", 1);
   }
@@ -1089,8 +1098,6 @@ void lpm_t::migrate()
       sendingData[ctr++] = interpFldSend[pid + nNonLocal * fld];
     }
   }
-
-  int entriesPerParticle = nDOFs_ + solverOrder * nDOFs_ + nProps_ + nInterpFields_;
 
   if (timerLevel != TimerLevel::None) {
     platform->timer.toc(timerName + "migrate::packSending");
@@ -1602,7 +1609,7 @@ void lpm_t::deleteParticles()
 }
 
 namespace {
-std::string lpm_vtu_data(std::string fieldName, int nComponent, int distance)
+std::string lpm_vtu_data(std::string fieldName, long long int nComponent, long long int distance)
 {
   return "<DataArray type=\"Float32\" Name=\"" + fieldName + "\" NumberOfComponents=\"" +
          std::to_string(nComponent) + "\" format=\"append\" offset=\"" + std::to_string(distance) + "\"/>\n";
@@ -1618,7 +1625,7 @@ void lpm_t::writeFld()
   // Required to determine if points are outside of the domain
   // Do not output points outside of the domain
 
-  dlong nPartOutput = 0;
+  long long int nPartOutput = 0;
   auto &code = interp->data().code;
   {
     auto o_xcoord = getDOF("x");
@@ -1646,9 +1653,9 @@ void lpm_t::writeFld()
   int mpi_rank = platform->comm.mpiRank;
   int mpi_size = platform->comm.mpiCommSize;
 
-  dlong globalNPartOutput = nPartOutput;
+  long long int globalNPartOutput = nPartOutput;
 
-  MPI_Allreduce(MPI_IN_PLACE, &globalNPartOutput, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
+  MPI_Allreduce(MPI_IN_PLACE, &globalNPartOutput, 1, MPI_LONG_LONG_INT, MPI_SUM, platform->comm.mpiComm);
 
   if (globalNPartOutput == 0) {
     if (platform->comm.mpiRank == 0) {
@@ -1661,8 +1668,8 @@ void lpm_t::writeFld()
   output << "par" << std::setw(5) << std::setfill('0') << out_step << ".vtu";
   std::string fname = output.str();
 
-  dlong pOffset = 0;
-  MPI_Exscan(&nPartOutput, &pOffset, 1, MPI_DLONG, MPI_SUM, mpi_comm);
+  long long int pOffset = 0;
+  MPI_Exscan(&nPartOutput, &pOffset, 1, MPI_LONG_LONG_INT, MPI_SUM, mpi_comm);
 
   if (platform->comm.mpiRank == 0) {
     std::ofstream file(fname, std::ios::trunc);
@@ -1673,12 +1680,12 @@ void lpm_t::writeFld()
   MPI_File_open(mpi_comm, fname.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file_out);
 
   long long offset = 0;
-  constexpr int dim = 3;
+  constexpr long long int dim = 3;
 
   // particles DOFs, sans coordinates
   auto particleOutputDOFs = nonCoordinateOutputDOFs();
 
-  std::string message = "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\">\n";
+  std::string message = "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">\n";
   message += "\t<UnstructuredGrid>\n";
   message += "\t\t<FieldData>\n";
   message += "\t\t\t<DataArray type=\"Float32\" Name=\"TIME\" NumberOfTuples=\"1\" format=\"ascii\"> " +
@@ -1689,7 +1696,7 @@ void lpm_t::writeFld()
   message += "\t\t<Piece NumberOfPoints=\"" + std::to_string(globalNPartOutput) + "\" NumberOfCells=\"0\">\n";
   message += "\t\t\t<Points>\n";
   message += "\t\t\t\t" + lpm_vtu_data("Position", dim, offset);
-  offset += (dim * globalNPartOutput + 1) * sizeof(float);
+  offset += (dim * globalNPartOutput) * sizeof(float) + 1 * sizeof(long long int);
   message += "\t\t\t</Points>\n";
 
   message += "\t\t\t<PointData>\n";
@@ -1698,7 +1705,7 @@ void lpm_t::writeFld()
   for (auto &&dofName : particleOutputDOFs) {
     const auto Nfields = dofCounts.at(dofName);
     message += "\t\t\t\t" + lpm_vtu_data(dofName, Nfields, offset);
-    offset += (Nfields * globalNPartOutput + 1) * sizeof(float);
+    offset += (Nfields * globalNPartOutput) * sizeof(float) + 1 * sizeof(long long int);
   }
 
   // output particle properties
@@ -1707,7 +1714,7 @@ void lpm_t::writeFld()
       continue;
     const auto Nfields = propCounts.at(propName);
     message += "\t\t\t\t" + lpm_vtu_data(propName, Nfields, offset);
-    offset += (Nfields * globalNPartOutput + 1) * sizeof(float);
+    offset += (Nfields * globalNPartOutput) * sizeof(float) + 1 * sizeof(long long int);
   }
 
   // output interpolated fields
@@ -1716,7 +1723,7 @@ void lpm_t::writeFld()
       continue;
     const auto Nfields = interpFieldCounts.at(interpFieldName);
     message += "\t\t\t\t" + lpm_vtu_data(interpFieldName, Nfields, offset);
-    offset += (Nfields * globalNPartOutput + 1) * sizeof(float);
+    offset += (Nfields * globalNPartOutput) * sizeof(float) + 1 * sizeof(long long int);
   }
 
   message += "\t\t\t</PointData>\n";
@@ -1741,8 +1748,8 @@ void lpm_t::writeFld()
     MPI_File_get_size(file_out, &position);
     MPI_File_set_view(file_out, position, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL);
     if (platform->comm.mpiRank == 0) {
-      int nbyte = nFields * globalNPartOutput * sizeof(float);
-      MPI_File_write(file_out, &nbyte, 1, MPI_INT, MPI_STATUS_IGNORE);
+      unsigned long long int nbyte = nFields * globalNPartOutput * sizeof(float);
+      MPI_File_write(file_out, &nbyte, 1, MPI_UNSIGNED_LONG_LONG, MPI_STATUS_IGNORE);
     }
 
     MPI_Barrier(platform->comm.mpiComm);
@@ -1883,70 +1890,88 @@ void lpm_t::setTimerName(std::string name)
 }
 
 namespace {
-int parseNumParticles(std::string restartfile, const std::string &header)
+long long int parseNumParticles(std::string restartfile, const std::string &header)
 {
   std::smatch npartmatch;
   bool found = std::regex_search(header, npartmatch, std::regex(R"(<Piece NumberOfPoints=\"(\d+)\")"));
 
+  std::ostringstream errorLogger;
+  long long int nparticles = -1;
+
   if (!found) {
-    std::cout << "Could not read number of particles while reading " << restartfile << "!\n";
-    return -1;
+    errorLogger << "Could not read number of particles while reading " << restartfile << "!\n";
   }
 
   try {
-    int nparticles = std::stoi(npartmatch[1].str());
-    return nparticles;
+    nparticles = std::stoll(npartmatch[1].str());
   }
   catch (std::invalid_argument e) {
-    std::cout << "Could not read number of particles while reading " << restartfile << "!\n";
-    std::cout << "Exception said:\n" << e.what() << std::endl;
-    return -1;
+    errorLogger << "Could not read number of particles while reading " << restartfile << "!\n";
+    errorLogger << "Exception said:\n" << e.what() << std::endl;
   }
+
+  auto errorString = errorLogger.str();
+  int errorLength = errorString.length();
+  MPI_Allreduce(MPI_IN_PLACE, &errorLength, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
+  
+  nrsCheck(errorLength > 0,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "Error in parseNumParticles:\n%s",
+           errorString.c_str());
+
+  return nparticles;
 }
 
 auto parsePointData(std::string restartfile, std::string pointData)
 {
+  std::ostringstream errorLogger;
+  std::string fieldName = "";
+  long long int numComponents = -1;
+  long long int offset = -1;
+
   std::smatch match;
   bool found = std::regex_search(pointData, match, std::regex(R"(\s*Name=\"(.+?)\")"));
   if (!found) {
-    std::cout << "Could not parse pointData while reading " << restartfile << "!\n";
-    return std::make_tuple(std::string(), -1, -1);
+    errorLogger << "Could not parse pointData while reading " << restartfile << "!\n";
   }
-  auto fieldName = match[1].str();
+  fieldName = match[1].str();
 
   found = std::regex_search(pointData, match, std::regex(R"(\s*NumberOfComponents=\"(\d+)\")"));
   if (!found) {
-    std::cout << "Could not parse " << fieldName << " number of components while reading " << restartfile
-              << "!\n";
-    return std::make_tuple(fieldName, -1, -1);
+    errorLogger << "Could not parse " << fieldName << " number of components while reading " << restartfile << "\n";
   }
 
-  int numComponents = -1;
   try {
-    numComponents = std::stoi(match[1].str());
+    numComponents = std::stoll(match[1].str());
   }
   catch (std::invalid_argument &e) {
-    std::cout << "Could not parse " << fieldName << " number of components while reading " << restartfile
-              << "!\n";
-    std::cout << "Exception said:\n" << e.what() << std::endl;
-    return std::make_tuple(fieldName, -1, -1);
+    errorLogger << "Could not parse " << fieldName << " number of components while reading " << restartfile << "!\n";
+    errorLogger << "Exception said:\n" << e.what() << std::endl;
   }
 
-  int offset = -1;
   found = std::regex_search(pointData, match, std::regex(R"(\s*offset=\"(\d+)\")"));
   if (!found) {
-    std::cout << "Could not parse " << fieldName << " offset while reading " << restartfile << "!\n";
-    return std::make_tuple(fieldName, numComponents, -1);
+    errorLogger << "Could not parse " << fieldName << " offset while reading " << restartfile << "!\n";
   }
 
   try {
-    offset = std::stoi(match[1].str());
+    offset = std::stoll(match[1].str());
   }
   catch (std::invalid_argument &e) {
-    std::cout << "Could not parse " << fieldName << " offset while reading " << restartfile << "!\n";
-    std::cout << "Exception said:\n" << e.what() << std::endl;
-    return std::make_tuple(fieldName, numComponents, -1);
+    errorLogger << "Could not parse " << fieldName << " offset while reading " << restartfile << "!\n";
+    errorLogger << "Exception said:\n" << e.what() << std::endl;
   }
+  
+  auto errorString = errorLogger.str();
+  int errorLength = errorString.length();
+  MPI_Allreduce(MPI_IN_PLACE, &errorLength, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
+  
+  nrsCheck(errorLength > 0,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "Error in parsePointData:\n%s",
+           errorString.c_str());
 
   return std::make_tuple(fieldName, numComponents, offset);
 }
@@ -1995,14 +2020,17 @@ auto readHeader(std::string restartFile)
 
 void lpm_t::restart(std::string restartFile)
 {
-  constexpr int dim = 3;
+  bool fileExists = std::filesystem::exists(restartFile);
+  nrsCheck(!fileExists, platform->comm.mpiComm, EXIT_FAILURE, "Restart file %s does not exist!\n", restartFile.c_str());
+
+  constexpr long long int dim = 3;
   auto [header, pointData] = readHeader(restartFile);
 
   // from header, extract number of particles stored in NumberOfPoints
   const auto nPartGlobal = parseNumParticles(restartFile, header);
-  auto nPartLocal = nPartGlobal / platform->comm.mpiCommSize;
+  long long int nPartLocal = nPartGlobal / platform->comm.mpiCommSize;
   // distribute remaining particles
-  const int remainder = nPartGlobal % platform->comm.mpiCommSize;
+  const auto remainder = nPartGlobal % platform->comm.mpiCommSize;
   if (platform->comm.mpiRank < remainder) {
     nPartLocal++;
   }
@@ -2016,10 +2044,10 @@ void lpm_t::restart(std::string restartFile)
     this->initialize(nPartLocal, t0, dummy_y0);
   }
 
-  dlong pOffset = 0;
-  MPI_Exscan(&nPartLocal, &pOffset, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
+  long long int pOffset = 0;
+  MPI_Exscan(&nPartLocal, &pOffset, 1, MPI_LONG_LONG_INT, MPI_SUM, platform->comm.mpiComm);
 
-  std::map<std::string, std::tuple<int, int>> fieldToInfo;
+  std::map<std::string, std::tuple<long long int, long long int>> fieldToInfo;
   for (auto &&field : pointData) {
     auto [fieldName, numComponents, offset] = parsePointData(restartFile, field);
     fieldToInfo[fieldName] = std::make_tuple(numComponents, offset);
@@ -2033,20 +2061,20 @@ void lpm_t::restart(std::string restartFile)
   MPI_File_set_view(file_in, position, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL);
 
   // first field is number of bytes in coordinate data
-  int nPointData = 0;
-  MPI_File_read(file_in, &nPointData, 1, MPI_INT, MPI_STATUS_IGNORE);
+  long long int nPointData = 0;
+  MPI_File_read(file_in, &nPointData, 1, MPI_LONG_LONG_INT, MPI_STATUS_IGNORE);
   nPointData /= dim;
   nPointData /= sizeof(float);
 
   nrsCheck(nPointData != nPartGlobal,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "Number of particles in header (%d) does not match number of particles in file (%d)",
+           "Number of particles in header (%lld) does not match number of particles in file (%lld)",
            nPartGlobal,
            nPointData);
 
   position = header.length();
-  position += sizeof(float) * (dim * pOffset + 1);
+  position += sizeof(float) * (dim * pOffset) + 1 * sizeof(long long int);
   MPI_File_set_view(file_in, position, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL);
 
   std::vector<float> coords(nPartLocal * dim);
@@ -2070,7 +2098,7 @@ void lpm_t::restart(std::string restartFile)
   o_yCoord.copyFrom(yCoord.data(), nPartLocal * sizeof(dfloat));
   o_zCoord.copyFrom(zCoord.data(), nPartLocal * sizeof(dfloat));
 
-  auto readField = [&, &header = header](std::string fieldName, int expectedNumComponents, int offset) {
+  auto readField = [&, &header = header](std::string fieldName, long long int expectedNumComponents, long long int offset) {
     nrsCheck(fieldType.count(fieldName) == 0,
              platform->comm.mpiComm,
              EXIT_FAILURE,
@@ -2080,7 +2108,7 @@ void lpm_t::restart(std::string restartFile)
 
     auto type = fieldType[fieldName];
 
-    int nComponents = -1;
+    long long int nComponents = -1;
     occa::memory o_fld;
     if (type == FieldType::DOF) {
       nComponents = dofCounts.at(fieldName);
@@ -2098,7 +2126,7 @@ void lpm_t::restart(std::string restartFile)
     nrsCheck(nComponents != expectedNumComponents,
              platform->comm.mpiComm,
              EXIT_FAILURE,
-             "Expected number of components for field %s (%d) does not match number of components (%d) in "
+             "Expected number of components for field %s (%lld) does not match number of components (%lld) in "
              "restart file %s!\n",
              fieldName.c_str(),
              expectedNumComponents,
@@ -2111,15 +2139,15 @@ void lpm_t::restart(std::string restartFile)
     MPI_File_set_view(file_in, position, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL);
 
     // first field is number of bytes in coordinate data
-    int nPointData = 0;
-    MPI_File_read(file_in, &nPointData, 1, MPI_INT, MPI_STATUS_IGNORE);
+    long long int nPointData = 0;
+    MPI_File_read(file_in, &nPointData, 1, MPI_LONG_LONG_INT, MPI_STATUS_IGNORE);
     nPointData /= nComponents;
     nPointData /= sizeof(float);
 
     nrsCheck(nPointData != nPartGlobal,
              platform->comm.mpiComm,
              EXIT_FAILURE,
-             "Number of particles in header (%d) does not match number of particles in file (%d) when "
+             "Number of particles in header (%lld) does not match number of particles in file (%lld) when "
              "reading field %s!\n",
              nPartGlobal,
              nPointData,
@@ -2130,7 +2158,7 @@ void lpm_t::restart(std::string restartFile)
 
     position = header.length();
     position += offset;
-    position += sizeof(float) * (nComponents * pOffset + 1);
+    position += sizeof(float) * (nComponents * pOffset) + 1 * sizeof(long long int);
 
     MPI_File_set_view(file_in, position, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL);
 

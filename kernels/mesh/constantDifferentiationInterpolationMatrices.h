@@ -1,3 +1,4 @@
+// Differentiation/interpolation matrices from GLL to cubature GL points
 #if p_Nq==2 && p_cubNq==2
 const dfloat c_DI[2][2] = {
 { -5.000000000000001e-01,5.000000000000001e-01},

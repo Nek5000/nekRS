@@ -1,9 +1,8 @@
 [GENERAL]
 polynomialOrder = 7
-startFrom = "r.fld"+time=0
+#startFrom = "r.fld"+time=0
 stopAt = endTime
 endTime = 50
-#numSteps = 5
 dt = 5e-02
 timeStepper = tombo2
 

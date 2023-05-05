@@ -113,7 +113,7 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity)
     std::array<hlong, 3> counts = {n, nBoundary, nOutside};
     MPI_Allreduce(MPI_IN_PLACE, counts.data(), counts.size(), MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0 && counts[2] > 0) {
-      std::cout << "interp::find - Total number of points = " << counts[0] << ", boundary = " << counts[1]
+      std::cout << "WARNING interp::find - total = " << counts[0] << ", boundary = " << counts[1]
                 << ", outside = " << counts[2] << "\n";
     }
   }

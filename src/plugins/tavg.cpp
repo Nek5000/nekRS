@@ -66,7 +66,6 @@ static void E4(dlong N, dfloat a, dfloat b, int nflds, occa::memory o_1, occa::m
 void tavg::buildKernel(occa::properties kernelInfo)
 {
 
-  int rank = platform->comm.mpiRank;
   const std::string path = getenv("NEKRS_KERNEL_DIR") + std::string("/plugins/");
   std::string kernelName, fileName;
   const std::string extension = ".okl";
@@ -196,7 +195,6 @@ void tavg::setup(nrs_t *nrs_)
            "%s\n", "called prior tavg::buildKernel()!");
 
   nrs = nrs_;
-  mesh_t *mesh = nrs->meshV;
 
   if(userFieldList.size() == 0) {
     o_Uavg = platform->device.malloc(nrs->fieldOffset * nrs->NVfields, sizeof(dfloat));
@@ -233,9 +231,6 @@ void tavg::outfld(int _outXYZ, int FP64)
 
   if (!nrs->timeStepConverged)
     return;
-
-  cds_t *cds = nrs->cds;
-  mesh_t *mesh = nrs->meshV;
 
   int outXYZ = _outXYZ;
   if (!outfldCounter)

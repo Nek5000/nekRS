@@ -99,7 +99,6 @@ occa::memory computeEps(nrs_t *nrs, const dfloat time, const dlong scalarIndex, 
   cachedDt = time;
 
   mesh_t *mesh = cds->mesh[scalarIndex];
-  const int Nblock = (cds->mesh[scalarIndex]->Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
 
   occa::memory &o_logRelativeMassHighestMode = platform->o_mempool.slice0;
   occa::memory &o_filteredField = platform->o_mempool.slice1;

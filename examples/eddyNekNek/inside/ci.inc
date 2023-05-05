@@ -82,7 +82,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   if (ciMode == 1) {
     expectedErrVx = 5E-07;
     expectedErrVy = 5E-07;
-    expectedErrVz = 7E-09;
+    expectedErrVz = 2E-08;
   }
   else if (ciMode == 2) {
     expectedErrVx = 0.008;

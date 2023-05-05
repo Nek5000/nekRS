@@ -1,4 +1,9 @@
-# Kershaw BP5 and BPS5
+# Kershaw
+
+This example runs the following benchmarks: 
+
+* CEED BP5  (proxy for velocity solve)
+* CEED BPS5 (proxy for pressure solve)
 
 ## Performance Results (E/GPU=8000) 
 

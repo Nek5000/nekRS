@@ -4,6 +4,7 @@
 #include <string>
 
 void meshVOccaSetup3D(mesh_t* mesh, occa::properties &kernelInfo);
+
 mesh_t *createMeshV(MPI_Comm comm,
                     int N,
                     int cubN,
@@ -313,17 +314,15 @@ mesh_t *createMeshMG(mesh_t* _mesh,
                                        mesh->o_DT,
                                        mesh->o_DTPfloat);
 
-    // TODO: once full preconditioner is in FP32, uncomment below
-    //mesh->o_D.free();
-    //mesh->o_DT.free();
-    //mesh->o_ggeo.free();
+    mesh->o_D.free();
+    mesh->o_DT.free();
+    mesh->o_ggeo.free();
   }
 
   return mesh;
 }
 
-mesh_t *createMeshV(
-                    MPI_Comm comm,
+mesh_t *createMeshV(MPI_Comm comm,
                     int N,
                     int cubN,
                     mesh_t* meshT,
@@ -334,43 +333,34 @@ mesh_t *createMeshV(
   if (platform->comm.mpiRank == 0)
     printf("generating v-mesh ...\n");
 
-  // shallow copy
+  // derive from meshT using shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
   mesh->cht = 0;
 
   // find EToV and boundaryInfo
   meshNekReaderHex3D(N, mesh);
-  free(mesh->elementInfo);
-  mesh->elementInfo = meshT->elementInfo;
-
   mesh->Nlocal = mesh->Nelements * mesh->Np;
 
-  mesh->Nfields = 1; // temporary patch (halo exchange depends on nfields)
+  free(mesh->elementInfo);
+  mesh->elementInfo = meshT->elementInfo;
+  free(mesh->EX);
+  mesh->EX = meshT->EX;
+  free(mesh->EY);
+  mesh->EY = meshT->EY;
+  free(mesh->EZ);
+  mesh->EZ = meshT->EZ;
 
   // find mesh->EToP, mesh->EToE and mesh->EToF, required mesh->EToV
   meshParallelConnect(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
+  mesh->Nfields = 1;
   meshHaloSetup(mesh);
-
-  //meshPhysicalNodesHex3D(mesh);
-  mesh->x = meshT->x;
-  mesh->y = meshT->y;
-  mesh->z = meshT->z;
-
   meshHaloPhysicalNodes(mesh);
-
-  // meshGeometricFactorsHex3D(mesh);
-  mesh->vgeo = meshT->vgeo;
-  mesh->cubvgeo = meshT->cubvgeo;
-  mesh->ggeo = meshT->ggeo;
 
   // connect face nodes (find trace indices)
   // find vmapM, based on EToE and EToF
   meshConnectFaceNodes3D(mesh);
-
-  // meshGlobalIds(mesh);
-  mesh->globalIds = meshT->globalIds;
 
   bcMap::check(mesh);
   bcMap::checkBoundaryAlignment(mesh);
@@ -378,7 +368,7 @@ mesh_t *createMeshV(
 
   meshVOccaSetup3D(mesh, kernelInfo);
 
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
 
   int err = 0;
   int Nfine;

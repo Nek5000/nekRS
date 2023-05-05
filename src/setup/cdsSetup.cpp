@@ -89,19 +89,15 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
 
   cds->o_ellipticCoeff = nrs->o_ellipticCoeff;
 
-  cds->o_U = nrs->o_U;
-  cds->o_Ue = nrs->o_Ue;
-  cds->o_S =
-      platform->device.malloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum * sizeof(dfloat), cds->S);
-  cds->o_Se = platform->device.malloc(cds->fieldOffsetSum, sizeof(dfloat));
-  cds->o_BF = platform->device.malloc(cds->fieldOffsetSum * sizeof(dfloat), cds->BF);
-  cds->o_FS = platform->device.malloc(cds->nEXT * cds->fieldOffsetSum * sizeof(dfloat), cds->FS);
-
   cds->o_relUrst = nrs->o_relUrst;
   cds->o_Urst = nrs->o_Urst;
 
   cds->anyCvodeSolver = false;
   cds->anyEllipticSolver = false;
+
+  cds->EToBOffset = cds->mesh[0]->Nelements * cds->mesh[0]->Nfaces;
+
+  cds->EToB = (int *) calloc(cds->EToBOffset * cds->NSfields, sizeof(int));
 
   for (int is = 0; is < cds->NSfields; is++) {
     std::string sid = scalarDigitStr(is);
@@ -120,21 +116,33 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
 
-    dfloat largeNumber = 1 << 20;
-    cds->EToB[is] = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
-    int *EToB = cds->EToB[is];
     int cnt = 0;
     for (int e = 0; e < mesh->Nelements; e++) {
       for (int f = 0; f < mesh->Nfaces; f++) {
-        EToB[cnt] = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "scalar" + sid);
+        cds->EToB[cnt + cds->EToBOffset * is] = bcMap::id(mesh->EToB[f + e * mesh->Nfaces], "scalar" + sid);
         cnt++;
       }
     }
-    cds->o_EToB[is] = device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int), EToB);
   }
+  cds->o_EToB = device.malloc(cds->EToBOffset * cds->NSfields * sizeof(int), cds->EToB);
 
   cds->o_compute = platform->device.malloc(cds->NSfields * sizeof(dlong), cds->compute);
   cds->o_cvodeSolve = platform->device.malloc(cds->NSfields * sizeof(dlong), cds->cvodeSolve);
+  
+  cds->o_U = nrs->o_U;
+  cds->o_Ue = nrs->o_Ue;
+  int nFieldsAlloc = cds->anyEllipticSolver ? std::max(cds->nBDF, cds->nEXT) : 1;
+  cds->o_S =
+      platform->device.malloc(nFieldsAlloc * cds->fieldOffsetSum * sizeof(dfloat), cds->S);
+  
+  nFieldsAlloc = cds->anyEllipticSolver ? cds->nEXT : 1;
+  cds->o_FS = platform->device.malloc(nFieldsAlloc * cds->fieldOffsetSum * sizeof(dfloat), cds->FS);
+
+  if(cds->anyEllipticSolver){
+    cds->o_Se = platform->device.malloc(cds->fieldOffsetSum, sizeof(dfloat));
+    cds->o_BF = platform->device.malloc(cds->fieldOffsetSum * sizeof(dfloat), cds->BF);
+  }
+
 
   bool scalarFilteringEnabled = false;
   bool avmEnabled = false;
@@ -152,9 +160,15 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     }
   }
 
+  cds->applyFilter = 0;
+
   if (scalarFilteringEnabled) {
+
+    std::vector<dlong> applyFilterRT(cds->NSfields, 0);
     const dlong Nmodes = cds->mesh[0]->N + 1;
     cds->o_filterMT = platform->device.malloc(cds->NSfields * Nmodes * Nmodes, sizeof(dfloat));
+    cds->o_filterS = platform->device.malloc(cds->NSfields, sizeof(dfloat));
+    cds->o_applyFilterRT = platform->device.malloc(cds->NSfields, sizeof(dlong));
     for (int is = 0; is < cds->NSfields; is++) {
       std::string sid = scalarDigitStr(is);
 
@@ -175,10 +189,16 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
  
         const dlong Nmodes = cds->mesh[is]->N + 1;
         cds->o_filterMT.copyFrom(A, Nmodes * Nmodes * sizeof(dfloat), is * Nmodes * Nmodes * sizeof(dfloat));
+
+        applyFilterRT[is] = 1;
+        cds->applyFilter = 1;
  
         free(A);
       }
     }
+
+    cds->o_filterS.copyFrom(cds->filterS, cds->NSfields * sizeof(dfloat));
+    cds->o_applyFilterRT.copyFrom(applyFilterRT.data(), cds->NSfields * sizeof(dlong));
 
     if (avmEnabled)
       avm::setup(cds);
