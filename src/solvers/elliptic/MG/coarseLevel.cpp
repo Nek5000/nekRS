@@ -70,8 +70,8 @@ void MGSolver_t::coarseLevel_t::setupSolver(
   if (!vectorDotStarKernel.isInitialized()) 
     vectorDotStarKernel = platform->kernels.get(kernelName);
 
-  o_xBuffer = platform->device.malloc(N * sizeof(pfloat));
-  h_xBuffer = platform->device.mallocHost(N * sizeof(pfloat));
+  o_xBuffer = platform->device.malloc((N + 1) * sizeof(pfloat));
+  h_xBuffer = platform->device.mallocHost((N + 1) * sizeof(pfloat));
   xBuffer = (pfloat*) h_xBuffer.ptr(); 
 
   if (options.compareArgs("COARSE SOLVER", "BOOMERAMG")){
