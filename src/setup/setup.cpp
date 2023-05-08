@@ -857,7 +857,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->meshSolver->mesh = mesh;
     nrs->meshSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat));
     nrs->meshSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat));
-    nrs->meshSolver->poisson = 0;
+    nrs->meshSolver->poisson = 1;
 
     nrs->meshSolver->EToB =
         (int *)calloc(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields, sizeof(int));

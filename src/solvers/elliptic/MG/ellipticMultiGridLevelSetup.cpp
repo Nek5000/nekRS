@@ -29,6 +29,7 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 #include "parseMultigridSchedule.hpp"
+#include "randomVector.hpp"
 
 namespace{
 
@@ -303,12 +304,9 @@ dfloat pMGLevel::maxEigSmoothAx()
   occa::memory o_invDegree = platform->device.malloc(Nlocal*sizeof(dfloat), elliptic->ogs->invDegree);
   const auto k = (unsigned int) std::min(pMGLevel::Narnoldi, Nglobal);
 
-  // allocate memory for Hessenberg matrix
-  double* H = (double*) calloc(k * k,sizeof(double));
-
-  // allocate memory for basis
-  dfloat* Vx = (dfloat*) calloc(M, sizeof(dfloat));
-  occa::memory* o_V = new occa::memory[k + 1];
+  std::vector<double> H(k*k, 0.0);
+  std::vector<occa::memory> o_V(k+1);
+  auto Vx = randomVector<dfloat>(M);
 
   size_t offset = 0;
   const size_t vectorSize = ((M * sizeof(dfloat))/ALIGN_SIZE + 1) * ALIGN_SIZE ;
@@ -341,11 +339,8 @@ dfloat pMGLevel::maxEigSmoothAx()
   occa::memory o_AVxPfloat = platform->device.malloc(M, sizeof(pfloat));
   occa::memory o_VxPfloat = platform->device.malloc(M, sizeof(pfloat));
 
-  // generate a random vector for initial basis vector
-  for (dlong i = 0; i < M; i++) Vx[i] = (dfloat) drand48();
-
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
-    ogsGatherScatter(Vx, ogsDfloat, ogsAdd, mesh->ogs);
+    ogsGatherScatter(Vx.data(), ogsDfloat, ogsAdd, mesh->ogs);
 
     if(elliptic->Nmasked > 0){
       dlong* maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
@@ -355,7 +350,7 @@ dfloat pMGLevel::maxEigSmoothAx()
     }
   }
 
-  o_Vx.copyFrom(Vx, M*sizeof(dfloat));
+  o_Vx.copyFrom(Vx.data(), M*sizeof(dfloat));
   platform->linAlg->fill(Nlocal, 0.0, o_V[0]);
 
   dfloat norm_vo = platform->linAlg->weightedInnerProdMany(
@@ -437,10 +432,10 @@ dfloat pMGLevel::maxEigSmoothAx()
     }
   }
 
-  double* WR = (double*) calloc(k,sizeof(double));
-  double* WI = (double*) calloc(k,sizeof(double));
+  std::vector<double> WR(k, 0.0);
+  std::vector<double> WI(k, 0.0);
 
-  eigenValue(k, H, WR, WI);
+  eigenValue(k, H.data(), WR.data(), WI.data());
 
   double rho = 0.;
 
@@ -450,20 +445,6 @@ dfloat pMGLevel::maxEigSmoothAx()
     if(rho < rho_i)
       rho = rho_i;
   }
-
-  free(H);
-  free(WR);
-  free(WI);
-
-  free(Vx);
-  o_Vx.free();
-  o_AVx.free();
-  o_AVxPfloat.free();
-  o_VxPfloat.free();
-  o_invDegree.free();
-
-  for(int i = 0; i <= k; i++) o_V[i].free();
-  delete[] o_V;
 
   MPI_Barrier(platform->comm.mpiComm);
   if(platform->comm.mpiRank == 0)  printf("%g done (%gs)\n", rho, MPI_Wtime() - tStart); fflush(stdout);

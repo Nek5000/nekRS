@@ -78,7 +78,7 @@ SEMFEMSolver_t::SEMFEMSolver_t(elliptic_t* elliptic_)
       settings[8]  = 0.25; /* strong threshold             */
       settings[9]  = 0.05; /* non galerkin tol             */
       settings[10] = 0;    /* aggressive coarsening levels */
-      settings[11] = 2;    /* chebyRelaxOrder */
+      settings[11] = 1;    /* chebyRelaxOrder */
 
       if(elliptic->options.compareArgs("MULTIGRID SEMFEM", "TRUE")) {
         settings[4]  = 16;

@@ -1,6 +1,6 @@
 [GENERAL]
-polynomialOrder = 8 
-cubaturePolynomialOrder = 10 
+polynomialOrder = 7 
+cubaturePolynomialOrder = 9 
 
 #startFrom = "r.fld"
 
@@ -23,7 +23,6 @@ solver = pfcg
 residualTol = 1e-04
 preconditioner = multigrid
 smootherType = JAC+Chebyshev
-pMGSchedule = p=8, p=4, p=1, p=4, p=8
 
 [VELOCITY]
 boundaryTypeMap = v, shl

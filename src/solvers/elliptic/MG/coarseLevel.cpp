@@ -90,7 +90,7 @@ void MGSolver_t::coarseLevel_t::setupSolver(
     settings[8]  = 0.25; /* strong threshold             */
     settings[9]  = 0.05; /* non galerkin tol             */
     settings[10] = 0;    /* aggressive coarsening levels */
-    settings[11] = 2;    /* chebyRelaxOrder */
+    settings[11] = 1;    /* chebyRelaxOrder */
 
     platform->options.getArgs("BOOMERAMG COARSEN TYPE", settings[1]);
     platform->options.getArgs("BOOMERAMG INTERPOLATION TYPE", settings[2]);

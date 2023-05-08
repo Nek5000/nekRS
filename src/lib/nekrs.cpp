@@ -138,13 +138,20 @@ void setup(MPI_Comm commg_in,
   std::string udfFile;
   options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
-    udfBuild(udfFile.c_str(), options);
+    udfBuild(udfFile, options);
     udfLoad();
   }
 
   // here we might access some nek variables
   if (udf.setup0)
     udf.setup0(comm, options);
+
+  if (rank == 0) {
+    if (!buildOnly && options.compareArgs("STDOUT PAR", "TRUE"))
+      parEcho();
+    if (!buildOnly && options.compareArgs("STDOUT UDF", "TRUE"))
+      udfEcho();
+  }
 
   compileKernels();
 

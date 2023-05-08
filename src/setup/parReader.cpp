@@ -7,6 +7,7 @@
 #include <vector>
 #include <limits>
 #include <optional>
+#include <filesystem>
 
 #include "inipp.hpp"
 #include "tinyexpr.h"
@@ -22,6 +23,10 @@
 namespace {
 static std::ostringstream errorLogger;
 static std::ostringstream valueErrorLogger;
+std::string setupFile;
+int bcInPar = 1;
+int nscal = 0;
+bool cvodeRequested = false;
 
 static std::string mapTemperatureToScalarString()
 {
@@ -499,6 +504,11 @@ void parseConstFlowRate(const int rank, setupAide &options, inipp::Ini *par)
 
 void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
 {
+#ifndef ENABLE_CVODE
+  append_error("ERROR: CVODE not enabled! Recompile with CVODE support!\n");
+  return;
+#endif
+
   // default values
   double relativeTol = 1e-4;
   double absoluteTol = 1e-6;
@@ -521,14 +531,14 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
   if (par->extract(parScope, "absolutetol", absoluteTol)) {
     options.setArgs("CVODE ABSOLUTE TOLERANCE", to_string_f(absoluteTol));
   }
-  
+
   options.setArgs("CVODE GMRES RESTART", "10");
   options.setArgs("CVODE SOLVER", "GMRES");
 
   // parse cvode linear solver
-  [&](){
+  [&]() {
     std::string p_solver;
-    
+
     if (!par->extract("cvode", "solver", p_solver))
       return;
 
@@ -556,10 +566,10 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
       options.setArgs("CVODE SOLVER", "GMRES");
     }
   }();
- 
+
   options.setArgs("CVODE STOP TIME", "TRUE");
- 
-  if(par->extract(parScope, "hmaxratio", hmax)) {
+
+  if (par->extract(parScope, "hmaxratio", hmax)) {
     options.setArgs("CVODE HMAX RATIO", std::to_string(hmax));
     options.setArgs("CVODE STOP TIME", "FALSE");
   }
@@ -588,7 +598,7 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
       options.setArgs("CVODE RECYCLE PROPERTIES", "FALSE");
     }
   }
-  
+
   options.setArgs("CVODE SHARED RHO", "FALSE");
   std::string sharedRhoStr;
   if (par->extract(parScope, "sharedrho", sharedRhoStr)) {
@@ -612,10 +622,9 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
     }
   }
 
-  if(mixedPrecisionJtv){
+  if (mixedPrecisionJtv) {
     append_error("cvode::jtvmixedprecision is not supported yet!\n");
   }
-
 }
 
 void parseSolverTolerance(const int rank, setupAide &options, inipp::Ini *par, std::string parScope)
@@ -1131,20 +1140,23 @@ void parseLinearSolver(const int rank, setupAide &options, inipp::Ini *par, std:
     options.setArgs(parSectionName + "PGMRES RESTART", n);
     if (p_solver.find("fgmres") != std::string::npos || p_solver.find("flexible") != std::string::npos) {
       p_solver = "PGMRES+FLEXIBLE";
-    } else {
+    }
+    else {
       p_solver = "PGMRES";
     }
   }
   else if (p_solver.find("cg") != std::string::npos) {
     if (p_solver.find("block") != std::string::npos) {
       options.setArgs(parSectionName + "BLOCK SOLVER", "TRUE");
-    } else {
+    }
+    else {
       options.setArgs(parSectionName + "BLOCK SOLVER", "FALSE");
     }
 
     if (p_solver.find("fcg") != std::string::npos || p_solver.find("flexible") != std::string::npos) {
       p_solver = "PCG+FLEXIBLE";
-    } else {
+    }
+    else {
       p_solver = "PCG";
     }
   }
@@ -1156,14 +1168,6 @@ void parseLinearSolver(const int rank, setupAide &options, inipp::Ini *par, std:
   }
   else if (p_solver.find("none") != std::string::npos) {
     p_solver = "NONE";
-
-    // clean all options for this scalar
-    auto keyWordToDataMap = options.keyWordToDataMap;
-    for (auto [key, value] : keyWordToDataMap) {
-      if (key.find(parSectionName) != std::string::npos) {
-        options.removeArgs(key);
-      }
-    }
   }
   else {
     append_error("Invalid solver for " + parScope);
@@ -1480,7 +1484,11 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank)
 
   options.setArgs("DEVICE NUMBER", "LOCAL-RANK");
   options.setArgs("PLATFORM NUMBER", "0");
+
   options.setArgs("VERBOSE", "FALSE");
+
+  options.setArgs("STDOUT PAR", "TRUE");
+  options.setArgs("STDOUT UDF", "TRUE");
 
   options.setArgs("ADVECTION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
@@ -1508,66 +1516,41 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank)
   options.setArgs("AMG DROP TOLERANCE", to_string_f(dropTol));
 }
 
-void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &options)
+void parseBoomerAmgSection(const int rank, setupAide &options, inipp::Ini *par)
 {
-  int rank;
-  MPI_Comm_rank(comm, &rank);
-
-  if (rank == 0) {
-    const char *ptr = realpath(setupFile.c_str(), NULL);
-    nrsCheck(!ptr, MPI_COMM_SELF, EXIT_FAILURE, "Cannot find setup file %s\n", setupFile.c_str());
-
-    std::ifstream f(setupFile);
-    std::string text;
-
-    const bool buildOnly = options.compareArgs("BUILD ONLY", "TRUE");
-    if(!buildOnly) {
-      std::cout << std::endl;
-      while(!f.eof())
-      {
-        getline(f, text);
-        std::cout << "<<< " << text << "\n" ;
-      }
-      std::cout << std::endl;
-      f.close();
-    }
+  if (par->sections.count("boomeramg")) {
+    int coarsenType;
+    if (par->extract("boomeramg", "coarsentype", coarsenType))
+      options.setArgs("BOOMERAMG COARSEN TYPE", std::to_string(coarsenType));
+    int interpolationType;
+    if (par->extract("boomeramg", "interpolationtype", interpolationType))
+      options.setArgs("BOOMERAMG INTERPOLATION TYPE", std::to_string(interpolationType));
+    int smootherType;
+    if (par->extract("boomeramg", "smoothertype", smootherType))
+      options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(smootherType));
+    int coarseSmootherType;
+    if (par->extract("boomeramg", "coarsesmoothertype", coarseSmootherType))
+      options.setArgs("BOOMERAMG COARSE SMOOTHER TYPE", std::to_string(smootherType));
+    int numCycles;
+    if (par->extract("boomeramg", "iterations", numCycles))
+      options.setArgs("BOOMERAMG ITERATIONS", std::to_string(numCycles));
+    double strongThres;
+    if (par->extract("boomeramg", "strongthreshold", strongThres))
+      options.setArgs("BOOMERAMG STRONG THRESHOLD", to_string_f(strongThres));
+    double nonGalerkinTol;
+    if (par->extract("boomeramg", "nongalerkintol", nonGalerkinTol))
+      options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
+    int aggLevels;
+    if (par->extract("boomeramg", "aggressivecoarseninglevels", aggLevels))
+      options.setArgs("BOOMERAMG AGGRESSIVE COARSENING LEVELS", std::to_string(aggLevels));
+    int chebyRelaxOrder;
+    if (par->extract("boomeramg", "chebyshevrelaxorder", chebyRelaxOrder))
+      options.setArgs("BOOMERAMG CHEBYSHEV RELAX ORDER", std::to_string(chebyRelaxOrder));
   }
+}
 
-  const std::string casename = setupFile.substr(0, setupFile.find(".par"));
-  setDefaultSettings(options, casename, rank);
-
-  char *rbuf;
-  long fsize;
-  if (rank == 0) {
-    FILE *f = fopen(setupFile.c_str(), "rb");
-    fseek(f, 0, SEEK_END);
-    fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    rbuf = new char[fsize];
-    fread(rbuf, 1, fsize, f);
-    fclose(f);
-  }
-  MPI_Bcast(&fsize, sizeof(fsize), MPI_BYTE, 0, comm);
-  if (rank != 0)
-    rbuf = new char[fsize];
-  MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
-  std::stringstream is;
-  is.write(rbuf, fsize);
-
-  par->parse(is);
-  par->interpolate();
-
-  if (rank == 0) {
-    validateKeys(par->sections);
-  }
-
-  if (rank == 0) {
-    printDeprecation(par->sections);
-  }
-
-  std::string sbuf;
-
-  // OCCA
+void parseOccaSection(const int rank, setupAide &options, inipp::Ini *par)
+{
   std::string backendSpecification;
   if (par->extract("occa", "backend", backendSpecification)) {
     const std::vector<std::string> validBackends = {
@@ -1646,7 +1629,10 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
     upperCase(platformNumber);
     options.setArgs("PLATFORM NUMBER", platformNumber);
   }
+}
 
+void parseGeneralSection(const int rank, setupAide &options, inipp::Ini *par)
+{
   // GENERAL
   bool verbose = false;
   if (par->extract("general", "verbose", verbose))
@@ -1906,46 +1892,10 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
   {
     parseRegularization(rank, options, par, "general");
   }
+}
 
-  // NEKNEK
-  dlong boundaryEXTOrder;
-  if (par->extract("neknek", "boundaryextorder", boundaryEXTOrder)) {
-    options.setArgs("NEKNEK BOUNDARY EXT ORDER", std::to_string(boundaryEXTOrder));
-  }
-
-  // PROBLEMTYPE
-  bool stressFormulation;
-  if (par->extract("problemtype", "stressformulation", stressFormulation)) {
-    if (stressFormulation) {
-      options.setArgs("VELOCITY STRESSFORMULATION", "TRUE");
-    }
-  }
-
-  std::string eqn;
-  if (par->extract("problemtype", "equation", eqn)) {
-    const std::vector<std::string> validValues = {
-        {"stokes"},
-        {"navierstokes"},
-        {"stress"},
-        {"variableviscosity"},
-    };
-    const std::vector<std::string> list = serializeString(eqn, '+');
-    for (std::string entry : list) {
-      checkValidity(rank, validValues, entry);
-    }
-
-    if (std::strstr(eqn.c_str(), "stress") || std::strstr(eqn.c_str(), "variableviscosity"))
-      options.setArgs("VELOCITY STRESSFORMULATION", "TRUE");
-
-    options.setArgs("ADVECTION", "TRUE");
-    if (eqn == "stokes") {
-      options.setArgs("ADVECTION", "FALSE");
-    }
-  }
-
-  int bcInPar = 1;
-
-  // MESH
+void parseMeshSection(const int rank, setupAide &options, inipp::Ini *par)
+{
   if (par->sections.count("mesh")) {
     std::string meshFile;
     if (par->extract("mesh", "file", meshFile)) {
@@ -2022,110 +1972,128 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
       }
     }
   }
+}
 
-  if (par->sections.count("velocity")) {
-    // PRESSURE
-    options.setArgs("PRESSURE ELLIPTIC COEFF FIELD", "FALSE");
+void parsePressureSection(const int rank, setupAide &options, inipp::Ini *par)
+{
+  options.setArgs("PRESSURE ELLIPTIC COEFF FIELD", "FALSE");
 
-    parseSolverTolerance(rank, options, par, "pressure");
+  parseSolverTolerance(rank, options, par, "pressure");
 
-    parseInitialGuess(rank, options, par, "pressure");
+  parseInitialGuess(rank, options, par, "pressure");
 
-    parsePreconditioner(rank, options, par, "pressure");
+  parsePreconditioner(rank, options, par, "pressure");
 
-    parseLinearSolver(rank, options, par, "pressure");
+  parseLinearSolver(rank, options, par, "pressure");
 
-    if (par->sections.count("boomeramg")) {
-      int coarsenType;
-      if (par->extract("boomeramg", "coarsentype", coarsenType))
-        options.setArgs("BOOMERAMG COARSEN TYPE", std::to_string(coarsenType));
-      int interpolationType;
-      if (par->extract("boomeramg", "interpolationtype", interpolationType))
-        options.setArgs("BOOMERAMG INTERPOLATION TYPE", std::to_string(interpolationType));
-      int smootherType;
-      if (par->extract("boomeramg", "smoothertype", smootherType))
-        options.setArgs("BOOMERAMG SMOOTHER TYPE", std::to_string(smootherType));
-      int coarseSmootherType;
-      if (par->extract("boomeramg", "coarsesmoothertype", coarseSmootherType))
-        options.setArgs("BOOMERAMG COARSE SMOOTHER TYPE", std::to_string(smootherType));
-      int numCycles;
-      if (par->extract("boomeramg", "iterations", numCycles))
-        options.setArgs("BOOMERAMG ITERATIONS", std::to_string(numCycles));
-      double strongThres;
-      if (par->extract("boomeramg", "strongthreshold", strongThres))
-        options.setArgs("BOOMERAMG STRONG THRESHOLD", to_string_f(strongThres));
-      double nonGalerkinTol;
-      if (par->extract("boomeramg", "nongalerkintol", nonGalerkinTol))
-        options.setArgs("BOOMERAMG NONGALERKIN TOLERANCE", to_string_f(nonGalerkinTol));
-      int aggLevels;
-      if (par->extract("boomeramg", "aggressivecoarseninglevels", aggLevels))
-        options.setArgs("BOOMERAMG AGGRESSIVE COARSENING LEVELS", std::to_string(aggLevels));
-      int chebyRelaxOrder;
-      if (par->extract("boomeramg", "chebyshevrelaxorder", chebyRelaxOrder))
-        options.setArgs("BOOMERAMG CHEBYSHEV RELAX ORDER", std::to_string(chebyRelaxOrder));
+  parseBoomerAmgSection(rank, options, par);
+
+  if (par->sections.count("amgx")) {
+    if (!AMGXenabled()) {
+      append_error("AMGX was requested but is not compiled!\n");
     }
+    std::string configFile;
+    if (par->extract("amgx", "configfile", configFile))
+      options.setArgs("AMGX CONFIG FILE", configFile);
+  }
+}
 
-    if (par->sections.count("amgx")) {
-      if (!AMGXenabled()) {
-        append_error("AMGX was requested but is not compiled!\n");
-      }
-      std::string configFile;
-      if (par->extract("amgx", "configfile", configFile))
-        options.setArgs("AMGX CONFIG FILE", configFile);
-    }
+void parseVelocitySection(const int rank, setupAide &options, inipp::Ini *par)
+{
+  std::string vsolver;
+  std::string sbuf;
 
-    // VELOCITY
-    std::string vsolver;
+  options.setArgs("VELOCITY ELLIPTIC COEFF FIELD", "TRUE");
+  if (options.getArgs("VELOCITY STRESSFORMULATION").empty())
+    options.setArgs("VELOCITY STRESSFORMULATION", "FALSE");
 
-    options.setArgs("VELOCITY ELLIPTIC COEFF FIELD", "TRUE");
-    if (options.getArgs("VELOCITY STRESSFORMULATION").empty())
-      options.setArgs("VELOCITY STRESSFORMULATION", "FALSE");
+  parseInitialGuess(rank, options, par, "velocity");
 
-    parseInitialGuess(rank, options, par, "velocity");
+  parsePreconditioner(rank, options, par, "velocity");
 
-    parsePreconditioner(rank, options, par, "velocity");
+  parseLinearSolver(rank, options, par, "velocity");
 
-    parseLinearSolver(rank, options, par, "velocity");
+  parseSolverTolerance(rank, options, par, "velocity");
 
-    parseSolverTolerance(rank, options, par, "velocity");
-
-    std::string v_bcMap;
-    if (par->extract("velocity", "boundarytypemap", v_bcMap)) {
-      std::vector<std::string> sList;
-      sList = serializeString(v_bcMap, ',');
-      bcMap::setup(sList, "velocity");
-    }
-    else {
-      bcInPar = 0;
-    }
-
-    double rho;
-    if (par->extract("velocity", "density", rho) || par->extract("velocity", "rho", rho))
-      options.setArgs("DENSITY", to_string_f(rho));
-
-    if (par->extract("velocity", "viscosity", sbuf)) {
-      int err = 0;
-      double viscosity = te_interp(sbuf.c_str(), &err);
-      if (err)
-        append_error("Invalid expression for viscosity");
-      if (viscosity < 0)
-        viscosity = fabs(1 / viscosity);
-      options.setArgs("VISCOSITY", to_string_f(viscosity));
-    }
-
-    parseRegularization(rank, options, par, "velocity");
+  std::string v_bcMap;
+  if (par->extract("velocity", "boundarytypemap", v_bcMap)) {
+    std::vector<std::string> sList;
+    sList = serializeString(v_bcMap, ',');
+    bcMap::setup(sList, "velocity");
   }
   else {
-    options.setArgs("VELOCITY SOLVER", "NONE");
+    bcInPar = 0;
   }
 
-  // MESH
+  double rho;
+  if (par->extract("velocity", "density", rho) || par->extract("velocity", "rho", rho))
+    options.setArgs("DENSITY", to_string_f(rho));
 
-  // SCALARS
-  int nscal = optionalNscalar ? optionalNscalar.value() : 0;
+  if (par->extract("velocity", "viscosity", sbuf)) {
+    int err = 0;
+    double viscosity = te_interp(sbuf.c_str(), &err);
+    if (err)
+      append_error("Invalid expression for viscosity");
+    if (viscosity < 0)
+      viscosity = fabs(1 / viscosity);
+    options.setArgs("VISCOSITY", to_string_f(viscosity));
+  }
+
+  parseRegularization(rank, options, par, "velocity");
+}
+
+void parseProblemTypeSection(const int rank, setupAide &options, inipp::Ini *par)
+{
+  {
+    bool stressFormulation;
+    if (par->extract("problemtype", "stressformulation", stressFormulation)) {
+      if (stressFormulation) {
+        options.setArgs("VELOCITY STRESSFORMULATION", "TRUE");
+      }
+    }
+
+    std::string eqn;
+    if (par->extract("problemtype", "equation", eqn)) {
+      const std::vector<std::string> validValues = {
+          {"stokes"},
+          {"navierstokes"},
+          {"stress"},
+          {"variableviscosity"},
+      };
+      const std::vector<std::string> list = serializeString(eqn, '+');
+      for (std::string entry : list) {
+        checkValidity(rank, validValues, entry);
+      }
+
+      if (std::strstr(eqn.c_str(), "stress") || std::strstr(eqn.c_str(), "variableviscosity"))
+        options.setArgs("VELOCITY STRESSFORMULATION", "TRUE");
+
+      options.setArgs("ADVECTION", "TRUE");
+      if (eqn == "stokes") {
+        options.setArgs("ADVECTION", "FALSE");
+      }
+    }
+  }
+}
+
+void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
+{
+  auto optionalNscalar = [par]() -> std::optional<int> {
+    int nScalar = 0;
+    if (par->extract("general", "nscalars", nScalar)) {
+      if (nScalar < 0) {
+        std::ostringstream error;
+        error << "nScalar must be non-negative, but is " << nScalar << "\n";
+        append_error(error.str());
+      }
+      return nScalar;
+    }
+
+    return {};
+  }();
+
+  nscal = optionalNscalar ? optionalNscalar.value() : 0;
   int isStart = 0;
-
-  bool cvodeRequested = false;
 
   if (par->sections.count("temperature")) {
     std::string sid = scalarDigitStr(0);
@@ -2140,74 +2108,61 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
 
     std::string solver;
     par->extract("temperature", "solver", solver);
-    if (solver == "none") {
 
-      // clean all options for this scalar
-      auto keyWordToDataMap = options.keyWordToDataMap;
-      for (auto [key, value] : keyWordToDataMap) {
-        if (key.find("SCALAR" + sid) != std::string::npos) {
-          options.removeArgs(key);
-        }
+    if (solver == "cvode") {
+      cvodeRequested = true;
+      options.setArgs("SCALAR" + sid + " SOLVER", "CVODE");
+    }
+
+    options.setArgs("SCALAR" + sid + " ELLIPTIC COEFF FIELD", "TRUE");
+
+    parseInitialGuess(rank, options, par, "temperature");
+
+    parsePreconditioner(rank, options, par, "temperature");
+
+    parseLinearSolver(rank, options, par, "temperature");
+
+    parseSolverTolerance(rank, options, par, "temperature");
+
+    std::string sbuf;
+    if (par->extract("temperature", "conductivity", sbuf)) {
+      int err = 0;
+      double diffusivity = te_interp(sbuf.c_str(), &err);
+      if (err)
+        append_error("Invalid expression for conductivity");
+      if (diffusivity < 0)
+        diffusivity = fabs(1 / diffusivity);
+      options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
+    }
+
+    if (par->extract("temperature", "rhocp", sbuf)) {
+      int err = 0;
+      double rhoCp = te_interp(sbuf.c_str(), &err);
+      if (err)
+        append_error("Invalid expression for rhoCp");
+      options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rhoCp));
+    }
+
+    dfloat cvodeAbsoluteTol = -1.0;
+    if (par->extract("temperature", "absolutetol", cvodeAbsoluteTol)) {
+      options.setArgs("SCALAR" + sid + " CVODE ABSOLUTE TOLERANCE", to_string_f(cvodeAbsoluteTol));
+      if (solver != "cvode") {
+        append_error("absoluteTol is only supported with solver=cvode");
       }
+    }
 
-      options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
+    std::string s_bcMap;
+    if (par->extract("temperature", "boundarytypemap", s_bcMap)) {
+      if (!bcInPar)
+        append_error("boundaryTypeMap has to be defined for all fields");
+      std::vector<std::string> sList;
+      sList = serializeString(s_bcMap, ',');
+      bcMap::setup(sList, "scalar" + sid);
     }
     else {
-
-      if (solver == "cvode") {
-        cvodeRequested = true;
-        options.setArgs("SCALAR" + sid + " SOLVER", "CVODE");
-      }
-
-      options.setArgs("SCALAR" + sid + " ELLIPTIC COEFF FIELD", "TRUE");
-
-      parseInitialGuess(rank, options, par, "temperature");
-
-      parsePreconditioner(rank, options, par, "temperature");
-
-      parseLinearSolver(rank, options, par, "temperature");
-
-      parseSolverTolerance(rank, options, par, "temperature");
-
-      if (par->extract("temperature", "conductivity", sbuf)) {
-        int err = 0;
-        double diffusivity = te_interp(sbuf.c_str(), &err);
-        if (err)
-          append_error("Invalid expression for conductivity");
-        if (diffusivity < 0)
-          diffusivity = fabs(1 / diffusivity);
-        options.setArgs("SCALAR" + sid + " DIFFUSIVITY", to_string_f(diffusivity));
-      }
-
-      if (par->extract("temperature", "rhocp", sbuf)) {
-        int err = 0;
-        double rhoCp = te_interp(sbuf.c_str(), &err);
-        if (err)
-          append_error("Invalid expression for rhoCp");
-        options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rhoCp));
-      }
-
-      dfloat cvodeAbsoluteTol = -1.0;
-      if (par->extract("temperature", "absolutetol", cvodeAbsoluteTol)) {
-        options.setArgs("SCALAR" + sid + " CVODE ABSOLUTE TOLERANCE", to_string_f(cvodeAbsoluteTol));
-        if (solver != "cvode") {
-          append_error("absoluteTol is only supported with solver=cvode");
-        }
-      }
-
-      std::string s_bcMap;
-      if (par->extract("temperature", "boundarytypemap", s_bcMap)) {
-        if (!bcInPar)
-          append_error("boundaryTypeMap has to be defined for all fields");
-        std::vector<std::string> sList;
-        sList = serializeString(s_bcMap, ',');
-        bcMap::setup(sList, "scalar" + sid);
-      }
-      else {
-        if (bcInPar)
-          append_error("boundaryTypeMap has to be defined for all fields");
-        bcInPar = 0;
-      }
+      if (bcInPar)
+        append_error("boundaryTypeMap has to be defined for all fields");
+      bcInPar = 0;
     }
   }
 
@@ -2229,7 +2184,7 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
   }
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
 
-  auto parseScalarParSection = [&](const auto &sec) {
+  auto parseScalarSection = [&](const auto &sec) {
     const auto parScope = sec.first;
     if (parScope.compare(0, 6, "scalar") != 0)
       return;
@@ -2263,19 +2218,6 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
 
     std::string solver;
     par->extract(parScope, "solver", solver);
-    if (solver == "none") {
-      
-      // clean all options for this scalar
-      auto keyWordToDataMap = options.keyWordToDataMap;
-      for (auto [key, value] : keyWordToDataMap) {
-        if (key.find("SCALAR" + sid) != std::string::npos) {
-          options.removeArgs(key);
-        }
-      }
-      
-      options.setArgs("SCALAR" + sid + " SOLVER", "NONE");
-      return;
-    }
 
     if (solver == "cvode") {
       cvodeRequested = true;
@@ -2301,6 +2243,7 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
       }
     }
 
+    std::string sbuf;
     if (par->extract(parScope, "diffusivity", sbuf)) {
       int err = 0;
       double diffusivity = te_interp(sbuf.c_str(), &err);
@@ -2340,7 +2283,7 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
 
   // If applicable, read default section first.
   if (sections.count("scalar") != 0) {
-    parseScalarParSection(std::make_pair(std::string("scalar"), sections.at("scalar")));
+    parseScalarSection(std::make_pair(std::string("scalar"), sections.at("scalar")));
   }
 
   // For all scalars != temperature, set defaults from generic [SCALAR] section.
@@ -2361,7 +2304,7 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
 
   // However, the user is always able to override the generic [SCALAR] settings.
   for (auto &&sec : sections) {
-    parseScalarParSection(sec);
+    parseScalarSection(sec);
   }
 
   // Add in boundarytypemap handling for scalars using the default [SCALAR] settings.
@@ -2399,10 +2342,10 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
 
   // check if dt is provided if numSteps or endTime > 0
   {
-    int numSteps;
+    int numSteps = 0;
     options.getArgs("NUMBER TIMESTEPS", numSteps);
 
-    double endTime;
+    double endTime = 0;
     options.getArgs("END TIME", endTime);
 
     if (numSteps > 0 || endTime > 0) {
@@ -2413,15 +2356,120 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
       }
     }
   }
+}
 
-  // cvode solver
+void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
+{
+  std::vector<std::string> sections = {"MESH", "PRESSURE", "VELOCITY"};
+  for (int i = 0; i < nscal; i++)
+    sections.push_back("SCALAR" + scalarDigitStr(i));
+
+  const std::vector<std::string> staleKeys = {"RESIDUAL PROJECTION",
+                                              "INITIAL GUESS",
+                                              "REGULARIZATION",
+                                              "MAXIMUM ITERATIONS",
+                                              "BLOCK SOLVER",
+                                              "PRECONDITIONER",
+                                              "ELLIPTIC",
+                                              "TOLERANCE",
+                                              "MULTIGRID",
+                                              "MGSOLVER"};
+
+  auto cleanSection = [&](const std::string &section) {
+    std::vector<std::string> staleOptions;
+    for (auto const &option : options) {
+      if (option.first.find(section) == 0) {
+        for (auto const &key : staleKeys) {
+          if (option.first.find(key) != std::string::npos) {
+            staleOptions.push_back(option.first);
+          }
+        }
+      }
+    }
+    for (auto const &key : staleOptions) {
+      options.removeArgs(key);
+    }
+  };
+
+  for (const auto &section : sections) {
+    if (options.compareArgs(section + " SOLVER", "NONE")) {
+      cleanSection(section);
+    }
+  }
+}
+
+void parRead(inipp::Ini *par, const std::string& _setupFile, MPI_Comm comm, setupAide &options)
+{
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  setupFile = _setupFile;
+  const std::string casename = setupFile.substr(0, setupFile.find(".par"));
+  setDefaultSettings(options, casename, rank);
+
+  if (rank == 0) {
+    nrsCheck(!std::filesystem::exists(setupFile), MPI_COMM_SELF, 
+             EXIT_FAILURE, "Cannot find setup file %s\n", setupFile.c_str());
+  }
+
+  char *rbuf;
+  long fsize;
+  if (rank == 0) {
+    FILE *f = fopen(setupFile.c_str(), "rb");
+    fseek(f, 0, SEEK_END);
+    fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    rbuf = new char[fsize];
+    fread(rbuf, 1, fsize, f);
+    fclose(f);
+  }
+  MPI_Bcast(&fsize, sizeof(fsize), MPI_BYTE, 0, comm);
+  if (rank != 0)
+    rbuf = new char[fsize];
+  MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
+  std::stringstream is;
+  is.write(rbuf, fsize);
+
+  par->parse(is);
+  par->interpolate();
+  if (rank == 0)
+    validateKeys(par->sections);
+  if (rank == 0)
+    printDeprecation(par->sections);
+
+  // parsing sections
+
+  parseOccaSection(rank, options, par);
+
+  parseGeneralSection(rank, options, par);
+
+  {
+    dlong boundaryEXTOrder;
+    if (par->extract("neknek", "boundaryextorder", boundaryEXTOrder)) {
+      options.setArgs("NEKNEK BOUNDARY EXT ORDER", std::to_string(boundaryEXTOrder));
+    }
+  }
+
+  parseProblemTypeSection(rank, options, par);
+
+  parseMeshSection(rank, options, par);
+
+  if (par->sections.count("velocity")) {
+    parsePressureSection(rank, options, par);
+    parseVelocitySection(rank, options, par);
+  }
+  else {
+    options.setArgs("VELOCITY SOLVER", "NONE");
+  }
+
+  parseScalarSections(rank, options, par);
+
   if (par->sections.count("cvode") || cvodeRequested) {
-#ifndef ENABLE_CVODE
-    append_error("ERROR: CVODE not enabled! Recompile with CVODE support!\n");
-#endif
     options.setArgs("CVODE", "TRUE");
     parseCvodeSolver(rank, options, par);
   }
+
+  cleanupStaleKeys(rank, options, par);
 
   // error checking
   {
@@ -2451,4 +2499,17 @@ void parRead(inipp::Ini *par, std::string setupFile, MPI_Comm comm, setupAide &o
     std::cout << "====================\n";
   }
 #endif
+}
+
+void parEcho()
+{
+  std::ifstream f(setupFile);
+  std::string text;
+  std::cout << std::endl;
+  while (!f.eof()) {
+    getline(f, text);
+    std::cout << "<<< " << text << "\n";
+  }
+  std::cout << std::endl;
+  f.close();
 }

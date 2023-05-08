@@ -57,7 +57,7 @@ To build and install the code run:
 CC=mpicc CXX=mpic++ FC=mpif77 ./nrsconfig [-DCMAKE_INSTALL_PREFIX=$HOME/.local/nekrs]
 ```
 Build settings can be customized through CMake options passed to `nrsconfig`. 
-Please remove the previous build and installation directory in case of an update including `<casedir>/.cache` if you want to rerun it. 
+Please remove the previous build and installation directory in case of an update. 
 
 ## Setting the Enviroment
 
@@ -81,7 +81,7 @@ mpirun -np 2 nekrs --setup turbPipe.par
 For convenience we provide various launch scripts in the `bin` directory.
 
 ## Documentation 
-For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/). For now it's just a dummy. We hope to improve soon. 
+For documentation, see our [readthedocs page](https://nekrs.readthedocs.io/en/latest/). For now it's just a dummy. We hope to improve it soon. 
 
 ## Discussion Group
 Please visit [GitHub Discussions](https://github.com/Nek5000/nekRS/discussions). Here we help, find solutions, share ideas, and follow discussions.

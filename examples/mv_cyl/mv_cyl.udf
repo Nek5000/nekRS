@@ -54,16 +54,11 @@ void uservp(nrs_t *nrs,
            o_beta,
            o_kappa);
 
-  if (platform->options.compareArgs("MESH SOLVER", "ELASTICITY")) {
+  if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
     // moving mesh parameters
-    const dfloat vnu = 0.4;
-    const dfloat ce = 1.0 / (1.0 + vnu);
-    const dfloat c2 = vnu * ce / (1.0 - 2.0 * vnu);
-    const dfloat c3 = 0.5 * ce;
+    const dfloat nu = 1.0;
     auto o_mesh_diff = o_UProp + 2 * nrs->fieldOffset * sizeof(dfloat);
-    auto o_mesh_rho = o_UProp + 3 * nrs->fieldOffset * sizeof(dfloat);
-    platform->linAlg->fill(nrs->meshV->Nlocal, c2, o_mesh_diff);
-    platform->linAlg->fill(nrs->meshV->Nlocal, c3, o_mesh_rho);
+    platform->linAlg->fill(nrs->meshV->Nlocal, nu, o_mesh_diff);
   }
 }
 

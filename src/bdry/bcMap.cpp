@@ -336,7 +336,7 @@ int id(int bid, std::string field)
   }
   catch (const std::out_of_range &oor) {
     nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, 
-             "bcMap::id bid:%d field:%s lookup failed!\n", bid, field.c_str());
+             "lookup of bid %d field %s failed!\n", bid, field.c_str());
   }
 
   return -1;
@@ -428,13 +428,13 @@ int ellipticType(int bid, std::string field)
     }
 
     nrsCheck(bcType == -1, MPI_COMM_SELF, EXIT_FAILURE,
-             "ellipticType bid:%d field:%s lookup failed!\n", bid, field.c_str());
+             "ellipticType lookup of bid %d field %s failed!\n", bid, field.c_str());
 
     return bcType;
   }
   catch (const std::out_of_range &oor) {
     nrsAbort(MPI_COMM_SELF, EXIT_FAILURE,
-             "ellipticType bid:%d field:%s lookup failed!\n", bid, field.c_str());
+             "ellipticType lookup of bid %d field %s failed!\n", bid, field.c_str());
   }
 
   return 0;

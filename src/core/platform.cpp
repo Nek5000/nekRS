@@ -80,8 +80,6 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
            _comm, EXIT_FAILURE, 
            "%s\n", "NEKRS_CACHE_LOCAL=1 and NEKRS_CACHE_BCAST=1 is incompatible!");
 
-  srand48((long int)comm.mpiRank);
-
   oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
 
   verbose = options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;

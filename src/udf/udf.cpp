@@ -19,6 +19,8 @@ static int pressureDirichletConditions = 0;
 static int scalarDirichletConditions = 0;
 static int scalarNeumannConditions = 0;
 
+static std::string udfFile;
+
 void oudfFindDirichlet(std::string &field)
 {
   nrsCheck(field.find("velocity") != std::string::npos && !velocityDirichletConditions,
@@ -136,9 +138,9 @@ void udfAutoKernels(const std::string& udfFileCache, const std::string& postOklS
   postOklSourceStream.close();
 }
 
-void udfBuild(const char *_udfFile, setupAide &options)
+void udfBuild(const std::string& _udfFile, setupAide &options)
 {
-  std::string udfFile = fs::absolute(_udfFile);
+  udfFile = fs::absolute(_udfFile);
   if (platform->comm.mpiRank == 0)
     nrsCheck(!fs::exists(udfFile), MPI_COMM_SELF, EXIT_FAILURE, "Cannot find %s!\n", udfFile.c_str()); 
 
@@ -367,35 +369,6 @@ void udfBuild(const char *_udfFile, setupAide &options)
 
   nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "see above and cmake.log for more details");
 
-  const bool buildOnly = platform->options.compareArgs("BUILD ONLY", "TRUE");
-  if(platform->comm.mpiRank == 0 && !buildOnly) {
-    const auto tmpFile = udfFile + ".unifdef";
-    unifdef("__okl__", udfFile.c_str(), tmpFile.c_str());
-
-    std::ifstream fudf(tmpFile);
-    std::string text;
-
-    std::cout << std::endl;
-    while(!fudf.eof()) 
-    {
-      getline(fudf,text);
-      std::cout << "<<< " << text << "\n" ;
-    }
-    fudf.close();
-    fs::remove(tmpFile);
-
-    std::ifstream foudf(oudfFileCache);
-
-    std::cout << std::endl;
-    while(!foudf.eof()) 
-    {
-      getline(foudf,text);
-      std::cout << "<<< " << text << "\n" ;
-    }
-    std::cout << std::endl;
-
-    foudf.close();
-  }
 }
 
 void *udfLoadFunction(const char *fname, int errchk)
@@ -439,4 +412,37 @@ occa::kernel oudfBuildKernel(occa::properties kernelInfo, const char *function)
   platform->options.getArgs("OKL FILE CACHE", oudfCache);
 
   return platform->device.buildKernel(oudfCache.c_str(), function, kernelInfo);
+}
+
+void udfEcho()
+{
+  const std::string cache_dir(getenv("NEKRS_CACHE_DIR"));
+  const std::string oudfFileCache = cache_dir + "/udf/udf.okl";
+
+  const auto tmpFile = udfFile + ".unifdef";
+  unifdef("__okl__", udfFile.c_str(), tmpFile.c_str());
+
+  std::ifstream fudf(tmpFile);
+  std::string text;
+
+  std::cout << std::endl;
+  while(!fudf.eof()) 
+  {
+    getline(fudf,text);
+    std::cout << "<<< " << text << "\n" ;
+  }
+  fudf.close();
+  fs::remove(tmpFile);
+
+  std::ifstream foudf(oudfFileCache);
+
+  std::cout << std::endl;
+  while(!foudf.eof()) 
+  {
+    getline(foudf,text);
+    std::cout << "<<< " << text << "\n" ;
+  }
+  std::cout << std::endl;
+
+  foudf.close();
 }

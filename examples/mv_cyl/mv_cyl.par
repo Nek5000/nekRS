@@ -10,7 +10,7 @@ writeInterval = 50
 [MESH]
 boundaryTypeMap = codedFixedValue, zeroValue, sym
 residualTol = 1e-6
-solver = pcg+block 
+solver = pcg+block #user
 initialGuess = projection+nVector=1 
 
 [PRESSURE]
