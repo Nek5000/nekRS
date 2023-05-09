@@ -49,7 +49,7 @@ void check_retval(void *returnvalue, const char *funcname, int opt)
 
 } // namespace
 
-cvode_t::cvode_t(nrs_t *nrs)
+cvode_t::cvode_t(nrs_t *_nrs)
 {
 }
 
@@ -57,15 +57,19 @@ cvode_t::~cvode_t()
 {
 }
 
-void cvode_t::initialize(nrs_t *nrs)
+void cvode_t::initialize()
 {
 }
 
-void cvode_t::setupEToLMapping(nrs_t *nrs)
+void cvode_t::setupEToLMapping()
 {
 }
 
-void cvode_t::setupDirichletMask(nrs_t *nrs)
+void cvode_t::setupDirichletMask()
+{
+}
+
+void cvode_t::applyDirichlet(dfloat time)
 {
 }
 
@@ -73,27 +77,31 @@ void cvode_t::computeErrorWeight(occa::memory o_y, occa::memory o_ewt)
 {
 }
 
-void cvode_t::rhs(nrs_t *nrs, dfloat time, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::rhs(dfloat time, occa::memory o_y, occa::memory o_ydot)
 {
 }
 
-void cvode_t::jtvRHS(nrs_t *nrs, dfloat time, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::jtvRHS(dfloat time, occa::memory o_y, occa::memory o_ydot)
 {
 }
 
-void cvode_t::defaultRHS(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::defaultRHS(dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)
 {
 }
 
-void cvode_t::makeq(nrs_t *nrs, dfloat time)
+void cvode_t::makeq(dfloat time)
 {
 }
 
-void cvode_t::nrsToCv(nrs_t *nrs, occa::memory o_EField, occa::memory o_LField)
+void cvode_t::nrsToCv(occa::memory o_EField, occa::memory o_LField)
 {
 }
 
-void cvode_t::solve(nrs_t *nrs, double t0, double t1, int tstep)
+void cvode_t::cvToNrs(occa::memory o_LField, occa::memory o_EField)
+{
+}
+
+void cvode_t::solve(double t0, double t1, int tstep)
 {
 }
 

@@ -42,7 +42,7 @@ jobs:
 
     - name: nrsconfig and build
       run: |
-        CC=mpicc CXX=mpic++ FC=mpif77 ./nrsconfig -DENABLE_CVODE=ON
+        CC=mpicc CXX=mpic++ FC=mpif77 ./nrsconfig -DENABLE_CVODE=ON -DCMAKE_INSTALL_PREFIX=${{ env.NEKRS_HOME }}
         cmake --build build --target install -j 2
 
     - name: Upload install dir
@@ -147,6 +147,11 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: |
         NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 17
+    
+    - name: 'ethier cvode, both scalars, no dealiasing, hpfrt'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: |
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 18
 
   lowMach:
     needs: install

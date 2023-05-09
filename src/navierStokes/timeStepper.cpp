@@ -647,7 +647,7 @@ void scalarSolveCvode(nrs_t *nrs, dfloat tn, dfloat time, occa::memory o_S, int 
   if (!nrs->cvode || stage > 1)
     return;
 
-  nrs->cvode->solve(nrs, tn, time, tstep);
+  nrs->cvode->solve(tn, time, tstep);
 }
 
 void makef(

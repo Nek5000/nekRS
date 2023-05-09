@@ -36,8 +36,8 @@ public:
   cvode_t(nrs_t *nrs);
   ~cvode_t();
 
-  void initialize(nrs_t *nrs);
-  void solve(nrs_t *nrs, dfloat t0, dfloat t1, int tstep);
+  void initialize();
+  void solve(dfloat t0, dfloat t1, int tstep);
 
   void setRHS(userRHS_t _userRHS) { userRHS = _userRHS; }
   void setJacobian(userJacobian_t _userJacobian) { userJacobian = _userJacobian; }
@@ -61,8 +61,8 @@ public:
   void setTimeStep(int tstep) { externalTStep = tstep; }
   double time() const { return tnekRS; }
 
-  void rhs(nrs_t *nrs, dfloat time, occa::memory o_y, occa::memory o_ydot);
-  void jtvRHS(nrs_t *nrs, dfloat time, occa::memory o_y, occa::memory o_ydot);
+  void rhs(dfloat time, occa::memory o_y, occa::memory o_ydot);
+  void jtvRHS(dfloat time, occa::memory o_y, occa::memory o_ydot);
   dlong numEquations() const { return nEq; }
 
   // getters needed for CVLsJacTimesVecFn
@@ -91,12 +91,12 @@ public:
   long numLinIters() const;
 
   // hand nekRS-style E-vector to CVODE, which uses an L-vector
-  void nrsToCv(nrs_t *nrs, occa::memory o_EFeild, occa::memory o_LField);
+  void nrsToCv(occa::memory o_EFeild, occa::memory o_LField);
 
   // unpack CVODE L-vector into nekRS-style E-vector
-  void cvToNrs(nrs_t *nrs, occa::memory o_LField, occa::memory o_EField);
+  void cvToNrs(occa::memory o_LField, occa::memory o_EField);
 
-  void defaultRHS(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot);
+  void defaultRHS(dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot);
 
   void printTimers();
   void resetTimers();
@@ -109,7 +109,7 @@ public:
 
 private:
 
-  nrs_t* _nrs;
+  nrs_t* nrs;
 
   std::string timerName = "cvode_t::";
   std::string timerScope;
@@ -163,9 +163,9 @@ private:
   occa::memory o_meshU; // CVODE is responsible for correctly handling the mesh velocity state
   occa::memory o_xyz0;
 
-  void setupEToLMapping(nrs_t *nrs);
-  void setupDirichletMask(nrs_t *nrs);
-  void applyDirichlet(nrs_t *nrs, dfloat time);
+  void setupEToLMapping();
+  void setupDirichletMask();
+  void applyDirichlet(dfloat time);
 
   userRHS_t userRHS;
   userJacobian_t userJacobian;
@@ -174,7 +174,7 @@ private:
   userPostCvToNrs_t userPostCvToNrs;
   userPostNrsToCv_t userPostNrsToCv;
 
-  void makeq(nrs_t *nrs, dfloat time);
+  void makeq(dfloat time);
 
   static constexpr int maxTimestepperOrder = 3;
   std::array<dfloat, maxTimestepperOrder> _coeffBDF;

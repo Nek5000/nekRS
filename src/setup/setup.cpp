@@ -576,7 +576,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   // Hence, the actual CVODE initialization part of cvode_t
   // is done below.
   if (nrs->cvode) {
-    nrs->cvode->initialize(nrs);
+    nrs->cvode->initialize();
   }
 
   if (platform->comm.mpiRank == 0)

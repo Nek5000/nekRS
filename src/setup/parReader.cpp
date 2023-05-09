@@ -24,7 +24,6 @@ namespace {
 static std::ostringstream errorLogger;
 static std::ostringstream valueErrorLogger;
 std::string setupFile;
-int bcInPar = 1;
 int nscal = 0;
 bool cvodeRequested = false;
 
@@ -1921,16 +1920,12 @@ void parseMeshSection(const int rank, setupAide &options, inipp::Ini *par)
 
       std::string m_bcMap;
       if (par->extract("mesh", "boundarytypemap", m_bcMap)) {
-        std::vector<std::string> sList;
-        sList = serializeString(m_bcMap, ',');
-        bcMap::setup(sList, "mesh");
+        options.setArgs("MESH BOUNDARY TYPE MAP", m_bcMap);
       }
       else {
         std::string v_bcMap;
         if (par->extract("velocity", "boundarytypemap", v_bcMap)) {
-          std::vector<std::string> sList;
-          sList = serializeString(v_bcMap, ',');
-          bcMap::deriveMeshBoundaryConditions(sList);
+          options.setArgs("MESH BOUNDARY TYPE MAP", v_bcMap);
         }
       }
     }
@@ -2017,12 +2012,7 @@ void parseVelocitySection(const int rank, setupAide &options, inipp::Ini *par)
 
   std::string v_bcMap;
   if (par->extract("velocity", "boundarytypemap", v_bcMap)) {
-    std::vector<std::string> sList;
-    sList = serializeString(v_bcMap, ',');
-    bcMap::setup(sList, "velocity");
-  }
-  else {
-    bcInPar = 0;
+    options.setArgs("VELOCITY BOUNDARY TYPE MAP", v_bcMap);
   }
 
   double rho;
@@ -2153,16 +2143,7 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
 
     std::string s_bcMap;
     if (par->extract("temperature", "boundarytypemap", s_bcMap)) {
-      if (!bcInPar)
-        append_error("boundaryTypeMap has to be defined for all fields");
-      std::vector<std::string> sList;
-      sList = serializeString(s_bcMap, ',');
-      bcMap::setup(sList, "scalar" + sid);
-    }
-    else {
-      if (bcInPar)
-        append_error("boundaryTypeMap has to be defined for all fields");
-      bcInPar = 0;
+      options.setArgs("SCALAR" + sid + " BOUNDARY TYPE MAP", s_bcMap);
     }
   }
 
@@ -2264,20 +2245,11 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
 
     std::string s_bcMap;
     if (par->extract(parScope, "boundarytypemap", s_bcMap)) {
-      if (!bcInPar)
-        append_error("boundaryTypeMap has to be defined for all fields");
-      std::vector<std::string> sList;
-      sList = serializeString(s_bcMap, ',');
-      bcMap::setup(sList, "scalar" + sid);
+      options.setArgs("SCALAR" + sid + " BOUNDARY TYPE MAP", s_bcMap);
     }
     else if (!is || optionalNscalar) {
       // do not throw if generic [SCALAR] section _or_ [SCALAR0X] with a generic [SCALAR] section specifying
       // the boundary conditions
-    }
-    else {
-      if (bcInPar)
-        append_error("boundaryTypeMap has to be defined for all fields");
-      bcInPar = 0;
     }
   };
 
@@ -2310,21 +2282,13 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
   // Add in boundarytypemap handling for scalars using the default [SCALAR] settings.
   if (sections.count("scalar") != 0) {
     std::string s_bcMap;
-    if (bcInPar) {
-      std::vector<std::string> sList;
-      if (par->extract("scalar", "boundarytypemap", s_bcMap)) {
-        sList = serializeString(s_bcMap, ',');
-      }
-      for (int is = 1; is < nscal; ++is) {
-        std::string sid = scalarDigitStr(is);
-        std::string dummy;
-        if (!par->extract("scalar" + sid, "boundarytypemap", dummy)) {
-          if (sList.size() > 0) {
-            bcMap::setup(sList, "scalar" + sid);
-          }
-          else {
-            append_error("boundaryTypeMap has to be defined for all fields");
-          }
+    par->extract("scalar", "boundarytypemap", s_bcMap);
+    for (int is = 1; is < nscal; ++is) {
+      std::string sid = scalarDigitStr(is);
+      std::string dummy;
+      if (!par->extract("scalar" + sid, "boundarytypemap", dummy)) {
+        if (s_bcMap.size() > 0) {
+          options.setArgs("SCALAR" + sid + " BOUNDARY TYPE MAP", s_bcMap);
         }
       }
     }
@@ -2360,13 +2324,14 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
 
 void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
 {
-  std::vector<std::string> sections = {"MESH", "PRESSURE", "VELOCITY"};
+  std::vector<std::string> sections = {"MESH", "PRESSURE", "VELOCITY", "SCALAR DEFAULT"};
   for (int i = 0; i < nscal; i++)
     sections.push_back("SCALAR" + scalarDigitStr(i));
 
   const std::vector<std::string> staleKeys = {"RESIDUAL PROJECTION",
                                               "INITIAL GUESS",
                                               "REGULARIZATION",
+                                              "BOUNDARY TYPE MAP",
                                               "MAXIMUM ITERATIONS",
                                               "BLOCK SOLVER",
                                               "PRECONDITIONER",
@@ -2395,6 +2360,58 @@ void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
     if (options.compareArgs(section + " SOLVER", "NONE")) {
       cleanSection(section);
     }
+  }
+
+  std::vector<std::string> staleOptions;
+  for (auto const &option : options) {
+    if (option.first.find("SCALAR DEFAULT") == 0) {
+      staleOptions.push_back(option.first);
+    }
+  }
+  for (auto const &key : staleOptions) {
+    options.removeArgs(key);
+  }
+}
+
+void applyBoundaryTypeMap(const int rank, setupAide &options, inipp::Ini *par)
+{
+  std::vector<std::string> sections = {"MESH", "VELOCITY"};
+  for (int i = 0; i < nscal; i++)
+    sections.push_back("SCALAR" + scalarDigitStr(i));
+
+  int count = 0;
+  int expectedCount = 0;
+
+  auto process = [&](const std::string &section) {
+    std::vector<std::string> staleOptions;
+    for (auto const &option : options) {
+      if (option.first.find(section) == 0) {
+
+        if (option.first.compare(section + " SOLVER") == 0 && 
+            option.second.find("NONE") == std::string::npos) {
+          expectedCount++;
+        }
+
+        if (option.first.find("BOUNDARY TYPE MAP") != std::string::npos) {
+          count++;
+          auto value = section;
+          lowerCase(value); 
+          bcMap::setup(serializeString(option.second, ','), value);
+          staleOptions.push_back(option.first);
+        }
+      }
+    }
+    for (auto const &key : staleOptions) {
+      options.removeArgs(key);
+    }
+  };
+
+  for (const auto &section : sections) {
+    process(section);
+  }
+
+  if (count > 0 && count != expectedCount) {
+    append_error("boundaryTypeMap specfied for some but not all fields!");
   }
 }
 
@@ -2470,6 +2487,8 @@ void parRead(inipp::Ini *par, const std::string& _setupFile, MPI_Comm comm, setu
   }
 
   cleanupStaleKeys(rank, options, par);
+
+  applyBoundaryTypeMap(rank, options, par);
 
   // error checking
   {
