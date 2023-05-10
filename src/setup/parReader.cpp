@@ -2149,20 +2149,48 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
 
   const auto sections = par->sections;
 
+  bool foundDefaultScalarSection = false;
+  int nNonTemperatureScalars = 0;
+  int maxScalarId = 0;
+
   // optionalNscalar <-> [scalar] section
   if (optionalNscalar) {
     // check that generic [SCALAR] section exists
     if (sections.count("scalar") == 0) {
       append_error("[scalar] section is required when generic::nscalars is specified");
     }
+    foundDefaultScalarSection = true;
   }
   else {
     for (auto &sec : par->sections) {
       std::string key = sec.first;
-      if (key.compare(0, 6, "scalar") == 0)
+      
+      // skip default [SCALAR] section when counting scalars
+      if (key == "scalar") {
+        foundDefaultScalarSection = true;
+        continue;
+      }
+
+      if (key.compare(0, 6, "scalar") == 0){
+        nNonTemperatureScalars++;
         nscal++;
+        maxScalarId = std::max(maxScalarId, parseScalarIntegerFromString(key).value());
+      }
     }
   }
+
+  // provide check against specifying, e.g., [SCALAR02] without [SCALAR01]
+  // in non-default scalar case
+  if(!optionalNscalar && maxScalarId > nNonTemperatureScalars)
+  {
+    append_error("scalar index " + std::to_string(maxScalarId) +
+                 " is larger than the number of [scalar0x] sections");
+  }
+
+  if(foundDefaultScalarSection && !optionalNscalar && nNonTemperatureScalars == 0){
+    append_error("[scalar] section specified, but no [scalar0x] section were found and generic::nscalars is not specified");
+  }
+
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
 
   auto parseScalarSection = [&](const auto &sec) {
@@ -2448,6 +2476,10 @@ void parRead(inipp::Ini *par, const std::string& _setupFile, MPI_Comm comm, setu
   is.write(rbuf, fsize);
 
   par->parse(is);
+  for(auto & error : par->errors) {
+    append_error(error);
+  }
+
   par->interpolate();
   if (rank == 0)
     validateKeys(par->sections);

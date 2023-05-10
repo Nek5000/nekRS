@@ -6,9 +6,8 @@ void re2::nelg(const std::string& meshFile, int& nelgt, int& nelgv, MPI_Comm com
   int rank = 0;
   MPI_Comm_rank(comm, &rank);
 
-  const int re2HeaderBytes = 80;
-
   if(rank == 0) {
+    const int re2HeaderBytes = 80;
     char *buf = (char*) calloc(std::max(re2HeaderBytes, (int)meshFile.length()+1), sizeof(char));
     strcpy(buf, meshFile.c_str());
     FILE *fp = fopen(buf, "r");

@@ -1,6 +1,7 @@
 #include <vector>
 #include <map>
 #include <cctype>
+#include <algorithm>
 
 #include "nrs.hpp"
 #include "meshSetup.hpp"
@@ -10,9 +11,9 @@
 #include "udf.hpp"
 #include "filter.hpp"
 #include "avm.hpp"
+#include "re2Reader.hpp"
 
 #include "cdsSetup.cpp"
-#include <algorithm>
 
 void printICMinMax(nrs_t *nrs)
 {
@@ -132,6 +133,18 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       platform->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
   }
 
+  {
+    int nelgt, nelgv;
+    const std::string meshFile = options.getArgs("MESH FILE");
+    re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
+
+    nrsCheck(nelgt != nelgv && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE"),
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "%s\n",
+             "Conjugate heat transfer requires a temperature field!");
+  }
+
   // init nek
   {
     int rank, size;
@@ -161,12 +174,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
              EXIT_FAILURE,
              "%s\n",
              "Invalid solid element partitioning");
-
-    nrsCheck(nrs->cht && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE"),
-             platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "%s\n",
-             "Conjugate heat transfer requires solving for temperature!");
   }
 
   nrs->_mesh = createMesh(comm, N, cubN, nrs->cht, kernelInfo);

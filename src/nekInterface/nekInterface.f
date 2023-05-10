@@ -262,6 +262,7 @@ c-----------------------------------------------------------------------
      $     boundaryID(ifc,iel) = bc(5,ifc,iel,ifld_bId)
       enddo
       enddo
+
       if(nelgt.ne.nelgv) then 
         do iel = 1,nelt
         do ifc = 1,2*ndim
@@ -271,7 +272,6 @@ c-----------------------------------------------------------------------
         enddo
         enddo
       endif
-
 
       call setvar          ! Initialize most variables
 
@@ -663,7 +663,7 @@ c-----------------------------------------------------------------------
 c      write(6,*) ifld, 'bcmap: ', bID, 'cbc: ', c, 'ibc: ', ibc
 
       if (ibc.eq.0) then
-        write(6,*) 'Found unsupport BC type:', c
+        write(6,*) 'Found unsupport BC type: ''', c , '''' 
         call exitt 
       endif
 

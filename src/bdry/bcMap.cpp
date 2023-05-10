@@ -503,6 +503,8 @@ void check(mesh_t* mesh)
   int nid = nbid[0];
   if(mesh->cht) nid = nbid[1];
 
+  if(nid < 0) return;
+
   int err = 0;
   int found = 0;
 
@@ -523,8 +525,9 @@ void check(mesh_t* mesh)
 
   found = 0;
   for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) {
-    if (mesh->EToB[f] < -1 || mesh->EToB[f] == 0 || mesh->EToB[f] > nid)
+    if (mesh->EToB[f] < -1 || mesh->EToB[f] == 0 || mesh->EToB[f] > nid) {
       found = 1;
+    }
   }
   MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
   nrsCheck(found, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "Mesh has unmapped boundary IDs!");

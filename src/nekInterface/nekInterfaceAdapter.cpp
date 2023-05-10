@@ -721,9 +721,6 @@ int setup(nrs_t *nrs_in)
   }
 
   std::string velocitySolver;
-  int flow = 1;
-  if (options->compareArgs("VELOCITY", "FALSE"))
-    flow = 0;
 
   int meshPartType = 3; // RCB+RSB
   if (options->compareArgs("MESH PARTITIONER", "rcb"))
@@ -752,7 +749,9 @@ int setup(nrs_t *nrs_in)
 
   int stressForm = 1; // avoid recompilation + bypass unligned SYM/SHL check
 
-  (*nek_setup_ptr)(&flow,
+  int velocityExists = (options->getArgs("VELOCITY SOLVER").empty()) ? 0 : 1; 
+
+  (*nek_setup_ptr)(&velocityExists,
                    &nscal,
                    scalarCompute,
                    &nBcRead,
@@ -824,9 +823,11 @@ int setup(nrs_t *nrs_in)
 
   if (bcMap::useNekBCs()) {
     if (rank == 0)
-      printf("import BCs from nek\n");
+      printf("importing BCs from nek\n");
     gen_bcmap();
-    if (flow) {
+    if (nrs->flow) {
+      if (rank == 0) printf(" velocity\n");
+
       int isTMesh = 0;
       int nIDs = (*nek_nbid_ptr)(&isTMesh);
       int *map = (int *)calloc(nIDs, sizeof(int));
@@ -835,6 +836,7 @@ int setup(nrs_t *nrs_in)
       bcMap::setBcMap("velocity", map, nIDs);
 
       if (meshSolver) {
+        if (rank == 0) printf(" mesh\n");
         for (int id = 0; id < nIDs; id++)
           map[id] = bcmap(id + 1, 1, 1);
         bcMap::setBcMap("mesh", map, nIDs);
@@ -847,6 +849,8 @@ int setup(nrs_t *nrs_in)
 
       if (options->compareArgs("SCALAR" + sid + " SOLVER", "NONE"))
         continue;
+
+      if (rank == 0) printf(" scalar%02d\n", is);
 
       int isTMesh = 0;
       if (cht && is == 0)

@@ -30,7 +30,7 @@ void setup(nrs_t* nrs_);
 void outfld();
 void outfld(int outXYZ, int FP64);
 void reset();
-occa::memory userFieldAvg();
+occa::memory o_avg();
 }
 
 #endif

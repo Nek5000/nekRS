@@ -375,9 +375,9 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     auto tAvg = (double*) nek::scPtr(1);
     for(int ifld = 0; ifld < nAvgFields; ifld++) {
       const auto offset = ifld*nekData.lelt*mesh->Np;
-      tavg::userFieldAvg().copyTo(tAvg + offset, 
-                                  nrs->fieldOffset*sizeof(dfloat), 
-                                  ifld*nrs->fieldOffset*sizeof(dfloat));  
+      tavg::o_avg().copyTo(tAvg + offset, 
+                           nrs->fieldOffset*sizeof(dfloat), 
+                           ifld*nrs->fieldOffset*sizeof(dfloat));  
     }
 
     nek::ocopyToNek(time, tstep);

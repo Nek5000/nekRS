@@ -56,6 +56,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   int Nbid = nekData.NboundaryIDt;
   if (!mesh->cht)
     Nbid = nekData.NboundaryID;
+
   if (platform->comm.mpiRank == 0)
     printf("Nelements: %d, NboundaryIDs: %d, NboundaryFaces: %lld ", NelementsGlobal, Nbid, NboundaryFaces);
   mesh->NboundaryFaces = NboundaryFaces;

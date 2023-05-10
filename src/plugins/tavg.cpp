@@ -15,7 +15,7 @@ static occa::memory o_Pavg, o_Prms;
 static occa::memory o_Savg, o_Srms;
 
 tavg::fields userFieldList;
-static occa::memory o_userFieldAvg;
+static occa::memory o_AVG;
 
 static occa::kernel EXKernel;
 static occa::kernel EXYKernel;
@@ -119,13 +119,16 @@ void tavg::run(dfloat time)
   const dfloat b = dtime / atime;
   const dfloat a = 1 - b;
 
-  mesh_t *mesh = nrs->meshV;
-  const dlong N = mesh->Nelements * mesh->Np;
-
   if(userFieldList.size()) {
     int cnt = 0;
     for(auto& entry : userFieldList) {
-      auto o_avg = o_userFieldAvg.slice(cnt*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
+      auto o_avg = o_AVG.slice(cnt*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
+
+      dlong N = nrs->fieldOffset;
+      for(auto& entry_i : entry) {
+        N = std::min(static_cast<dlong>(entry_i.size()/sizeof(dfloat)), N);
+      }
+
       if(entry.size() == 1) 
       {
         EX(N, a, b, 1, entry.at(0), o_avg);
@@ -145,6 +148,9 @@ void tavg::run(dfloat time)
       cnt++;
     }
   } else {
+    mesh_t *mesh = nrs->meshV;
+    const dlong N = mesh->Nelements * mesh->Np;
+
     // velocity
     EX(N, a, b, nrs->NVfields, nrs->o_U, o_Uavg);
     EXY(N, a, b, nrs->NVfields, nrs->o_U, nrs->o_U, o_Urms);
@@ -218,7 +224,7 @@ void tavg::setup(nrs_t *nrs_)
       platform->linAlg->fill(nrs->fieldOffset, 0.0, o_Srms);
     }
   } else {
-    o_userFieldAvg = platform->device.malloc(userFieldList.size()*nrs->fieldOffset*sizeof(dfloat)); 
+    o_AVG = platform->device.malloc(userFieldList.size()*nrs->fieldOffset*sizeof(dfloat)); 
   }
 
   setupCalled = 1;
@@ -239,7 +245,7 @@ void tavg::outfld(int _outXYZ, int FP64)
   occa::memory o_Tavg, o_Trms;
 
   if(userFieldList.size()) {
-    writeFld("ust", atime, outfldCounter, outXYZ, FP64, &o_NULL, &o_NULL, &o_userFieldAvg, userFieldList.size());
+    writeFld("ust", atime, outfldCounter, outXYZ, FP64, &o_NULL, &o_NULL, &o_AVG, userFieldList.size());
   } else {
     const int Nscalar = nrs->Nscalar;
     if (nrs->Nscalar) {
@@ -263,10 +269,10 @@ void tavg::outfld()
   tavg::outfld(/* outXYZ */ 0, /* FP64 */ 1); 
 }
 
-occa::memory tavg::userFieldAvg()
+occa::memory tavg::o_avg()
 {
   nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
            "%s\n", "called prior to tavg::setup()!");
 
-  return o_userFieldAvg;
+  return o_AVG;
 }
