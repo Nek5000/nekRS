@@ -55,6 +55,8 @@ struct mesh_t
   int dim;
   int Nverts, Nfaces, NfaceVertices;
 
+  int Nbid;
+
   int cht;
 
   mesh_t* fluid;

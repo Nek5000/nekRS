@@ -128,6 +128,10 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
           {
             errors.push_back("found duplicate section " + section);
           }
+
+          // add section to sections
+          sections[section];
+
         } else {
           errors.push_back(line);
         }

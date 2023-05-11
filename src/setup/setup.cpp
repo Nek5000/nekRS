@@ -1,8 +1,3 @@
-#include <vector>
-#include <map>
-#include <cctype>
-#include <algorithm>
-
 #include "nrs.hpp"
 #include "meshSetup.hpp"
 #include "bdry.hpp"
@@ -179,6 +174,22 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->_mesh = createMesh(comm, N, cubN, nrs->cht, kernelInfo);
   nrs->meshV = (mesh_t *)nrs->_mesh->fluid;
   mesh_t *mesh = nrs->meshV;
+
+  {
+    std::vector<mesh_t*> meshList;
+    meshList.push_back(nrs->_mesh);
+    if(nrs->cht) meshList.push_back(nrs->meshV);
+    for(const auto& msh : meshList) {
+      if(bcMap::size(msh->cht) > 0) {
+        nrsCheck(msh->Nbid != bcMap::size(msh->cht), 
+                 platform->comm.mpiComm, EXIT_FAILURE, "%s\n",
+                 "Number of boundary IDs in mesh does not match boundaryTypeMap "
+                 "in par or BCs imported from nek5000");
+      }
+      bcMap::checkBoundaryAlignment(msh);
+      bcMap::remapUnalignedBoundaries(msh);
+    }
+  }
 
   nrs->NVfields = 3;
   mesh->Nfields = 1;

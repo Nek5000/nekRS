@@ -69,6 +69,8 @@ using dlong = long long int;
 #include <array>
 #include <string>
 #include <vector>
+#include <map>
+#include <algorithm>
 #include <functional>
 #include <cstdio>
 #include <cstdlib>

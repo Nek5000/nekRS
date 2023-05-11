@@ -2390,11 +2390,18 @@ void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
     }
   }
 
+  const auto noVelocitySolve = options.compareArgs("VELOCITY SOLVER", "NONE");
+
   std::vector<std::string> staleOptions;
   for (auto const &option : options) {
     if (option.first.find("SCALAR DEFAULT") == 0) {
       staleOptions.push_back(option.first);
     }
+
+    if (noVelocitySolve && option.first.find("PRESSURE") == 0) {
+      staleOptions.push_back(option.first);
+    }
+
   }
   for (auto const &key : staleOptions) {
     options.removeArgs(key);

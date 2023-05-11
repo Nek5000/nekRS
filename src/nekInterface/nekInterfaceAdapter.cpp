@@ -749,6 +749,7 @@ int setup(nrs_t *nrs_in)
 
   int stressForm = 1; // avoid recompilation + bypass unligned SYM/SHL check
 
+  // for now velocityExists is always true
   int velocityExists = (options->getArgs("VELOCITY SOLVER").empty()) ? 0 : 1; 
 
   (*nek_setup_ptr)(&velocityExists,
@@ -821,10 +822,12 @@ int setup(nrs_t *nrs_in)
   if (nekData.nelv != nekData.nelt && nscal)
     cht = 1;
 
-  if (bcMap::useNekBCs()) {
+  if (bcMap::useNekBCs() && numberActiveFields(nrs) > 0) {
     if (rank == 0)
       printf("importing BCs from nek\n");
+
     gen_bcmap();
+
     if (nrs->flow) {
       if (rank == 0) printf(" velocity\n");
 
@@ -858,6 +861,7 @@ int setup(nrs_t *nrs_in)
       int nIDs = (*nek_nbid_ptr)(&isTMesh);
 
       int *map = (int *)calloc(nIDs, sizeof(int));
+
       for (int id = 0; id < nIDs; id++)
         map[id] = bcmap(id + 1, is + 2, 0);
       bcMap::setBcMap("scalar" + sid, map, nIDs);
