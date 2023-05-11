@@ -18,14 +18,17 @@
 #include "nekInterfaceAdapter.hpp"
 
 #include <vector>
+#include <utility>
 
 namespace tavg
 {
-typedef std::vector< std::vector<occa::memory> > fields;
+typedef std::vector<std::vector<occa::memory>> simplefields;
+typedef std::vector<std::pair<std::vector<occa::memory>, mesh_t *>> fields;
 
 void buildKernel(occa::properties kernelInfo);
 void run(dfloat time);
 void setup(nrs_t *nrs_, const fields& fields);
+void setup(nrs_t *nrs_, const simplefields &fields);
 void setup(nrs_t* nrs_);
 void outfld();
 void outfld(int outXYZ, int FP64);

@@ -119,12 +119,11 @@ void tavg::run(dfloat time)
   const dfloat b = dtime / atime;
   const dfloat a = 1 - b;
 
-  mesh_t *mesh = nrs->meshV;
-  const dlong N = mesh->Nelements * mesh->Np;
-
   if(userFieldList.size()) {
     int cnt = 0;
-    for(auto& entry : userFieldList) {
+    for (auto &item : userFieldList) {
+      auto entry = item.first;
+      dlong N = item.second->Nelements * item.second->Np;
       auto o_avg = o_userFieldAvg.slice(cnt*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
       if(entry.size() == 1) 
       {
@@ -146,6 +145,9 @@ void tavg::run(dfloat time)
     }
   } else {
     // velocity
+    mesh_t *mesh = nrs->meshV;
+    const dlong N = mesh->Nelements * mesh->Np;
+
     EX(N, a, b, nrs->NVfields, nrs->o_U, o_Uavg);
     EXY(N, a, b, nrs->NVfields, nrs->o_U, nrs->o_U, o_Urms);
  
@@ -174,15 +176,24 @@ void tavg::run(dfloat time)
   timel = time;
 }
 
-void tavg::setup(nrs_t *nrs_, const fields& flds) 
+void tavg::setup(nrs_t *nrs_, const simplefields &flds)
+{
+
+  for (auto &entry : flds) {
+    userFieldList.push_back({entry, nrs->meshV});
+  }
+  setup(nrs_, userFieldList);
+}
+void tavg::setup(nrs_t *nrs_, const fields &flds)
 {
   userFieldList = flds;
-
-  for(auto& entry : userFieldList) {
-    nrsCheck(entry.size() < 1 || entry.size() > 4, platform->comm.mpiComm, EXIT_FAILURE,
-             "%s\n", "tavg::setup() invalid number of vectors!");
+  for (auto &item : userFieldList) {
+    nrsCheck(item.first.size() < 1 || item.first.size() > 4,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "%s\n",
+             "tavg::setup() invalid number of vectors!");
   }
- 
   setup(nrs_);
 }
 
