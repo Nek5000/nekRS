@@ -8,9 +8,8 @@ int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
   MPI_Comm comm = MPI_COMM_WORLD;
 
-  struct parrsb_cmd_opts *in = parrsb_parse_cmd_opts(argc, argv);
-  int err = (in == NULL);
-  parrsb_check_error(err, comm);
+  parrsb_cmd_line_opts *in = parrsb_parse_cmd_opts(argc, argv);
+  parrsb_check_error(in == NULL, comm);
 
   // Read the geometry from the .re2 file, find connectiviy, partition and then
   // distribute the mesh.
@@ -30,7 +29,7 @@ int main(int argc, char *argv[]) {
 
   // Free resources
   free(vl), free(coord);
-  free(in);
+  parrsb_cmd_opts_free(in);
   MPI_Finalize();
 
   return 0;

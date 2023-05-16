@@ -9,6 +9,7 @@ done
 export NEK_SOURCE_ROOT=$NEK5000_SOURCE_DIR
 
 ${NEK5000_SOURCE_DIR}/bin/nekconfig -build-dep
+rm -f .state
 
 touch SIZE tmp.usr
 ${NEK5000_SOURCE_DIR}/bin/nekconfig

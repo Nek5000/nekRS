@@ -25,7 +25,7 @@ static double get_scalar(struct array *a, uint i, uint offset, uint usize,
 }
 
 static void get_extrema(void *extrema_, struct sort *data, uint field,
-                        struct comm *c) {
+                        const struct comm *c) {
   struct array *a = data->a;
   uint usize = data->unit_size;
   uint offset = data->offset[field];
@@ -72,7 +72,8 @@ static int set_dest(uint *proc, uint size, sint np, slong start, slong nelem) {
 //-----------------------------------------------------------------------------
 // Parallel Bin-Sort
 //
-static int set_bin(uint **proc_, struct sort *s, uint field, struct comm *c) {
+static int set_bin(uint **proc_, struct sort *s, uint field,
+                   const struct comm *c) {
   struct array *a = s->a;
   gs_dom t = s->t[field];
   uint offset = s->offset[field];
@@ -103,6 +104,7 @@ static int set_bin(uint **proc_, struct sort *s, uint field, struct comm *c) {
   } while (id < np && index < size);
   for (; index < size; index++)
     proc[index] = np - 1;
+  return 0;
 }
 
 static int sort_field(struct array *arr, size_t usize, gs_dom t, uint off,
@@ -143,7 +145,7 @@ int sort_local(struct sort *s) {
   return 0;
 }
 
-static int parallel_bin_sort(struct sort *s, struct comm *c) {
+static int parallel_bin_sort(struct sort *s, const struct comm *c) {
   // Local sort
   sort_local(s);
 
@@ -225,7 +227,7 @@ static int update_probe_counts(struct hypercube *data, struct comm *c) {
 static int update_probes(slong nelem, double *probes, ulong *probe_cnt,
                          uint threshold) {
   slong expected = nelem / 2;
-  if (llabs(expected - probe_cnt[1]) < threshold)
+  if (llabs(expected - (slong)probe_cnt[1]) < threshold)
     return 0;
 
   if (probe_cnt[1] < expected)
@@ -303,7 +305,7 @@ static int parallel_hypercube_sort(struct hypercube *data, struct comm *c) {
 
   int max_iter = log2((data->probes[2] - data->probes[0]) / 1e-12);
   int iter = 0;
-  while (llabs(nelem / 2 - data->probe_cnt[1]) > threshold &&
+  while (llabs(nelem / 2 - (slong)data->probe_cnt[1]) > threshold &&
          iter++ < max_iter) {
     update_probes(nelem, data->probes, data->probe_cnt, threshold);
     update_probe_counts(data, c);
@@ -330,7 +332,7 @@ static int parallel_hypercube_sort(struct hypercube *data, struct comm *c) {
   return 0;
 }
 
-static int load_balance(struct array *a, size_t size, struct comm *c,
+static int load_balance(struct array *a, size_t size, const struct comm *c,
                         struct crystal *cr) {
   slong out[2][1], buf[2][1], in = a->n;
   comm_scan(out, c, gs_long, gs_add, &in, 1, buf);
@@ -344,12 +346,11 @@ static int load_balance(struct array *a, size_t size, struct comm *c,
   return 0;
 }
 
-int parallel_sort_private(struct sort *data, struct comm *c) {
+int parallel_sort_private(struct sort *data, const struct comm *c) {
   struct comm dup;
   comm_dup(&dup, c);
 
-  int balance = data->balance;
-  sort_algo algo = data->algo;
+  int balance = data->balance, algo = data->algo;
 
   struct array *a = data->a;
   size_t usize = data->unit_size;
@@ -357,10 +358,10 @@ int parallel_sort_private(struct sort *data, struct comm *c) {
   struct hypercube hdata;
 
   switch (algo) {
-  case bin_sort:
+  case 0:
     parallel_bin_sort(data, c);
     break;
-  case hypercube_sort:
+  case 1:
     hdata.data = data;
     hdata.probes = NULL;
     hdata.probe_cnt = NULL;

@@ -56,7 +56,7 @@ static void update_options(parrsb_options *options) {
   UPDATE_OPTION(rsb_mg_grammian, "PARRSB_RSB_MG_GRAMMIAN", 1);
   UPDATE_OPTION(rsb_mg_factor, "PARRSB_RSB_MG_FACTOR", 1);
   UPDATE_OPTION(rsb_mg_sagg, "PARRSB_RSB_MG_SMOOTH_AGGREGATION", 1);
-  if (options->verbose_level == 0) 
+  if (options->verbose_level == 0)
     options->profile_level = 0;
 }
 
@@ -106,9 +106,11 @@ static size_t load_balance(struct array *elist, uint nel, int nv, double *coord,
   int ndim = (nv == 8) ? 3 : 2;
   for (uint e = 0; e < nel; ++e) {
     slong eg = pe->globalId = start + e + 1;
-    if (eg <= lower)
+    if (nstar == 0)
+      pe->proc = eg - 1;
+    else if (eg <= lower)
       pe->proc = (eg - 1) / (nstar + 1);
-    else if (nstar != 0)
+    else
       pe->proc = (eg - 1 - lower) / nstar + nrem;
 
     pe->coord[0] = pe->coord[1] = pe->coord[2] = 0.0;
@@ -166,15 +168,19 @@ static void restore_original(int *part, int *seq, struct crystal *cr,
 
 int parrsb_part_mesh(int *part, int *seq, long long *vtx, double *coord,
                      int nel, int nv, parrsb_options options, MPI_Comm comm) {
-  update_options(&options);
-
   struct comm c;
   comm_init(&c, comm);
-  if (c.id == 0 && options.verbose_level > 0) {
-    printf("Running parRSB ...\n");
+
+  slong nelg = nel, wrk;
+  comm_allreduce(&c, gs_long, gs_add, &nelg, 1, &wrk);
+
+  update_options(&options);
+
+  debug_print(&c, options.verbose_level,
+              "Running parRSB ..., nv = %d, nelg = %lld\n", nv, nelg);
+  if (c.id == 0 && options.verbose_level > 0)
     print_options(&options);
-    fflush(stdout);
-  }
+  fflush(stdout);
 
   parrsb_barrier(&c);
   double t = comm_time();
@@ -183,29 +189,23 @@ int parrsb_part_mesh(int *part, int *seq, long long *vtx, double *coord,
   crystal_init(&cr, &c);
 
   buffer bfr;
-  buffer_init(&bfr, nel * sizeof(struct rsb_element));
+  buffer_init(&bfr, (nel + 1) * sizeof(struct rsb_element));
 
   // Load balance input data
+  debug_print(&c, options.verbose_level, "Load balance ...");
   struct array elist;
   size_t esize = load_balance(&elist, nel, nv, coord, vtx, &cr, &bfr);
-
-  struct comm ca;
-  comm_split(&c, nel > 0, c.id, &ca);
+  debug_print(&c, options.verbose_level, " done.\n");
 
   // Run RSB now
+  debug_print(&c, options.verbose_level, "Running the partitioner ...");
+  struct comm ca;
+  comm_split(&c, elist.n > 0, c.id, &ca);
   metric_init();
-  if (nel > 0) {
-    slong out[2][1], wrk[2][1], in = nel;
+  if (elist.n > 0) {
+    slong out[2][1], wrk[2][1], in = elist.n;
     comm_scan(out, &ca, gs_long, gs_add, &in, 1, wrk);
     slong nelg = out[1][0];
-
-    if (ca.np > nelg) {
-      if (ca.id == 0)
-        printf("Total number of elements is smaller than the "
-               "number of processors.\n"
-               "Run with smaller number of processors.\n");
-      return 1;
-    }
 
     int ndim = (nv == 8) ? 3 : 2;
     switch (options.partitioner) {
@@ -224,21 +224,19 @@ int parrsb_part_mesh(int *part, int *seq, long long *vtx, double *coord,
 
     metric_rsb_print(&ca, options.profile_level);
   }
-  metric_finalize();
-  comm_free(&ca);
+  metric_finalize(), comm_free(&ca);
+  debug_print(&c, options.verbose_level, " done.\n");
 
+  debug_print(&c, options.verbose_level, "Restore the original input ...");
   restore_original(part, seq, &cr, &elist, esize, &bfr);
+  debug_print(&c, options.verbose_level, " done.\n");
 
   // Report time and finish
   parrsb_barrier(&c);
-  if (c.id == 0) {
-    printf("par%s finished in %g s\n", ALGO[options.partitioner],
-           comm_time() - t);
-    fflush(stdout);
-  }
+  debug_print(&c, 1, "par%s finished in %g seconds.\n",
+              ALGO[options.partitioner], comm_time() - t);
 
-  array_free(&elist), buffer_free(&bfr);
-  crystal_free(&cr), comm_free(&c);
+  array_free(&elist), buffer_free(&bfr), crystal_free(&cr), comm_free(&c);
 
   return 0;
 }

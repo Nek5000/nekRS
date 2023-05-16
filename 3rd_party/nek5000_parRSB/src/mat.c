@@ -55,6 +55,8 @@ int compress_nbrs(struct array *eij, struct array *nbr, buffer *bfr) {
     pe[k].v = -s;
     i = j;
   }
+
+  return 0;
 }
 
 int csr_setup(struct mat *mat, struct array *entries, int sep, buffer *buf) {
@@ -741,6 +743,8 @@ static int compress_mij(struct array *eij, struct array *entries, buffer *bfr) {
     pe[k].v = -s;
     i = j;
   }
+
+  return 0;
 }
 
 struct par_mat *par_csr_setup_con(const uint nelt, const ulong *eid,

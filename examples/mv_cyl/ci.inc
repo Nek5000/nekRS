@@ -8,7 +8,6 @@ static int ciMode = 0;
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", std::string("7"));
-  options.setArgs("RESTART FROM FILE", std::string("0"));
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("NUMBER OF SCALARS", std::string("1"));
   options.setArgs("END TIME", std::string("0.1"));
@@ -26,11 +25,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("MOVING MESH", "TRUE");
 
   platform->par->set("casedata", "p_rot", 0.0);
-  
-  if(ciMode == 2){
+
+  if (ciMode == 2) {
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
   }
-  if(ciMode == 3){
+  if (ciMode == 3) {
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("MESH INITIAL GUESS", "PROJECTION");
     options.setArgs("MESH RESIDUAL PROJECTION VECTORS", std::string("1"));
@@ -38,13 +37,13 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("MESH BLOCK SOLVER", "TRUE");
     options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
   }
-  if(ciMode == 4){
-    nrsAbort(comm, EXIT_FAILURE, "%s\n", "ciMode=4 not defined"); 
+  if (ciMode == 4) {
+    nrsAbort(comm, EXIT_FAILURE, "%s\n", "ciMode=4 not defined");
   }
-  if(ciMode == 5){
+  if (ciMode == 5) {
     platform->par->set("casedata", "p_rot", 0.5);
   }
-  if(ciMode == 6 || ciMode == 8){
+  if (ciMode == 6 || ciMode == 8) {
     options.setArgs("MESH SOLVER", "PCG");
     options.setArgs("MESH BLOCK SOLVER", "TRUE");
     options.setArgs("MESH SOLVER TOLERANCE", "1e-6");
@@ -52,7 +51,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("MESH RESIDUAL PROJECTION VECTORS", std::string("1"));
     platform->par->set("casedata", "p_rot", 0.5);
   }
-  if(ciMode == 7 || ciMode == 8){
+  if (ciMode == 7 || ciMode == 8) {
     // cvode
     options.setArgs("CVODE", "TRUE");
     options.setArgs("CVODE INTEGRATOR", "BDF");
@@ -74,21 +73,22 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("CVODE GMR VECTORS", "20");
 
     options.setArgs("SCALAR00 SOLVER", "CVODE");
-
   }
 }
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (!nrs->lastStep) return;
- 
+  if (!nrs->lastStep) {
+    return;
+  }
+
   const int rank = platform->comm.mpiRank;
-  mesh_t* mesh = nrs->meshV;
- 
+  mesh_t *mesh = nrs->meshV;
+
   nek::ocopyToNek(time, tstep);
   nek::userchk();
 
-  double *err = (double *) nek::scPtr(1);
+  double *err = (double *)nek::scPtr(1);
   const int Nfields = 6;
   dfloat expectedErr[Nfields];
 
@@ -102,27 +102,21 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   int expectedPIter = 6;
   int expectedVIter = 3;
 
-  if(ciMode == 1)
-  {
+  if (ciMode == 1) {
   }
-  if(ciMode == 2)
-  {
+  if (ciMode == 2) {
     expectedErr[5] = 0.3E-05;
   }
-  if(ciMode == 3)
-  {
+  if (ciMode == 3) {
     expectedErr[5] = 0.3E-05;
   }
-  if(ciMode == 5)
-  {
-    //expectedVIter = 9; // no extrap
+  if (ciMode == 5) {
+    // expectedVIter = 9; // no extrap
   }
-  if(ciMode == 6)
-  {
-    //expectedVIter = 8; // no extrap
+  if (ciMode == 6) {
+    // expectedVIter = 8; // no extrap
   }
-  if(ciMode == 7 || ciMode == 8)
-  {
+  if (ciMode == 7 || ciMode == 8) {
     expectedErr[5] = 0.35E-05;
   }
 
@@ -130,26 +124,40 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   double vxErr, prErr;
   double s1Err;
-  
+
   int pIterErr;
   int velIterErr;
 
   bool passed = true;
 
-  if(rank == 0) printf("relative error to target: ");
-  for(int i = 0 ; i < Nfields; ++i){
-    if(abs(err[i]) > absTol){
-      const dfloat relErr = abs(err[i]-expectedErr[i])/expectedErr[i];
-      if(rank == 0) printf("err[%d]=%g ", i, relErr);
-      if(relErr > EPS && abs(expectedErr[i]) < abs(err[i])) passed = false;
+  if (rank == 0) {
+    printf("relative error to target: ");
+  }
+  for (int i = 0; i < Nfields; ++i) {
+    if (abs(err[i]) > absTol) {
+      const dfloat relErr = abs(err[i] - expectedErr[i]) / expectedErr[i];
+      if (rank == 0) {
+        printf("err[%d]=%g ", i, relErr);
+      }
+      if (relErr > EPS && abs(expectedErr[i]) < abs(err[i])) {
+        passed = false;
+      }
     }
   }
   velIterErr = abs(expectedVIter - nrs->uvwSolver->Niter);
   pIterErr = abs(expectedPIter - nrs->pSolver->Niter);
-  if(rank == 0) printf("velIter=%d pIter=%d ", velIterErr, pIterErr);
-  if(velIterErr >= 3) passed = false;
-  if(pIterErr >= 2) passed = false;
+  if (rank == 0) {
+    printf("velIter=%d pIter=%d ", velIterErr, pIterErr);
+  }
+  if (velIterErr >= 3) {
+    passed = false;
+  }
+  if (pIterErr >= 2) {
+    passed = false;
+  }
 
-  if(rank == 0) printf("\n"); 
+  if (rank == 0) {
+    printf("\n");
+  }
   passed ? (CIPASS) : (CIFAIL);
 }

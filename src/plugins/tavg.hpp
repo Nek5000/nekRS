@@ -2,16 +2,10 @@
 #define nekrs_tavg_hpp_
 
 /*
-     Compute expected value E(X) 
-     Statistics can be obtained by:
+     Statistics can be obtained from runtime averages:
 
-     avg(X)   := E(X)
-     var(X)   := E(X*X) - E(X)*E(X)
-     cov(X,Y) := E(X*Y) - E(X)*E(Y)
-
-     Note: E-operator is linear, in the sense that the expected
-           value is given by E(X) = 1/N * sum[ E(X)_i ], where E(X)_i
-           is the expected value of the sub-ensemble i (i=1...M).
+     <X>    := AVG(X)
+     <X'Y') := AVG(X*Y) - AVG(X)*AVG(Y)
 */
 
 #include "nrs.hpp"

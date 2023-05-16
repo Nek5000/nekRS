@@ -24,17 +24,16 @@ below.
 
 ```sh
 cd build/examples
-mpirun -np 4 ./genmap --mesh ethier --nactive=2 --tol=0.2 --test --no-dump
-mpirun -np 4 ./gencon --mesh ethier --tol=0.2 --test --no-dump
+mpirun -np 4 ./genmap --mesh ethier --nactive=2 --tol=0.2 --test
+mpirun -np 4 ./gencon --mesh ethier --tol=0.2 --test
 ```
 
 - `--mesh` (required) is the name of the input mesh (.re2 file) and is required.
 - `--tol` (optional, default = 0.2) is the tolerance used for finding mesh
   connectivity.
-- `--test` (optional, default = 0) controls running checks in `genmap` or
-  `gencon` examples.
-- `--dump` (optional, default = 1) controls dumping `.co2` and/or `.ma2` file
-  after running `gencon` and `genmap` respectively.
+- `--test` (optional) Run checks in `genmap` or `gencon` examples.
+- `--dump` (optional) Dump `.co2` and/or `.ma2` file after running `gencon` and/or
+  `genmap` respectively.
 - `--nactive` (optional, default: `INT_MAX`) controls how many MPI ranks are
   active when running `genmap`.
 

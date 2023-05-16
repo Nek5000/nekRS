@@ -4,16 +4,13 @@
 #include "udf.hpp"
 #include "plugins/tavg.hpp"
 
-
 #ifdef __okl__
 
 #include "periodicHill.oudf"
 
 #endif
 
-void UDF_Setup0(MPI_Comm comm, setupAide &options)
-{
-}
+void UDF_Setup0(MPI_Comm comm, setupAide &options) {}
 
 void UDF_Setup(nrs_t *nrs)
 {
@@ -26,7 +23,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);
-    nek::userchk(); //compute lambda2
+    nek::userchk(); // compute lambda2
     nek::ocopyFromNek(time);
 
     tavg::outfld();

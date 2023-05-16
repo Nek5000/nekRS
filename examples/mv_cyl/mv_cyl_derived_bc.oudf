@@ -1,7 +1,7 @@
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
 {
-  const dfloat vPiston = p_AMP*sin(p_OMEGA*bc->time);
+  const dfloat vPiston = p_AMP * sin(p_OMEGA * bc->time);
 
   bc->u = -vPiston * bc->nx;
   bc->v = -vPiston * bc->ny;
@@ -22,7 +22,7 @@ void velocityDirichletConditions(bcData *bc)
     for (int n = 0; n < p_Np; ++n; @inner(0)) {
       const int id = e * p_Np + n;
 
-      const dfloat rcpTemp = 1 / TEMP[id]; 
+      const dfloat rcpTemp = 1 / TEMP[id];
       UPROP[id + 0 * uOffset] = 1e-2;
       SPROP[id + 0 * sOffset] = 1e-2;
       UPROP[id + 1 * uOffset] = p0th * rcpTemp;
@@ -33,6 +33,7 @@ void velocityDirichletConditions(bcData *bc)
     }
   }
 }
+
 @kernel void userMeshVelocity(const dlong Nelements,
                               const dlong offset,
                               const dfloat hmin,

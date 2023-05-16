@@ -24,7 +24,7 @@ fi
 bin=${NEKRS_HOME}/bin/nekrs
 case=$1
 nodes=$2
-gpu_per_node=2
+gpu_per_node=4
 let cores_per_numa=24/4
 let cores_per_task=2*$cores_per_numa
 let nn=$nodes*$gpu_per_node

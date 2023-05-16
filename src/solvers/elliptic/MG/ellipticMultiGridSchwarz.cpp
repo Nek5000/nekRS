@@ -935,7 +935,7 @@ void pMGLevel::build(elliptic_t *pSolver)
       return elapsed;
     };
 
-    if (platform->options.compareArgs("GS COMM OVERLAP", "TRUE")) {
+    if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "TRUE")) {
       occa::memory o_u = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
       occa::memory o_Su = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
       const dlong Nelements = elliptic->mesh->Nelements;

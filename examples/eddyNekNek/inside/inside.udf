@@ -9,7 +9,6 @@ static dfloat P_U0;
 static dfloat P_V0;
 static dfloat P_OMEGA;
 
-
 #ifdef __okl__
 
 #include "inside.oudf"
@@ -26,14 +25,14 @@ void UDF_LoadKernels(occa::properties &kernelInfo)
   dfloat viscosity;
   platform->options.getArgs("VISCOSITY", viscosity);
   kernelInfo["defines/p_visc"] = viscosity;
-
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
-  if (ciMode)
+  if (ciMode) {
     ciSetup(comm, options);
+  }
   dfloat viscosity;
   options.getArgs("VISCOSITY", viscosity);
 
@@ -51,15 +50,18 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   }
 }
 
-int timeStepConverged(nrs_t* nrs, int stage)
+int timeStepConverged(nrs_t *nrs, int stage)
 {
-  if(nrs->neknek->nEXT == 1) return 1;
+  if (nrs->neknek->nEXT == 1) {
+    return 1;
+  }
 
   // do one corrector step
   return stage > 1;
 }
 
-void UDF_Setup(nrs_t *nrs) {
+void UDF_Setup(nrs_t *nrs)
+{
   udf.timeStepConverged = timeStepConverged;
 }
 
@@ -79,14 +81,8 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   auto o_Uexact = platform->o_mempool.slice0;
   exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, o_Uexact);
 
-  platform->linAlg->axpbyMany(mesh->Nlocal,
-    nrs->NVfields,
-    nrs->fieldOffset,
-    1.0,
-    nrs->o_U,
-    -1.0,
-    o_Uexact);
-  
+  platform->linAlg->axpbyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, nrs->o_U, -1.0, o_Uexact);
+
   auto o_UerrX = o_Uexact + 0 * nrs->fieldOffset * sizeof(dfloat);
   auto o_UerrY = o_Uexact + 1 * nrs->fieldOffset * sizeof(dfloat);
   auto o_UerrZ = o_Uexact + 2 * nrs->fieldOffset * sizeof(dfloat);
@@ -99,7 +95,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   const auto LinfUy = platform->linAlg->max(mesh->Nlocal, o_UerrY, platform->comm.mpiCommParent);
   const auto LinfUz = platform->linAlg->max(mesh->Nlocal, o_UerrZ, platform->comm.mpiCommParent);
 
-  if(platform->comm.mpiRank == 0){
+  if (platform->comm.mpiRank == 0) {
     printf("LinfUx = %g, LinfUy = %g, LinfUz = %g\n", LinfUx, LinfUy, LinfUz);
   }
 

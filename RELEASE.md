@@ -2,13 +2,13 @@
 
 ## What is new? 
 
-* Point interpolation
+* Lagrangian phase model (one-way coupling) 
 * Overset grids (neknek)
 * Particle tracking 
 * Single source udf+oudf
 * Device support BoomerAMG
 * Improved runtime statistics
-* 4th-kind + opt Chebyshev smoothers
+* 4th-kind Chebyshev smoothers
 * Configureable time averaging 
 * Extrapolation initialGuess method
 * Scaleable JIT compilation
@@ -18,9 +18,8 @@
 
 ## Good to know
 
-* [udf] Changes in include files do not trigger rebuild automatically 
-* [nrsconfig] Optional build settings have to be passed as a command line arg e.g. `-DENABLE_AMGX=ON`
-* [par] Plugins kernels will be loaded automatically (call in `UDF_LoadKernels` no longer required)
+* [udf] Changes in include files do not trigger a rebuild automatically 
+* [udf] Plugins kernels will be loaded automatically (call in `UDF_LoadKernels` no longer required)
 
 ## Breaking Changes
 * [nrsconfig] Ensure env-vars `CC`, `CXX` and `FC` point to the correct MPI compiler wrappers (see README.md for an example)
@@ -35,11 +34,11 @@
 * [par] Replace `stressFormulation = true` by `equation = navierStokes+variableViscosity` 
 * [par] Replace bcType `fixedValue` by `codedFixedValue`
 * [par] Replace `elasticity` by `pcg+block` for mesh solver
-* All `boundaryIDs` need to be assigned (for an internal boundary use `none` in `boundaryTypeMap`)
+* All `boundaryIDs` need to be assigned in  `boundaryTypeMap` (use `none` for an internal boundary)
 
 ## Known Bugs / Restrictions
 
-* Not fully optimized for Intel GPUs and CPUs yet
+* Code is not fully optimized on CPUs in general and Intel GPUs
 * [485](https://github.com/Nek5000/Nek5000/issues/485)
 * [729](https://github.com/Nek5000/Nek5000/issues/759)
 * [258](https://github.com/Nek5000/nekRS/issues/258)

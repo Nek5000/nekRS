@@ -11,7 +11,7 @@
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  mesh_t* mesh = nrs->meshV;
+  mesh_t *mesh = nrs->meshV;
   cfill(mesh->Nlocal, nrs->fieldOffset, nrs->cds->o_S, nrs->o_FU);
 }
 

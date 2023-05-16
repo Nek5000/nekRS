@@ -110,15 +110,25 @@ void udfAutoKernels(const std::string& udfFileCache, const std::string& postOklS
   const std::string includeFile = fs::path(udfFileCache).parent_path() / fs::path("udfAutoLoadKernel.hpp");
   std::ofstream f(includeFile);
 
-  std::ifstream postOklSourceStream(postOklSource);
+  auto buffer = [&]()
+  {
+    std::stringstream fbuffer;
+    std::ifstream postOklSourceStream(postOklSource);
+    fbuffer << postOklSourceStream.rdbuf();
+    postOklSourceStream.close();
+    return fbuffer.str();
+  }();
+
+  std::vector<std::string> kernelNameList;
   std::regex exp(R"(\s*@kernel\s*void\s*([\S]*)\s*\()");
   std::smatch res;
 
-  std::string line;
-  std::vector<std::string> kernelNameList;
-  while (std::getline(postOklSourceStream, line)) {
-    if (std::regex_search(line, res, exp)) {
-      std::string kernelName = res[1];
+  {
+    std::regex_token_iterator<std::string::iterator> rend; // default constructor = end-of-sequence:
+    std::regex_token_iterator<std::string::iterator> token (buffer.begin(), buffer.end(), exp, 1);
+ 
+    while (token != rend) { 
+      const auto kernelName = *token++;
       kernelNameList.push_back(kernelName);
       f << "static occa::kernel " << kernelName << ";\n";
     }
@@ -135,7 +145,6 @@ void udfAutoKernels(const std::string& udfFileCache, const std::string& postOklS
 
   f.close();
   fileSync(includeFile.c_str());
-  postOklSourceStream.close();
 }
 
 void udfBuild(const std::string& _udfFile, setupAide &options)

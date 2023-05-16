@@ -3,6 +3,14 @@ set -e -a
 
 : ${NRSCONFIG_NOBUILD:=0}
 
+if [ -z ${CC} ] || [ -z ${CXX}  ] || [ -z ${FC}  ]; then
+  echo -e "\033[31mWARNING: env-var CC, CXX or FC is not set!\033[m"
+  export CC=mpicc
+  export CXX=mpic++
+  export FC=mpif77
+  read -p         "Press ENTER to continue with CC=$CC CXX=$CXX FC=$FC or ctrl-c to cancel" 
+fi
+
 cmd="cmake -S . -B build -Wfatal-errors $@" 
 echo $cmd
 eval $cmd 

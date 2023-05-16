@@ -113,10 +113,20 @@ extern platform_t* platform;
 
 namespace {
 
-constexpr int BLOCKSIZE = 256;
-constexpr int ALIGN_SIZE = 4096;
-constexpr int NSCALAR_MAX = 100;
+constexpr unsigned int BLOCKSIZE = 256;
+constexpr unsigned int ALIGN_SIZE = 1024;
+constexpr unsigned int NSCALAR_MAX = 100;
 occa::memory o_NULL;
+
+template<typename T>
+unsigned int alignStride(unsigned int stride)
+{
+  const auto pageW = ALIGN_SIZE / sizeof(T);
+  if (stride % pageW)
+    stride = (stride / pageW + 1) * pageW;
+
+  return stride;
+}
 
 const std::string scalarDigitStr(int i)
 {

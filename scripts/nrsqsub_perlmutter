@@ -53,18 +53,17 @@ if [ ! -f $case.re2 ]; then
 fi
 
 
-# romio setup
-export ROMIO_HINTS="$(pwd)/.romio_hint"
-if [ ! -f "$ROMIO_HINTS" ]; then
-  echo "romio_no_indep_rw true"   >$ROMIO_HINTS
-  echo "romio_cb_write enable"   >>$ROMIO_HINTS
-  echo "romio_ds_write enable"   >>$ROMIO_HINTS
-  echo "romio_cb_read enable"    >>$ROMIO_HINTS
-  echo "romio_ds_read enable"    >>$ROMIO_HINTS
-  echo "cb_buffer_size 16777216" >>$ROMIO_HINTS
-  echo "cb_config_list *:1"      >>$ROMIO_HINTS
+striping_unit=16777216
+max_striping_factor=128
+let striping_factor=$nodes/2
+if [ $striping_factor -gt $max_striping_factor ]; then
+  striping_factor=$max_striping_factor
+fi
+if [ $striping_factor -lt 1 ]; then
+  striping_factor=1
 fi
 
+MPICH_MPIIO_HINTS="*:striping_unit=${striping_unit}:striping_factor=${striping_factor}:romio_cb_write=enable:romio_ds_write=disable:romio_no_indep_rw=true"
 
 # sbatch
 SFILE=s.bin
@@ -99,7 +98,8 @@ echo "ulimit -s unlimited " >>$SFILE
 echo "export NEKRS_HOME=$NEKRS_HOME" >>$SFILE
 echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 
-echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
+echo "export MPICH_MPIIO_HINTS=$MPICH_MPIIO_HINTS" >>$SFILE
+echo "export MPICH_MPIIO_STATS=1" >>$SFILE
 
 echo "# Workaround for https://github.com/Nek5000/Nek5000/issues/759" >> $SFILE
 echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE

@@ -12,7 +12,7 @@ void registerMeshKernels(occa::properties kernelInfoBC)
   const int Np = Nq * Nq * Nq;
   const int cubNp = cubNq * cubNq * cubNq;
 
-  int nAB;
+  int nAB = 3;
   platform->options.getArgs("MESH INTEGRATION ORDER", nAB);
 
   auto kernelInfo = platform->kernelInfo + meshKernelProperties(N);

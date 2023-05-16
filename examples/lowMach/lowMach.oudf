@@ -6,9 +6,9 @@ void velocityDirichletConditions(bcData *bc)
   bc->w = 0.0;
 }
 
-void scalarDirichletConditions(bcData *bc) 
-{ 
-  bc->s = 0.5 * (3.0 + tanh(bc->x / p_DELTA)); 
+void scalarDirichletConditions(bcData *bc)
+{
+  bc->s = 0.5 * (3.0 + tanh(bc->x / p_DELTA));
 }
 
 @kernel void fillQ(const dlong Nelements, @ restrict const dfloat *X, @ restrict dfloat *QVOL)
@@ -24,14 +24,14 @@ void scalarDirichletConditions(bcData *bc)
 }
 
 @kernel void fillProp(const dlong Nelements,
-                     const dlong uOffset,
-                     const dlong sOffset,
-                     const double p0th,
-                     @ restrict const dfloat *TEMP,
-                     @ restrict dfloat *UPROP,
-                     @ restrict dfloat *SPROP,
-                     @ restrict dfloat *BETA,
-                     @ restrict dfloat *KAPPA)
+                      const dlong uOffset,
+                      const dlong sOffset,
+                      const double p0th,
+                      @ restrict const dfloat *TEMP,
+                      @ restrict dfloat *UPROP,
+                      @ restrict dfloat *SPROP,
+                      @ restrict dfloat *BETA,
+                      @ restrict dfloat *KAPPA)
 {
   for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
     for (int n = 0; n < p_Np; ++n; @inner(0)) {

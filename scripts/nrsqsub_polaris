@@ -59,8 +59,11 @@ let striping_factor=$nodes/2
 if [ $striping_factor -gt $max_striping_factor ]; then
   striping_factor=$max_striping_factor
 fi
+if [ $striping_factor -lt 1 ]; then
+  striping_factor=1
+fi
 
-MPICH_MPIIO_HINTS="*:cray_cb_write_lock_mode=2:cray_cb_nodes_multiplier=4:striping_unit=${striping_unit}:striping_factor=${striping_factor}:romio_cb_write=enable:romio_ds_write=disable:romio_no_indep_rw=true"
+MPICH_MPIIO_HINTS="*:striping_unit=${striping_unit}:striping_factor=${striping_factor}:romio_cb_write=enable:romio_ds_write=disable:romio_no_indep_rw=true"
 
 # sbatch
 SFILE=s.bin

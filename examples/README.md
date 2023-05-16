@@ -17,15 +17,15 @@
 | variable dt              |  x  |     |     |  x  |     |     |     |     |
 | OIFS/subcycling          |  x  |     |     |  x  |     |     |  x  |     |
 | Lagrangian particles     |     |     |     |     |     |  x  |     |     |
-| point interpolation      |     |  x  |     |     |     |  x  |     |     |
+| point interpolation      |  x  |  x  |     |     |     |  x  |     |     |
 | extract line (hpts)      |     |  x  |     |     |     |     |     |     |
 | runtime averages         |  x  |     |     |     |     |     |     |     |
 | planar average           |  x  |     |     |     |     |     |     |     |
 | conjugate heat transfer  |     |     |     |     |     |     |     |  x  |
 | RANS (k-tau)             |     |  x  |     |     |     |     |     |     |
 | surfaceIntegral          |     |  x  |     |     |     |     |     |     |
-| viscouts drag            |     |  x  |     |     |     |     |     |     |
-| mesh manipulation        |     |     |     |     |     |     |     |     |
+| viscous drag             |     |  x  |     |     |     |     |     |     |
+| mesh manipulation        |  x  |     |     |     |     |     |     |     |
 | moving mesh (ALE)        |     |     |     |     |  x  |  x  |     |     |
 | constant flow rate       |     |  x  |     |     |     |     |     |     |
 | overset grids (neknek)   |     |     |     |     |     |     |  x  |     |
@@ -34,7 +34,7 @@
 | hpf-RT                   |  x  |     |     |  x  |     |  x  |     |     |
 | avm (scalar)             |     |     |     |  x  |     |     |     |     |
 | predictor-corrector iter |     |     |     |     |     |     |  x  |     |
-| usrchk postprocessing    |  x  |     |     |     |     |     |     |     |
+| usrchk postprocessing    |     |     |  x  |     |     |     |     |     |
 
 ### Ledgend
 `GAB`: gabls1

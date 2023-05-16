@@ -138,7 +138,9 @@ static int project(scalar *x, uint n, scalar *b, struct laplacian *L,
   uint j, k;
   for (i = 0; i < miter; i++) {
     // mat_vec_csr(w, p, S, gsh, wrk, bfr);
+    metric_tic(c, RSB_PROJECT_AX);
     laplacian(w, L, p, bfr);
+    metric_toc(c, RSB_PROJECT_AX);
 
     scalar pw = dot(p, w, n);
     comm_allreduce(c, gs_double, gs_add, &pw, 1, buf);
@@ -160,7 +162,9 @@ static int project(scalar *x, uint n, scalar *b, struct laplacian *L,
     for (j = 0; j < n; j++)
       z0[j] = z[j];
 
+    metric_tic(c, RSB_PROJECT_MG);
     mg_vcycle(z, r, d, c, bfr);
+    metric_toc(c, RSB_PROJECT_MG);
 
     rzt = rz1;
     if (null_space)
@@ -237,11 +241,6 @@ static int inverse(scalar *y, struct array *elements, int nv, scalar *z,
   struct crystal cr;
   crystal_init(&cr, gsc);
   struct par_mat *L = par_csr_setup_con(lelt, eid, vtx, nv, 1, gsc, &cr, buf);
-  for (uint i = 0; i < L->rn; i++) {
-    for (uint j = L->adj_off[i], je = L->adj_off[i + 1]; j < je; j++)
-      L->adj_val[j] /= L->diag_val[i];
-    L->diag_val[i] = 1.0;
-  }
   struct mg *d = mg_setup(L, factor, sagg, &cr, buf);
   crystal_free(&cr);
   metric_toc(gsc, RSB_INVERSE_SETUP);
@@ -251,8 +250,10 @@ static int inverse(scalar *y, struct array *elements, int nv, scalar *z,
   scalar *rhs = GZ + miter * miter, *v = rhs + miter;
 
   metric_tic(gsc, RSB_INVERSE);
+  int iters = 0;
   for (i = 0; i < mpass; i++) {
     int ppfi = project(y, lelt, z, wl, d, gsc, miter, tol, 1, 0, buf);
+    iters += ppfi;
 
     ortho(y, lelt, nelg, gsc);
 
@@ -355,7 +356,7 @@ static int inverse(scalar *y, struct array *elements, int nv, scalar *z,
   if (err)
     free(err);
 
-  return i;
+  return iters;
 }
 
 static double sign(scalar a, scalar b) {
@@ -493,10 +494,12 @@ static int lanczos_aux(scalar *diag, scalar *upper, scalar *rr, uint lelt,
   ortho(r, lelt, nelg, gsc);
 
   scalar rtz1 = 1, pap = 0, alpha, beta, rtz2, pap_old;
-
   scalar rtr = dot(r, r, lelt), buf[2];
   comm_allreduce(gsc, gs_double, gs_add, &rtr, 1, buf);
   scalar rnorm = sqrt(rtr), rtol = rnorm * tol;
+
+  metric_set(TOL_INIT, rnorm);
+  metric_set(TOL_TGT, rtol);
 
   // vec_scale(rr[0], r, rni);
   scalar rni = 1.0 / rnorm;
@@ -522,16 +525,13 @@ static int lanczos_aux(scalar *diag, scalar *upper, scalar *rr, uint lelt,
 
     laplacian(w, gl, p, bfr);
 
-    scalar ww = dot(w, w, lelt);
-    comm_allreduce(gsc, gs_double, gs_add, &ww, 1, buf);
-
     pap_old = pap, pap = dot(w, p, lelt);
     comm_allreduce(gsc, gs_double, gs_add, &pap, 1, buf);
-    /*
-    if (gsc->id == 0)
-      printf("host iter = %d beta = %lf pp = %lf pap = %lf\n", iter, beta, pp,
-             pap);
-             */
+
+    // if (gsc->id == 0) {
+    //   printf("host iter = %d beta = %lf pp = %lf pap = %lf\n", iter, beta,
+    //   pp, pap);
+    // }
 
     alpha = rtz1 / pap;
     // vec_axpby(r, r, 1.0, w, -1.0 * alpha);
@@ -559,8 +559,7 @@ static int lanczos_aux(scalar *diag, scalar *upper, scalar *rr, uint lelt,
     }
   }
 
-  metric_acc(TOL_FNL, rnorm);
-  metric_acc(TOL_TGT, rtol);
+  metric_set(TOL_FNL, rnorm);
 
   free(r);
 

@@ -101,18 +101,17 @@ int parrsb_dist_mesh(unsigned int *nelt_, long long **vl_, double **coord_,
 }
 
 int parrsb_setup_mesh(unsigned *nelt, unsigned *nv, long long **vl,
-                      double **coord, struct parrsb_cmd_opts *in,
-                      MPI_Comm comm) {
+                      double **coord, parrsb_cmd_line_opts *in, MPI_Comm comm) {
   int id, err;
   MPI_Comm_rank(comm, &id);
 
-  // Read the geometry from the .re2 file
+  // Read the geometry from the .re2 file.
   unsigned int nbcs;
   long long *bcs = NULL;
   err = parrsb_read_mesh(nelt, nv, NULL, coord, &nbcs, &bcs, in->mesh, comm, 1);
   parrsb_check_error(err, comm);
 
-  // Find connectivity
+  // Find connectivity.
   *vl = (long long *)calloc(*nelt * *nv, sizeof(long long));
   err = (*vl == NULL);
   parrsb_check_error(err, comm);
@@ -121,13 +120,13 @@ int parrsb_setup_mesh(unsigned *nelt, unsigned *nv, long long **vl,
   err = parrsb_conn_mesh(*vl, *coord, *nelt, ndim, bcs, nbcs, in->tol, comm);
   parrsb_check_error(err, comm);
 
-  // Partition the mesh
+  // Partition the mesh.
   int *part = (int *)calloc(*nelt, sizeof(int));
   err = (part == NULL);
   parrsb_check_error(err, comm);
 
-  parrsb_options paropt = parrsb_default_options;
-  err = parrsb_part_mesh(part, NULL, *vl, *coord, *nelt, *nv, paropt, comm);
+  parrsb_options opt = parrsb_default_options;
+  err = parrsb_part_mesh(part, NULL, *vl, *coord, *nelt, *nv, opt, comm);
   parrsb_check_error(err, comm);
 
   // Redistribute data based on identified partitions
@@ -259,11 +258,13 @@ void parrsb_print_part_stat(long long *vtx, unsigned nelt, unsigned nv,
   }
 }
 
-struct parrsb_cmd_opts *parrsb_parse_cmd_opts(int argc, char *argv[]) {
-  struct parrsb_cmd_opts *in = tcalloc(struct parrsb_cmd_opts, 1);
+static void print_help() {}
+
+parrsb_cmd_line_opts *parrsb_parse_cmd_opts(int argc, char *argv[]) {
+  parrsb_cmd_line_opts *in = tcalloc(parrsb_cmd_line_opts, 1);
 
   in->mesh = NULL, in->tol = 2e-1;
-  in->test = 0, in->dump = 1, in->verbose = 0, in->nactive = INT_MAX;
+  in->test = 0, in->dump = 0, in->verbose = 0, in->nactive = INT_MAX;
   in->ilu_type = 0, in->ilu_tol = 1e-1, in->ilu_pivot = 0;
   in->crs_type = 0, in->crs_tol = 1e-3;
 
@@ -279,6 +280,7 @@ struct parrsb_cmd_opts *parrsb_parse_cmd_opts(int argc, char *argv[]) {
       {"ilu_pivot", optional_argument, 0, 12},
       {"crs_type", optional_argument, 0, 20},
       {"crs_tol", optional_argument, 0, 21},
+      {"help", optional_argument, 0, 91},
       {0, 0, 0, 0}};
 
   size_t len;
@@ -297,10 +299,10 @@ struct parrsb_cmd_opts *parrsb_parse_cmd_opts(int argc, char *argv[]) {
       in->tol = atof(optarg);
       break;
     case 2:
-      in->test = atoi(optarg);
+      in->test = 1;
       break;
     case 3:
-      in->dump = atoi(optarg);
+      in->dump = 1;
       break;
     case 4:
       in->nactive = atoi(optarg);
@@ -323,15 +325,23 @@ struct parrsb_cmd_opts *parrsb_parse_cmd_opts(int argc, char *argv[]) {
     case 21:
       in->crs_tol = atof(optarg);
       break;
+    case 91:
+      print_help();
+      break;
     default:
-      exit(1);
+      exit(EXIT_FAILURE);
     }
+  }
+
+  if (in->mesh == NULL) {
+    fprintf(stderr, "Required argument `--mesh` was not found !\n");
+    exit(EXIT_FAILURE);
   }
 
   return in;
 }
 
-void parrsb_cmd_opts_free(struct parrsb_cmd_opts *opts) {
+void parrsb_cmd_opts_free(parrsb_cmd_line_opts *opts) {
   if (opts) {
     if (opts->mesh)
       free(opts->mesh);
@@ -351,7 +361,7 @@ void parrsb_check_error_(int err, char *file, int line, MPI_Comm comm) {
       fflush(stderr);
     }
     MPI_Finalize();
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 }
 

@@ -46,7 +46,7 @@ struct mesh_t
                                       const occa::memory o_bID, const occa::memory& o_fld);
 
   void move();
-  void update();
+  void update(bool updateHost = false);
   void computeInvLMM();
 
   int nAB;

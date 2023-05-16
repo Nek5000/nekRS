@@ -1,13 +1,14 @@
 name: Coarse tests
 on:
   push:
-    branch: [main, next]
+    branch: [main]
   pull_request:
-    branch: [main, next]
+    branch: [main]
 env:
   GITHUB.TOKEN: ${{ secrets.token }}
-  PARRSB_CI: parRSB-github-ci
+  CIDIR: parRSB-github-ci
   EXAMPLESDIR: build/examples
+  MPIEXE: "mpirun --oversubscribe"
 jobs:
   coarse:
     runs-on: ubuntu-latest
@@ -26,8 +27,9 @@ jobs:
         shell: bash
         run: |
           sudo apt -y update
-          sudo apt install -y mpich libmpich-dev
+          sudo apt install -y openmpi-bin libopenmpi-dev
           sudo apt install -y libblas-dev liblapack-dev
+          sudo apt install -y build-essential
       - name: Build parRSB and clone tests
         shell: bash
         run: |
@@ -40,17 +42,14 @@ jobs:
           make -j4 examples
 
           # Clone tests
-          git clone https://github.com/thilinarmtb/${PARRSB_CI}.git
-
-          # For MPI
-          echo "localhost:4" > hostfile
+          git clone https://github.com/thilinarmtb/${CIDIR}.git
       - name: schur
         if: always()
         shell: bash
         run: |
-          cp hostfile ${EXAMPLESDIR}/coarse ${PARRSB_CI}/${{ matrix.test }}
-          cd ${PARRSB_CI}/${{ matrix.test }}
+          cp ${EXAMPLESDIR}/coarse ${CIDIR}/${{ matrix.test }}
+          cd ${CIDIR}/${{ matrix.test }}
 
           tol=(`cat test.txt | grep tol`); tol=${tol[2]}
-          mpirun -np ${{ matrix.np }} --hostfile hostfile ./coarse \
-            --mesh ${{ matrix.test }} --tol=${tol} --crs_tol=1e-12
+          ${MPIEXE} -np ${{ matrix.np }} ./coarse --mesh ${{ matrix.test }} \
+            --tol=${tol} --crs_tol=1e-12

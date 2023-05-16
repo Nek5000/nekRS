@@ -64,7 +64,7 @@ LDFLAGS += -lm
 
 .PHONY: all lib install examples format clean
 
-all: lib install
+all: lib install examples
 
 lib: $(SRCOBJS)
 	@mkdir -p $(BUILDROOT)/lib

@@ -212,7 +212,7 @@ void registerNrsKernels(occa::properties kernelInfoBC)
       bool verbose = platform->options.compareArgs("VERBOSE", "TRUE");
       const int verbosity = verbose ? 2 : 1;
 
-      int Nsubsteps;
+      int Nsubsteps = 0;
       platform->options.getArgs("SUBCYCLING STEPS", Nsubsteps);
 
       if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE") && Nsubsteps) {

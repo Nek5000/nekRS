@@ -3,9 +3,9 @@
 
 #include <gslib.h>
 
-typedef enum { bin_sort = 0, hypercube_sort = 1 } sort_algo;
-
 struct sort {
+  int balance, algo;
+
   int nfields;
   gs_dom t[3];
   uint offset[3];
@@ -13,14 +13,11 @@ struct sort {
   struct array *a;
   size_t unit_size, align;
 
-  int balance;
-  sort_algo algo;
-
   buffer *buf;
 };
 
 int sort_local(struct sort *s);
-int parallel_sort_private(struct sort *s, struct comm *c);
+int parallel_sort_private(struct sort *s, const struct comm *c);
 
 // Uniform parallel sort
 #define parallel_sort(T, A, field, type, method, loadbalance, c, bufp)         \

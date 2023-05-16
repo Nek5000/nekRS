@@ -7,32 +7,29 @@ int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
   MPI_Comm world = MPI_COMM_WORLD;
 
-  struct parrsb_cmd_opts *in = parrsb_parse_cmd_opts(argc, argv);
-  int err = (in == NULL);
-  parrsb_check_error(err, world);
+  parrsb_cmd_line_opts *in = parrsb_parse_cmd_opts(argc, argv);
+  parrsb_check_error(in == NULL, world);
 
   int rank, size;
   MPI_Comm_rank(world, &rank);
   MPI_Comm_size(world, &size);
-
   if (in->nactive > size)
     in->nactive = size;
 
   MPI_Comm comm;
   MPI_Comm_split(world, rank < in->nactive, rank, &comm);
   if (rank < in->nactive) {
-    // Read the geometry from the .re2 file
+    // Read the geometry from the .re2 file.
     unsigned int nelt, nbcs, nv;
     double *coord = NULL;
     long long *bcs = NULL;
-    err = parrsb_read_mesh(&nelt, &nv, NULL, &coord, &nbcs, &bcs, in->mesh,
-                           comm, 1);
+    int err = parrsb_read_mesh(&nelt, &nv, NULL, &coord, &nbcs, &bcs, in->mesh,
+                               comm, 1);
     parrsb_check_error(err, comm);
 
-    // Find connectivity
+    // Find connectivity.
     long long *vl = (long long *)calloc(nelt * nv, sizeof(long long));
-    err = (vl == NULL);
-    parrsb_check_error(err, comm);
+    parrsb_check_error(vl == NULL, comm);
 
     unsigned ndim = (nv == 8 ? 3 : 2);
     err = parrsb_conn_mesh(vl, coord, nelt, ndim, bcs, nbcs, in->tol, comm);
@@ -51,8 +48,7 @@ int main(int argc, char *argv[]) {
 
     // Partition the mesh
     int *part = (int *)calloc(nelt, sizeof(int));
-    err = (part == NULL);
-    parrsb_check_error(err, comm);
+    parrsb_check_error(part == NULL, comm);
 
     parrsb_options options = parrsb_default_options;
     err = parrsb_part_mesh(part, NULL, vl, coord, nelt, nv, options, comm);
@@ -84,10 +80,10 @@ int main(int argc, char *argv[]) {
 
     free(part), free(vl), free(coord), free(bcs);
   }
+  MPI_Comm_free(&comm);
 
   // Free resources
   parrsb_cmd_opts_free(in);
-  MPI_Comm_free(&comm);
   MPI_Finalize();
 
   return 0;

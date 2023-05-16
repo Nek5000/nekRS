@@ -101,16 +101,10 @@ void outfld(const char *filename,
             void *o_ss,
             int NSfields)
 {
-
-  mesh_t *mesh = nrs->meshV;
-  dlong Nlocal = mesh->Nelements * mesh->Np;
-
   double time = t;
 
-  if (NSfields > nekData.ldimt) {
-    const char *errTxt = "NSfields > ldimt in nek_outfld";
-    check_error(errTxt);
-  }
+  nrsCheck(NSfields > nekData.ldimt, platform->comm.mpiComm, EXIT_FAILURE,
+           "Adjust ldimt in SIZE to %d and larger\n", NSfields);
 
   occa::memory o_u, o_p, o_s;
   if (o_uu)
@@ -132,10 +126,15 @@ void outfld(const char *filename,
 
   platform->timer.tic("checkpointing", 1);
 
+  // nek5000 writes all fields using nelt
+  // note, nrs->fieldOffset >= nelt*nxyz
+  auto mesh = nrs->_mesh; 
+  dlong Nlocal = mesh->Nelements * mesh->Np;
+
+  // nek5000 uses lelv = lelt
+  const dlong nekFieldOffset = nekData.lelt * mesh->Np;
+
   if (coords) {
-    mesh_t *mesh = nrs->meshV;
-    if (nrs->cht)
-      mesh = nrs->cds->mesh[0];
     mesh->o_x.copyTo(nekData.xm1, Nlocal * sizeof(dfloat));
     mesh->o_y.copyTo(nekData.ym1, Nlocal * sizeof(dfloat));
     mesh->o_z.copyTo(nekData.zm1, Nlocal * sizeof(dfloat));
@@ -155,12 +154,7 @@ void outfld(const char *filename,
     po = 1;
   }
   if (o_s.ptr()) {
-    const dlong nekFieldOffset = nekData.lelt * mesh->Np;
     for (int is = 0; is < NSfields; is++) {
-      mesh_t *mesh = nrs->meshV;
-      if (nrs->cds)
-        (is) ? mesh = nrs->meshV : mesh = nrs->cds->mesh[0];
-      const dlong Nlocal = mesh->Nelements * mesh->Np;
       dfloat *Ti = nekData.t + is * nekFieldOffset;
       occa::memory o_Si = o_s + (is * sizeof(dfloat)) * nrs->fieldOffset;
       o_Si.copyTo(Ti, Nlocal * sizeof(dfloat));
@@ -185,10 +179,7 @@ void finalize() { (*nek_end_ptr)(); }
 
 void setic(void)
 {
-  int readRestartFile;
-  options->getArgs("RESTART FROM FILE", readRestartFile);
-
-  if (readRestartFile) {
+  if (!options->getArgs("RESTART FILE NAME").empty()) {
     std::string str1;
     options->getArgs("RESTART FILE NAME", str1);
     std::string str2(str1.size(), '\0');
@@ -350,7 +341,7 @@ postfix(s) = noop_func;                                                         
 if (verbose)                                                                                                 \
 printf("Setting function " #s " to noop_func.\n");                                                           \
 }                                                                                                            \
-else if (verbose) {                                                                                          \
+else if (verbose && rank == 0) {                                                                             \
 printf("Loading " #s"\n");                                                                                   \
 }                                                                                                            \
 } while (0)
@@ -881,11 +872,26 @@ int setup(nrs_t *nrs_in)
   return 0;
 }
 
+static void updateMesh()
+{
+  auto mesh = nrs->_mesh;
+  const auto Nlocal = mesh->Nelements * mesh->Np;
+
+  memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
+  memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
+  memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
+  recomputeGeometry();
+}
+
 void copyToNek(dfloat time)
 {
   if (rank == 0) {
     printf("copying solution to nek\n");
     fflush(stdout);
+  }
+
+  if (*(nekData.istep) == 0) {
+    updateMesh();
   }
 
   mesh_t *mesh = nrs->meshV;
@@ -910,10 +916,7 @@ void copyToNek(dfloat time)
     memcpy(nekData.wx, wx, sizeof(dfloat) * Nlocal);
     memcpy(nekData.wy, wy, sizeof(dfloat) * Nlocal);
     memcpy(nekData.wz, wz, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.xm1, mesh->x, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.ym1, mesh->y, sizeof(dfloat) * Nlocal);
-    memcpy(nekData.zm1, mesh->z, sizeof(dfloat) * Nlocal);
-    recomputeGeometry();
+    updateMesh();
   }
 
   memcpy(nekData.vx, vx, sizeof(dfloat) * Nlocal);
@@ -957,6 +960,13 @@ void ocopyToNek(void)
 
 void ocopyToNek(dfloat time, int tstep)
 {
+  if (tstep == 0) {
+    auto mesh = nrs->_mesh;
+    mesh->o_x.copyTo(mesh->x);
+    mesh->o_y.copyTo(mesh->y);
+    mesh->o_z.copyTo(mesh->z);
+  }
+
   nrs->o_U.copyTo(nrs->U);
   nrs->o_P.copyTo(nrs->P);
   if (nrs->Nscalar) {

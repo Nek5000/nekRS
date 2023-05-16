@@ -18,21 +18,20 @@ static dfloat P_ROT;
 occa::memory o_beta;
 occa::memory o_kappa;
 
-
 #ifdef __okl__
 
 #include "mv_cyl.oudf"
 
 #endif
 
-void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_SU) 
-{ 
-  lowMach::dpdt(o_SU); 
+void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
+{
+  lowMach::dpdt(o_SU);
 }
 
-void qtl(nrs_t *nrs, dfloat time, occa::memory o_div) 
-{ 
-  lowMach::qThermalSingleComponent(time, o_div); 
+void qtl(nrs_t *nrs, dfloat time, occa::memory o_div)
+{
+  lowMach::qThermalSingleComponent(time, o_div);
 }
 
 void uservp(nrs_t *nrs,
@@ -79,8 +78,9 @@ void UDF_LoadKernels(occa::properties &kernelInfo)
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
-  if (ciMode)
+  if (ciMode) {
     ciSetup(comm, options);
+  }
   platform->par->extract("casedata", "xlen", XLEN);
   platform->par->extract("casedata", "ylen", YLEN);
   platform->par->extract("casedata", "zlen", ZLEN);
@@ -117,6 +117,7 @@ void UDF_Setup(nrs_t *nrs)
   lowMach::setup(nrs, alphaRef, o_beta, o_kappa);
   udf.div = &qtl;
 }
+
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
   mesh_t *mesh = nrs->meshV;
@@ -147,6 +148,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     nek::ocopyToNek(time, tstep);
     nek::userchk();
   }
-  if (ciMode)
+  if (ciMode) {
     ciTestErrors(nrs, time, tstep);
+  }
 }

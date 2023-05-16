@@ -6,6 +6,7 @@ git stash
 if [ "$1" == "nek" ]; then
 
 git rm -rf 3rd_party/nek5000 3rd_party/nek5000_parRSB 3rd_party/nek5000_gslib
+rm -rf 3rd_party/nek5000 3rd_party/nek5000_parRSB 3rd_party/nek5000_gslib
 git commit -m 'remove nek'
 git subtree add --prefix 3rd_party/nek5000 https://github.com/Nek5000/nek5000.git master --squash
 git subtree add --prefix 3rd_party/nek5000_parRSB https://github.com/Nek5000/parRSB.git master --squash

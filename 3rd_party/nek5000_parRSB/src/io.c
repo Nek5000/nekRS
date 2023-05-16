@@ -16,48 +16,55 @@
 #define GC_CO2_HEADER_LEN 132
 #define HEADER_LEN 132
 
-static int re2_header(unsigned *nelt_, unsigned *nv_, ulong *nelgt_,
-                      ulong *nelgv_, MPI_File file, struct comm *c) {
+static void check_call_(sint err, const char *msg, const char *file,
+                        unsigned line, struct comm *c) {
+  sint wrk;
+  comm_allreduce(c, gs_int, gs_add, &err, 1, &wrk);
+  if (err > 0) {
+    if (c->id == 0) {
+      fprintf(stderr, "%s:%d Error: %s", file, line, msg);
+      fflush(stderr);
+    }
+    MPI_Finalize();
+    exit(EXIT_FAILURE);
+  }
+}
+#define check_call(retval, msg, comm)                                          \
+  check_call_(retval, msg, __FILE__, __LINE__, comm)
+
+#define check_mpi_call(retval, msg, comm)                                      \
+  check_call(retval != MPI_SUCCESS, msg, comm)
+
+static void re2_header(unsigned *nelt_, unsigned *nv_, ulong *nelgt_,
+                       ulong *nelgv_, MPI_File file, struct comm *c) {
   char *buf = (char *)calloc(GC_RE2_HEADER_LEN + 1, sizeof(char));
   MPI_Status st;
-  int err = MPI_File_read_all(file, buf, GC_RE2_HEADER_LEN, MPI_BYTE, &st);
+  check_mpi_call(MPI_File_read_all(file, buf, GC_RE2_HEADER_LEN, MPI_BYTE, &st),
+                 "MPI_File_read_all", c);
 
   long long nelgt, nelgv;
   int ndim;
   char version[6];
   sscanf(buf, "%5s %lld %d %lld", version, &nelgt, &ndim, &nelgv);
-  // TODO: Assert version
 
   int rank = c->id, size = c->np;
   int nelt = nelgt / size, nrem = nelgt - nelt * size;
   nelt += (rank > (size - 1 - nrem) ? 1 : 0);
 
   float byte_test = 0;
-  err = MPI_File_read_all(file, &byte_test, 4, MPI_BYTE, &st);
-  if (fabs(byte_test - 6.543210) > 1e-7) {
-    if (rank == 0) {
-      fprintf(stderr, "%s:%d ERROR: byte_test failed! %f\n", __FILE__, __LINE__,
-              byte_test);
-      fflush(stderr);
-    }
-    MPI_Abort(c->c, 911);
-  }
+  check_mpi_call(MPI_File_read_all(file, &byte_test, 4, MPI_BYTE, &st),
+                 "MPI_File_read_all", c);
+  check_call(fabs(byte_test - 6.543210) > 1e-7, "Byte test failed !", c);
 
-  *nelt_ = nelt, *nv_ = (ndim == 2 ? 4 : 8);
-  *nelgt_ = nelgt, *nelgv_ = nelgv;
-
-  if (buf)
-    free(buf);
-
-  return err;
+  *nelt_ = nelt, *nv_ = (ndim == 2 ? 4 : 8), *nelgt_ = nelgt, *nelgv_ = nelgv;
+  free(buf);
 }
 
-static int re2_coord(double **coord_, unsigned int nelt, int nv, MPI_File file,
-                     struct comm *c) {
+static void re2_coord(double **coord_, unsigned int nelt, int nv, MPI_File file,
+                      struct comm *c) {
   uint rank = c->id, size = c->np;
 
-  slong out[2][1], bfr[2][1];
-  slong in = nelt;
+  slong out[2][1], bfr[2][1], in = nelt;
   comm_scan(out, c, gs_long, gs_add, &in, 1, bfr);
   slong start = out[0][0];
 
@@ -65,30 +72,23 @@ static int re2_coord(double **coord_, unsigned int nelt, int nv, MPI_File file,
   size_t elem_size = nv * ndim * sizeof(double) + sizeof(double);
   size_t header_size = GC_RE2_HEADER_LEN + sizeof(float);
 
-  // calculate read size for element data on each MPI rank
-  size_t read_size = nelt * elem_size;
-  if (rank == 0)
-    read_size += header_size;
-
+  // Calculate read size for element data on each MPI rank.
+  size_t read_size = nelt * elem_size + (rank == 0) * header_size;
   char *buf = (char *)calloc(read_size, sizeof(char));
   MPI_Status st;
-  int err = MPI_File_read_ordered(file, buf, read_size, MPI_BYTE, &st);
+  check_mpi_call(MPI_File_read_ordered(file, buf, read_size, MPI_BYTE, &st),
+                 "MPI_File_read_ordered", c);
 
-  char *buf0 = buf;
-  if (rank == 0)
-    buf0 += header_size;
-
-  // Allocate coord array
+  // Allocate coord array.
   size_t coord_size = nelt;
   coord_size = coord_size * nv * ndim;
   double *coord = *coord_ = tcalloc(double, coord_size);
 
-  // Read elements for each rank
+  // Read elements for each rank.
+  char *buf0 = buf + (rank == 0) * header_size;
   double x[8], y[8], z[8];
-  uint i;
-  int k;
   if (ndim == 3) {
-    for (i = 0; i < nelt; i++) {
+    for (uint i = 0; i < nelt; i++) {
       // skip group id
       buf0 += sizeof(double);
       READ_T(x, buf0, double, nv);
@@ -98,14 +98,14 @@ static int re2_coord(double **coord_, unsigned int nelt, int nv, MPI_File file,
       READ_T(z, buf0, double, nv);
       buf0 += sizeof(double) * nv;
 
-      for (k = 0; k < nv; k++) {
+      for (int k = 0; k < nv; k++) {
         coord[i * nv * ndim + k * ndim + 0] = x[k];
         coord[i * nv * ndim + k * ndim + 1] = y[k];
         coord[i * nv * ndim + k * ndim + 2] = z[k];
       }
     }
   } else if (ndim == 2) {
-    for (i = 0; i < nelt; i++) {
+    for (uint i = 0; i < nelt; i++) {
       // skip group id
       buf0 += sizeof(double);
       READ_T(x, buf0, double, nv);
@@ -113,22 +113,19 @@ static int re2_coord(double **coord_, unsigned int nelt, int nv, MPI_File file,
       READ_T(y, buf0, double, nv);
       buf0 += sizeof(double) * nv;
 
-      for (k = 0; k < nv; k++) {
+      for (int k = 0; k < nv; k++) {
         coord[i * nv * ndim + k * ndim + 0] = x[k];
         coord[i * nv * ndim + k * ndim + 1] = y[k];
       }
     }
   }
 
-  if (buf)
-    free(buf);
-
-  return 0;
+  free(buf);
 }
 
-static int re2_boundary(unsigned int *nbcs_, long long **bcs_,
-                        unsigned int nelt, int nv, ulong nelgt, MPI_File file,
-                        struct comm *c) {
+static void re2_boundary(unsigned int *nbcs_, long long **bcs_,
+                         unsigned int nelt, int nv, ulong nelgt, MPI_File file,
+                         struct comm *c) {
   uint rank = c->id, size = c->np;
   MPI_Comm comm = c->c;
 
@@ -136,24 +133,26 @@ static int re2_boundary(unsigned int *nbcs_, long long **bcs_,
   size_t elem_size = nv * ndim * sizeof(double) + sizeof(double);
   size_t header_size = GC_RE2_HEADER_LEN + sizeof(float);
 
-  // Calculate offset for the curve side data
+  // Calculate offset for the curve side data.
   MPI_Offset curve_off = header_size + nelgt * elem_size;
 
   MPI_Status st;
   char bufL[16];
   if (rank == 0)
     MPI_File_read_at(file, curve_off, bufL, sizeof(long), MPI_BYTE, &st);
-  MPI_Bcast(bufL, sizeof(long), MPI_BYTE, 0, comm);
+  check_mpi_call(MPI_Bcast(bufL, sizeof(long), MPI_BYTE, 0, comm), "MPI_Bcast",
+                 c);
 
   double t;
   READ_T(&t, bufL, long, 1);
   long ncurves = t;
 
-  // Calculate offset for boundary conditions data
+  // Calculate offset for boundary conditions data.
   MPI_Offset bndry_off = curve_off + sizeof(long) + sizeof(long) * 8 * ncurves;
   if (rank == 0)
     MPI_File_read_at(file, bndry_off, bufL, sizeof(long), MPI_BYTE, &st);
-  MPI_Bcast(bufL, sizeof(long), MPI_BYTE, 0, comm);
+  check_mpi_call(MPI_Bcast(bufL, sizeof(long), MPI_BYTE, 0, comm), "MPI_Bcast",
+                 c);
 
   READ_T(&t, bufL, long, 1);
   long nbcs = t;
@@ -162,8 +161,8 @@ static int re2_boundary(unsigned int *nbcs_, long long **bcs_,
   int nrem = nbcs - nbcsl * size;
   nbcsl += (rank > (size - 1 - nrem) ? 1 : 0);
 
-  slong out[2][1], bfr[2][1];
-  comm_scan(out, c, gs_long, gs_add, &nbcsl, 1, bfr);
+  slong out[2][1], bfr[2][1], in = nbcsl;
+  comm_scan(out, c, gs_long, gs_add, &in, 1, bfr);
   slong start = out[0][0];
 
   size_t read_size = nbcsl * sizeof(long) * nv;
@@ -216,41 +215,31 @@ static int re2_boundary(unsigned int *nbcs_, long long **bcs_,
 
   array_free(&bfaces);
   free(buf);
-
-  return 0;
 }
 
-static int read_geometry(unsigned *nelt, unsigned *nv, double **coord,
-                         unsigned *nbcs, long long **bcs, char *fname,
-                         struct comm *c) {
+static void read_geometry(unsigned *nelt, unsigned *nv, double **coord,
+                          unsigned *nbcs, long long **bcs, char *fname,
+                          struct comm *c) {
   uint rank = c->id, size = c->np;
 
   MPI_Info info;
-  MPI_Info_create(&info);
+  check_mpi_call(MPI_Info_create(&info), "MPI_Info_create", c);
 
   MPI_File file;
-  int err = MPI_File_open(c->c, fname, MPI_MODE_RDONLY, info, &file);
-  if (err != MPI_SUCCESS) {
-    if (rank == 0) {
-      fprintf(stderr, "%s:%d Error opening file: %s\n", __FILE__, __LINE__,
-              fname);
-      fflush(stderr);
-    }
-    return 1;
-  }
+  check_mpi_call(MPI_File_open(c->c, fname, MPI_MODE_RDONLY, info, &file),
+                 "MPI_File_open", c);
 
   ulong nelgt, nelgv;
   re2_header(nelt, nv, &nelgt, &nelgv, file, c);
   re2_coord(coord, *nelt, *nv, file, c);
   re2_boundary(nbcs, bcs, *nelt, *nv, nelgt, file, c);
 
-  MPI_Info_free(&info);
-  err = MPI_File_close(&file);
-  return err != MPI_SUCCESS;
+  check_mpi_call(MPI_File_close(&file), "MPI_File_close", c);
+  check_mpi_call(MPI_Info_free(&info), "MPI_Info_free", c);
 }
 
-static int read_connectivity(unsigned int *nelt_, int *nv_, long long **vl_,
-                             char *fname, struct comm *c) {
+static int read_connectivity(unsigned int *nelt_, unsigned *nv_,
+                             long long **vl_, char *fname, struct comm *c) {
   uint rank = c->id, size = c->np;
   MPI_Comm comm = c->c;
 
@@ -352,7 +341,8 @@ int parrsb_read_mesh(unsigned *nel, unsigned *nv, long long **vl,
   struct comm c;
   comm_init(&c, comm);
 
-  // Set nv and nelt to 0 so we know if .re2 is read before .co2
+  // Set nv and nelt to 0 so we know if .re2 file is read before .co2 in the
+  // case where we are reading both.
   *nv = 0, *nel = 0;
 
   // Read geometry from .re2 file
@@ -363,7 +353,7 @@ int parrsb_read_mesh(unsigned *nel, unsigned *nv, long long **vl,
     read_geometry(nel, nv, coord, nbcs, bcs, geom_name, &c);
   }
 
-  // Read connectivity from .co2 file
+  // Read connectivity from .co2 file if the user asks us to read it.
   if (read & 2) {
     char conn_name[BUFSIZ];
     strncpy(conn_name, name, BUFSIZ);
@@ -581,6 +571,9 @@ int parrsb_dump_part(char *name, unsigned nel, unsigned nv, double *coord,
 
   return err;
 }
+
+#undef check_call
+#undef check_mpi_call
 
 #undef HEADER_LEN
 #undef GC_CO2_HEADER_LEN

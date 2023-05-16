@@ -17,17 +17,18 @@ static dfloat rho, mueLam;
 void extractLine(nrs_t *nrs, dfloat time, int tstep)
 {
   const auto np = (platform->comm.mpiRank == 0) ? 200 : 0;
+  const auto offset = np;
 
   static pointInterpolation_t *interpolator = nullptr;
   static std::vector<dfloat> xp, yp, zp;
   static occa::memory o_Up;
 
-  if(!interpolator) {
+  if (!interpolator) {
     auto mesh = nrs->meshV;
     const auto yMin = platform->linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
     const auto yMax = platform->linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
 
-    if (np) { 
+    if (np) {
       const auto x0 = 7.0;
       const auto z0 = 0.5;
 
@@ -36,25 +37,24 @@ void extractLine(nrs_t *nrs, dfloat time, int tstep)
       zp.push_back(z0);
 
       const auto betaY = 2.2;
-      const auto dy = (yMax - yMin)/(np-1);
-      for(int i=1; i < np-1; i++) {
+      const auto dy = (yMax - yMin) / (np - 1);
+      for (int i = 1; i < np - 1; i++) {
         xp.push_back(x0);
-        yp.push_back(tanh(betaY * (i*dy - 1))/tanh(betaY));
+        yp.push_back(tanh(betaY * (i * dy - 1)) / tanh(betaY));
         zp.push_back(z0);
       }
 
       xp.push_back(x0);
       yp.push_back(yMax);
       zp.push_back(z0);
-      o_Up = platform->device.malloc(nrs->NVfields * np * sizeof(dfloat)); 
+      o_Up = platform->device.malloc(nrs->NVfields * offset * sizeof(dfloat));
     }
- 
+
     interpolator = new pointInterpolation_t(nrs);
     interpolator->setPoints(np, xp.data(), yp.data(), zp.data());
     interpolator->find();
   }
 
-  const auto offset = np;
   interpolator->eval(nrs->NVfields, nrs->fieldOffset, nrs->o_U, offset, o_Up);
 
   if (platform->comm.mpiRank == 0) {
@@ -62,12 +62,9 @@ void extractLine(nrs_t *nrs, dfloat time, int tstep)
     o_Up.copyTo(Up.data());
 
     std::ofstream f("profile.dat", std::ios::app);
-    for(int i=0; i < np; i++) {
-      f << std::scientific
-        << time << " " 
-        << xp[i] << " " << yp[i] << " " << zp[i] << " "
-        << Up[i + 0*offset] << " " << Up[i + 1*offset] << " " << Up[i + 2*offset] 
-        << std::endl;
+    for (int i = 0; i < np; i++) {
+      f << std::scientific << time << " " << xp[i] << " " << yp[i] << " " << zp[i] << " "
+        << Up[i + 0 * offset] << " " << Up[i + 1 * offset] << " " << Up[i + 2 * offset] << std::endl;
     }
     f.close();
   }
@@ -76,16 +73,20 @@ void extractLine(nrs_t *nrs, dfloat time, int tstep)
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 {
   mesh_t *mesh = nrs->meshV;
-  cds_t *cds   = nrs->cds;
+  cds_t *cds = nrs->cds;
 
   RANSktau::updateSourceTerms();
 }
 
-void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
-            occa::memory o_UProp, occa::memory o_SProp)
+void uservp(nrs_t *nrs,
+            dfloat time,
+            occa::memory o_U,
+            occa::memory o_S,
+            occa::memory o_UProp,
+            occa::memory o_SProp)
 {
   mesh_t *mesh = nrs->meshV;
-  cds_t *cds   = nrs->cds;
+  cds_t *cds = nrs->cds;
 
   RANSktau::updateProperties();
 
@@ -93,14 +94,16 @@ void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
   platform->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
   const dfloat Pr_t = 0.7;
   occa::memory o_mue_t = RANSktau::o_mue_t();
-  occa::memory o_temp_mue = cds->o_diff + 0*cds->fieldOffset[0]*sizeof(dfloat);
-  scalarScaledAdd(mesh->Nlocal, conductivity, 1/Pr_t, o_mue_t, o_temp_mue); 
+  occa::memory o_temp_mue = cds->o_diff + 0 * cds->fieldOffset[0] * sizeof(dfloat);
+  scalarScaledAdd(mesh->Nlocal, conductivity, 1 / Pr_t, o_mue_t, o_temp_mue);
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
-  if (ciMode) ciSetup(comm, options);
+  if (ciMode) {
+    ciSetup(comm, options);
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)
@@ -112,15 +115,17 @@ void UDF_Setup(nrs_t *nrs)
   udf.sEqnSource = &userq;
 
   const int scalarFieldStart = 1;
-  platform->options.getArgs("VISCOSITY", mueLam); 
-  platform->options.getArgs("DENSITY", rho); 
+  platform->options.getArgs("VISCOSITY", mueLam);
+  platform->options.getArgs("DENSITY", rho);
 
   RANSktau::setup(nrs, mueLam, rho, scalarFieldStart);
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (ciMode) ciTestErrors(nrs, time, tstep);
+  if (ciMode) {
+    ciTestErrors(nrs, time, tstep);
+  }
   if (nrs->isOutputStep) {
     extractLine(nrs, time, tstep);
   }

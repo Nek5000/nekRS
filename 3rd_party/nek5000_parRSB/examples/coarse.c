@@ -83,7 +83,7 @@ static void setup_rhs(double *b, const unsigned int nelt, MPI_Comm comm) {
 
 static void setup_and_solve(unsigned nelt, unsigned nv, const long long *vl,
                             const scalar *centroids,
-                            const struct parrsb_cmd_opts *in, MPI_Comm comm) {
+                            const parrsb_cmd_line_opts *in, MPI_Comm comm) {
   // Setup the coarse solve with schur complement solver
   struct comm c;
   comm_init(&c, comm);
@@ -121,16 +121,16 @@ int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
   MPI_Comm comm = MPI_COMM_WORLD;
 
-  struct parrsb_cmd_opts *in = parrsb_parse_cmd_opts(argc, argv);
-  int err = (in == NULL);
-  parrsb_check_error(err, comm);
+  parrsb_cmd_line_opts *in = parrsb_parse_cmd_opts(argc, argv);
+  parrsb_check_error(in == NULL, comm);
 
   // Read the geometry from the .re2 file, find connectiviy, partition and then
   // distribute the mesh.
   unsigned nelt, nv;
   long long *vl = NULL;
   double *coord = NULL;
-  parrsb_setup_mesh(&nelt, &nv, &vl, &coord, in, comm);
+  int err = parrsb_setup_mesh(&nelt, &nv, &vl, &coord, in, comm);
+  parrsb_check_error(err, comm);
 
   int ndim = (nv == 8) ? 3 : 2;
   double *centroids = tcalloc(double, nelt *ndim);

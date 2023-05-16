@@ -61,6 +61,7 @@ static uint *cholesky_symbolic(struct mat *L, uint n, uint const *Ap,
   }
 
   free(parent);
+  return 0;
 }
 
 /*
@@ -737,6 +738,7 @@ static int Fxi(scalar *y, const struct par_mat *F, struct gs_data *gsh,
       si += F->adj_val[j] * wrk[j];
     y[F->rows[i] - s] = si;
   }
+  return 0;
 }
 
 static int distribute_by_columns(struct array *aij, ulong s, uint n, ulong ng,
@@ -992,6 +994,7 @@ static int append_par_mat(struct array *mijs, const struct par_mat *A) {
       }
     }
   }
+  return 0;
 }
 
 int schur_dump(const char *name, const struct mat *B,
@@ -1198,7 +1201,7 @@ int schur_solve(scalar *x, struct coarse *crs, scalar *b, scalar tol,
   metric_toc(c, SCHUR_SOLVE_SETRHS1);
 
   metric_tic(c, SCHUR_SOLVE_PROJECT);
-  unsigned miter = (tol < 0 ? abs(tol) : 100);
+  unsigned miter = (tol < 0 ? fabs(tol) : 100);
   scalar mtol = (tol > 0 ? tol : 1e-7);
   int iter = project(xi, rhs, schur, crs->s[0], c, miter, mtol, 0, 1, bfr);
   metric_toc(c, SCHUR_SOLVE_PROJECT);

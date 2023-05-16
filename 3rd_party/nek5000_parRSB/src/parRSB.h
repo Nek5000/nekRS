@@ -78,7 +78,7 @@ int parrsb_dump_part(char *name, unsigned nelt, unsigned nv, double *coord,
 //==============================================================================
 // Auxiliary functions
 //
-struct parrsb_cmd_opts {
+typedef struct {
   char *mesh;  // Mesh name, required.
   double tol;  // gencon tolerance, default: 0.2
   int test;    // run tests, default: 0
@@ -92,16 +92,17 @@ struct parrsb_cmd_opts {
 
   int crs_type;   // Coarse solver type, default: 0
   double crs_tol; // Coarse tolerance, default: 1e-3
-};
+} parrsb_cmd_line_opts;
 
-struct parrsb_cmd_opts *parrsb_parse_cmd_opts(int argc, char *argv[]);
-void parrsb_cmd_opts_free(struct parrsb_cmd_opts *opts);
+parrsb_cmd_line_opts *parrsb_parse_cmd_opts(int argc, char *argv[]);
+
+void parrsb_cmd_opts_free(parrsb_cmd_line_opts *opts);
 
 int parrsb_dist_mesh(unsigned *nelt, long long **vl, double **coord, int *part,
                      int nv, MPI_Comm comm);
 
 int parrsb_setup_mesh(unsigned *nelt, unsigned *nv, long long **vl,
-                      double **coord, struct parrsb_cmd_opts *opts,
+                      double **coord, parrsb_cmd_line_opts *opts,
                       MPI_Comm comm);
 
 void parrsb_print_part_stat(long long *vtx, unsigned nelt, unsigned nv,

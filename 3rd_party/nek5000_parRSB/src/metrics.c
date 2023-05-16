@@ -3,8 +3,8 @@
 #include <limits.h>
 #include <time.h>
 
-#define MAXMETS 5100
-#define MAXLVLS 20
+#define MAXMETS 50
+#define MAXLVLS 30
 #define MAXSIZE (MAXMETS * MAXLVLS)
 
 static double metrics[MAXMETS];
@@ -35,7 +35,7 @@ void metric_toc(struct comm *c, metric m) {
 double metric_get_value(int level, metric m) {
   if (level == -1)
     return metrics[m];
-  else if (level < stack_size)
+  if (level >= 0 && level < stack_size)
     return stack[level * MAXMETS + m];
   return 0.0;
 }
@@ -43,8 +43,7 @@ double metric_get_value(int level, metric m) {
 void metric_push_level() {
   assert(stack_size < MAXLVLS && "stack_size >= MAXLVLS");
 
-  uint i;
-  for (i = 0; i < MAXMETS; i++) {
+  for (unsigned i = 0; i < MAXMETS; i++) {
     stack[stack_size * MAXMETS + i] = metrics[i];
     metrics[i] = 0.0;
   }
@@ -53,19 +52,19 @@ void metric_push_level() {
 
 uint metric_get_levels() { return stack_size; }
 
-static void metric_print_aux(double **mini, struct comm *c, int profile_level) {
-  *mini = tcalloc(double, 4 * MAXSIZE);
-  double *min = *mini, *max = min + MAXSIZE, *sum = max + MAXSIZE,
-         *buf = sum + MAXSIZE;
+static void metric_print_aux(double *wrk, struct comm *c) {
+  double *min = wrk, *max = min + MAXSIZE, *sum = max + MAXSIZE;
+  double *buf = sum + MAXSIZE;
 
-  uint max_size = stack_size * MAXMETS, i;
-  for (i = 0; i < max_size; i++)
+  uint max_size = stack_size * MAXMETS;
+  for (uint i = 0; i < max_size; i++) {
     min[i] = max[i] = sum[i] = stack[i];
+  }
 
   comm_allreduce(c, gs_double, gs_min, min, MAXSIZE, buf); // min
   comm_allreduce(c, gs_double, gs_max, max, MAXSIZE, buf); // max
   comm_allreduce(c, gs_double, gs_add, sum, MAXSIZE, buf); // sum
-  for (i = 0; i < max_size; i++)
+  for (uint i = 0; i < max_size; i++)
     sum[i] /= c->np;
 }
 
@@ -73,9 +72,9 @@ static void metric_print_aux(double **mini, struct comm *c, int profile_level) {
   sum[i * MAXMETS + m], min[i * MAXMETS + m], max[i * MAXMETS + m]
 
 void metric_rsb_print(struct comm *c, int profile_level) {
-  double *min = NULL;
-  metric_print_aux(&min, c, profile_level);
-  double *max = min + MAXSIZE, *sum = max + MAXSIZE;
+  double *wrk = tcalloc(double, 4 * MAXSIZE);
+  metric_print_aux(wrk, c);
+  double *min = wrk, *max = min + MAXSIZE, *sum = max + MAXSIZE;
 
   uint i;
   for (i = 0; i < stack_size; i++) {
@@ -98,6 +97,10 @@ void metric_rsb_print(struct comm *c, int profile_level) {
              SUMMARY(i, RSB_INVERSE_SETUP));
       printf("      RSB_INVERSE            : %e/%e/%e\n",
              SUMMARY(i, RSB_INVERSE));
+      printf("      RSB_PROJECT_AX         : %e/%e/%e\n",
+             SUMMARY(i, RSB_PROJECT_AX));
+      printf("      RSB_PROJECT_MG         : %e/%e/%e\n",
+             SUMMARY(i, RSB_PROJECT_MG));
       printf("    RSB_FIEDLER_CALC_NITER   : %e/%e/%e\n",
              SUMMARY(i, RSB_FIEDLER_CALC_NITER));
       printf("  RSB_SORT                   : %e/%e/%e\n", SUMMARY(i, RSB_SORT));
@@ -108,17 +111,16 @@ void metric_rsb_print(struct comm *c, int profile_level) {
     }
   }
 
-  if (min)
-    free(min);
+  if (wrk)
+    free(wrk);
 }
 
 void metric_crs_print(struct comm *c, int profile_level) {
-  double *min = NULL;
-  metric_print_aux(&min, c, profile_level);
-  double *max = min + MAXSIZE, *sum = max + MAXSIZE;
+  double *wrk = tcalloc(double, 4 * MAXSIZE);
+  metric_print_aux(wrk, c);
+  double *min = wrk, *max = min + MAXSIZE, *sum = max + MAXSIZE;
 
-  uint i;
-  for (i = 0; i < stack_size; i++) {
+  for (unsigned i = 0; i < stack_size; i++) {
     if (c->id == 0 && profile_level > 0) {
       printf("level=%02d\n", i);
       printf("  SCHUR_SOLVE_CHOL1                  : %e/%e/%e\n",
@@ -148,8 +150,8 @@ void metric_crs_print(struct comm *c, int profile_level) {
     }
   }
 
-  if (min)
-    free(min);
+  if (wrk)
+    free(wrk);
 }
 
 #undef SUMMARY

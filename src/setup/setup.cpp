@@ -15,8 +15,25 @@ void printICMinMax(nrs_t *nrs)
   if (platform->comm.mpiRank == 0)
     printf("================= INITIAL CONDITION ====================\n");
 
+  {
+    auto mesh = nrs->_mesh;
+    auto o_x = mesh->o_x;
+    auto o_y = mesh->o_y;
+    auto o_z = mesh->o_z;
+    
+    const auto xMin = platform->linAlg->min(mesh->Nlocal, o_x, platform->comm.mpiComm);
+    const auto yMin = platform->linAlg->min(mesh->Nlocal, o_y, platform->comm.mpiComm);
+    const auto zMin = platform->linAlg->min(mesh->Nlocal, o_z, platform->comm.mpiComm);
+    const auto xMax = platform->linAlg->max(mesh->Nlocal, o_x, platform->comm.mpiComm);
+    const auto yMax = platform->linAlg->max(mesh->Nlocal, o_y, platform->comm.mpiComm);
+    const auto zMax = platform->linAlg->max(mesh->Nlocal, o_z, platform->comm.mpiComm);
+    if (platform->comm.mpiRank == 0)
+      printf("XYZ   min/max: %g %g  %g %g  %g %g\n", xMin, xMax, yMin, yMax, zMin, zMax);
+  }
+
+
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    auto mesh = nrs->meshV;
+    auto mesh = nrs->_mesh;
     auto o_ux = mesh->o_U + 0 * nrs->fieldOffset * sizeof(dfloat);
     auto o_uy = mesh->o_U + 1 * nrs->fieldOffset * sizeof(dfloat);
     auto o_uz = mesh->o_U + 2 * nrs->fieldOffset * sizeof(dfloat);
@@ -27,7 +44,7 @@ void printICMinMax(nrs_t *nrs)
     const auto uyMax = platform->linAlg->max(mesh->Nlocal, o_uy, platform->comm.mpiComm);
     const auto uzMax = platform->linAlg->max(mesh->Nlocal, o_uz, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0)
-      printf("UM  min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
+      printf("UMSH  min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
   }
 
   {
@@ -42,7 +59,7 @@ void printICMinMax(nrs_t *nrs)
     const auto uyMax = platform->linAlg->max(mesh->Nlocal, o_uy, platform->comm.mpiComm);
     const auto uzMax = platform->linAlg->max(mesh->Nlocal, o_uz, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0)
-      printf("U   min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
+      printf("U     min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
   }
 
   {
@@ -50,13 +67,13 @@ void printICMinMax(nrs_t *nrs)
     const auto prMin = platform->linAlg->min(mesh->Nlocal, nrs->o_P, platform->comm.mpiComm);
     const auto prMax = platform->linAlg->max(mesh->Nlocal, nrs->o_P, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0)
-      printf("P   min/max: %g %g\n", prMin, prMax);
+      printf("P     min/max: %g %g\n", prMin, prMax);
   }
 
   if (nrs->Nscalar) {
     auto cds = nrs->cds;
     if (platform->comm.mpiRank == 0)
-      printf("S   min/max:");
+      printf("S     min/max:");
 
     int cnt = 0;
     for (int is = 0; is < cds->NSfields; is++) {
@@ -109,14 +126,14 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   {
 #if 1
     if (platform->device.mode() == "Serial")
-      platform->options.setArgs("GS COMM OVERLAP", "FALSE");
+      platform->options.setArgs("ENABLE GS COMM OVERLAP", "FALSE");
 #endif
 
     if (platform->comm.mpiCommSize == 1)
-      platform->options.setArgs("GS COMM OVERLAP", "FALSE");
+      platform->options.setArgs("ENABLE GS COMM OVERLAP", "FALSE");
 
-    if (platform->comm.mpiRank == 0 && platform->options.compareArgs("GS COMM OVERLAP", "FALSE"))
-      std::cout << "gs comm overlap disabled\n\n";
+    if (platform->comm.mpiRank == 0 && platform->options.compareArgs("ENABLE GS COMM OVERLAP", "FALSE"))
+      std::cout << "ENABLE GS COMM OVERLAP disabled\n\n";
   }
 
   nrs->flow = 1;
@@ -176,13 +193,16 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   mesh_t *mesh = nrs->meshV;
 
   {
-    std::vector<mesh_t*> meshList;
+    std::vector<mesh_t *> meshList;
     meshList.push_back(nrs->_mesh);
-    if(nrs->cht) meshList.push_back(nrs->meshV);
-    for(const auto& msh : meshList) {
-      if(bcMap::size(msh->cht) > 0) {
-        nrsCheck(msh->Nbid != bcMap::size(msh->cht), 
-                 platform->comm.mpiComm, EXIT_FAILURE, "%s\n",
+    if (nrs->cht)
+      meshList.push_back(nrs->meshV);
+    for (const auto &msh : meshList) {
+      if (bcMap::size(msh->cht) > 0) {
+        nrsCheck(msh->Nbid != bcMap::size(msh->cht),
+                 platform->comm.mpiComm,
+                 EXIT_FAILURE,
+                 "%s\n",
                  "Number of boundary IDs in mesh does not match boundaryTypeMap "
                  "in par or BCs imported from nek5000");
       }
@@ -288,10 +308,18 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh->o_LMM.free();
     mesh->o_LMM = platform->device.malloc(nrs->fieldOffset * nBDF, sizeof(dfloat));
     mesh->o_LMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
+    free(mesh->LMM);
+    mesh->LMM = (dfloat*) std::malloc(mesh->o_LMM.size());
+    mesh->o_LMM.copyTo(mesh->LMM);
+
     platform->o_mempool.slice0.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
     mesh->o_invLMM.free();
     mesh->o_invLMM = platform->device.malloc(nrs->fieldOffset * nBDF, sizeof(dfloat));
     mesh->o_invLMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
+    free(mesh->invLMM);
+    mesh->invLMM = (dfloat*) std::malloc(mesh->o_invLMM.size());
+    mesh->o_invLMM.copyTo(mesh->invLMM);
+
 
     const int nAB = std::max(nrs->nEXT, mesh->nAB);
     mesh->U = (dfloat *)calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
@@ -559,16 +587,27 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nek::copyFromNek(startTime);
   platform->options.setArgs("START TIME", to_string_f(startTime));
 
+  // udf setup
   if (platform->comm.mpiRank == 0)
     printf("calling udf_setup ... ");
   fflush(stdout);
+
   udf.setup(nrs);
+
   if (platform->comm.mpiRank == 0)
     printf("done\n");
   fflush(stdout);
 
   nrs->p0the = nrs->p0th[0];
 
+  // in case the user modifies mesh in udf.setup
+  nrs->_mesh->o_x.copyFrom(nrs->_mesh->x);
+  nrs->_mesh->o_y.copyFrom(nrs->_mesh->y);
+  nrs->_mesh->o_z.copyFrom(nrs->_mesh->z);
+  if(nrs->cht) nrs->meshV->update(true);
+  nrs->_mesh->update(true);
+
+  // in case the user sets IC in udf.setup
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
   nrs->o_prop.copyFrom(nrs->prop);
@@ -580,13 +619,15 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh->o_U.copyFrom(mesh->U);
   }
 
-  evaluateProperties(nrs, startTime);
+  // ensure both codes see the same mesh + IC 
+  nek::ocopyToNek(startTime, 0);
 
+  // update props based on IC
+  evaluateProperties(nrs, startTime);
   nrs->o_prop.copyTo(nrs->prop);
   if (nrs->Nscalar)
     nrs->cds->o_prop.copyTo(nrs->cds->prop);
 
-  nek::ocopyToNek(startTime, 0);
 
   // CVODE can only be initialized once the initial condition
   // is known, however, a user may need to set function ptrs

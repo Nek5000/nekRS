@@ -120,7 +120,7 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_, precon_t *precon_)
       return elapsed;
     };
 
-    if (platform->options.compareArgs("GS COMM OVERLAP", "TRUE")) {
+    if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "TRUE")) {
       auto nonOverlappedTime = timeOperator();
       auto callback = [&]() {
         ellipticAx(elliptic,
@@ -208,8 +208,8 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_, precon_t *precon_)
                                            platform->comm.mpiComm,
                                            true);
 
-    if(options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE") ||
-       options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE"))
+    if (options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE") ||
+        options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE"))
       autoOverlap(ellipticCoarse);
   }
   else {

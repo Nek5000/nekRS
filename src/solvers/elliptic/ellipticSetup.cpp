@@ -75,8 +75,12 @@ void checkConfig(elliptic_t *elliptic)
       printf("mesh->ogs == NULL!");
     err++;
   }
-  
-  nrsCheck(elliptic->EToB == nullptr, platform->comm.mpiComm, EXIT_FAILURE, "%s", "elliptic->EToB not allocated!\n");
+
+  nrsCheck(elliptic->EToB == nullptr,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "%s",
+           "elliptic->EToB not allocated!\n");
 
   {
     int found = 0;
@@ -113,7 +117,7 @@ void ellipticSolveSetup(elliptic_t *elliptic)
            "Empty elliptic solver name!");
 
   elliptic->options.setArgs("DISCRETIZATION", "CONTINUOUS");
-  
+
   platform->options.getArgs("ELEMENT TYPE", elliptic->elementType);
 
   elliptic->blockSolver = elliptic->Nfields > 1;
@@ -275,7 +279,7 @@ void ellipticSolveSetup(elliptic_t *elliptic)
       oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->fieldOffset, ogsDfloat, NULL, oogsMode);
   elliptic->oogsAx = elliptic->oogs;
 
-  if (platform->options.compareArgs("GS COMM OVERLAP", "TRUE")) {
+  if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "TRUE")) {
     auto nonOverlappedTime = timeEllipticOperator();
     auto callback = [&]() {
       ellipticAx(elliptic,

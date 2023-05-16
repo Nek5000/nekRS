@@ -9,6 +9,7 @@
 
 #include "pointInterpolation.hpp"
 #include <algorithm>
+#include <inttypes.h>
 
 pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_, double bb_tol, double newton_tol_, bool mySession_)
     : pointInterpolation_t(nrs_, nrs_->meshV->Nlocal, nrs_->meshV->Nlocal, bb_tol, newton_tol_, mySession_)
@@ -28,7 +29,7 @@ pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
 
   const int npt_max = 128;
 
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->_mesh;
 
   if (mySession) {
     mesh->o_x.copyTo(mesh->x, mesh->Nlocal * sizeof(dfloat));
@@ -132,6 +133,27 @@ void pointInterpolation_t::eval(dlong nFields,
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic("pointInterpolation_t::eval", 1);
   }
+  
+  nrsCheck(nrs->fieldOffset > inputFieldOffset,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "pointInterpolation_t::eval inputFieldOffset (%d) is less than nrs->fieldOffset (%d)\n",
+           inputFieldOffset,
+           nrs->fieldOffset);
+  
+  nrsCheck(o_in.size() < nFields * inputFieldOffset * sizeof(dfloat),
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "pointInterpolation_t::eval input size (%" PRId64 ") is smaller than expected (%ld)\n",
+           o_in.size(),
+           nFields * inputFieldOffset * sizeof(dfloat));
+  
+  nrsCheck(o_out.size() < nFields * outputFieldOffset * sizeof(dfloat),
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "pointInterpolation_t::eval output size (%" PRId64 ") is smaller than expected (%ld)\n",
+           o_out.size(),
+           nFields * outputFieldOffset * sizeof(dfloat));
 
   findpts_->eval(nPoints, nFields, inputFieldOffset, outputFieldOffset, o_in, &data_, o_out);
 
@@ -149,6 +171,13 @@ void pointInterpolation_t::eval(dlong nFields,
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic("pointInterpolation_t::eval", 1);
   }
+
+  nrsCheck(nrs->fieldOffset > inputFieldOffset,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "pointInterpolation_t::eval inputFieldOffset (%d) is less than nrs->fieldOffset (%d)\n",
+           inputFieldOffset,
+           nrs->fieldOffset);
 
   findpts_->eval(nPoints, nFields, inputFieldOffset, outputFieldOffset, in, &data_, out);
 

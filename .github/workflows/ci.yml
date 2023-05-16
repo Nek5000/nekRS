@@ -15,7 +15,7 @@ env:
   NEKRS_EXAMPLES: "${{ github.workspace }}/.local/nekrs/examples"
   ENABLE_CUDA: "0"
   ENABLE_HIP: "0"
-  NEKRS_COMPILER_FLAGS: "-O2"
+  NEKRS_COMPILER_FLAGS: "-O2 -march=x86-64"
   OCCA_CXXFLAGS: "-O2"
   NEKRS_OCCA_MODE_DEFAULT: "SERIAL"
   NRSCONFIG_NOBUILD: "1"

@@ -1492,7 +1492,7 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank)
   options.setArgs("ADVECTION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
 
-  options.setArgs("RESTART FROM FILE", "0");
+  options.setArgs("RESTART FROM FILE", "FALSE");
   options.setArgs("SOLUTION OUTPUT INTERVAL", "-1");
   options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
   options.setArgs("REGULARIZATION METHOD", "NONE");
@@ -1505,7 +1505,7 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank)
   options.setArgs("MESH SOLVER", "NONE");
   options.setArgs("MOVING MESH", "FALSE");
 
-  options.setArgs("GS COMM OVERLAP", "TRUE");
+  options.setArgs("ENABLE GS COMM OVERLAP", "TRUE");
 
   options.setArgs("VARIABLE DT", "FALSE");
 
@@ -1640,7 +1640,6 @@ void parseGeneralSection(const int rank, setupAide &options, inipp::Ini *par)
 
   std::string startFrom;
   if (par->extract("general", "startfrom", startFrom)) {
-    options.setArgs("RESTART FROM FILE", "1");
     options.setArgs("RESTART FILE NAME", startFrom);
   }
 
@@ -2164,14 +2163,14 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
   else {
     for (auto &sec : par->sections) {
       std::string key = sec.first;
-      
+
       // skip default [SCALAR] section when counting scalars
       if (key == "scalar") {
         foundDefaultScalarSection = true;
         continue;
       }
 
-      if (key.compare(0, 6, "scalar") == 0){
+      if (key.compare(0, 6, "scalar") == 0) {
         nNonTemperatureScalars++;
         nscal++;
         maxScalarId = std::max(maxScalarId, parseScalarIntegerFromString(key).value());
@@ -2181,14 +2180,14 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
 
   // provide check against specifying, e.g., [SCALAR02] without [SCALAR01]
   // in non-default scalar case
-  if(!optionalNscalar && maxScalarId > nNonTemperatureScalars)
-  {
+  if (!optionalNscalar && maxScalarId > nNonTemperatureScalars) {
     append_error("scalar index " + std::to_string(maxScalarId) +
                  " is larger than the number of [scalar0x] sections");
   }
 
-  if(foundDefaultScalarSection && !optionalNscalar && nNonTemperatureScalars == 0){
-    append_error("[scalar] section specified, but no [scalar0x] section were found and generic::nscalars is not specified");
+  if (foundDefaultScalarSection && !optionalNscalar && nNonTemperatureScalars == 0) {
+    append_error("[scalar] section specified, but no [scalar0x] section were found and generic::nscalars is "
+                 "not specified");
   }
 
   options.setArgs("NUMBER OF SCALARS", std::to_string(nscal));
@@ -2401,7 +2400,6 @@ void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
     if (noVelocitySolve && option.first.find("PRESSURE") == 0) {
       staleOptions.push_back(option.first);
     }
-
   }
   for (auto const &key : staleOptions) {
     options.removeArgs(key);
@@ -2422,7 +2420,7 @@ void applyBoundaryTypeMap(const int rank, setupAide &options, inipp::Ini *par)
     for (auto const &option : options) {
       if (option.first.find(section) == 0) {
 
-        if (option.first.compare(section + " SOLVER") == 0 && 
+        if (option.first.compare(section + " SOLVER") == 0 &&
             option.second.find("NONE") == std::string::npos) {
           expectedCount++;
         }
@@ -2430,7 +2428,7 @@ void applyBoundaryTypeMap(const int rank, setupAide &options, inipp::Ini *par)
         if (option.first.find("BOUNDARY TYPE MAP") != std::string::npos) {
           count++;
           auto value = section;
-          lowerCase(value); 
+          lowerCase(value);
           bcMap::setup(serializeString(option.second, ','), value);
           staleOptions.push_back(option.first);
         }
@@ -2450,7 +2448,7 @@ void applyBoundaryTypeMap(const int rank, setupAide &options, inipp::Ini *par)
   }
 }
 
-void parRead(inipp::Ini *par, const std::string& _setupFile, MPI_Comm comm, setupAide &options)
+void parRead(inipp::Ini *par, const std::string &_setupFile, MPI_Comm comm, setupAide &options)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
@@ -2460,8 +2458,11 @@ void parRead(inipp::Ini *par, const std::string& _setupFile, MPI_Comm comm, setu
   setDefaultSettings(options, casename, rank);
 
   if (rank == 0) {
-    nrsCheck(!std::filesystem::exists(setupFile), MPI_COMM_SELF, 
-             EXIT_FAILURE, "Cannot find setup file %s\n", setupFile.c_str());
+    nrsCheck(!std::filesystem::exists(setupFile),
+             MPI_COMM_SELF,
+             EXIT_FAILURE,
+             "Cannot find setup file %s\n",
+             setupFile.c_str());
   }
 
   char *rbuf;
@@ -2483,7 +2484,7 @@ void parRead(inipp::Ini *par, const std::string& _setupFile, MPI_Comm comm, setu
   is.write(rbuf, fsize);
 
   par->parse(is);
-  for(auto & error : par->errors) {
+  for (auto &error : par->errors) {
     append_error(error);
   }
 

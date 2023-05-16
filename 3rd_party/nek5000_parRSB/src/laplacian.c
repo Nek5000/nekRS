@@ -134,17 +134,18 @@ static int par_csc(scalar *v, const struct laplacian *l, scalar *u,
     return 0;
   }
   return 1;
+#else
+  return 1;
 #endif
 }
 
 static int par_csr_free(struct laplacian *l) {
   if (l->data != NULL) {
     struct csr_laplacian *L = (struct csr_laplacian *)l->data;
-    par_mat_free(L->M);
-    gs_free(L->gsh);
-    free(L->buf);
-    free(L), L = NULL;
+    par_mat_free(L->M), gs_free(L->gsh), free(L->buf);
+    free(L);
   }
+  return 0;
 }
 
 //------------------------------------------------------------------------------
@@ -211,15 +212,13 @@ static int gs_weighted(scalar *v, struct laplacian *l, scalar *u, buffer *buf) {
 
 static int gs_weighted_free(struct laplacian *l) {
   struct gs_laplacian *gl = l->data;
-
   if (gl->u != NULL)
     free(gl->u);
   if (gl->diag != NULL)
     free(gl->diag);
   gs_free(gl->gsh);
-
   free(l->data);
-  l->data = NULL;
+  return 0;
 }
 
 //------------------------------------------------------------------------------

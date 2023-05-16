@@ -22,7 +22,7 @@ void mesh_t::move()
   platform->flopCounter->add("mesh_t::move", flops);
   platform->timer.toc("meshUpdate");
 }
-void mesh_t::update()
+void mesh_t::update(bool updateHost)
 {
   geometricFactorsKernel(Nelements,
                          o_D,
@@ -64,4 +64,21 @@ void mesh_t::update()
 
   double flops = flopsGeometricFactors + flopsCubatureGeometricFactors + flopsSurfaceGeometricFactors;
   platform->flopCounter->add("mesh_t::update", flops);
+
+  if (updateHost) {
+    o_x.copyTo(x);
+    o_y.copyTo(y);
+    o_z.copyTo(z);
+
+    o_LMM.copyTo(LMM);
+
+    o_vgeo.copyTo(vgeo);
+    o_ggeo.copyTo(ggeo);
+
+    o_cubvgeo.copyTo(cubvgeo);
+
+    o_invLMM.copyTo(invLMM);
+
+    o_sgeo.copyTo(sgeo);
+  }
 }

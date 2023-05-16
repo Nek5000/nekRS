@@ -1,9 +1,7 @@
 #include "udf.hpp"
 #include "plugins/tavg.hpp"
 
-static int nAvgFields;
-
-static occa::memory o_avg;
+static occa::memory o_work;
 static occa::memory o_divTau;
 
 /* latitude north */
@@ -42,7 +40,6 @@ static dfloat ZWALL;
 
 static dfloat maxDt0 = -1;
 
-
 #ifdef __okl__
 
 #include "gabls.oudf"
@@ -51,10 +48,10 @@ static dfloat maxDt0 = -1;
 
 void avgBoundaryValue(nrs_t *nrs, int BID, int nflds, occa::memory o_flds, dfloat *avgs)
 {
-  mesh_t* mesh = nrs->meshV;
+  mesh_t *mesh = nrs->meshV;
   const auto Nelements = mesh->Nelements;
   const auto Nfaces = mesh->Nfaces;
-  const auto offset = Nfaces * Nelements; 
+  const auto offset = Nfaces * Nelements;
 
   static dfloat *sum;
   static dfloat *sumFace;
@@ -63,211 +60,307 @@ void avgBoundaryValue(nrs_t *nrs, int BID, int nflds, occa::memory o_flds, dfloa
   static occa::memory o_area;
 
   if (!o_sumFace.isInitialized()) {
-    o_sumFace = platform->device.malloc((nflds+1) * Nfaces * Nelements * sizeof(dfloat));
-    sumFace = (dfloat *) calloc((nflds+1) * Nfaces * Nelements, sizeof(dfloat));
-    sum = (dfloat *) calloc(nflds+1, sizeof(dfloat));
+    o_sumFace = platform->device.malloc((nflds + 1) * Nfaces * Nelements * sizeof(dfloat));
+    sumFace = (dfloat *)calloc((nflds + 1) * Nfaces * Nelements, sizeof(dfloat));
+    sum = (dfloat *)calloc(nflds + 1, sizeof(dfloat));
   }
 
-  avgBIDValue(Nelements, 
-    BID, 
-    nrs->fieldOffset, 
-    offset, 
-    mesh->o_sgeo, 
-    mesh->o_EToB, 
-    mesh->o_vmapM, 
-    o_flds, 
-    o_sumFace); 
-  o_sumFace.copyTo(sumFace, (nflds+1) * Nfaces * Nelements * sizeof(dfloat));
+  avgBIDValue(Nelements,
+              BID,
+              nrs->fieldOffset,
+              offset,
+              mesh->o_sgeo,
+              mesh->o_EToB,
+              mesh->o_vmapM,
+              o_flds,
+              o_sumFace);
+  o_sumFace.copyTo(sumFace, (nflds + 1) * Nfaces * Nelements * sizeof(dfloat));
 
-  for (int j = 0; j < nflds+1; ++j) {
-    sum[j] = 0; 
+  for (int j = 0; j < nflds + 1; ++j) {
+    sum[j] = 0;
     for (int i = 0; i < Nfaces * Nelements; ++i) {
-      sum[j] += sumFace[i + j*offset]; 
+      sum[j] += sumFace[i + j * offset];
     }
   }
 
-  MPI_Allreduce(MPI_IN_PLACE, sum, nflds+1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+  MPI_Allreduce(MPI_IN_PLACE, sum, nflds + 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
-  const auto invArea = 1/sum[nflds];
-  for (int i = 0; i < nflds; ++i) avgs[i] = sum[i] * invArea; 
+  const auto invArea = 1 / sum[nflds];
+  for (int i = 0; i < nflds; ++i) {
+    avgs[i] = sum[i] * invArea;
+  }
 }
 
-
-void findUThetaTau(dfloat uWall, dfloat tempWall, 
-                   dfloat& rLength, dfloat& uTau, dfloat& thetaTau)
+void findUThetaTau(dfloat uWall, dfloat tempWall, dfloat &rLength, dfloat &uTau, dfloat &thetaTau)
 {
-  const auto tol    = 1e-8;
-  const auto brat   = BETAH/BETAM;
-  const auto z1z0   = Z1/Z0;
-  const auto UmN    = KAPPA*uWall/log(z1z0);
-  const auto ThN    = KAPPA*tempWall/log(z1z0);
-  const auto RiBulk = tempWall*ZWALL*GACC/uWall/uWall;
-  const auto RiCrit = RiBulk*BETAM*BETAM/BETAH;
+  const auto tol = 1e-8;
+  const auto brat = BETAH / BETAM;
+  const auto z1z0 = Z1 / Z0;
+  const auto UmN = KAPPA * uWall / log(z1z0);
+  const auto ThN = KAPPA * tempWall / log(z1z0);
+  const auto RiBulk = tempWall * ZWALL * GACC / uWall / uWall;
+  const auto RiCrit = RiBulk * BETAM * BETAM / BETAH;
 
   uTau = 0;
   thetaTau = 0;
   rLength = 1e5;
 
-  if(uWall < tol || RiCrit >= 1) return; 
+  if (uWall < tol || RiCrit >= 1) {
+    return;
+  }
 
-  if(fabs(brat - 1) < tol) {
-    uTau = UmN * (1 - BETAM*RiBulk);
-    thetaTau = ThN * (1 - BETAM*RiBulk);
-    rLength = KAPPA*GACC*thetaTau/uTau/uTau;
-  } else { // find the 2 roots utau1 and utau2
-    const auto Det = sqrt(1 + 4*RiBulk*(BETAH - BETAM));
-    nrsCheck(Det < 0, platform->comm.mpiComm, EXIT_FAILURE, "findUThetaTau: Det < 0!\n", "");
+  if (fabs(brat - 1) < tol) {
+    uTau = UmN * (1 - BETAM * RiBulk);
+    thetaTau = ThN * (1 - BETAM * RiBulk);
+    rLength = KAPPA * GACC * thetaTau / uTau / uTau;
+  } else { // find roots of utau1 and utau2
+    const auto Det = sqrt(1 + 4 * RiBulk * (BETAH - BETAM));
+    nrsCheck(Det < 0, platform->comm.mpiComm, EXIT_FAILURE, "%s\b", "findUThetaTau: Det < 0!");
 
-    const auto utau1 = (0.5*(2*brat - 1)*UmN/(brat - 1)) * (1 - Det/(2*brat - 1));
-    const auto utau2 = (0.5*(2*brat - 1)*UmN/(brat - 1)) * (1 + Det/(2*brat - 1));
+    const auto utau1 = (0.5 * (2 * brat - 1) * UmN / (brat - 1)) * (1 - Det / (2 * brat - 1));
+    const auto utau2 = (0.5 * (2 * brat - 1) * UmN / (brat - 1)) * (1 + Det / (2 * brat - 1));
     auto thetau1 = 0.0;
     auto thetau2 = 0.0;
-    if(RiBulk > tol) {
-      const auto scale = 1/BETAM/KAPPA/GACC/ZWALL;
-      thetau1 = scale * utau1 * (KAPPA*uWall - utau1*log(z1z0));
-      thetau2 = scale * utau2 * (KAPPA*uWall - utau2*log(z1z0));
+    if (RiBulk > tol) {
+      const auto scale = 1 / BETAM / KAPPA / GACC / ZWALL;
+      thetau1 = scale * utau1 * (KAPPA * uWall - utau1 * log(z1z0));
+      thetau2 = scale * utau2 * (KAPPA * uWall - utau2 * log(z1z0));
     }
-    if(utau1 >= 0 && thetau1 >= 0) {
-      uTau   = utau1;
+    if (utau1 >= 0 && thetau1 >= 0) {
+      uTau = utau1;
       thetaTau = thetau1;
-      rLength = KAPPA*GACC*thetaTau/uTau/uTau;
+      rLength = KAPPA * GACC * thetaTau / uTau / uTau;
     }
-  } 
+  }
 }
 
 void planarAverage(nrs_t *nrs)
 {
-  mesh_t* mesh = nrs->meshV;
+  mesh_t *mesh = nrs->meshV;
   const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
 
-  // <u>(y) 
-  auto o_uAvg = o_avg.slice(0*fieldOffsetByte, fieldOffsetByte);
-  auto o_ux = nrs->o_U.slice(0*fieldOffsetByte, fieldOffsetByte);
+  // <u>(y)
+  auto o_uAvg = o_work.slice(0 * fieldOffsetByte, fieldOffsetByte);
+  auto o_ux = nrs->o_U.slice(0 * fieldOffsetByte, fieldOffsetByte);
   o_uAvg.copyFrom(o_ux, fieldOffsetByte);
 
-  // <w>(y) 
-  auto o_wAvg = o_avg.slice(1*fieldOffsetByte, fieldOffsetByte);
-  auto o_uz = nrs->o_U.slice(2*fieldOffsetByte, fieldOffsetByte);
+  // <w>(y)
+  auto o_wAvg = o_work.slice(1 * fieldOffsetByte, fieldOffsetByte);
+  auto o_uz = nrs->o_U.slice(2 * fieldOffsetByte, fieldOffsetByte);
   o_wAvg.copyFrom(o_uz, fieldOffsetByte);
 
-  // <temp>(y) 
-  auto o_tempAvg = o_avg.slice(2*fieldOffsetByte, fieldOffsetByte);
-  auto o_temp = nrs->cds->o_S.slice(0*fieldOffsetByte, fieldOffsetByte);
+  // <temp>(y)
+  auto o_tempAvg = o_work.slice(2 * fieldOffsetByte, fieldOffsetByte);
+  auto o_temp = nrs->cds->o_S.slice(0 * fieldOffsetByte, fieldOffsetByte);
   o_tempAvg.copyFrom(o_temp, fieldOffsetByte);
 
   // d<u,w,temp>/dy(y)
-  auto o_ddyAvg = o_avg.slice(3*fieldOffsetByte, 3*fieldOffsetByte);
-  gradY(
-    mesh->Nelements,
-    mesh->o_vgeo,
-    mesh->o_D,
-    nrs->fieldOffset,
-    mesh->o_invLMM,
-    o_avg,
-    o_ddyAvg);
+  auto o_ddyAvg = o_work.slice(3 * fieldOffsetByte, 3 * fieldOffsetByte);
+  gradY(mesh->Nelements, mesh->o_vgeo, mesh->o_D, nrs->fieldOffset, mesh->o_invLMM, o_work, o_ddyAvg);
   oogs::startFinish(o_ddyAvg, 3, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  postProcessing::planarAvg(nrs, "xz", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 
-                            6, o_avg);
+  postProcessing::planarAvg(nrs, "xz", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 6, o_work);
 }
-
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  mesh_t* mesh = nrs->meshV;
+  mesh_t *mesh = nrs->meshV;
   const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
-  coriolis(
-    mesh->Nlocal, 
-    nrs->fieldOffset, 
-    nrs->meshV->o_y,
-    nrs->cds->o_S,
-    nrs->o_U,
-    o_divTau,
-    o_FU);
+  coriolis(mesh->Nlocal, nrs->fieldOffset, nrs->meshV->o_y, nrs->cds->o_S, nrs->o_U, o_divTau, o_FU);
 }
 
 void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
 {
-  mesh_t* mesh = nrs->meshV;
+  mesh_t *mesh = nrs->meshV;
   const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
-  auto o_divTauY = o_divTau.slice(1*fieldOffsetByte, fieldOffsetByte);
-  platform->linAlg->axpby(mesh->Nlocal, -1.0, o_divTauY, 1.0, o_SU, 0, 0); 
+  auto o_divTauY = o_divTau.slice(1 * fieldOffsetByte, fieldOffsetByte);
+  platform->linAlg->axpby(mesh->Nlocal, -1.0, o_divTauY, 1.0, o_SU, 0, 0);
 }
 
+void writeStatistics(nrs_t *nrs, dfloat time, int tstep, const std::string& fname)
+{
+  auto mesh = nrs->meshV;
 
-/* UDF Functions */                                                      
+  const auto np = (platform->comm.mpiRank == 0) ? NUMBER_ELEMENTS_Y * mesh->N : 0;
+  const auto offset = np;
 
-void UDF_LoadKernels(occa::properties& kernelInfo)
+  static pointInterpolation_t *interpolator = nullptr;
+  static std::vector<dfloat> xp, yp, zp;
+  static occa::memory o_fields1D;
+  const auto Nfields = 9;
+
+  if (!interpolator) {
+
+    const auto yMin = platform->linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+    const auto yMax = platform->linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+
+    if (np) {
+      const auto x0 = 0.0;
+      const auto z0 = 0.0;
+
+      for (int i = 0; i < np; i++) {
+        xp.push_back(x0);
+        yp.push_back((static_cast<dfloat>(i)/(np-1)) * (yMax-yMin));
+        zp.push_back(z0);
+      }
+
+      o_fields1D = platform->device.malloc(Nfields * offset * sizeof(dfloat));
+    }
+
+    interpolator = new pointInterpolation_t(nrs);
+    interpolator->setPoints(np, xp.data(), yp.data(), zp.data());
+    interpolator->find();
+
+    if (platform->comm.mpiRank == 0) { 
+      std::ofstream f(fname, std::ios::app);
+      f << R"(#  time  y  <u>  <w>  <T>  <dudy>  <dwdy>  <dTdy>  <u'T'>  <w'T'>  <w'w'T'>)" << std::endl;
+      f.close();
+    }
+  }
+  
+  const auto fieldOffsetBytes = nrs->fieldOffset * sizeof(dfloat);
+
+  o_work.copyFrom(tavg::o_avg(), 3 * fieldOffsetBytes);
+
+  gradY(mesh->Nelements, 
+        mesh->o_vgeo, 
+        mesh->o_D, 
+        nrs->fieldOffset, 
+        mesh->o_invLMM, 
+        tavg::o_avg(), 
+        o_work + 3 * fieldOffsetBytes);
+
+  o_work.copyFrom(tavg::o_avg() + 3 * fieldOffsetBytes, 
+                  3 * fieldOffsetBytes,
+                  6 * fieldOffsetBytes);
+
+  postProcessing::planarAvg(nrs, 
+                            "xz", 
+                            NUMBER_ELEMENTS_X, 
+                            NUMBER_ELEMENTS_Y, 
+                            NUMBER_ELEMENTS_Z, 
+                            Nfields, 
+                            o_work);
+
+  interpolator->eval(Nfields, 
+                     nrs->fieldOffset, 
+                     o_work, 
+                     offset, 
+                     o_fields1D);
+
+  if (platform->comm.mpiRank == 0) {
+    std::vector<dfloat> fields1D(o_fields1D.size() / sizeof(dfloat));
+    o_fields1D.copyTo(fields1D.data());
+
+    const auto sep = "  ";
+    std::ofstream f(fname, std::ios::app);
+
+    for (int i = 0; i < np; i++) {
+      f << std::scientific 
+        << time << sep 
+        << yp[i] << sep;
+
+      // <u> <w> <T> <dudy> <dwdy> <dTdy>
+      for(int ifld = 0; ifld < 6; ifld++) { 
+        f << fields1D[i + ifld * offset] << sep;
+      }
+
+      // <u'T'>
+      f << fields1D[i + 6 * offset] - (fields1D[i + 0 * offset] * fields1D[i + 2 * offset]) << sep;
+      // <w'T'>
+      f << fields1D[i + 7 * offset] - (fields1D[i + 1 * offset] * fields1D[i + 2 * offset]) << sep;
+      // <w'w'T'>
+      f << fields1D[i + 8 * offset] - (fields1D[i + 1 * offset] * fields1D[i + 1 * offset] *
+                                       fields1D[i + 2 * offset]) << sep;
+
+      f << std::endl;
+    }
+    f.close();
+  }
+}
+
+void UDF_LoadKernels(occa::properties &kernelInfo)
 {
   setupAide &options = platform->options;
 
   dfloat cond;
   options.getArgs("SCALAR00 DIFFUSIVITY", cond);
   const dfloat g = 9.81;
-  const dfloat omega = 7.2921159e-5; 
+  const dfloat omega = 7.2921159e-5;
 
-  kernelInfo["defines/p_fcor"]      = 2*omega*LREF/UREF * sin(NLAT*M_PI/180);
-  kernelInfo["defines/p_bcor"]      = 2*omega*LREF/UREF * cos(NLAT*M_PI/180);
+  kernelInfo["defines/p_fcor"] = 2 * omega * LREF / UREF * sin(NLAT * M_PI / 180);
+  kernelInfo["defines/p_bcor"] = 2 * omega * LREF / UREF * cos(NLAT * M_PI / 180);
 
-  GACC = LREF*g/(UREF*UREF); 
-  kernelInfo["defines/p_gacc"]      = GACC;
-  kernelInfo["defines/p_cond"]      = cond;
-  kernelInfo["defines/p_TsGrad"]    = ILSTRENGTH * LREF/TREF;
-  T0S = TS0/TREF;
-  kernelInfo["defines/p_T0s"]       = T0S;
-  SCOOLRATE = SCR * LREF/TREF/UREF/3600; 
+  GACC = LREF * g / (UREF * UREF);
+  kernelInfo["defines/p_gacc"] = GACC;
+  kernelInfo["defines/p_cond"] = cond;
+  kernelInfo["defines/p_TsGrad"] = ILSTRENGTH * LREF / TREF;
+  T0S = TS0 / TREF;
+  kernelInfo["defines/p_T0s"] = T0S;
+  SCOOLRATE = SCR * LREF / TREF / UREF / 3600;
   kernelInfo["defines/p_sCoolRate"] = SCOOLRATE;
-  kernelInfo["defines/p_YLEN"]      = YLEN;
+  kernelInfo["defines/p_YLEN"] = YLEN;
 }
+
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
-  platform->par->extract("casedata","nlat",NLAT);
-  platform->par->extract("casedata","uref",UREF);
-  platform->par->extract("casedata","lref",LREF);
-  platform->par->extract("casedata","tref",TREF);
-  platform->par->extract("casedata","ts0",TS0);
-  platform->par->extract("casedata","scr",SCR);
-  platform->par->extract("casedata","ilstrength",ILSTRENGTH);
-  platform->par->extract("casedata","number_elements_x",NUMBER_ELEMENTS_X);
-  platform->par->extract("casedata","number_elements_y",NUMBER_ELEMENTS_Y);
-  platform->par->extract("casedata","number_elements_z",NUMBER_ELEMENTS_Z);
-  platform->par->extract("casedata","xlen",XLEN);
-  platform->par->extract("casedata","ylen",YLEN);
-  platform->par->extract("casedata","zlen",ZLEN);
+  platform->par->extract("casedata", "nlat", NLAT);
+  platform->par->extract("casedata", "uref", UREF);
+  platform->par->extract("casedata", "lref", LREF);
+  platform->par->extract("casedata", "tref", TREF);
+  platform->par->extract("casedata", "ts0", TS0);
+  platform->par->extract("casedata", "scr", SCR);
+  platform->par->extract("casedata", "ilstrength", ILSTRENGTH);
+  platform->par->extract("casedata", "number_elements_x", NUMBER_ELEMENTS_X);
+  platform->par->extract("casedata", "number_elements_y", NUMBER_ELEMENTS_Y);
+  platform->par->extract("casedata", "number_elements_z", NUMBER_ELEMENTS_Z);
+  platform->par->extract("casedata", "xlen", XLEN);
+  platform->par->extract("casedata", "ylen", YLEN);
+  platform->par->extract("casedata", "zlen", ZLEN);
 
-  platform->par->extract("casedata","z0",Z0);
-  platform->par->extract("casedata","z1",Z1);
+  platform->par->extract("casedata", "z0", Z0);
+  platform->par->extract("casedata", "z1", Z1);
 
-  platform->par->extract("casedata","betam",BETAM);
-  platform->par->extract("casedata","betah",BETAH);
-  platform->par->extract("casedata","kappa",KAPPA);
-  platform->par->extract("casedata","zwall",ZWALL);
+  platform->par->extract("casedata", "betam", BETAM);
+  platform->par->extract("casedata", "betah", BETAH);
+  platform->par->extract("casedata", "kappa", KAPPA);
+  platform->par->extract("casedata", "zwall", ZWALL);
 
-  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
-    nek_cb_scnrs[0] = NLAT;
-    nek_cb_scnrs[1] = UREF;
-    nek_cb_scnrs[2] = LREF;
-    nek_cb_scnrs[3] = TREF;
-    nek_cb_scnrs[4] = TS0;
-    nek_cb_scnrs[5] = SCR;
-    nek_cb_scnrs[6] = ILSTRENGTH;
-    nek_cb_scnrs[7] = NUMBER_ELEMENTS_X;
-    nek_cb_scnrs[8] = NUMBER_ELEMENTS_Y;
-    nek_cb_scnrs[9] = NUMBER_ELEMENTS_Z;
-    nek_cb_scnrs[10] = XLEN;
-    nek_cb_scnrs[11] = YLEN;
-    nek_cb_scnrs[12] = ZLEN;
-    nek_cb_scnrs[13] = BETAM;
-
-  };
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
-  o_divTau = platform->device.malloc(3*nrs->fieldOffset*sizeof(dfloat));
-  o_avg    = platform->device.malloc(6*nrs->fieldOffset*sizeof(dfloat));
-  nrs->o_usrwrk = platform->device.malloc(5*sizeof(dfloat));
+  auto mesh = nrs->meshV;
+
+  {
+    auto rescale = [&](dfloat newMin, dfloat newMax, dfloat *x)
+    {
+      auto min = std::numeric_limits<dfloat>::max();
+      auto max = std::numeric_limits<dfloat>::lowest();
+      for(int i = 0; i < mesh->Nlocal ; i++) {
+        min = std::min(min, x[i]);
+        max = std::max(max, x[i]);
+      }
+      MPI_Allreduce(MPI_IN_PLACE, &min, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+      MPI_Allreduce(MPI_IN_PLACE, &max, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+      const auto scale = (newMax - newMin)/(max - min);
+
+      for(int i = 0; i < mesh->Nlocal ; i++) {
+        x[i] = newMin + scale*(x[i] - min);
+      }
+    };
+    rescale(0.0, XLEN, mesh->x);
+    rescale(0.0, YLEN, mesh->y);
+    rescale(0.0, ZLEN, mesh->z);
+  }
+
+  o_divTau = platform->device.malloc(3 * nrs->fieldOffset * sizeof(dfloat));
+
+  // scratch space
+  o_work = platform->device.malloc(9 * nrs->fieldOffset * sizeof(dfloat));
+
+  nrs->o_usrwrk = platform->device.malloc(5 * sizeof(dfloat));
+
   udf.uEqnSource = &userf;
   udf.sEqnSource = &userq;
 
@@ -276,114 +369,138 @@ void UDF_Setup(nrs_t *nrs)
 
   platform->options.getArgs("MAX DT", maxDt0);
   if (maxDt0 > 0) {
-    const double maxDt = 0.25*maxDt0;
-    if(platform->comm.mpiRank == 0) printf("\n" "reseting MAX DT = %g\n", maxDt); 
+    const double maxDt = 0.25 * maxDt0;
+    if (platform->comm.mpiRank == 0) {
+      printf("\n"
+             "reseting MAX DT = %g\n",
+             maxDt);
+    }
     platform->options.setArgs("MAX DT", to_string_f(maxDt));
   }
 
   {
-    auto o_u       = o_avg.slice(0*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
-    auto o_w       = o_avg.slice(1*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
-    auto o_temp    = o_avg.slice(2*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
-    auto o_dudy    = o_avg.slice(3*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
-    auto o_dwdy    = o_avg.slice(4*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
-    auto o_dtempdy = o_avg.slice(5*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
+    std::vector<std::vector<occa::memory>> tavgFields;
+    const auto fieldOffsetBytes = nrs->fieldOffset * sizeof(dfloat);
 
-    std::vector< std::vector<occa::memory> > tavgFields;
+    auto o_u    = nrs->o_U.slice(0 * fieldOffsetBytes, fieldOffsetBytes);
+    auto o_w    = nrs->o_U.slice(2 * fieldOffsetBytes, fieldOffsetBytes);
+    auto o_temp = nrs->cds->o_S.slice(0 * fieldOffsetBytes, fieldOffsetBytes);
+
     tavgFields.push_back({o_u});
     tavgFields.push_back({o_w});
     tavgFields.push_back({o_temp});
-    tavgFields.push_back({o_dudy});
-    tavgFields.push_back({o_dwdy});
-    tavgFields.push_back({o_dtempdy});
+
     tavgFields.push_back({o_u, o_temp});
     tavgFields.push_back({o_w, o_temp});
     tavgFields.push_back({o_w, o_w, o_temp});
-    nAvgFields = tavgFields.size();
 
-    tavg::setup(nrs, tavgFields); 
+    tavg::setup(nrs, tavgFields);
+  }
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      const auto x = mesh->x[n];
+      const auto y = mesh->y[n];
+      const auto z = mesh->z[n];
+
+      auto temp = (T0S - 1.);
+      if (y <= 0.5) { 
+         const auto kx  = 23;
+         const auto kz  = 13;
+         const auto alpha = kx * 2*M_PI / XLEN;
+         const auto beta  = kz * 2*M_PI / ZLEN;
+         const auto epsT  = 0.1 / TREF;
+
+         temp += epsT * sin(alpha * x) * sin(beta * z);
+      } else {
+         const auto ts_grad = ILSTRENGTH * LREF/TREF;
+         temp += ts_grad * (y - 1.);
+      } 
+
+      nrs->U[n + 0 * nrs->fieldOffset] = 1;
+      nrs->U[n + 1 * nrs->fieldOffset] = 0;
+      nrs->U[n + 2 * nrs->fieldOffset] = 0;
+      nrs->cds->S[n] = temp;
+    }
+
   }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  mesh_t* mesh = nrs->meshV;
+  mesh_t *mesh = nrs->meshV;
   const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
 
   {
-    static int calld = 0; 
-    if(maxDt0 > 0 && time > 100 && !calld) {
-      if(platform->comm.mpiRank == 0) printf("restore original MAX DT = %g\n", maxDt0); 
+    static int calld = 0;
+    if (maxDt0 > 0 && time > 100 && !calld) {
+      if (platform->comm.mpiRank == 0) {
+        printf("restore original MAX DT = %g\n", maxDt0);
+      }
       platform->options.setArgs("MAX DT", to_string_f(maxDt0));
       calld++;
     }
   }
 
-  planarAverage(nrs);
   tavg::run(time);
+
+  planarAverage(nrs);
 
   const int bIdWall = 2;
   dfloat avgWallValues[3];
-  avgBoundaryValue(nrs, bIdWall, 3, o_avg, avgWallValues);
+  avgBoundaryValue(nrs, bIdWall, 3, o_work, avgWallValues);
 
   dfloat wallData[5];
-  const dfloat thts = wallData[0] = T0S + SCOOLRATE*time;
+  const dfloat thts = wallData[0] = T0S + SCOOLRATE * time;
 
   const auto uAvgWall = avgWallValues[0];
   const auto wAvgWall = avgWallValues[1];
-  const auto magUWall = wallData[1] = sqrt(uAvgWall*uAvgWall + wAvgWall*wAvgWall);
+  const auto magUWall = wallData[1] = sqrt(uAvgWall * uAvgWall + wAvgWall * wAvgWall);
   const auto tempAvgWall = wallData[2] = avgWallValues[2];
 
   dfloat rLength;
-  const dfloat diffTempWall = fabs(tempAvgWall - (thts - 1.)); 
+  const dfloat diffTempWall = fabs(tempAvgWall - (thts - 1.));
   findUThetaTau(magUWall, diffTempWall, rLength, wallData[3], wallData[4]);
   nrs->o_usrwrk.copyFrom(wallData, sizeof(wallData));
 
-  const auto factru = (1. + BETAM*ZWALL*rLength)/KAPPA/ZWALL;
-  const auto scale = 1./(factru*factru);
-  auto o_ddyAvg = o_avg.slice(3*fieldOffsetByte, 3*fieldOffsetByte);
-  visMF(
-    mesh->Nlocal,
-    nrs->fieldOffset,
-    scale,
-    o_ddyAvg,
-    platform->o_mempool.slice0);
+  const auto factru = (1. + BETAM * ZWALL * rLength) / KAPPA / ZWALL;
+  const auto scale = 1. / (factru * factru);
+  auto o_ddyAvg = o_work.slice(3 * fieldOffsetByte, 3 * fieldOffsetByte);
+  visMF(mesh->Nlocal, 
+        nrs->fieldOffset, 
+        scale, 
+        o_ddyAvg, 
+        platform->o_mempool.slice0);
 
 #if 0
     platform->lingAlg->fill(mesh->Nlocal, 0.0, platform->o_mempool.slice0);
 #endif
 
-  divStress(
-    mesh->Nelements, 
-    nrs->fieldOffset, 
-    mesh->o_invLMM,
-    mesh->o_vgeo,
-    mesh->o_D, 
-    platform->o_mempool.slice0,
-    o_ddyAvg, 
-    o_divTau);
+  divStress(mesh->Nelements,
+            nrs->fieldOffset,
+            mesh->o_invLMM,
+            mesh->o_vgeo,
+            mesh->o_D,
+            platform->o_mempool.slice0,
+            o_ddyAvg,
+            o_divTau);
   oogs::startFinish(o_divTau, 3, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
   if (nrs->isOutputStep) {
-    if(platform->comm.mpiRank == 0) {
+    if (platform->comm.mpiRank == 0) {
       printf("uAvgWall: %g  wAvgWall: %g  magUWall: %g  tempAvgWall: %g\n"
-             "uTau: %g  thetaTau: %g  rLength: %g\n", 
-             uAvgWall, wAvgWall, wallData[1], tempAvgWall,
-             wallData[3], wallData[4], rLength);
+             "uTau: %g  thetaTau: %g  rLength: %g\n",
+             uAvgWall,
+             wAvgWall,
+             wallData[1],
+             tempAvgWall,
+             wallData[3],
+             wallData[4],
+             rLength);
     }
 
-    auto tAvg = (double*) nek::scPtr(1);
-    for(int ifld = 0; ifld < nAvgFields; ifld++) {
-      const auto offset = ifld*nekData.lelt*mesh->Np;
-      tavg::o_avg().copyTo(tAvg + offset, 
-                           nrs->fieldOffset*sizeof(dfloat), 
-                           ifld*nrs->fieldOffset*sizeof(dfloat));  
-    }
-
-    nek::ocopyToNek(time, tstep);
-    nek::userchk();
-    nek::ocopyFromNek(time);
-
-    //tavg::outfld();
+    writeStatistics(nrs, time, tstep, "profiles.dat");
+    // tavg::outfld();
   }
 }

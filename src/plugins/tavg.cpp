@@ -123,11 +123,7 @@ void tavg::run(dfloat time)
     int cnt = 0;
     for(auto& entry : userFieldList) {
       auto o_avg = o_AVG.slice(cnt*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
-
-      dlong N = nrs->fieldOffset;
-      for(auto& entry_i : entry) {
-        N = std::min(static_cast<dlong>(entry_i.size()/sizeof(dfloat)), N);
-      }
+      const auto N = nrs->fieldOffset;
 
       if(entry.size() == 1) 
       {
@@ -148,8 +144,7 @@ void tavg::run(dfloat time)
       cnt++;
     }
   } else {
-    mesh_t *mesh = nrs->meshV;
-    const dlong N = mesh->Nelements * mesh->Np;
+    const auto N = nrs->fieldOffset;
 
     // velocity
     EX(N, a, b, nrs->NVfields, nrs->o_U, o_Uavg);
@@ -171,7 +166,6 @@ void tavg::run(dfloat time)
     // scalars
     if (nrs->Nscalar) {
       cds_t *cds = nrs->cds;
-      const dlong N = cds->mesh[0]->Nelements * cds->mesh[0]->Np;
       EX(N, a, b, cds->NSfields, cds->o_S, o_Savg);
       EXY(N, a, b, cds->NSfields, cds->o_S, cds->o_S, o_Srms);
     }
@@ -185,8 +179,15 @@ void tavg::setup(nrs_t *nrs_, const fields& flds)
   userFieldList = flds;
 
   for(auto& entry : userFieldList) {
-    nrsCheck(entry.size() < 1 || entry.size() > 4, platform->comm.mpiComm, EXIT_FAILURE,
-             "%s\n", "tavg::setup() invalid number of vectors!");
+    nrsCheck(entry.size() < 1 || entry.size() > 4, 
+             platform->comm.mpiComm, EXIT_FAILURE,
+             "%s\n", "invalid number of vectors in one of the user list entries!");
+
+    for(auto& entry_i : entry) {
+      nrsCheck(entry_i.size() < (nrs_->fieldOffset*sizeof(dfloat)), 
+               platform->comm.mpiComm, EXIT_FAILURE,
+               "%s\n", "vector size in one of the user list entries smaller than nrs_t::fieldOffset");
+    }
   }
  
   setup(nrs_);

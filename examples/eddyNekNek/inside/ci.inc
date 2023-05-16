@@ -10,7 +10,6 @@ static int ciMode = 0;
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", std::string("7"));
-  options.setArgs("RESTART FROM FILE", std::string("0"));
   options.setArgs("SOLUTION OUTPUT INTERVAL", "0");
   options.setArgs("VISCOSITY", std::string("0.05"));
   options.setArgs("DENSITY", std::string("1"));
@@ -24,8 +23,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if (ciMode == 1) {
     options.setArgs("NEKNEK CORRECTOR STEPS", "1");
     options.setArgs("NEKNEK BOUNDARY EXT ORDER", "3");
-  }
-  else if (ciMode == 2) {
+  } else if (ciMode == 2) {
     options.setArgs("NEKNEK CORRECTOR STEPS", "0");
     options.setArgs("NEKNEK BOUNDARY EXT ORDER", "1");
   }
@@ -51,8 +49,9 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 
 void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (!nrs->lastStep)
+  if (!nrs->lastStep) {
     return;
+  }
   const int rank = platform->comm.mpiRank;
 
   auto *mesh = nrs->meshV;
@@ -83,8 +82,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
     expectedErrVx = 5E-07;
     expectedErrVy = 5E-07;
     expectedErrVz = 2E-08;
-  }
-  else if (ciMode == 2) {
+  } else if (ciMode == 2) {
     expectedErrVx = 0.008;
     expectedErrVy = 0.007;
     expectedErrVz = 8E-05;
@@ -100,8 +98,7 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   if (flag) {
     (CIPASS);
-  }
-  else {
+  } else {
     if (platform->comm.mpiRank == 0) {
       printf("errVxGlobal = %g, expectedErrVx = %g, errVyGlobal = %g, expectedErrVy = %g, errVzGlobal = %g, "
              "expectedErrVz = %g\n",
