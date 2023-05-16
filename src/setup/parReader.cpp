@@ -12,7 +12,6 @@
 #include "inipp.hpp"
 #include "tinyexpr.h"
 
-#include "bcMap.hpp"
 #include "nrs.hpp"
 #include <algorithm>
 #include "parseMultigridSchedule.hpp"
@@ -2406,48 +2405,6 @@ void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
   }
 }
 
-void applyBoundaryTypeMap(const int rank, setupAide &options, inipp::Ini *par)
-{
-  std::vector<std::string> sections = {"MESH", "VELOCITY"};
-  for (int i = 0; i < nscal; i++)
-    sections.push_back("SCALAR" + scalarDigitStr(i));
-
-  int count = 0;
-  int expectedCount = 0;
-
-  auto process = [&](const std::string &section) {
-    std::vector<std::string> staleOptions;
-    for (auto const &option : options) {
-      if (option.first.find(section) == 0) {
-
-        if (option.first.compare(section + " SOLVER") == 0 &&
-            option.second.find("NONE") == std::string::npos) {
-          expectedCount++;
-        }
-
-        if (option.first.find("BOUNDARY TYPE MAP") != std::string::npos) {
-          count++;
-          auto value = section;
-          lowerCase(value);
-          bcMap::setup(serializeString(option.second, ','), value);
-          staleOptions.push_back(option.first);
-        }
-      }
-    }
-    for (auto const &key : staleOptions) {
-      options.removeArgs(key);
-    }
-  };
-
-  for (const auto &section : sections) {
-    process(section);
-  }
-
-  if (count > 0 && count != expectedCount) {
-    append_error("boundaryTypeMap specfied for some but not all fields!");
-  }
-}
-
 void parRead(inipp::Ini *par, const std::string &_setupFile, MPI_Comm comm, setupAide &options)
 {
   int rank;
@@ -2527,8 +2484,6 @@ void parRead(inipp::Ini *par, const std::string &_setupFile, MPI_Comm comm, setu
   }
 
   cleanupStaleKeys(rank, options, par);
-
-  applyBoundaryTypeMap(rank, options, par);
 
   // error checking
   {

@@ -63,7 +63,7 @@ constexpr int bcTypeNone = p_bcTypeNone;
 #undef p_bcTypeNone
 
 bool useNekBCs();
-void setup(std::vector<std::string> slist, std::string field);
+void setup();
 int id(int bid, std::string field);
 int ellipticType(int bid, std::string field);
 std::string text(int bid, std::string field);

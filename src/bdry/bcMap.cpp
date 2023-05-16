@@ -120,9 +120,6 @@ static void s_setup(std::string s);
 
 static void v_setup(std::string field, std::vector<std::string> slist)
 {
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank); // platform not available yet
-
   int foundAligned = 0;
   int foundUnaligned = 0;
 
@@ -203,13 +200,13 @@ static void v_setup(std::string field, std::vector<std::string> slist)
     }
 #endif
 
-    nrsCheck(vBcTextToID.find(key) == vBcTextToID.end(), MPI_COMM_WORLD, EXIT_FAILURE,
+    nrsCheck(vBcTextToID.find(key) == vBcTextToID.end(), platform->comm.mpiComm, EXIT_FAILURE,
              "Invalid velocity bcType (%s)\n", key.c_str());
 
     bToBc[make_pair(field, bid)] = vBcTextToID.at(key);
   }
 
-  nrsCheck(foundAligned && foundUnaligned, MPI_COMM_WORLD, EXIT_FAILURE,
+  nrsCheck(foundAligned && foundUnaligned, platform->comm.mpiComm, EXIT_FAILURE,
            "%s\n", "Aligned together with unaligned mixed boundary types are not supported!");
 }
 
@@ -249,18 +246,14 @@ static void s_setup(std::string field, std::vector<std::string> slist)
     if (key.compare("o") == 0)
       key = "zerogradient";
 
-    nrsCheck(sBcTextToID.find(key) == sBcTextToID.end(), MPI_COMM_WORLD, EXIT_FAILURE,
+    nrsCheck(sBcTextToID.find(key) == sBcTextToID.end(), platform->comm.mpiComm, EXIT_FAILURE,
              "Invalid scalar bcType (%s)\n", key.c_str());
 
     bToBc[make_pair(field, bid)] = sBcTextToID.at(key);
   }
 }
 
-namespace bcMap
-{
-bool useNekBCs() { return importFromNek; }
-
-void setup(std::vector<std::string> slist, std::string field)
+void setupField(std::vector<std::string> slist, std::string field)
 {
   if (slist.size() == 0)
     return;
@@ -283,6 +276,56 @@ void setup(std::vector<std::string> slist, std::string field)
     v_setup(field, slist);
   else if (field.compare(0, 6, "scalar") == 0)
     s_setup(field, slist);
+}
+
+
+namespace bcMap
+{
+bool useNekBCs() { return importFromNek; }
+
+void setup()
+{
+  int nscal = 0;
+  platform->options.getArgs("NUMBER OF SCALARS", nscal);
+
+  std::vector<std::string> sections = {"MESH", "VELOCITY"};
+  for (int i = 0; i < nscal; i++)
+    sections.push_back("SCALAR" + scalarDigitStr(i));
+
+  int count = 0;
+  int expectedCount = 0;
+
+  auto process = [&](const std::string &section) {
+    std::vector<std::string> staleOptions;
+    for (auto const &option : platform->options) {
+      if (option.first.find(section) == 0) {
+
+        if (option.first.compare(section + " SOLVER") == 0 &&
+            option.second.find("NONE") == std::string::npos) {
+          expectedCount++;
+        } 
+
+        if (option.first.find("BOUNDARY TYPE MAP") != std::string::npos) {
+          count++;
+          auto value = section;
+          lowerCase(value);
+          setupField(serializeString(option.second, ','), value);
+          staleOptions.push_back(option.first);
+        }
+
+      }
+    }
+    for (auto const &key : staleOptions) {
+      platform->options.removeArgs(key);
+    }
+  };
+
+  for (const auto &section : sections) {
+    process(section);
+  }
+
+  nrsCheck(count > 0 && count != expectedCount, platform->comm.mpiComm, EXIT_FAILURE,
+           "%s\n", "boundaryTypeMap specfied for some but not all fields!");
 }
 
 void deriveMeshBoundaryConditions(std::vector<std::string> velocityBCs)
@@ -318,7 +361,7 @@ void deriveMeshBoundaryConditions(std::vector<std::string> velocityBCs)
     if (keyIn.compare("mv") == 0) key = "codedfixedvalue";
     if (keyIn.compare("codedfixedvalue+moving") == 0) key = "codedfixedvalue";
 
-    nrsCheck(vBcTextToID.find(key) == vBcTextToID.end(), MPI_COMM_WORLD, EXIT_FAILURE,
+    nrsCheck(vBcTextToID.find(key) == vBcTextToID.end(), platform->comm.mpiComm, EXIT_FAILURE,
              "Invalid bcType (%s)\n", key.c_str());
 
     bToBc[make_pair(field, bid)] = vBcTextToID.at(key);

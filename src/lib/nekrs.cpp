@@ -7,6 +7,7 @@
 #include "nekInterfaceAdapter.hpp"
 #include "printHeader.hpp"
 #include "udf.hpp"
+#include "bcMap.hpp"
 #include "parReader.hpp"
 #include "re2Reader.hpp"
 #include "configReader.hpp"
@@ -64,8 +65,9 @@ void setup(MPI_Comm commg_in,
            int sessionID,
            int debug)
 {
-  MPI_Comm_dup(commg_in, &commg);
-  MPI_Comm_dup(comm_in, &comm);
+  commg = commg_in;
+  comm = comm_in;
+
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
@@ -109,9 +111,6 @@ void setup(MPI_Comm commg_in,
   platform = _platform;
   platform->par = par;
 
-  if (nSessions > 1) {
-  }
-
   if (debug)
     platform->options.setArgs("VERBOSE", "TRUE");
 
@@ -129,10 +128,13 @@ void setup(MPI_Comm commg_in,
   if (rank == 0 && ciMode)
     std::cout << "enabling continous integration mode " << ciMode << "\n";
 
-  int nelgt, nelgv;
-  const std::string meshFile = options.getArgs("MESH FILE");
-  re2::nelg(meshFile, nelgt, nelgv, comm);
-  nrsCheck(size > nelgv, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "MPI tasks > number of elements!");
+  {
+    int nelgt, nelgv;
+    re2::nelg(options.getArgs("MESH FILE"), nelgt, nelgv, comm);
+    nrsCheck(size > nelgv, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "MPI tasks > number of elements!");
+  }
+
+  bcMap::setup();
 
   nek::bootstrap();
 

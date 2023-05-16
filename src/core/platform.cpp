@@ -59,7 +59,8 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
 
   exitValue = 0;
 
-  setenv("OCCA_MEM_BYTE_ALIGN", "1024", 1);
+  // only relevant for SERIAL backend
+  setenv("OCCA_MEM_BYTE_ALIGN", std::to_string(ALIGN_SIZE).c_str(), 1);
 
   cacheLocal = 0;
   if(getenv("NEKRS_CACHE_LOCAL"))

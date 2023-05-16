@@ -467,7 +467,7 @@ int main(int argc, char** argv)
   }
 
   nekrs::setup(commGlobal, comm, 
-    	         cmdOpt->buildOnly, cmdOpt->sizeTarget,
+    	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cmdOpt->setupFile,
                cmdOpt->backend, cmdOpt->deviceID,
                cmdOpt->nSessions, cmdOpt->sessionID,
