@@ -3,12 +3,13 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <regex>
+#include "unifdef.h"
 
 #include "udf.hpp"
 #include "fileUtils.hpp"
 #include "platform.hpp"
 #include "bcMap.hpp"
-#include "unifdef.h"
+#include "bcType.h"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
@@ -33,6 +34,32 @@ static unsigned long chkSum(const std::string& str)
   return (hash & 0x7FFFFFFF);
 }
 
+static void verifyOudf()
+{
+  for (auto& [key, value] :  bcMap::map()) {
+    auto field = key.first;
+    const int bcID = value;
+ 
+    if (field.compare("velocity") == 0 && (bcID == bcMap::bcTypeV || bcID == bcMap::bcTypeINT))
+      oudfFindDirichlet(field);
+    if (field.compare("mesh") == 0 && bcID == bcMap::bcTypeV)
+      oudfFindDirichlet(field);
+    if (field.compare("pressure") == 0 &&
+        (bcID == bcMap::bcTypeONX || bcID == bcMap::bcTypeONY || bcID == bcMap::bcTypeONZ || 
+         bcID == bcMap::bcTypeON || bcID == bcMap::bcTypeO))
+      oudfFindDirichlet(field);
+    if (field.compare(0, 6, "scalar") == 0 && (bcID == bcMap::bcTypeS || bcID == bcMap::bcTypeINTS))
+      oudfFindDirichlet(field);
+ 
+    if (field.compare("velocity") == 0 &&
+        (bcID == bcMap::bcTypeSHLX || bcID == bcMap::bcTypeSHLY || bcID == bcMap::bcTypeSHLZ || bcID == bcMap::bcTypeSHL))
+      oudfFindNeumann(field);
+    if (field.compare("mesh") == 0 && bcID == bcMap::bcTypeSHL)
+      oudfFindNeumann(field);
+    if (field.compare(0, 6, "scalar") == 0 && bcID == bcMap::bcTypeF)
+      oudfFindNeumann(field);
+  }
+}
 
 static unsigned long fchkSum(const std::string& fname)
 {
@@ -110,13 +137,10 @@ void adjustOudf(bool buildRequired, const std::string &postOklSource, const std:
       f << "void meshVelocityDirichletConditions(bcData *bc){\n"
            "  velocityDirichletConditions(bc);\n"
            "}\n";
-    }
-
-    if (!meshVelocityDirichletConditions) {
+    } else if (!meshVelocityDirichletConditions) {
       if (platform->options.getArgs("MESH SOLVER").empty() || 
           platform->options.compareArgs("MESH SOLVER", "NONE")) {
         f << "void meshVelocityDirichletConditions(bcData *bc){}\n";
-        //meshVelocityDirichletConditions = 1; 
       }
     }
   }
@@ -413,7 +437,7 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
         fs::rename(cache_dir + "/udf/okl.cpp", oudfFileCache);
 
       adjustOudf(buildRequired, postOklSource, oudfFileCache); // call every time for verifyOudf
-      bcMap::verifyOudf();
+      verifyOudf();
 
       fileSync(oudfFileCache.c_str());
 

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <map>
 #include <set>
+#include <utility>
 
 #include "nrs.hpp"
 #include "platform.hpp"
@@ -373,32 +374,6 @@ void deriveMeshBoundaryConditions(std::vector<std::string> velocityBCs)
   }
 }
 
-void verifyOudf()
-{
-  for (auto& [key, value] :  bToBc) {
-    auto field = key.first;
-    const int bcID = value; // bToBc.at({field, bid - 1});
- 
-    if (field.compare("velocity") == 0 && (bcID == bcTypeV || bcID == bcTypeINT))
-      oudfFindDirichlet(field);
-    if (field.compare("mesh") == 0 && bcID == bcTypeV)
-      oudfFindDirichlet(field);
-    if (field.compare("pressure") == 0 &&
-        (bcID == bcTypeONX || bcID == bcTypeONY || bcID == bcTypeONZ || bcID == bcTypeON || bcID == bcTypeO))
-      oudfFindDirichlet(field);
-    if (field.compare(0, 6, "scalar") == 0 && (bcID == bcTypeS || bcID == bcTypeINTS))
-      oudfFindDirichlet(field);
- 
-    if (field.compare("velocity") == 0 &&
-        (bcID == bcTypeSHLX || bcID == bcTypeSHLY || bcID == bcTypeSHLZ || bcID == bcTypeSHL))
-      oudfFindNeumann(field);
-    if (field.compare("mesh") == 0 && bcID == bcTypeSHL)
-      oudfFindNeumann(field);
-    if (field.compare(0, 6, "scalar") == 0 && bcID == bcTypeF)
-      oudfFindNeumann(field);
-  }
-}
-
 // return boundary type id for a given boundary id
 int id(int bid, std::string field)
 {
@@ -560,7 +535,10 @@ bool useDerivedMeshBoundaryConditions()
   }
 }
 
-
+std::map<std::pair<std::string, int>, int> map()
+{
+  return bToBc;
+}
 
 void setBcMap(std::string field, int* map, int nIDs)
 {

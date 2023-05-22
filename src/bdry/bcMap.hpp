@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <utility>
 #include "nekInterfaceAdapter.hpp"
 
 namespace bcMap
@@ -68,7 +70,7 @@ int id(int bid, std::string field);
 int ellipticType(int bid, std::string field);
 std::string text(int bid, std::string field);
 int size(const std::string& field);
-void verifyOudf();
+std::map<std::pair<std::string, int>, int> map();
 void setBcMap(std::string field, int* map, int nbid);
 void checkBoundaryAlignment(mesh_t *mesh);
 void remapUnalignedBoundaries(mesh_t *mesh);
