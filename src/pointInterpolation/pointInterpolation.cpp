@@ -12,11 +12,12 @@
 #include <inttypes.h>
 
 pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_, double bb_tol, double newton_tol_, bool mySession_)
-    : pointInterpolation_t(nrs_, nrs_->meshV->Nlocal, nrs_->meshV->Nlocal, bb_tol, newton_tol_, mySession_)
+    : pointInterpolation_t(nrs_, platform->comm.mpiCommParent, nrs_->_mesh->Nlocal, nrs_->_mesh->Nlocal, bb_tol, newton_tol_, mySession_)
 {
 }
 
 pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
+                                           MPI_Comm comm,
                                            dlong localHashSize,
                                            dlong globalHashSize,
                                            double bb_tol,
@@ -24,6 +25,20 @@ pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
                                            bool mySession_)
     : nrs(nrs_), newton_tol(newton_tol_), mySession(mySession_), nPoints(0)
 {
+
+  // communicator is implicitly required to be either platform->comm.mpiComm or platform->comm.mpiCommParent
+  // due to other communicator synchronous calls, such as platform->timer.tic
+  bool supported = false;
+  for(auto && supportedCommunicator : {platform->comm.mpiComm, platform->comm.mpiCommParent}){
+    int same = 0;
+    MPI_Comm_compare(comm, supportedCommunicator, &same);
+    supported |= (same != MPI_UNEQUAL);
+  }
+  nrsCheck(!supported,
+    comm,
+    EXIT_FAILURE,
+    "%s",
+    "Communicator passed to pointInterpolation_t must be either platform->comm.mpiComm or platform->comm.mpiCommParent");
 
   newton_tol = std::max(5e-13, newton_tol_);
 
@@ -37,7 +52,7 @@ pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
     mesh->o_z.copyTo(mesh->z, mesh->Nlocal * sizeof(dfloat));
   }
 
-  findpts_ = std::make_unique<findpts::findpts_t>(platform->comm.mpiCommParent,
+  findpts_ = std::make_unique<findpts::findpts_t>(comm,
                                                   mySession ? mesh->x : nullptr,
                                                   mySession ? mesh->y : nullptr,
                                                   mySession ? mesh->z : nullptr,

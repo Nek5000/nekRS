@@ -83,7 +83,7 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   if (mesh->Nbid  > 0) {
     MPI_Allreduce(MPI_IN_PLACE, &minEToB, 1, MPI_INT, MPI_MIN, platform->comm.mpiComm);
     nrsCheck(minEToB != 1, platform->comm.mpiComm, EXIT_FAILURE,
-             "\nboundary IDs are not one-based, min(ID): %d!\n", minEToB);
+             "\nboundary ID needs to be one-based index but min(ID) is %d!\n", minEToB);
 #if 0
     MPI_Allreduce(MPI_IN_PLACE, &maxEToB, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
     if (maxEToB - minEToB != mesh->Nbid  - 1) {

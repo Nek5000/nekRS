@@ -65,7 +65,6 @@ C=======================================================================
       !ifusermv = .true.                  ! define our own mesh velocity
       !call user_mvel(time)               ! Fill mesh velocity
 
-      call printdiverr
       call user_print_err
 
       RETURN

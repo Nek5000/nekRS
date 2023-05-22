@@ -23,11 +23,15 @@ boundaryAlignment_t computeAlignment(mesh_t *mesh, dlong element, dlong face)
   dfloat nyDiff = 0.0;
   dfloat nzDiff = 0.0;
 
+  std::vector<dfloat> sgeo;
+  sgeo.reserve(mesh->o_sgeo.size()/sizeof(dfloat));
+  mesh->o_sgeo.copyTo(sgeo.data());
+
   for (int fp = 0; fp < mesh->Nfp; ++fp) {
     const dlong sid = mesh->Nsgeo * (mesh->Nfaces * mesh->Nfp * element + mesh->Nfp * face + fp);
-    const dfloat nx = mesh->sgeo[sid + NXID];
-    const dfloat ny = mesh->sgeo[sid + NYID];
-    const dfloat nz = mesh->sgeo[sid + NZID];
+    const dfloat nx = sgeo[sid + NXID];
+    const dfloat ny = sgeo[sid + NYID];
+    const dfloat nz = sgeo[sid + NZID];
     nxDiff += std::abs(std::abs(nx) - 1.0);
     nyDiff += std::abs(std::abs(ny) - 1.0);
     nzDiff += std::abs(std::abs(nz) - 1.0);
@@ -52,7 +56,6 @@ static bool meshConditionsDerived = false;
 static std::set<std::string> fields;
 // stores for every (field, boundaryID) pair a bcID
 static std::map<std::pair<std::string, int>, int> bToBc;
-static int nbid[] = {-1, -1};
 static bool importFromNek = true;
 
 static std::map<std::string, int> vBcTextToID = {
@@ -259,16 +262,12 @@ void setupField(std::vector<std::string> slist, std::string field)
     return;
 
   importFromNek = false;
+  lowerCase(field);
 
   if (slist[0].compare("none") == 0)
     return;
 
   fields.insert(field);
-
-  if (field.compare(0, 8, "scalar00") == 0) /* tmesh */ 
-    nbid[1] = slist.size();
-  else 
-    nbid[0] = slist.size();
 
   if (field.compare("velocity") == 0)
     v_setup(field, slist);
@@ -276,6 +275,8 @@ void setupField(std::vector<std::string> slist, std::string field)
     v_setup(field, slist);
   else if (field.compare(0, 6, "scalar") == 0)
     s_setup(field, slist);
+  else
+    nrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "unknown field %s\n", field.c_str());
 }
 
 
@@ -307,9 +308,13 @@ void setup()
 
         if (option.first.find("BOUNDARY TYPE MAP") != std::string::npos) {
           count++;
-          auto value = section;
-          lowerCase(value);
-          setupField(serializeString(option.second, ','), value);
+
+          if (section == "MESH" &&
+              option.first.find("DERIVED") != std::string::npos)
+            deriveMeshBoundaryConditions(serializeString(option.second, ','));
+          else
+            setupField(serializeString(option.second, ','), section);
+
           staleOptions.push_back(option.first);
         }
 
@@ -365,6 +370,32 @@ void deriveMeshBoundaryConditions(std::vector<std::string> velocityBCs)
              "Invalid bcType (%s)\n", key.c_str());
 
     bToBc[make_pair(field, bid)] = vBcTextToID.at(key);
+  }
+}
+
+void verifyOudf()
+{
+  for (auto& [key, value] :  bToBc) {
+    auto field = key.first;
+    const int bcID = value; // bToBc.at({field, bid - 1});
+ 
+    if (field.compare("velocity") == 0 && (bcID == bcTypeV || bcID == bcTypeINT))
+      oudfFindDirichlet(field);
+    if (field.compare("mesh") == 0 && bcID == bcTypeV)
+      oudfFindDirichlet(field);
+    if (field.compare("pressure") == 0 &&
+        (bcID == bcTypeONX || bcID == bcTypeONY || bcID == bcTypeONZ || bcID == bcTypeON || bcID == bcTypeO))
+      oudfFindDirichlet(field);
+    if (field.compare(0, 6, "scalar") == 0 && (bcID == bcTypeS || bcID == bcTypeINTS))
+      oudfFindDirichlet(field);
+ 
+    if (field.compare("velocity") == 0 &&
+        (bcID == bcTypeSHLX || bcID == bcTypeSHLY || bcID == bcTypeSHLZ || bcID == bcTypeSHL))
+      oudfFindNeumann(field);
+    if (field.compare("mesh") == 0 && bcID == bcTypeSHL)
+      oudfFindNeumann(field);
+    if (field.compare(0, 6, "scalar") == 0 && bcID == bcTypeF)
+      oudfFindNeumann(field);
   }
 }
 
@@ -483,6 +514,7 @@ int ellipticType(int bid, std::string field)
   return 0;
 }
 
+
 std::string text(int bid, std::string field)
 {
   if (bid < 1) return std::string();
@@ -491,24 +523,6 @@ std::string text(int bid, std::string field)
 
   if (bcID == bcTypeNone) 
     return std::string("");
-
-  if (field.compare("velocity") == 0 && (bcID == bcTypeV || bcID == bcTypeINT))
-    oudfFindDirichlet(field);
-  if (field.compare("mesh") == 0 && bcID == bcTypeV)
-    oudfFindDirichlet(field);
-  if (field.compare("pressure") == 0 &&
-      (bcID == bcTypeONX || bcID == bcTypeONY || bcID == bcTypeONZ || bcID == bcTypeON || bcID == bcTypeO))
-    oudfFindDirichlet(field);
-  if (field.compare(0, 6, "scalar") == 0 && (bcID == bcTypeS || bcID == bcTypeINTS))
-    oudfFindDirichlet(field);
-
-  if (field.compare("velocity") == 0 &&
-      (bcID == bcTypeSHLX || bcID == bcTypeSHLY || bcID == bcTypeSHLZ || bcID == bcTypeSHL))
-    oudfFindNeumann(field);
-  if (field.compare("mesh") == 0 && bcID == bcTypeSHL)
-    oudfFindNeumann(field);
-  if (field.compare(0, 6, "scalar") == 0 && bcID == bcTypeF)
-    oudfFindNeumann(field);
 
   if (field.compare("velocity") == 0 || field.compare("mesh") == 0)
     return vBcIDToText.at(bcID);
@@ -521,12 +535,19 @@ std::string text(int bid, std::string field)
   return 0;
 }
 
-int size(int isTmesh)
+int size(const std::string& _field)
 {
-  if(nbid[1] > -1)
-    return isTmesh ? nbid[1] : nbid[0];
-  else
-    return nbid[0];
+  std::string field = _field;
+  lowerCase(field);
+
+  int cnt = 0;
+  for(auto& entry : bToBc) {
+    if(entry.first.first == field) {
+      cnt ++;
+    }
+  }
+
+  return cnt;
 }
 
 bool useDerivedMeshBoundaryConditions()
@@ -543,11 +564,6 @@ bool useDerivedMeshBoundaryConditions()
 
 void setBcMap(std::string field, int* map, int nIDs)
 {
-  if (field.compare(0, 8, "scalar00") == 0)
-    nbid[1] = nIDs;
-  else
-    nbid[0] = nIDs;
-
   fields.insert(field);
   for (int i = 0; i < nIDs; i++)
     bToBc[make_pair(field, i)] = map[i];
@@ -555,14 +571,12 @@ void setBcMap(std::string field, int* map, int nIDs)
 
 void checkBoundaryAlignment(mesh_t *mesh)
 {
-  int nid = nbid[0];
-  if (mesh->cht)
-    nid = nbid[1];
-
   bool bail = false;
   for (auto &&field : fields) {
     if (field != std::string("velocity") && field != std::string("mesh"))
       continue;
+
+    const int nid = size(field);
 
     std::map<int, boundaryAlignment_t> expectedAlignmentInvalidBIDs;
     std::map<int, std::set<boundaryAlignment_t>> actualAlignmentsInvalidBIDs;
@@ -685,9 +699,7 @@ void remapUnalignedBoundaries(mesh_t *mesh)
     std::map<int, bool> remapBID;
     std::map<int, boundaryAlignment_t> alignmentBID;
 
-    int nid = nbid[0];
-    if (mesh->cht)
-      nid = nbid[1];
+    const int nid = size(field);
 
     for (int bid = 1; bid <= nid; ++bid) {
       int bcType = id(bid, field);
@@ -757,12 +769,10 @@ void remapUnalignedBoundaries(mesh_t *mesh)
 
 bool unalignedMixedBoundary(std::string field)
 {
-  int nid = nbid[0];
-  if (field.compare("mesh") == 0)
-    nid = (nbid[1] > -1) ? nbid[1] : nbid[0]; 
+  const auto nid = size(field);
 
   for (int bid = 1; bid <= nid; bid++) {
-    int bcType = id(bid, field);
+    const auto bcType = id(bid, field);
     if (bcType == bcTypeSYM)
       return true;
     if (bcType == bcTypeSHL)

@@ -79,6 +79,10 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
   mesh_t* mesh = elliptic->mesh;
   setupAide& options = elliptic->options;
 
+  std::vector<dfloat> ggeo;
+  ggeo.reserve(mesh->o_ggeo.size()/sizeof(dfloat));
+  mesh->o_ggeo.copyTo(ggeo.data());
+
   // here we assume lambda0 is constant (in space and time) 
   // use first entry of o_lambda as representative value 
   pfloat lambda0;
@@ -158,7 +162,7 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
                 if ((ny == my) && (nz == mz)) {
                   for (int k = 0; k < mesh->Nq; k++) {
                     id = k + ny * mesh->Nq + nz * mesh->Nq * mesh->Nq;
-                    dfloat Grr = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G00ID * mesh->Np];
+                    dfloat Grr = ggeo[e * mesh->Np * mesh->Nggeo + id + G00ID * mesh->Np];
 
                     val += Grr * mesh->D[nx + k * mesh->Nq] * mesh->D[mx + k * mesh->Nq];
                   }
@@ -166,28 +170,28 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
 
                 if (nz == mz) {
                   id = mx + ny * mesh->Nq + nz * mesh->Nq * mesh->Nq;
-                  dfloat Grs = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G01ID * mesh->Np];
+                  dfloat Grs = ggeo[e * mesh->Np * mesh->Nggeo + id + G01ID * mesh->Np];
                   val += Grs * mesh->D[nx + mx * mesh->Nq] * mesh->D[my + ny * mesh->Nq];
 
                   id = nx + my * mesh->Nq + nz * mesh->Nq * mesh->Nq;
-                  dfloat Gsr = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G01ID * mesh->Np];
+                  dfloat Gsr = ggeo[e * mesh->Np * mesh->Nggeo + id + G01ID * mesh->Np];
                   val += Gsr * mesh->D[mx + nx * mesh->Nq] * mesh->D[ny + my * mesh->Nq];
                 }
 
                 if (ny == my) {
                   id = mx + ny * mesh->Nq + nz * mesh->Nq * mesh->Nq;
-                  dfloat Grt = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G02ID * mesh->Np];
+                  dfloat Grt = ggeo[e * mesh->Np * mesh->Nggeo + id + G02ID * mesh->Np];
                   val += Grt * mesh->D[nx + mx * mesh->Nq] * mesh->D[mz + nz * mesh->Nq];
 
                   id = nx + ny * mesh->Nq + mz * mesh->Nq * mesh->Nq;
-                  dfloat Gst = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G02ID * mesh->Np];
+                  dfloat Gst = ggeo[e * mesh->Np * mesh->Nggeo + id + G02ID * mesh->Np];
                   val += Gst * mesh->D[mx + nx * mesh->Nq] * mesh->D[nz + mz * mesh->Nq];
                 }
 
                 if ((nx == mx) && (nz == mz)) {
                   for (int k = 0; k < mesh->Nq; k++) {
                     id = nx + k * mesh->Nq + nz * mesh->Nq * mesh->Nq;
-                    dfloat Gss = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G11ID * mesh->Np];
+                    dfloat Gss = ggeo[e * mesh->Np * mesh->Nggeo + id + G11ID * mesh->Np];
 
                     val += Gss * mesh->D[ny + k * mesh->Nq] * mesh->D[my + k * mesh->Nq];
                   }
@@ -195,18 +199,18 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
 
                 if (nx == mx) {
                   id = nx + my * mesh->Nq + nz * mesh->Nq * mesh->Nq;
-                  dfloat Gst = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G12ID * mesh->Np];
+                  dfloat Gst = ggeo[e * mesh->Np * mesh->Nggeo + id + G12ID * mesh->Np];
                   val += Gst * mesh->D[ny + my * mesh->Nq] * mesh->D[mz + nz * mesh->Nq];
 
                   id = nx + ny * mesh->Nq + mz * mesh->Nq * mesh->Nq;
-                  dfloat Gts = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G12ID * mesh->Np];
+                  dfloat Gts = ggeo[e * mesh->Np * mesh->Nggeo + id + G12ID * mesh->Np];
                   val += Gts * mesh->D[my + ny * mesh->Nq] * mesh->D[nz + mz * mesh->Nq];
                 }
 
                 if ((nx == mx) && (ny == my)) {
                   for (int k = 0; k < mesh->Nq; k++) {
                     id = nx + ny * mesh->Nq + k * mesh->Nq * mesh->Nq;
-                    dfloat Gtt = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + G22ID * mesh->Np];
+                    dfloat Gtt = ggeo[e * mesh->Np * mesh->Nggeo + id + G22ID * mesh->Np];
 
                     val += Gtt * mesh->D[nz + k * mesh->Nq] * mesh->D[mz + k * mesh->Nq];
                   }
@@ -215,7 +219,7 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
                 dfloat valDiag = 0.;
                 if ((nx == mx) && (ny == my) && (nz == mz)) {
                   id = nx + ny * mesh->Nq + nz * mesh->Nq * mesh->Nq;
-                  dfloat JW = mesh->ggeo[e * mesh->Np * mesh->Nggeo + id + GWJID * mesh->Np];
+                  dfloat JW = ggeo[e * mesh->Np * mesh->Nggeo + id + GWJID * mesh->Np];
                   valDiag = JW * lambda1;
                 }
 

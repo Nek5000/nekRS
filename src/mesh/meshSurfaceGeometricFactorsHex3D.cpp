@@ -27,7 +27,19 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "platform.hpp"
 #include "mesh3D.h"
+
+void mesh_t::surfaceGeometricFactors()
+{
+  surfaceGeometricFactorsKernel(Nelements, o_gllw, o_faceNodes, o_vgeo, o_sgeo);
+
+  double flopsSurfaceGeometricFactors = 32 * Nq * Nq;
+  flopsSurfaceGeometricFactors *= static_cast<double>(Nelements);
+
+  platform->flopCounter->add("mesh_t::update", flopsSurfaceGeometricFactors);
+}
+
 
 void interpolateFaceHex3D(int* faceNodes, dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
 {
@@ -58,6 +70,7 @@ void interpolateFaceHex3D(int* faceNodes, dfloat* I, dfloat* x, int N, dfloat* I
   free(Ix1);
 }
 
+#if 0
 /* compute outwards facing normals, surface Jacobian, and volume Jacobian for all face nodes */
 void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
 {
@@ -65,6 +78,8 @@ void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
   mesh->sgeo =
       (dfloat *)calloc((mesh->Nelements + mesh->totalHaloPairs) * mesh->Nsgeo * mesh->Nfp * mesh->Nfaces,
                        sizeof(dfloat));
+
+  return;
 
   dfloat* xre = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
   dfloat* xse = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
@@ -256,3 +271,4 @@ void meshSurfaceGeometricFactorsHex3D(mesh_t *mesh)
   free(cubzse);
   free(cubzte);
 }
+#endif

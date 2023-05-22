@@ -1923,7 +1923,7 @@ void parseMeshSection(const int rank, setupAide &options, inipp::Ini *par)
       else {
         std::string v_bcMap;
         if (par->extract("velocity", "boundarytypemap", v_bcMap)) {
-          options.setArgs("MESH BOUNDARY TYPE MAP", v_bcMap);
+          options.setArgs("MESH DERIVED BOUNDARY TYPE MAP", v_bcMap);
         }
       }
     }

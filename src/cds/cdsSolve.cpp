@@ -12,7 +12,9 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
     mesh = cds->meshV;
   }
 
-  platform->o_mempool.slice1.copyFrom(cds->o_BF, cds->fieldOffset[is] * sizeof(dfloat), 0,  cds->fieldOffsetScan[is] * sizeof(dfloat));
+  platform->o_mempool.slice1.copyFrom(cds->o_BF, cds->fieldOffset[is] * sizeof(dfloat), 0,  
+                                      cds->fieldOffsetScan[is] * sizeof(dfloat));
+
   cds->neumannBCKernel(mesh->Nelements,
                        1,
                        mesh->o_sgeo,

@@ -8,11 +8,11 @@ timeStepper = tombo3
 writeInterval = 50
 
 usr = "mv_cyl.usr"
-oudf = "mv_cyl_derived_bc.oudf"
-udf = "mv_cyl.udf"
 
 [MESH]
-solver = pcg+block 
+residualTol = 1e-6
+solver = pcg+block #user
+initialGuess = projection+nVector=1
 file = "mv_cyl.re2"
 
 [PRESSURE]

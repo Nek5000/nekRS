@@ -20,10 +20,12 @@ dfloat alpha0 = 1.0;
 occa::memory o_beta;
 occa::memory o_kappa;
 
+occa::memory h_scratch;
+
 occa::kernel qtlKernel;
 occa::kernel p0thHelperKernel;
 occa::kernel surfaceFluxKernel;
-} // namespace
+}
 
 void lowMach::buildKernel(occa::properties kernelInfo)
 {
@@ -66,6 +68,7 @@ void lowMach::setup(nrs_t *nrs, dfloat alpha_, occa::memory& o_beta_, occa::memo
   nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE,
            "%s\n", "requires solving for temperature!");
 
+  h_scratch = platform->device.mallocHost(mesh->Nelements * sizeof(dfloat));
 }
 
 void lowMach::qThermalSingleComponent(dfloat time, occa::memory& o_div)
@@ -127,7 +130,10 @@ void lowMach::qThermalSingleComponent(dfloat time, occa::memory& o_div)
 
   double surfaceFlops = 0.0;
 
-  if (nrs->pSolver->allNeumann) {
+  if (nrs->pSolver) {
+    const bool closedVolume = nrs->pSolver->allNeumann;
+    if(!closedVolume)
+     return;
 
     const dlong Nlocal = mesh->Nlocal;
 
@@ -145,10 +151,13 @@ void lowMach::qThermalSingleComponent(dfloat time, occa::memory& o_div)
     double surfaceFluxFlops = 13 * mesh->Nq * mesh->Nq;
     surfaceFluxFlops *= static_cast<double>(mesh->Nelements);
 
-    platform->o_mempool.slice0.copyTo(platform->mempool.slice0, mesh->Nelements * sizeof(dfloat));
+    platform->o_mempool.slice0.copyTo(h_scratch.ptr(), mesh->Nelements * sizeof(dfloat));
+    auto scratch = (dfloat *) h_scratch.ptr();
+
     dfloat termV = 0.0;
-    for (int i = 0; i < mesh->Nelements; ++i)
-      termV += platform->mempool.slice0[i];
+    for (int i = 0; i < mesh->Nelements; ++i) {
+      termV += scratch[i];
+    }
     MPI_Allreduce(MPI_IN_PLACE, &termV, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
 
     p0thHelperKernel(Nlocal,

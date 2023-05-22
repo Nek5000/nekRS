@@ -63,15 +63,10 @@ void meshFree(mesh_t* mesh)
   // list of elements that are not needed for global gather-scatter
   if(mesh->localGatherElementList) free(mesh->localGatherElementList);
 
-  if(mesh->vgeo) free(mesh->vgeo);
-
-  if(mesh->ggeo) free(mesh->ggeo);
-
   // volume node info
   if(mesh->r) free(mesh->r);
   if(mesh->s) free(mesh->s);
   if(mesh->t) free(mesh->t);      // coordinates of local nodes
-  if(mesh->invLMM) free(mesh->invLMM);
   if(mesh->x) free(mesh->x);
   if(mesh->y) free(mesh->y);
   if(mesh->z) free(mesh->z);      // coordinates of physical nodes
@@ -87,8 +82,6 @@ void meshFree(mesh_t* mesh)
     free(mesh->vmapM);                               // list of volume nodes that are face nodes
   if(mesh->faceVertices) free(mesh->faceVertices);   // list of mesh vertices on each face
 
-  if(mesh->sgeo) free(mesh->sgeo);
-
   if(mesh->cubr) free(mesh->cubr);
   if(mesh->cubs) free(mesh->cubs);
   if(mesh->cubt) free(mesh->cubt);
@@ -102,8 +95,6 @@ void meshFree(mesh_t* mesh)
   if(mesh->cubDiffInterp) free(mesh->cubDiffInterp);       // 1D weak differentiation matrix
   if(mesh->cubDW) free(mesh->cubDW);       // 1D weak differentiation matrix
   if(mesh->cubDWmatrices) free(mesh->cubDWmatrices);
-
-  if(mesh->cubvgeo) free(mesh->cubvgeo);    //volume geometric data at cubature points
 
   // surface integration node info
   if(mesh->intInterp) free(mesh->intInterp);   // interp from surface node to integration nodes

@@ -18,12 +18,10 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
 
   cds->coeffEXT = nrs->coeffEXT;
   cds->coeffBDF = nrs->coeffBDF;
-  cds->coeffSubEXT = nrs->coeffSubEXT;
   cds->nBDF = nrs->nBDF;
   cds->nEXT = nrs->nEXT;
   cds->o_coeffEXT = nrs->o_coeffEXT;
   cds->o_coeffBDF = nrs->o_coeffBDF;
-  cds->o_coeffSubEXT = nrs->o_coeffSubEXT;
 
   cds->o_usrwrk = &(nrs->o_usrwrk);
 
@@ -47,8 +45,6 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
 
   cds->U = nrs->U;
   cds->S = (dfloat *)calloc(std::max(cds->nBDF, cds->nEXT) * cds->fieldOffsetSum, sizeof(dfloat));
-  cds->BF = (dfloat *)calloc(cds->fieldOffsetSum, sizeof(dfloat));
-  cds->FS = (dfloat *)calloc(cds->nEXT * cds->fieldOffsetSum, sizeof(dfloat));
 
   cds->Nsubsteps = nrs->Nsubsteps;
   if (cds->Nsubsteps) {
@@ -62,30 +58,27 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
 
   cds->dt = nrs->dt;
 
-  cds->prop = (dfloat *)calloc(2 * cds->fieldOffsetSum, sizeof(dfloat));
+  cds->o_prop = device.malloc(2 * cds->fieldOffsetSum * sizeof(dfloat));
+  cds->o_diff = cds->o_prop.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));
+  cds->o_rho = cds->o_prop.slice(1 * cds->fieldOffsetSum * sizeof(dfloat));
 
   for (int is = 0; is < cds->NSfields; is++) {
-    std::string sid = scalarDigitStr(is);
+    const std::string sid = scalarDigitStr(is);
 
-    if (options.compareArgs("SCALAR" + sid + " SOLVER", "NONE"))
+    if (options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) {
       continue;
+    }
 
     dfloat diff = 1;
     dfloat rho = 1;
     options.getArgs("SCALAR" + sid + " DIFFUSIVITY", diff);
     options.getArgs("SCALAR" + sid + " DENSITY", rho);
 
-    const dlong off = cds->fieldOffsetSum;
-    for (int e = 0; e < mesh->Nelements; e++)
-      for (int n = 0; n < mesh->Np; n++) {
-        cds->prop[0 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = diff;
-        cds->prop[1 * off + cds->fieldOffsetScan[is] + e * mesh->Np + n] = rho;
-      }
+    auto o_diff = cds->o_diff + cds->fieldOffsetScan[is] * sizeof(dfloat);
+    auto o_rho = cds->o_rho + cds->fieldOffsetScan[is] * sizeof(dfloat);
+    platform->linAlg->fill(mesh->Nlocal, diff, o_diff); 
+    platform->linAlg->fill(mesh->Nlocal, rho, o_rho); 
   }
-
-  cds->o_prop = device.malloc(2 * cds->fieldOffsetSum * sizeof(dfloat), cds->prop);
-  cds->o_diff = cds->o_prop.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));
-  cds->o_rho = cds->o_prop.slice(1 * cds->fieldOffsetSum * sizeof(dfloat));
 
   cds->o_ellipticCoeff = nrs->o_ellipticCoeff;
 
@@ -97,7 +90,7 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
 
   cds->EToBOffset = cds->mesh[0]->Nelements * cds->mesh[0]->Nfaces;
 
-  cds->EToB = (int *) calloc(cds->EToBOffset * cds->NSfields, sizeof(int));
+  cds->EToB = (int *)calloc(cds->EToBOffset * cds->NSfields, sizeof(int));
 
   for (int is = 0; is < cds->NSfields; is++) {
     std::string sid = scalarDigitStr(is);
@@ -128,21 +121,19 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
 
   cds->o_compute = platform->device.malloc(cds->NSfields * sizeof(dlong), cds->compute);
   cds->o_cvodeSolve = platform->device.malloc(cds->NSfields * sizeof(dlong), cds->cvodeSolve);
-  
+
   cds->o_U = nrs->o_U;
   cds->o_Ue = nrs->o_Ue;
   int nFieldsAlloc = cds->anyEllipticSolver ? std::max(cds->nBDF, cds->nEXT) : 1;
-  cds->o_S =
-      platform->device.malloc(nFieldsAlloc * cds->fieldOffsetSum * sizeof(dfloat), cds->S);
-  
+  cds->o_S = platform->device.malloc(nFieldsAlloc * cds->fieldOffsetSum * sizeof(dfloat), cds->S);
+
   nFieldsAlloc = cds->anyEllipticSolver ? cds->nEXT : 1;
-  cds->o_FS = platform->device.malloc(nFieldsAlloc * cds->fieldOffsetSum * sizeof(dfloat), cds->FS);
+  cds->o_FS = platform->device.malloc(nFieldsAlloc * cds->fieldOffsetSum * sizeof(dfloat));
 
-  if(cds->anyEllipticSolver){
+  if (cds->anyEllipticSolver) {
     cds->o_Se = platform->device.malloc(cds->fieldOffsetSum, sizeof(dfloat));
-    cds->o_BF = platform->device.malloc(cds->fieldOffsetSum * sizeof(dfloat), cds->BF);
+    cds->o_BF = platform->device.malloc(cds->fieldOffsetSum * sizeof(dfloat));
   }
-
 
   bool scalarFilteringEnabled = false;
   bool avmEnabled = false;
@@ -150,13 +141,16 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     for (int is = 0; is < cds->NSfields; is++) {
       std::string sid = scalarDigitStr(is);
 
-      if (!options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "NONE"))
+      if (!options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "NONE")) {
         scalarFilteringEnabled = true;
+      }
 
-      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_RESIDUAL"))
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_RESIDUAL")) {
         avmEnabled = true;
-      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_HIGHEST_MODAL_DECAY"))
+      }
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_HIGHEST_MODAL_DECAY")) {
         avmEnabled = true;
+      }
     }
   }
 
@@ -172,36 +166,36 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     for (int is = 0; is < cds->NSfields; is++) {
       std::string sid = scalarDigitStr(is);
 
-      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "NONE"))
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "NONE")) {
         continue;
-      if (!cds->compute[is])
+      }
+      if (!cds->compute[is]) {
         continue;
+      }
 
-      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPFRT")) { 
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPFRT")) {
         int filterNc = -1;
         options.getArgs("SCALAR" + sid + " HPFRT MODES", filterNc);
         dfloat filterS;
         options.getArgs("SCALAR" + sid + " HPFRT STRENGTH", filterS);
         filterS = -1.0 * fabs(filterS);
         cds->filterS[is] = filterS;
- 
-        dfloat *A = filterSetup(cds->mesh[is], filterNc);
- 
-        const dlong Nmodes = cds->mesh[is]->N + 1;
-        cds->o_filterMT.copyFrom(A, Nmodes * Nmodes * sizeof(dfloat), is * Nmodes * Nmodes * sizeof(dfloat));
+
+        cds->o_filterMT.copyFrom(hpfSetup(cds->mesh[is], filterNc),
+                                 Nmodes * Nmodes * sizeof(dfloat),
+                                 is * Nmodes * Nmodes * sizeof(dfloat));
 
         applyFilterRT[is] = 1;
         cds->applyFilter = 1;
- 
-        free(A);
       }
     }
 
     cds->o_filterS.copyFrom(cds->filterS, cds->NSfields * sizeof(dfloat));
     cds->o_applyFilterRT.copyFrom(applyFilterRT.data(), cds->NSfields * sizeof(dlong));
 
-    if (avmEnabled)
+    if (avmEnabled) {
       avm::setup(cds);
+    }
   }
 
   std::string kernelName;
@@ -261,4 +255,3 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
 
   return cds;
 }
-

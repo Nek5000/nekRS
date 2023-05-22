@@ -23,7 +23,7 @@ static void checkEToB(mesh_t *mesh)
     MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
     err += (found ? 0 : 1);
     if (err && platform->comm.mpiRank == 0)
-      printf("Cannot find boundary ID %d in mesh!\n", id);
+      printf("Cannot find boundary ID %d in EToB!\n", id);
   }
   nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
 
@@ -34,7 +34,7 @@ static void checkEToB(mesh_t *mesh)
     }
   }
   MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-  nrsCheck(found, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "Mesh has unmapped boundary IDs!");
+  nrsCheck(found, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "EToB has invalid entries!");
 }
 
 static void meshVOccaSetup3D(mesh_t *mesh, occa::properties &kernelInfo);
@@ -200,8 +200,6 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
            "%s\n",
            "mesh->Nelements * mesh->Nvgeo * cubN exceeds int limit!");
 
-  mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
-
   // connect elements using parallel sort
   meshParallelConnect(mesh);
 
@@ -214,6 +212,8 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
     printf("\n");
   }
 
+  platform->create_mempool(alignStride<dfloat>(mesh->Nlocal), 3);
+
   loadKernels(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
@@ -221,24 +221,19 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
 
   // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh);
-
   meshHaloPhysicalNodes(mesh);
+  mesh->o_x.copyFrom(mesh->x);
+  mesh->o_y.copyFrom(mesh->y);
+  mesh->o_z.copyFrom(mesh->z);
 
-  // compute geometric factors
-  meshGeometricFactorsHex3D(mesh);
-
-  // connect face nodes (find trace indices)
+  // connect face nodes (vmapM)
   meshConnectFaceNodes3D(mesh);
 
-  // compute surface geofacs (including halo)
-  meshSurfaceGeometricFactorsHex3D(mesh);
-
-  // global nodes
-  meshGlobalIds(mesh);
+  meshOccaSetup3D(mesh, platform->options, kernelInfo);
 
   checkEToB(mesh);
 
-  meshOccaSetup3D(mesh, platform->options, kernelInfo);
+  meshGlobalIds(mesh);
 
   meshParallelGatherScatterSetup(mesh,
                                  mesh->Nelements * mesh->Np,
@@ -246,6 +241,10 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
                                  platform->comm.mpiComm,
                                  OOGS_AUTO,
                                  0);
+
+  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nlocal, ogsDfloat, NULL, OOGS_AUTO);
+
+  mesh->update(true);
 
   int err = 0;
   int Nfine;
@@ -267,15 +266,6 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
     free(tmp);
   }
   nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
-
-  mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
-
-  // build mass + inverse mass matrix
-  for (dlong e = 0; e < mesh->Nelements; ++e)
-    for (int n = 0; n < mesh->Np; ++n)
-      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->computeInvLMM();
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     const int maxTemporalOrder = 3;
@@ -300,79 +290,23 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
   return mesh;
 }
 
-/*
-mesh_t* duplicateMesh(MPI_Comm comm,
-                      int N,
-                      int cubN,
-                      mesh_t* meshT,
-                      occa::device device,
-                      occa::properties& kernelInfo)
-{
-  mesh_t* mesh = new mesh_t[1];
-
-  // shallow copy
-  memcpy(mesh, meshT, sizeof(*meshT));
-
-  mesh->Nfields = 1; // TW: note this is a temporary patch (halo exchange depends on nfields)
-
-  // load reference (r,s,t) element nodes
-  meshLoadReferenceNodesHex3D(mesh, N, cubN);
-  if (platform->comm.mpiRank == 0)
-    printf("Nq: %d cubNq: %d \n", mesh->Nq, mesh->cubNq);
-
-  loadKernels(mesh);
-
-  meshHaloSetup(mesh);
-  meshPhysicalNodesHex3D(mesh);
-  meshHaloPhysicalNodes(mesh);
-  meshGeometricFactorsHex3D(mesh);
-  meshConnectFaceNodes3D(mesh);
-  meshSurfaceGeometricFactorsHex3D(mesh);
-  meshGlobalIds(mesh);
-
-  checkEToB(mesh);
-
-  meshOccaSetup3D(mesh, platform->options, kernelInfo);
-
-  meshParallelGatherScatterSetup(mesh, mesh->Nelements * mesh->Np, mesh->globalIds, platform->comm.mpiComm,
-OOGS_AUTO, 0); mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
-
-  // build mass + inverse mass matrix
-  for(dlong e = 0; e < mesh->Nelements; ++e)
-    for(int n = 0; n < mesh->Np; ++n)
-      mesh->LMM[e * mesh->Np + n] = mesh->vgeo[e * mesh->Np * mesh->Nvgeo + JWID * mesh->Np + n];
-  mesh->o_LMM.copyFrom(mesh->LMM, mesh->Nelements * mesh->Np * sizeof(dfloat));
-  mesh->computeInvLMM();
-
-  return mesh;
-}
-*/
-
 mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
 {
   mesh_t *mesh = new mesh_t();
   memcpy(mesh, _mesh, sizeof(mesh_t));
 
-  meshLoadReferenceNodesHex3D(mesh, Nc, 1);
-  meshHaloSetup(mesh);
-  meshPhysicalNodesHex3D(mesh);
-  meshHaloPhysicalNodes(mesh);
-  meshGeometricFactorsHex3D(mesh);
+  const int cubN = 0;
+  meshLoadReferenceNodesHex3D(mesh, Nc, cubN);
 
-  meshConnectFaceNodes3D(mesh);
-  meshSurfaceGeometricFactorsHex3D(mesh);
+  const std::string meshPrefix = "pMGmesh-";
+  const std::string orderSuffix =  "_" + std::to_string(mesh->N);
 
-  meshGlobalIds(mesh);
-  meshParallelGatherScatterSetup(mesh,
-                                 mesh->Nelements * mesh->Np,
-                                 mesh->globalIds,
-                                 platform->comm.mpiComm,
-                                 OOGS_AUTO,
-                                 0);
-
-  mesh->o_x = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->x);
-  mesh->o_y = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->y);
-  mesh->o_z = platform->device.malloc(mesh->Np * mesh->Nelements * sizeof(dfloat), mesh->z);
+  mesh->surfaceIntegralKernel = nullptr;
+  mesh->velocityDirichletKernel = nullptr;
+  mesh->geometricFactorsKernel = platform->kernels.get(meshPrefix + "geometricFactorsHex3D" + orderSuffix);
+  mesh->surfaceGeometricFactorsKernel = nullptr;
+  mesh->cubatureGeometricFactorsKernel = nullptr;
+  mesh->nStagesSumVectorKernel = nullptr;
 
   mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
 
@@ -383,24 +317,61 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
   mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT);
   free(DT);
 
+  mesh->o_gllw =
+    platform->device.malloc(mesh->Nq * sizeof(dfloat), mesh->gllw);
+
+  mesh->o_faceNodes =
+    platform->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
+
+  mesh->o_LMM =
+    platform->device.malloc(mesh->Nlocal * sizeof(dfloat));
+
+  mesh->o_vgeo =
+      platform->device.malloc(mesh->Nlocal * mesh->Nvgeo * sizeof(dfloat));
+
   mesh->o_ggeo =
-      platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo * sizeof(dfloat), mesh->ggeo);
+      platform->device.malloc(mesh->Nlocal * mesh->Nggeo * sizeof(dfloat));
+
+  meshHaloSetup(mesh);
+
+  meshPhysicalNodesHex3D(mesh);
+  meshHaloPhysicalNodes(mesh);
+  mesh->o_x = platform->device.malloc(mesh->Nlocal * sizeof(dfloat), mesh->x);
+  mesh->o_y = platform->device.malloc(mesh->Nlocal * sizeof(dfloat), mesh->y);
+  mesh->o_z = platform->device.malloc(mesh->Nlocal * sizeof(dfloat), mesh->z);
+
+  meshConnectFaceNodes3D(mesh);
+
+  meshGlobalIds(mesh);
+  meshParallelGatherScatterSetup(mesh,
+                                 mesh->Nlocal,
+                                 mesh->globalIds,
+                                 platform->comm.mpiComm,
+                                 OOGS_AUTO,
+                                 0);
+
+  mesh->geometricFactors();
+
+  // not required
+  mesh->o_vgeo.free();
+  mesh->o_LMM.free();
 
   if (!strstr(pfloatString, dfloatString)) {
-    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo, sizeof(pfloat));
+    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nlocal * mesh->Nggeo, sizeof(pfloat));
+    platform->copyDfloatToPfloatKernel(mesh->Nlocal * mesh->Nggeo, mesh->o_ggeo, mesh->o_ggeoPfloat);
+
     mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
-    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
-    platform->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-                                       mesh->o_ggeo,
-                                       mesh->o_ggeoPfloat);
     platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq, mesh->o_D, mesh->o_DPfloat);
+
+    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
     platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq, mesh->o_DT, mesh->o_DTPfloat);
 
-    mesh->o_D.free();
-    mesh->o_DT.free();
-    mesh->o_ggeo.free();
+    // except for linear coarse grid construction we don't need to keep both precisions
+    if(mesh->N > 1) {
+      mesh->o_ggeo.free();
+    }
   }
-
+  
   return mesh;
 }
 
@@ -432,7 +403,6 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
   meshParallelConnect(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
-  mesh->Nfields = 1;
   meshHaloSetup(mesh);
   meshHaloPhysicalNodes(mesh);
 
@@ -471,18 +441,7 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
 
   mesh->computeInvLMM();
 
-  // compute V mesh volume
-  dfloat volume = 0.0;
-  const auto Np = mesh->Np;
-  const auto Nggeo = mesh->Nggeo;
-  for (dlong e = 0; e < mesh->Nelements; ++e) {
-    for (dlong n = 0; n < Np; ++n) {
-      volume += mesh->ggeo[Nggeo * Np * e + n + Np * GWJID];
-    }
-  }
-
-  MPI_Allreduce(MPI_IN_PLACE, &volume, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-  mesh->volume = volume;
+  mesh->volume = platform->linAlg->sum(mesh->Nlocal, mesh->o_LMM, platform->comm.mpiComm);
 
   {
     double valMin = (double)mesh->NlocalGatherElements / mesh->Nelements;

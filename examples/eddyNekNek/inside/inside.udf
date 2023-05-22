@@ -74,7 +74,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   }
 
   constexpr int nStepAnalytical = 5;
-  if (tstep <= nStepAnalytical) {
+  if (tstep <= nStepAnalytical || ciMode == 3) {
     exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->o_U);
   }
 

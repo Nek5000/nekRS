@@ -4,33 +4,58 @@
 #include "bcMap.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
-#include "filter.hpp"
+#include "hpf.hpp"
 #include "avm.hpp"
 #include "re2Reader.hpp"
 
 #include "cdsSetup.cpp"
 
+std::vector<std::string> fieldsToSolve(setupAide &options)
+{
+  int Nscalar = 0;
+  options.getArgs("NUMBER OF SCALARS", Nscalar);
+
+  std::vector<std::string> fields;
+
+  if (!options.compareArgs("MESH SOLVER", "NONE")) {
+    fields.push_back("mesh");
+  }
+
+  if (!options.compareArgs("VELOCITY SOLVER", "NONE")) {
+    fields.push_back("velocity");
+  }
+
+  for (int i = 0; i < Nscalar; i++) {
+    const auto sid = scalarDigitStr(i);
+    if (!options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) {
+      fields.push_back("scalar" + sid);
+    }
+  }
+  return fields;
+}
+
 void printICMinMax(nrs_t *nrs)
 {
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     printf("================= INITIAL CONDITION ====================\n");
+  }
 
   {
     auto mesh = nrs->_mesh;
     auto o_x = mesh->o_x;
     auto o_y = mesh->o_y;
     auto o_z = mesh->o_z;
-    
+
     const auto xMin = platform->linAlg->min(mesh->Nlocal, o_x, platform->comm.mpiComm);
     const auto yMin = platform->linAlg->min(mesh->Nlocal, o_y, platform->comm.mpiComm);
     const auto zMin = platform->linAlg->min(mesh->Nlocal, o_z, platform->comm.mpiComm);
     const auto xMax = platform->linAlg->max(mesh->Nlocal, o_x, platform->comm.mpiComm);
     const auto yMax = platform->linAlg->max(mesh->Nlocal, o_y, platform->comm.mpiComm);
     const auto zMax = platform->linAlg->max(mesh->Nlocal, o_z, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("XYZ   min/max: %g %g  %g %g  %g %g\n", xMin, xMax, yMin, yMax, zMin, zMax);
+    }
   }
-
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     auto mesh = nrs->_mesh;
@@ -43,8 +68,9 @@ void printICMinMax(nrs_t *nrs)
     const auto uxMax = platform->linAlg->max(mesh->Nlocal, o_ux, platform->comm.mpiComm);
     const auto uyMax = platform->linAlg->max(mesh->Nlocal, o_uy, platform->comm.mpiComm);
     const auto uzMax = platform->linAlg->max(mesh->Nlocal, o_uz, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("UMSH  min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
+    }
   }
 
   {
@@ -58,29 +84,29 @@ void printICMinMax(nrs_t *nrs)
     const auto uxMax = platform->linAlg->max(mesh->Nlocal, o_ux, platform->comm.mpiComm);
     const auto uyMax = platform->linAlg->max(mesh->Nlocal, o_uy, platform->comm.mpiComm);
     const auto uzMax = platform->linAlg->max(mesh->Nlocal, o_uz, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("U     min/max: %g %g  %g %g  %g %g\n", uxMin, uxMax, uyMin, uyMax, uzMin, uzMax);
+    }
   }
 
   {
     auto mesh = nrs->meshV;
     const auto prMin = platform->linAlg->min(mesh->Nlocal, nrs->o_P, platform->comm.mpiComm);
     const auto prMax = platform->linAlg->max(mesh->Nlocal, nrs->o_P, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("P     min/max: %g %g\n", prMin, prMax);
+    }
   }
 
   if (nrs->Nscalar) {
     auto cds = nrs->cds;
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("S     min/max:");
+    }
 
     int cnt = 0;
     for (int is = 0; is < cds->NSfields; is++) {
-      if (!cds->compute[is])
-        continue;
-      else
-        cnt++;
+      cnt++;
 
       mesh_t *mesh;
       (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
@@ -89,15 +115,17 @@ void printICMinMax(nrs_t *nrs)
       const auto siMin = platform->linAlg->min(mesh->Nlocal, o_si, platform->comm.mpiComm);
       const auto siMax = platform->linAlg->max(mesh->Nlocal, o_si, platform->comm.mpiComm);
       if (platform->comm.mpiRank == 0) {
-        if (cnt > 1)
+        if (cnt > 1) {
           printf("  ");
-        else
+        } else {
           printf(" ");
+        }
         printf("%g %g", siMin, siMax);
       }
     }
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("\n");
+    }
   }
 }
 
@@ -125,24 +153,29 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   {
 #if 1
-    if (platform->device.mode() == "Serial")
+    if (platform->device.mode() == "Serial") {
       platform->options.setArgs("ENABLE GS COMM OVERLAP", "FALSE");
+    }
 #endif
 
-    if (platform->comm.mpiCommSize == 1)
+    if (platform->comm.mpiCommSize == 1) {
       platform->options.setArgs("ENABLE GS COMM OVERLAP", "FALSE");
+    }
 
-    if (platform->comm.mpiRank == 0 && platform->options.compareArgs("ENABLE GS COMM OVERLAP", "FALSE"))
+    if (platform->comm.mpiRank == 0 && platform->options.compareArgs("ENABLE GS COMM OVERLAP", "FALSE")) {
       std::cout << "ENABLE GS COMM OVERLAP disabled\n\n";
+    }
   }
 
   nrs->flow = 1;
-  if (platform->options.compareArgs("VELOCITY SOLVER", "NONE"))
+  if (platform->options.compareArgs("VELOCITY SOLVER", "NONE")) {
     nrs->flow = 0;
+  }
 
   if (nrs->flow) {
-    if (platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
+    if (platform->options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE")) {
       platform->options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
+    }
   }
 
   {
@@ -150,11 +183,24 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const std::string meshFile = options.getArgs("MESH FILE");
     re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
 
+    nrsCheck(nelgt != nelgv && platform->options.compareArgs("MOVING MESH", "TRUE"),
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "%s\n",
+             "Conjugate heat transfer not supported in a moving mesh!");
+
     nrsCheck(nelgt != nelgv && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE"),
              platform->comm.mpiComm,
              EXIT_FAILURE,
              "%s\n",
              "Conjugate heat transfer requires a temperature field!");
+
+    bool coupled = neknekCoupled();
+    nrsCheck(nelgt != nelgv && coupled,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "%s\n",
+             "Conjugate heat transfer + neknek not supported!");
   }
 
   // init nek
@@ -168,8 +214,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nek::setup(nrs);
     nek::setic();
     nek::userchk();
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       std::cout << "\n";
+    }
   }
 
   nrs->cht = 0;
@@ -178,10 +225,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     hlong NelementsT = nekData.nelt;
     MPI_Allreduce(MPI_IN_PLACE, &NelementsV, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
     MPI_Allreduce(MPI_IN_PLACE, &NelementsT, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-    if ((NelementsT > NelementsV) && nrs->Nscalar)
+    if ((NelementsT > NelementsV) && nrs->Nscalar) {
       nrs->cht = 1;
+    }
 
-    nrsCheck(nrs->cht && NelementsT <= NelementsV,
+    nrsCheck(nrs->cht && (NelementsT <= NelementsV),
              MPI_COMM_SELF,
              EXIT_FAILURE,
              "%s\n",
@@ -192,27 +240,32 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->meshV = (mesh_t *)nrs->_mesh->fluid;
   mesh_t *mesh = nrs->meshV;
 
+  // verify boundary conditions
   {
+    auto fields = fieldsToSolve(options);
+
+    for (const auto &field : fields) {
+      auto msh = (nrs->cht && (field == "scalar00" || field == "mesh")) ? nrs->_mesh : mesh;
+      nrsCheck(msh->Nbid != bcMap::size(field),
+               platform->comm.mpiComm,
+               EXIT_FAILURE,
+               "Size of %s boundaryTypeMap does not match number of boundary IDs in mesh!\n",
+               field.c_str());
+    }
+
     std::vector<mesh_t *> meshList;
     meshList.push_back(nrs->_mesh);
-    if (nrs->cht)
+    if (nrs->meshV != nrs->_mesh) {
       meshList.push_back(nrs->meshV);
+    }
+
     for (const auto &msh : meshList) {
-      if (bcMap::size(msh->cht) > 0) {
-        nrsCheck(msh->Nbid != bcMap::size(msh->cht),
-                 platform->comm.mpiComm,
-                 EXIT_FAILURE,
-                 "%s\n",
-                 "Number of boundary IDs in mesh does not match boundaryTypeMap "
-                 "in par or BCs imported from nek5000");
-      }
       bcMap::checkBoundaryAlignment(msh);
       bcMap::remapUnalignedBoundaries(msh);
     }
   }
 
-  nrs->NVfields = 3;
-  mesh->Nfields = 1;
+  nrs->NVfields = nrs->dim;
 
   platform->options.getArgs("SUBCYCLING STEPS", nrs->Nsubsteps);
   platform->options.getArgs("DT", nrs->dt[0]);
@@ -222,8 +275,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   platform->options.getArgs("BDF ORDER", nrs->nBDF);
   platform->options.getArgs("EXT ORDER", nrs->nEXT);
-  if (nrs->Nsubsteps)
+  if (nrs->Nsubsteps) {
     nrs->nEXT = nrs->nBDF;
+  }
 
   nrsCheck(nrs->nEXT < nrs->nBDF,
            platform->comm.mpiComm,
@@ -235,7 +289,6 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->coeffBDF = (dfloat *)calloc(nrs->nBDF, sizeof(dfloat));
 
   nrs->nRK = 4;
-  nrs->coeffSubEXT = (dfloat *)calloc(3, sizeof(dfloat));
 
   dfloat mue = 1;
   dfloat rho = 1;
@@ -248,8 +301,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->fieldOffset = std::max(nrs->fieldOffset, meshT->Np * (meshT->Nelements + meshT->totalHaloPairs));
 
     const int pageW = ALIGN_SIZE / sizeof(dfloat);
-    if (nrs->fieldOffset % pageW)
+    if (nrs->fieldOffset % pageW) {
       nrs->fieldOffset = (nrs->fieldOffset / pageW + 1) * pageW;
+    }
   }
 
   nrs->_mesh->fieldOffset = nrs->fieldOffset;
@@ -257,13 +311,13 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   { // setup cubatureOffset
     if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
       nrs->cubatureOffset = std::max(nrs->fieldOffset, mesh->Nelements * mesh->cubNp);
-    }
-    else {
+    } else {
       nrs->cubatureOffset = nrs->fieldOffset;
     }
     const int pageW = ALIGN_SIZE / sizeof(dfloat);
-    if (nrs->cubatureOffset % pageW)
+    if (nrs->cubatureOffset % pageW) {
       nrs->cubatureOffset = (nrs->cubatureOffset / pageW + 1) * pageW;
+    }
   }
 
   if (nrs->Nsubsteps) {
@@ -279,8 +333,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       memcpy(nrs->coeffsfRK, rka, nrs->nRK * sizeof(dfloat));
       memcpy(nrs->weightsRK, rkb, nrs->nRK * sizeof(dfloat));
       memcpy(nrs->nodesRK, rkc, nrs->nRK * sizeof(dfloat));
-    }
-    else {
+    } else {
       nrsCheck(true, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "Unsupported subcycling scheme!");
     }
     nrs->o_coeffsfRK = device.malloc(nrs->nRK * sizeof(dfloat), nrs->coeffsfRK);
@@ -289,15 +342,19 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   // setup mempool
   int ellipticMaxFields = 1;
-  if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+  if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE") ||
+      !platform->options.compareArgs("MESH SOLVER", "NONE")) {
     ellipticMaxFields = nrs->NVfields;
+  }
   const int ellipticWrkFields = elliptic_t::NScratchFields * ellipticMaxFields;
 
   int wrkFields = 10;
-  if (nrs->Nsubsteps)
+  if (nrs->Nsubsteps) {
     wrkFields = 9 + 3 * nrs->NVfields;
-  if (options.compareArgs("MOVING MESH", "TRUE"))
+  }
+  if (options.compareArgs("MOVING MESH", "TRUE")) {
     wrkFields += nrs->NVfields;
+  }
 
   const int mempoolNflds = std::max(wrkFields, 2 * nrs->NVfields + ellipticWrkFields);
   platform->create_mempool(nrs->fieldOffset, mempoolNflds);
@@ -308,70 +365,53 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     mesh->o_LMM.free();
     mesh->o_LMM = platform->device.malloc(nrs->fieldOffset * nBDF, sizeof(dfloat));
     mesh->o_LMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
-    free(mesh->LMM);
-    mesh->LMM = (dfloat*) std::malloc(mesh->o_LMM.size());
-    mesh->o_LMM.copyTo(mesh->LMM);
 
     platform->o_mempool.slice0.copyFrom(mesh->o_invLMM, mesh->Nlocal * sizeof(dfloat));
     mesh->o_invLMM.free();
     mesh->o_invLMM = platform->device.malloc(nrs->fieldOffset * nBDF, sizeof(dfloat));
     mesh->o_invLMM.copyFrom(platform->o_mempool.slice0, mesh->Nlocal * sizeof(dfloat));
-    free(mesh->invLMM);
-    mesh->invLMM = (dfloat*) std::malloc(mesh->o_invLMM.size());
-    mesh->o_invLMM.copyTo(mesh->invLMM);
-
 
     const int nAB = std::max(nrs->nEXT, mesh->nAB);
     mesh->U = (dfloat *)calloc(nrs->NVfields * nrs->fieldOffset * nAB, sizeof(dfloat));
     mesh->o_U = platform->device.malloc((nrs->NVfields * nAB * sizeof(dfloat)) * nrs->fieldOffset, mesh->U);
-    mesh->o_Ue = platform->device.malloc((nrs->NVfields * nAB * sizeof(dfloat)) * nrs->fieldOffset, mesh->U);
-    if (nrs->Nsubsteps)
+    mesh->o_Ue = platform->device.malloc((nrs->NVfields * nAB * sizeof(dfloat)) * nrs->fieldOffset);
+    if (nrs->Nsubsteps) {
       mesh->o_divU = platform->device.malloc(nrs->fieldOffset * nAB, sizeof(dfloat));
+    }
   }
 
   {
     const dlong Nstates = nrs->Nsubsteps ? std::max(nrs->nBDF, nrs->nEXT) : 1;
     bool useCVODE = platform->options.compareArgs("CVODE", "TRUE");
-    if ((useCVODE || nrs->Nsubsteps) && platform->options.compareArgs("MOVING MESH", "TRUE"))
+    if ((useCVODE || nrs->Nsubsteps) && platform->options.compareArgs("MOVING MESH", "TRUE")) {
       nrs->o_relUrst =
           platform->device.malloc((Nstates * nrs->NVfields * sizeof(dfloat)) * nrs->cubatureOffset);
-    if (!nrs->Nsubsteps || platform->options.compareArgs("MOVING MESH", "FALSE"))
+    }
+    if (!nrs->Nsubsteps || platform->options.compareArgs("MOVING MESH", "FALSE")) {
       nrs->o_Urst = platform->device.malloc((Nstates * nrs->NVfields * sizeof(dfloat)) * nrs->cubatureOffset);
+    }
   }
 
-  nrs->U =
-      (dfloat *)calloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset, sizeof(dfloat));
-  nrs->Ue = (dfloat *)calloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
-  nrs->P = (dfloat *)calloc(nrs->fieldOffset, sizeof(dfloat));
-  nrs->BF = (dfloat *)calloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
-  nrs->FU = (dfloat *)calloc(nrs->NVfields * nrs->nEXT * nrs->fieldOffset, sizeof(dfloat));
-
-  nrs->o_U = platform->device.malloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset *
-                                         sizeof(dfloat),
+  nrs->U = (dfloat *)calloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset, sizeof(dfloat));
+  nrs->o_U = platform->device.malloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset * sizeof(dfloat),
                                      nrs->U);
-  nrs->o_Ue = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset, nrs->Ue);
+
+  nrs->o_Ue = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
+
+  nrs->P = (dfloat *)calloc(nrs->fieldOffset, sizeof(dfloat));
   nrs->o_P = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->P);
-  nrs->o_BF = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset, nrs->BF);
-  nrs->o_FU =
-      platform->device.malloc((nrs->NVfields * nrs->nEXT * sizeof(dfloat)) * nrs->fieldOffset, nrs->FU);
+
+  nrs->o_BF = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
+  nrs->o_FU = platform->device.malloc((nrs->NVfields * nrs->nEXT * sizeof(dfloat)) * nrs->fieldOffset);
 
   nrs->o_ellipticCoeff = device.malloc((2 * sizeof(dfloat)) * nrs->fieldOffset);
 
   int nProperties = 2;
-  if (!options.compareArgs("MESH SOLVER", "NONE"))
+  if (!options.compareArgs("MESH SOLVER", "NONE")) {
     nProperties = 4;
-  nrs->prop = (dfloat *)calloc(nProperties * nrs->fieldOffset, sizeof(dfloat));
-  for (int e = 0; e < mesh->Nelements; e++)
-    for (int n = 0; n < mesh->Np; n++) {
-      nrs->prop[0 * nrs->fieldOffset + e * mesh->Np + n] = mue;
-      nrs->prop[1 * nrs->fieldOffset + e * mesh->Np + n] = rho;
-      if (!options.compareArgs("MESH SOLVER", "NONE")) {
-        nrs->prop[2 * nrs->fieldOffset + e * mesh->Np + n] = 1.0;
-        nrs->prop[3 * nrs->fieldOffset + e * mesh->Np + n] = 0;
-      }
-    }
+  }
 
-  nrs->o_prop = device.malloc((nProperties * sizeof(dfloat)) * nrs->fieldOffset, nrs->prop);
+  nrs->o_prop = device.malloc((nProperties * sizeof(dfloat)) * nrs->fieldOffset);
   nrs->o_mue = nrs->o_prop.slice((0 * sizeof(dfloat)) * nrs->fieldOffset);
   nrs->o_rho = nrs->o_prop.slice((1 * sizeof(dfloat)) * nrs->fieldOffset);
   if (!options.compareArgs("MESH SOLVER", "NONE")) {
@@ -379,21 +419,27 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->o_meshRho = nrs->o_prop.slice((3 * sizeof(dfloat)) * nrs->fieldOffset);
   }
 
+  platform->linAlg->fill(mesh->Nlocal, mue, nrs->o_mue);
+  platform->linAlg->fill(mesh->Nlocal, rho, nrs->o_rho);
+  if (!options.compareArgs("MESH SOLVER", "NONE")) {
+    auto o_mue = nrs->o_prop + (2 * nrs->fieldOffset)*sizeof(dfloat);
+    auto o_rho = nrs->o_prop + (3 * nrs->fieldOffset)*sizeof(dfloat);
+    platform->linAlg->fill(mesh->Nlocal, 1.0, o_mue);
+    platform->linAlg->fill(mesh->Nlocal, 0.0, o_rho);
+  }
+
   if (platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")) {
     nrs->o_Uc = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
     nrs->o_Pc = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
-    nrs->o_prevProp = device.malloc((2 * sizeof(dfloat)) * nrs->fieldOffset, nrs->prop);
+    nrs->o_prevProp = device.malloc((2 * sizeof(dfloat)) * nrs->fieldOffset);
+    nrs->o_prevProp.copyFrom(nrs->o_prop, nrs->o_prevProp.size());
   }
 
-  nrs->div = (dfloat *)calloc(nrs->fieldOffset, sizeof(dfloat));
-  nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat), nrs->div);
+  nrs->o_div = device.malloc(nrs->fieldOffset * sizeof(dfloat));
 
   nrs->o_coeffEXT = platform->device.malloc(nrs->nEXT * sizeof(dfloat), nrs->coeffEXT);
   nrs->o_coeffBDF = platform->device.malloc(nrs->nBDF * sizeof(dfloat), nrs->coeffBDF);
-  nrs->o_coeffSubEXT = platform->device.malloc(nrs->nEXT * sizeof(dfloat), nrs->coeffEXT);
 
-  // meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO,
-  // 0);
   nrs->gsh = oogs::setup(mesh->ogs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
 
   if (!options.compareArgs("MESH SOLVER", "NONE")) {
@@ -436,13 +482,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     filterS = -1.0 * fabs(filterS);
     nrs->filterS = filterS;
 
-    dfloat *A = filterSetup(nrs->meshV, nrs->filterNc);
-
-    const dlong Nmodes = nrs->meshV->N + 1;
-
-    nrs->o_filterMT = platform->device.malloc(Nmodes * Nmodes * sizeof(dfloat), A);
-
-    free(A);
+    nrs->o_filterMT = hpfSetup(nrs->meshV, nrs->filterNc);
   }
 
   // build kernels
@@ -588,14 +628,16 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   platform->options.setArgs("START TIME", to_string_f(startTime));
 
   // udf setup
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     printf("calling udf_setup ... ");
+  }
   fflush(stdout);
 
   udf.setup(nrs);
 
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     printf("done\n");
+  }
   fflush(stdout);
 
   nrs->p0the = nrs->p0th[0];
@@ -604,30 +646,26 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   nrs->_mesh->o_x.copyFrom(nrs->_mesh->x);
   nrs->_mesh->o_y.copyFrom(nrs->_mesh->y);
   nrs->_mesh->o_z.copyFrom(nrs->_mesh->z);
-  if(nrs->cht) nrs->meshV->update(true);
-  nrs->_mesh->update(true);
+  if (nrs->meshV != nrs->_mesh) {
+    nrs->meshV->update();
+  }
+  nrs->_mesh->update();
 
   // in case the user sets IC in udf.setup
   nrs->o_U.copyFrom(nrs->U);
   nrs->o_P.copyFrom(nrs->P);
-  nrs->o_prop.copyFrom(nrs->prop);
   if (nrs->Nscalar) {
     nrs->cds->o_S.copyFrom(nrs->cds->S);
-    nrs->cds->o_prop.copyFrom(nrs->cds->prop);
   }
   if (options.compareArgs("MOVING MESH", "TRUE")) {
     mesh->o_U.copyFrom(mesh->U);
   }
 
-  // ensure both codes see the same mesh + IC 
+  // ensure both codes see the same mesh + IC
   nek::ocopyToNek(startTime, 0);
 
   // update props based on IC
   evaluateProperties(nrs, startTime);
-  nrs->o_prop.copyTo(nrs->prop);
-  if (nrs->Nscalar)
-    nrs->cds->o_prop.copyTo(nrs->cds->prop);
-
 
   // CVODE can only be initialized once the initial condition
   // is known, however, a user may need to set function ptrs
@@ -638,8 +676,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->cvode->initialize();
   }
 
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     std::cout << std::endl;
+  }
   printMeshMetrics(nrs->_mesh);
 
   printICMinMax(nrs);
@@ -652,27 +691,29 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     for (int is = 0; is < cds->NSfields; is++) {
       std::string sid = scalarDigitStr(is);
 
-      if (!cds->compute[is])
+      if (!cds->compute[is]) {
         continue;
+      }
 
       mesh_t *mesh;
       (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
 
       const auto solverName = cds->cvodeSolve[is] ? "CVODE" : "ELLIPTIC";
-      if (platform->comm.mpiRank == 0)
+      if (platform->comm.mpiRank == 0) {
         std::cout << "================= " << solverName << " SETUP SCALAR" << sid << " ===============\n";
-
-      int nbrBIDs = bcMap::size(0);
-      if (nrs->cht && is == 0)
-        nbrBIDs = bcMap::size(1);
-      for (int bID = 1; bID <= nbrBIDs; bID++) {
-        std::string bcTypeText(bcMap::text(bID, "scalar" + sid));
-        if (platform->comm.mpiRank == 0 && bcTypeText.size())
-          printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
       }
 
-      if (cds->cvodeSolve[is])
+      const int nbrBIDs = bcMap::size("scalar" + sid);
+      for (int bID = 1; bID <= nbrBIDs; bID++) {
+        std::string bcTypeText(bcMap::text(bID, "scalar" + sid));
+        if (platform->comm.mpiRank == 0 && bcTypeText.size()) {
+          printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
+        }
+      }
+
+      if (cds->cvodeSolve[is]) {
         continue;
+      }
 
       cds->solver[is] = new elliptic_t();
       cds->solver[is]->name = "scalar" + sid;
@@ -708,8 +749,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   }
 
   if (nrs->flow) {
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("================ ELLIPTIC SETUP VELOCITY ================\n");
+    }
 
     nrs->uvwSolver = NULL;
 
@@ -721,13 +763,15 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
              "%s\n",
              "SHL or unaligned SYM boundaries require solver = pcg+block");
 
-    if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE"))
+    if (platform->options.compareArgs("VELOCITY BLOCK SOLVER", "TRUE")) {
       nrs->uvwSolver = new elliptic_t();
+    }
 
-    for (int bID = 1; bID <= bcMap::size(0); bID++) {
+    for (int bID = 1; bID <= bcMap::size("velocity"); bID++) {
       std::string bcTypeText(bcMap::text(bID, "velocity"));
-      if (platform->comm.mpiRank == 0 && bcTypeText.size())
+      if (platform->comm.mpiRank == 0 && bcTypeText.size()) {
         printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
+      }
     }
 
     nrs->setEllipticCoeffKernel(mesh->Nlocal,
@@ -743,8 +787,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     if (nrs->uvwSolver) {
       nrs->uvwSolver->name = "velocity";
       nrs->uvwSolver->stressForm = 0;
-      if (options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE"))
+      if (options.compareArgs("VELOCITY STRESSFORMULATION", "TRUE")) {
         nrs->uvwSolver->stressForm = 1;
+      }
       nrs->uvwSolver->Nfields = nrs->NVfields;
       nrs->uvwSolver->fieldOffset = nrs->fieldOffset;
       nrs->uvwSolver->mesh = mesh;
@@ -755,12 +800,15 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
           (int *)calloc(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields, sizeof(int));
       for (int fld = 0; fld < nrs->uvwSolver->Nfields; fld++) {
         std::string key;
-        if (fld == 0)
+        if (fld == 0) {
           key = "x-velocity";
-        if (fld == 1)
+        }
+        if (fld == 1) {
           key = "y-velocity";
-        if (fld == 2)
+        }
+        if (fld == 2) {
           key = "z-velocity";
+        }
         for (dlong e = 0; e < mesh->Nelements; e++) {
           for (int f = 0; f < mesh->Nfaces; f++) {
             const int offset = fld * mesh->Nelements * mesh->Nfaces;
@@ -792,8 +840,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
             };
       }
       ellipticSolveSetup(nrs->uvwSolver);
-    }
-    else {
+    } else {
       nrs->uSolver = new elliptic_t();
       nrs->uSolver->name = "velocity";
       nrs->uSolver->Nfields = 1;
@@ -851,8 +898,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   } // flow
 
   if (nrs->flow) {
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("================ ELLIPTIC SETUP PRESSURE ================\n");
+    }
 
     nrs->pSolver = new elliptic_t();
     nrs->pSolver->name = "pressure";
@@ -883,17 +931,16 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if (!options.compareArgs("MESH SOLVER", "NONE")) {
     mesh_t *mesh = nrs->_mesh;
 
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("================ ELLIPTIC SETUP MESH ================\n");
+    }
 
-    int nbrBIDs = bcMap::size(0);
-    if (nrs->cht)
-      nbrBIDs = bcMap::size(1);
-
+    const int nbrBIDs = bcMap::size("mesh");
     for (int bID = 1; bID <= nbrBIDs; bID++) {
       std::string bcTypeText(bcMap::text(bID, "mesh"));
-      if (platform->comm.mpiRank == 0 && bcTypeText.size())
+      if (platform->comm.mpiRank == 0 && bcTypeText.size()) {
         printf("bID %d -> bcType %s\n", bID, bcTypeText.c_str());
+      }
     }
 
     nrs->setEllipticCoeffKernel(mesh->Nlocal,
@@ -909,8 +956,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->meshSolver = new elliptic_t();
     nrs->meshSolver->name = "mesh";
     nrs->meshSolver->stressForm = 0;
-    if (options.compareArgs("MESH STRESSFORMULATION", "TRUE"))
+    if (options.compareArgs("MESH STRESSFORMULATION", "TRUE")) {
       nrs->meshSolver->stressForm = 1;
+    }
     nrs->meshSolver->Nfields = nrs->NVfields;
     nrs->meshSolver->fieldOffset = nrs->fieldOffset;
     nrs->meshSolver->mesh = mesh;
@@ -922,12 +970,15 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         (int *)calloc(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields, sizeof(int));
     for (int fld = 0; fld < nrs->meshSolver->Nfields; fld++) {
       std::string key;
-      if (fld == 0)
+      if (fld == 0) {
         key = "x-mesh";
-      if (fld == 1)
+      }
+      if (fld == 1) {
         key = "y-mesh";
-      if (fld == 2)
+      }
+      if (fld == 2) {
         key = "z-mesh";
+      }
       for (dlong e = 0; e < mesh->Nelements; e++) {
         for (int f = 0; f < mesh->Nfaces; f++) {
           const int offset = fld * mesh->Nelements * mesh->Nfaces;

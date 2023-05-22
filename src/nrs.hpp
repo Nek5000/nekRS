@@ -12,6 +12,8 @@
 #include "cvode.hpp"
 #include "fldFile.hpp"
 
+std::vector<std::string> fieldsToSolve(setupAide& options);
+
 struct nrs_t {
 
   static constexpr double targetTimeBenchmark {0.2};
@@ -44,6 +46,7 @@ struct nrs_t {
   int cht;
   int Nscalar;
   int NVfields;
+
   dlong fieldOffset;
   dlong cubatureOffset;
 
@@ -76,13 +79,10 @@ struct nrs_t {
   dfloat *U, *P;
   occa::memory o_U, o_P;
 
-  dfloat *Ue;
   occa::memory o_Ue;
 
-  dfloat *div;
   occa::memory o_div;
 
-  dfloat rho, mue;
   occa::memory o_rho, o_mue;
   occa::memory o_meshRho, o_meshMue;
 
@@ -91,15 +91,13 @@ struct nrs_t {
 
   occa::memory o_idH;
 
-  dfloat *BF, *FU;
   occa::memory o_BF;
   occa::memory o_FU;
 
-  dfloat *prop;
   occa::memory o_prop, o_ellipticCoeff;
 
-  dfloat *coeffEXT, *coeffBDF, *coeffSubEXT;
-  occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
+  dfloat *coeffEXT, *coeffBDF;
+  occa::memory o_coeffEXT, o_coeffBDF;
 
   int *EToB;
   int *EToBMeshVelocity;
@@ -118,7 +116,7 @@ struct nrs_t {
   occa::properties *kernelInfo;
 
   int filterNc;
-  dfloat *filterM, filterS;
+  dfloat filterS;
   occa::memory o_filterMT;
 
   occa::kernel filterRTKernel;

@@ -15,6 +15,7 @@ public:
   enum class VerbosityLevel { None, Basic, Detailed };
   pointInterpolation_t(nrs_t *nrs_, dfloat bb_tol = 0.01, dfloat newton_tol_ = 0, bool mySession_ = true);
   pointInterpolation_t(nrs_t *nrs_,
+                       MPI_Comm comm,
                        dlong localHashSize,
                        dlong globalHashSize,
                        dfloat bb_tol = 0.01,

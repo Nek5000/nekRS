@@ -71,7 +71,7 @@ struct cds_t
   occa::memory o_Urst;
 
   //EXTBDF data
-  dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
+  dfloat* coeffEXT, * coeffBDF;
 
   int* EToB;
   occa::memory o_EToB;
@@ -81,14 +81,12 @@ struct cds_t
 
   int Nsubsteps;
 
-  dfloat* Ue;
   occa::memory o_Ue;
 
-  dfloat* prop;
   occa::memory o_prop, o_ellipticCoeff;
   occa::memory o_rho, o_diff;
 
-  dfloat* cU, * cSd, * cS, * FS, * BF;
+  dfloat* cU, * cSd, * cS;
   occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF, o_BFDiag;
 
   occa::kernel sumMakefKernel;
@@ -102,14 +100,12 @@ struct cds_t
 
   occa::kernel nStagesSum3Kernel;
 
-  occa::kernel filterRTKernel; // Relaxation-Term based filtering
-  // occa::kernel constrainKernel;
+  occa::kernel filterRTKernel;
 
   occa::memory o_U;
   occa::memory o_S, o_Se;
 
-  //EXTBDF data
-  occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
+  occa::memory o_coeffEXT, o_coeffBDF;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionSurfaceKernel;

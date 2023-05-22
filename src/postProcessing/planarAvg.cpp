@@ -133,8 +133,7 @@ void fusedPlanarAvg(nrs_t *nrs, const std::string & direction, int NELGX, int NE
     if (Nwords % nrs->fieldOffset)
       Nfields++;
 
-    platform->mempool.allocate(nrs->fieldOffset, Nfields);
-    platform->o_mempool.allocate(platform->mempool, nrs->fieldOffset, Nfields);
+    platform->create_mempool(nrs->fieldOffset, Nfields);
   }
 
   auto &o_scratch = platform->o_mempool.o_ptr;

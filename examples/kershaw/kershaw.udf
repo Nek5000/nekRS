@@ -13,11 +13,15 @@ void runBenchmarks(nrs_t *nrs)
 {
   mesh_t *mesh = nrs->meshV;
 
+  auto o_P0 = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  std::vector<dfloat> P0;
+  P0.reserve(nrs->fieldOffset);
+
   for (int i = 0; i < mesh->Nlocal; i++) {
     const dfloat lambda = 0;
-    platform->mempool.slice0[i] =
-        (3 * M_PI * M_PI + lambda) * sin(M_PI * mesh->x[i]) * sin(M_PI * mesh->y[i]) * sin(M_PI * mesh->z[i]);
+    P0[i] = (3 * M_PI * M_PI + lambda) * sin(M_PI * mesh->x[i]) * sin(M_PI * mesh->y[i]) * sin(M_PI * mesh->z[i]);
   }
+  o_P0.copyFrom(P0.data());
 
   platform->linAlg->fillKernel(2 * nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
 
@@ -61,7 +65,7 @@ void runBenchmarks(nrs_t *nrs)
 
     for (int i = 0; i < Nrep; i++) {
       platform->linAlg->fillKernel(nrs->fieldOffset, 0.0, nrs->o_P);
-      platform->o_mempool.slice0.copyFrom(platform->mempool.slice0, nrs->fieldOffset * sizeof(dfloat));
+      platform->o_mempool.slice0.copyFrom(o_P0, nrs->fieldOffset * sizeof(dfloat));
 
       // warm-up
       ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);

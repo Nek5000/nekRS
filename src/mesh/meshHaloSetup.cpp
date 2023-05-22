@@ -66,6 +66,8 @@ void meshHaloSetup(mesh_t* mesh)
   mesh->totalHaloPairs = 0;
   return;
 
+  mesh->Nfields = 1;
+
   // non-blocking MPI isend/irecv requests (used in meshHaloExchange)
   mesh->haloSendRequests = calloc(size, sizeof(MPI_Request));
   mesh->haloRecvRequests = calloc(size, sizeof(MPI_Request));

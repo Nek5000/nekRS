@@ -47,6 +47,10 @@ struct mesh_t
 
   void move();
   void update(bool updateHost = false);
+
+  void geometricFactors();
+  void surfaceGeometricFactors();
+
   void computeInvLMM();
 
   int nAB;
@@ -114,17 +118,14 @@ struct mesh_t
 
   // volumeGeometricFactors;
   dlong Nvgeo;
-  dfloat* vgeo;
 
   // second order volume geometric factors
   dlong Nggeo;
-  dfloat* ggeo;
 
   // volume node info
   int N, Np;
   dfloat* r, * s, * t;    // coordinates of local nodes
   dfloat* MM;
-  dfloat* LMM, * invLMM;
   dfloat* x, * y, * z;    // coordinates of physical nodes
 
   dfloat volume;
@@ -152,10 +153,10 @@ struct mesh_t
   int* faceVertices; // list of mesh vertices on each face
 
   dlong Nsgeo;
-  dfloat* sgeo;
 
   // field info for PDE solver
-  int Nfields;
+  int Nfields = -1;
+
   // cubature
   int cubNp, cubNfp, cubNq;
   dfloat* cubr, * cubs, * cubt, * cubw; // coordinates and weights of local cubature nodes
@@ -166,8 +167,6 @@ struct mesh_t
   dfloat* cubDiffInterp;     // 1D weak differentiation matrix
   dfloat* cubDW;     // 1D weak differentiation matrix
   dfloat* cubDWmatrices;
-
-  dfloat* cubvgeo;  //volume geometric data at cubature points
 
   dfloat* interpRaise;
   dfloat* interpLower;

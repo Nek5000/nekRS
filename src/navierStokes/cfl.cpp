@@ -2,15 +2,19 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
-static int firstTime = 1;
+namespace
+{
+int firstTime = 1;
+occa::memory h_scratch;
+}
 
 void setup(nrs_t *nrs)
 {
   mesh_t *mesh = nrs->meshV;
+  h_scratch = platform->device.mallocHost(mesh->Nelements * sizeof(dfloat));
 
-  dfloat *dH;
   if (nrs->elementType == QUADRILATERALS || nrs->elementType == HEXAHEDRA) {
-    dH = (dfloat *)calloc((mesh->N + 1), sizeof(dfloat));
+    auto dH = (dfloat *) calloc((mesh->N + 1), sizeof(dfloat));
 
     for (int n = 0; n < (mesh->N + 1); n++) {
       if (n == 0)
@@ -36,7 +40,6 @@ dfloat computeCFL(nrs_t *nrs)
   if (firstTime)
     setup(nrs);
 
-  // Compute cfl factors i.e. dt* U / h
   nrs->cflKernel(mesh->Nelements,
                  nrs->dt[0],
                  mesh->o_vgeo,
@@ -46,15 +49,15 @@ dfloat computeCFL(nrs_t *nrs)
                  mesh->o_U,
                  platform->o_mempool.slice0);
 
-  // find the local maximum of CFL number
-  platform->o_mempool.slice0.copyTo(platform->mempool.slice0, mesh->Nelements * sizeof(dfloat));
+  auto scratch = (dfloat *) h_scratch.ptr();
+  platform->o_mempool.slice0.copyTo(scratch, mesh->Nelements * sizeof(dfloat));
 
-  // finish reduction
-  dfloat cfl = 0.f;
-  for (dlong n = 0; n < mesh->Nelements; ++n)
-    cfl = std::max(cfl, platform->mempool.slice0[n]);
+  dfloat cfl = 0;
+  for (dlong n = 0; n < mesh->Nelements; ++n) {
+    cfl = std::max(cfl, scratch[n]);
+  }
 
-  dfloat gcfl = 0.f;
+  dfloat gcfl = 0;
   MPI_Allreduce(&cfl, &gcfl, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
 
   return gcfl;

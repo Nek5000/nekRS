@@ -5,8 +5,27 @@
 #include "nekInterfaceAdapter.hpp"
 #include "pointInterpolation.hpp"
 #include <vector>
+#include <algorithm>
 
 namespace {
+
+std::vector<std::string> neknekSolveFields(){
+  auto fields = fieldsToSolve(platform->options);
+  
+  // mesh velocity is "derived" from fluid velocity, so it is not relevant here
+  fields.erase(std::remove(fields.begin(), fields.end(), "mesh"), fields.end());
+  return fields;
+}
+
+bool isIntBc(int bcType, std::string field){
+  bool isInt = bcType == bcMap::bcTypeINT;
+  
+  if(field.find("scalar") != std::string::npos)
+    isInt = bcType == bcMap::bcTypeINTS;
+  
+  return isInt;
+}
+
 void reserveAllocation(nrs_t *nrs, dlong npt)
 {
   neknek_t *neknek = nrs->neknek;
@@ -51,59 +70,6 @@ void reserveAllocation(nrs_t *nrs, dlong npt)
     neknek->o_S = platform->device.malloc(1 * sizeof(dfloat));
   }
   neknek->npt = npt;
-}
-
-void checkValidBoundaryConditions(nrs_t *nrs)
-{
-  if (!nrs->cds)
-    return;
-
-  auto *cds = nrs->cds;
-  auto *mesh = nrs->meshV;
-  auto *neknek = nrs->neknek;
-
-  std::vector<dlong> missingInterpBound(neknek->Nscalar, 0);
-  std::vector<dlong> extraInterpBound(neknek->Nscalar, 0);
-  for (int s = 0; s < neknek->Nscalar; ++s) {
-    if (!cds->compute[s])
-      continue;
-
-    for (dlong pt = 0; pt < mesh->Nelements * mesh->Nfaces; ++pt) {
-      missingInterpBound[s] |= (nrs->EToB[pt] == bcMap::bcTypeINT && cds->EToB[pt + s * cds->EToBOffset] != bcMap::bcTypeINTS);
-      extraInterpBound[s] |= (nrs->EToB[pt] != bcMap::bcTypeINT && cds->EToB[pt + s * cds->EToBOffset] == bcMap::bcTypeINTS);
-    }
-  }
-
-  MPI_Allreduce(MPI_IN_PLACE,
-                missingInterpBound.data(),
-                neknek->Nscalar,
-                MPI_DLONG,
-                MPI_MAX,
-                platform->comm.mpiComm);
-  MPI_Allreduce(MPI_IN_PLACE,
-                extraInterpBound.data(),
-                neknek->Nscalar,
-                MPI_DLONG,
-                MPI_MAX,
-                platform->comm.mpiComm);
-  bool issueError = false;
-  for (int s = 0; s < neknek->Nscalar; ++s) {
-    bool invalid = missingInterpBound[s];
-    if (platform->comm.mpiRank == 0 && invalid) {
-      std::cout << "Error: scalar " << s
-                << " has a non-interpolating boundary condition where the fluid does!\n";
-    }
-    issueError |= invalid;
-
-    invalid = extraInterpBound[s];
-    if (platform->comm.mpiRank == 0 && invalid) {
-      std::cout << "Error: scalar " << s
-                << " has an interpolating boundary condition where the fluid does not!\n";
-    }
-    issueError |= invalid;
-  }
-
-  nrsCheck(issueError, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
 }
 
 void updateInterpPoints(nrs_t *nrs)
@@ -186,14 +152,18 @@ void updateInterpPoints(nrs_t *nrs)
 
 dlong computeNumInterpPoints(nrs_t *nrs)
 {
-  if (!nrs->flow)
-    return 0;
-
   auto *mesh = nrs->meshV;
+  auto fields = neknekSolveFields();
+
+  if(fields.size() == 0) return 0;
+
+  // number of interpolated faces is constant across all solved fields
   dlong numInterpFaces = 0;
   for (dlong e = 0; e < mesh->Nelements; ++e) {
     for (dlong f = 0; f < mesh->Nfaces; ++f) {
-      numInterpFaces += (nrs->EToB[f + mesh->Nfaces * e] == bcMap::bcTypeINT);
+      auto bID = mesh->EToB[f + mesh->Nfaces * e];
+      auto bcType = bcMap::id(bID, fields[0]);
+      numInterpFaces += (isIntBc(bcType, fields[0]));
     }
   }
   return numInterpFaces * mesh->Nfp;
@@ -201,7 +171,6 @@ dlong computeNumInterpPoints(nrs_t *nrs)
 
 void findInterpPoints(nrs_t *nrs)
 {
-
   auto *neknek = nrs->neknek;
   const dlong nsessions = neknek->nsessions;
   const dlong sessionID = neknek->sessionID;
@@ -235,31 +204,37 @@ void findInterpPoints(nrs_t *nrs)
   std::vector<dfloat> neknekY(numPoints, 0.0);
   std::vector<dfloat> neknekZ(numPoints, 0.0);
 
-  dlong ip = 0;
+  auto fields = neknekSolveFields();
+
   std::fill(neknek->pointMap.begin(), neknek->pointMap.end(), -1);
-  for (dlong e = 0; e < mesh->Nelements; ++e) {
-    for (dlong f = 0; f < mesh->Nfaces; ++f) {
 
-      for (dlong m = 0; m < mesh->Nfp; ++m) {
-        dlong id = mesh->Nfaces * mesh->Nfp * e + mesh->Nfp * f + m;
-        dlong idM = mesh->vmapM[id];
+  if(fields.size()){
+    dlong ip = 0;
+    for (dlong e = 0; e < mesh->Nelements; ++e) {
+      for (dlong f = 0; f < mesh->Nfaces; ++f) {
 
-        if (nrs->EToB[f + mesh->Nfaces * e] == bcMap::bcTypeINT) {
-          neknekX[ip] = mesh->x[idM];
-          neknekY[ip] = mesh->y[idM];
-          neknekZ[ip] = mesh->z[idM];
+        for (dlong m = 0; m < mesh->Nfp; ++m) {
+          dlong id = mesh->Nfaces * mesh->Nfp * e + mesh->Nfp * f + m;
+          dlong idM = mesh->vmapM[id];
 
-          neknek->pointMap[idM] = ip;
-          ++ip;
+          auto bID = mesh->EToB[f + mesh->Nfaces * e];
+          auto bcType = bcMap::id(bID, fields[0]);
+
+          if (isIntBc(bcType, fields[0])) {
+            neknekX[ip] = mesh->x[idM];
+            neknekY[ip] = mesh->y[idM];
+            neknekZ[ip] = mesh->z[idM];
+
+            neknek->pointMap[idM] = ip;
+            ++ip;
+          }
         }
       }
     }
   }
+
   neknek->pointMap[nrs->fieldOffset] = neknek->fieldOffset;
   neknek->o_pointMap.copyFrom(neknek->pointMap.data());
-
-  // check: all computed scalars must have `int` b.c. if the fluid has `int` b.c.
-  checkValidBoundaryConditions(nrs);
 
   // add points
   for (dlong sess = 0; sess < nsessions; ++sess) {
@@ -317,18 +292,20 @@ void neknekSetup(nrs_t *nrs)
 
   if(globalRank == 0) printf("configuring neknek with %d sessions\n", nsessions);
 
-  dlong nFields[2];
-  nFields[0] = nrs->Nscalar;
-  nFields[1] = -nFields[0];
-  MPI_Allreduce(MPI_IN_PLACE, nFields, 2, MPI_DLONG, MPI_MIN, platform->comm.mpiCommParent);
-  nFields[1] = -nFields[1];
-  if (nFields[0] != nFields[1]) {
-    if(globalRank == 0) {
-      std::cout << "WARNING: varying numbers of scalars; only updating " << nFields[0] << std::endl;
-    }
-  }
-  neknek->Nscalar = nFields[0];
+  std::vector<int> Nscalars(nsessions, -1);
+  Nscalars[neknek->sessionID] = nrs->Nscalar;
 
+  MPI_Allreduce(MPI_IN_PLACE, Nscalars.data(), nsessions, MPI_DLONG, MPI_MAX, platform->comm.mpiCommParent);
+  auto minNscalar = *std::min_element(Nscalars.begin(),Nscalars.end());
+
+  bool allSame = std::all_of(Nscalars.begin(), Nscalars.end(), [minNscalar] (auto v) {return v == minNscalar;});
+
+  if(globalRank == 0 && !allSame){
+    std::cout << "WARNING: Nscalar is not the same across all sessions. Using the minimum value: " << minNscalar << "\n";
+  }
+
+  neknek->Nscalar = minNscalar;
+  
   const dlong movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
   dlong globalMovingMesh;
   MPI_Allreduce(&movingMesh, &globalMovingMesh, 1, MPI_DLONG, MPI_MAX, platform->comm.mpiCommParent);
@@ -339,27 +316,41 @@ void neknekSetup(nrs_t *nrs)
 
 } // namespace
 
-bool checkCoupled(nrs_t *nrs)
+bool neknekCoupled()
 {
+  auto solverFields = neknekSolveFields();
 
-  // determine if sessions are coupled
-  auto numInterpPoints = computeNumInterpPoints(nrs);
+  std::set<int> intBIDs;
+  std::ostringstream errorLogger;
 
-  dlong numInterpPointsSession = numInterpPoints;
-  MPI_Allreduce(MPI_IN_PLACE, &numInterpPointsSession, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
+  int coupled = 0;
+  for(auto&& field : solverFields){
+    for(int bID = 1; bID <= bcMap::size(field); ++bID)
+    {
+      auto bcType = bcMap::id(bID, field);
+      bool isInt = isIntBc(bcType, field);
 
-  dlong minPointsAcrossSessions = numInterpPointsSession;
-  MPI_Allreduce(MPI_IN_PLACE, &minPointsAcrossSessions, 1, MPI_DLONG, MPI_MIN, platform->comm.mpiCommParent);
+      if(isInt){
+        intBIDs.insert(bID);
+        coupled += 1;
+      }
 
-  dlong maxPointsAcrossSessions = numInterpPointsSession;
-  MPI_Allreduce(MPI_IN_PLACE, &maxPointsAcrossSessions, 1, MPI_DLONG, MPI_MAX, platform->comm.mpiCommParent);
+      // INT bid in one field -> INT bid in all fields
+      if((intBIDs.find(bID) != intBIDs.end()) && !isInt){
+        errorLogger << "ERROR: expected INT boundary condition on boundary id "
+                    << bID << " for field " << field << "\n";
+      }
+    }
+  }
 
-  nrsCheck((minPointsAcrossSessions == 0) && (maxPointsAcrossSessions > 0),
-           platform->comm.mpiCommParent,
-           EXIT_FAILURE,
-           "%s\n", "One session has no interpolation points, but another session does!");
+  int errorLength = errorLogger.str().length();
+  MPI_Allreduce(MPI_IN_PLACE, &errorLength, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
 
-  return minPointsAcrossSessions > 0;
+  nrsCheck(errorLength > 0, platform->comm.mpiCommParent, EXIT_FAILURE,
+           "%s\n", errorLogger.str().c_str());
+
+  MPI_Allreduce(MPI_IN_PLACE, &coupled, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
+  return coupled > 0;
 }
 
 neknek_t::neknek_t(nrs_t *nrs, dlong _nsessions, dlong _sessionID)
@@ -385,8 +376,10 @@ neknek_t::neknek_t(nrs_t *nrs, dlong _nsessions, dlong _sessionID)
 
   // variable p0th + nek-nek is not supported
   int issueError = 0;
-  if (nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE")) {
-    issueError = 1;
+  if(nrs->pSolver){
+    if (nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE")) {
+      issueError = 1;
+    }
   }
 
   nrsCheck(issueError, platform->comm.mpiCommParent, EXIT_FAILURE, "%s\n", "variable p0th is not supported!");
@@ -416,7 +409,11 @@ void neknek_t::updateBoundary(nrs_t *nrs, int tstep, int stage)
   this->interpolator->eval(nrs->NVfields, nrs->fieldOffset, nrs->o_U, this->fieldOffset, this->o_U);
 
   if (this->Nscalar) {
-    this->interpolator->eval(this->Nscalar, nrs->fieldOffset, nrs->cds->o_S, this->fieldOffset, this->o_S);
+    this->interpolator->eval(this->Nscalar,
+      nrs->fieldOffset,
+      nrs->cds->o_S,
+      this->fieldOffset,
+      this->o_S);
   }
 
   // lag state, update timestepper coefficients and compute extrapolated state
@@ -442,15 +439,17 @@ void neknek_t::updateBoundary(nrs_t *nrs, int tstep, int stage)
     auto o_Uold = this->o_U + this->fieldOffset * nrs->NVfields * sizeof(dfloat);
     auto o_Sold = this->o_S + this->fieldOffset * this->Nscalar * sizeof(dfloat);
 
-    nrs->extrapolateKernel(this->npt,
-                           nrs->NVfields,
-                           this->nEXT,
-                           this->fieldOffset,
-                           this->o_coeffEXT,
-                           o_Uold,
-                           this->o_U);
+    if(this->npt){
+      nrs->extrapolateKernel(this->npt,
+                             nrs->NVfields,
+                             this->nEXT,
+                             this->fieldOffset,
+                             this->o_coeffEXT,
+                             o_Uold,
+                             this->o_U);
+    }
 
-    if (this->Nscalar) {
+    if (this->Nscalar && this->npt) {
       nrs->extrapolateKernel(this->npt,
                              this->Nscalar,
                              this->nEXT,

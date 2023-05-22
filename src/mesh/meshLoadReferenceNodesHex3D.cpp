@@ -34,10 +34,13 @@ void meshLoadReferenceNodesHex3D(mesh_t *mesh, int N, int cubN)
 {
   mesh->N = N;
   mesh->Nq = N + 1;
-  mesh->cubNq = cubN + 1;
   mesh->Nfp = (N + 1) * (N + 1);
   mesh->Np = (N + 1) * (N + 1) * (N + 1);
   mesh->Nverts = 8;
+
+  mesh->cubNq = cubN + 1;
+  mesh->cubNfp = mesh->cubNq * mesh->cubNq;
+  mesh->cubNp = mesh->cubNq * mesh->cubNq * mesh->cubNq;
 
   mesh->Nvgeo = 12;
   mesh->Nggeo = 7;
@@ -71,35 +74,25 @@ void meshLoadReferenceNodesHex3D(mesh_t *mesh, int N, int cubN)
   DegreeRaiseMatrix1D(mesh->N, mesh->N + 1, mesh->interpRaise);
   DegreeRaiseMatrix1D(mesh->N - 1, mesh->N, mesh->interpLower);
 
-  /*
-  intr = (dfloat*) malloc(meshP->Nq * sizeof(dfloat));
-  intw = (dfloat*) malloc(meshP->Nq * sizeof(dfloat));
-  JacobiGLL(meshP->N, intr, intw);
-  mesh->interp = (dfloat*) calloc(mesh->Nq * meshP->Nq, sizeof(dfloat));
-  InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, meshP->Nq, intr, mesh->interp);
-  free(intr);
-  free(intw);
-  */
-
-  mesh->cubNfp = mesh->cubNq * mesh->cubNq;
-  mesh->cubNp = mesh->cubNq * mesh->cubNq * mesh->cubNq;
-  mesh->cubr = (dfloat*) malloc(mesh->cubNq * sizeof(dfloat));
-  mesh->cubw = (dfloat*) malloc(mesh->cubNq * sizeof(dfloat));
-  //JacobiGLL(mesh->cubNq - 1, mesh->cubr, mesh->cubw);
-  JacobiGQ(0, 0, mesh->cubNq - 1, mesh->cubr, mesh->cubw);
-  mesh->cubInterp = (dfloat*) calloc(mesh->Nq * mesh->cubNq, sizeof(dfloat));
-  InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, mesh->cubNq, mesh->cubr, mesh->cubInterp); //uses the fact that r = gllz for 1:Nq
-  mesh->cubProject = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
-  matrixTranspose(mesh->cubNq, mesh->Nq, mesh->cubInterp, mesh->Nq, mesh->cubProject, mesh->cubNq);
-
-  //cubature derivates matrix, cubD: differentiate on cubature nodes
-  mesh->cubD = (dfloat*) malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat));
-  Dmatrix1D(mesh->cubNq - 1, mesh->cubNq, mesh->cubr, mesh->cubNq, mesh->cubr, mesh->cubD);
-  // weak cubature derivative = cubD^T
-  mesh->cubDW  = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
-  for(int i = 0; i < mesh->cubNq; ++i)
-    for(int j = 0; j < mesh->cubNq; ++j)
-      mesh->cubDW[j + i * mesh->cubNq] = mesh->cubD[i + j * mesh->cubNq];
+  if(cubN) {
+    mesh->cubr = (dfloat*) malloc(mesh->cubNq * sizeof(dfloat));
+    mesh->cubw = (dfloat*) malloc(mesh->cubNq * sizeof(dfloat));
+    JacobiGQ(0, 0, mesh->cubNq - 1, mesh->cubr, mesh->cubw);
+    mesh->cubInterp = (dfloat*) calloc(mesh->Nq * mesh->cubNq, sizeof(dfloat));
+    InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, mesh->cubNq, mesh->cubr, mesh->cubInterp); //uses the fact that r = gllz for 1:Nq
+    mesh->cubProject = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
+    matrixTranspose(mesh->cubNq, mesh->Nq, mesh->cubInterp, mesh->Nq, mesh->cubProject, mesh->cubNq);
+ 
+    //cubature derivates matrix, cubD: differentiate on cubature nodes
+    mesh->cubD = (dfloat*) malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat));
+    Dmatrix1D(mesh->cubNq - 1, mesh->cubNq, mesh->cubr, mesh->cubNq, mesh->cubr, mesh->cubD);
+    // weak cubature derivative = cubD^T
+    mesh->cubDW  = (dfloat*) calloc(mesh->cubNq * mesh->cubNq, sizeof(dfloat));
+    for(int i = 0; i < mesh->cubNq; ++i)
+      for(int j = 0; j < mesh->cubNq; ++j)
+        mesh->cubDW[j + i * mesh->cubNq] = mesh->cubD[i + j * mesh->cubNq];
+  }
+ 
   // find node indices of vertex nodes
   dfloat NODETOL = 1e-6;
   mesh->vertexNodes = (int*) calloc(mesh->Nverts, sizeof(int));

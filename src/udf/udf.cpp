@@ -21,32 +21,63 @@ static int scalarNeumannConditions = 0;
 
 static std::string udfFile;
 
+static unsigned long chkSum(const std::string& str)
+{
+  unsigned int hash = 1315423911;
+
+  for(std::size_t i = 0; i < str.length(); i++)
+  {
+      hash ^= ((hash << 5) + str[i] + (hash >> 2));
+  }
+
+  return (hash & 0x7FFFFFFF);
+}
+
+
+static unsigned long fchkSum(const std::string& fname)
+{
+  std::ifstream f;
+  f.open(fname);
+  std::stringstream buffer;
+  buffer << f.rdbuf();
+  f.close();  
+
+  return chkSum(buffer.str());
+}
+
 void oudfFindDirichlet(std::string &field)
 {
   nrsCheck(field.find("velocity") != std::string::npos && !velocityDirichletConditions,
-           platform->comm.mpiComm, EXIT_FAILURE,
+           MPI_COMM_SELF, EXIT_FAILURE,
            "%s\n", "Cannot find velocityDirichletConditions!");
 
   nrsCheck(field.find("scalar") != std::string::npos && !scalarDirichletConditions,
-           platform->comm.mpiComm, EXIT_FAILURE,
+           MPI_COMM_SELF, EXIT_FAILURE,
            "%s\n", "Cannot find scalarDirichletConditions!");
 
   if (field == "pressure" && !pressureDirichletConditions) {
     if (platform->comm.mpiRank == 0)
       std::cout << "WARNING: Cannot find pressureDirichletConditions!\n";
   }
-  nrsCheck(field.find("mesh") != std::string::npos && !meshVelocityDirichletConditions &&
-           !bcMap::useDerivedMeshBoundaryConditions(), platform->comm.mpiComm, EXIT_FAILURE,
-           "%s\n", "Cannot find meshVelocityDirichletConditions!");
+
+  if (field.find("mesh") != std::string::npos) {
+    if (bcMap::useDerivedMeshBoundaryConditions()) {
+      nrsCheck(meshVelocityDirichletConditions, MPI_COMM_SELF, EXIT_FAILURE,
+               "%s\n", "meshVelocityDirichletConditions is defined although derived mesh boundary conditions are used!");
+    } else {
+      nrsCheck(!meshVelocityDirichletConditions, MPI_COMM_SELF, EXIT_FAILURE, 
+               "%s\n", "Cannot find meshVelocityDirichletConditions!");
+    }
+  }
 }
 
 void oudfFindNeumann(std::string &field)
 {
   nrsCheck(field.find("velocity") != std::string::npos && !velocityNeumannConditions,
-           platform->comm.mpiComm, EXIT_FAILURE,
+           MPI_COMM_SELF, EXIT_FAILURE,
            "%s\n", "Cannot find velocityNeumannConditions!");
   nrsCheck(field.find("scalar") != std::string::npos && !scalarNeumannConditions,
-           platform->comm.mpiComm, EXIT_FAILURE,
+           MPI_COMM_SELF, EXIT_FAILURE,
            "%s\n", "Cannot find scalarNeumannConditions!");
 }
 
@@ -73,10 +104,22 @@ void adjustOudf(bool buildRequired, const std::string &postOklSource, const std:
 
   found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+meshVelocityDirichletConditions)"));
   meshVelocityDirichletConditions = found;
-  if (!found && buildRequired)
-    f << "void meshVelocityDirichletConditions(bcData *bc){\n"
-         "  velocityDirichletConditions(bc);\n"
-         "}\n";
+
+  if (buildRequired) {
+    if (bcMap::useDerivedMeshBoundaryConditions()) {
+      f << "void meshVelocityDirichletConditions(bcData *bc){\n"
+           "  velocityDirichletConditions(bc);\n"
+           "}\n";
+    }
+
+    if (!meshVelocityDirichletConditions) {
+      if (platform->options.getArgs("MESH SOLVER").empty() || 
+          platform->options.compareArgs("MESH SOLVER", "NONE")) {
+        f << "void meshVelocityDirichletConditions(bcData *bc){}\n";
+        //meshVelocityDirichletConditions = 1; 
+      }
+    }
+  }
 
   found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityNeumannConditions)"));
   velocityNeumannConditions = found;
@@ -159,6 +202,7 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
   const std::string cache_dir(getenv("NEKRS_CACHE_DIR"));
   const std::string udfLib = cache_dir + "/udf/libUDF.so";
   const std::string udfFileCache = cache_dir + "/udf/udf.cpp";
+  const std::string udfHashFile = cache_dir + "/udf/udf.hash";
   const std::string oudfFileCache = cache_dir + "/udf/udf.okl";
   const std::string case_dir(fs::current_path());
   const std::string casename = options.getArgs("CASENAME");
@@ -178,27 +222,40 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
   int buildRequired = 0;
   if(platform->comm.mpiRank == 0) {
 
-    // there is no mechansism to check for dependency changes
-    // without invoking system, comparing file timestamps for now 
-    // note, this will not work for unknown include files and env-var changes! 
-    if (platform->options.compareArgs("BUILD ONLY", "TRUE")) {
-      buildRequired = 1;
-    } else if (!fs::exists(udfLib)) {
-      buildRequired = 1;
-    } else if (isFileNewer(udfFile.c_str(), udfFileCache.c_str())) {
-      buildRequired = 1;
+    auto udfFileHash = [&]()
+    { 
+      std::ifstream f(udfHashFile);
+      if(!f.is_open()) return (unsigned long) 0;
+      std::stringstream buffer;
+      buffer << f.rdbuf();
+      f.close();
+      unsigned long hash;
+      buffer >> hash;
+
+      return hash;
     };
 
-    if (fs::exists(oudfFile)) {
-      if (isFileNewer(oudfFile.c_str(), oudfFileCache.c_str())) 
-        buildRequired = 1;
-    }
+    // changes in udf include files + env-vars are currently not detected  
+    // note, we want to avoid calling system() 
+    if (platform->options.compareArgs("BUILD ONLY", "TRUE")) {
+      buildRequired = 1;
+    } else if (!fs::exists(udfLib) || !fs::exists(oudfFileCache)) {
+      buildRequired = 1;
+    } else if (fchkSum(udfFile) != udfFileHash()) { 
+      buildRequired = 1; 
+    } 
 
     if (fs::exists(std::string(case_dir + "/ci.inc"))) {
       if (isFileNewer(std::string(case_dir + "/ci.inc").c_str(), udfFileCache.c_str()))
         buildRequired = 1;
     }
 
+    if (fs::exists(oudfFile)) {
+      if (isFileNewer(oudfFile.c_str(), oudfFileCache.c_str())) 
+        buildRequired = 1;
+    }
+
+    // check for a typical include file
     if (fs::exists(std::string(case_dir + "/" + casename + ".okl"))) {
       if (isFileNewer(std::string(case_dir + "/" + casename + ".okl").c_str(), oudfFileCache.c_str())) 
         buildRequired = 1;
@@ -242,7 +299,11 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
           printf("building udf ... \n");
         fflush(stdout);
 
-        copyFile(udfFile.c_str(), udfFileCache.c_str());
+        {
+          std::ofstream f(udfHashFile, std::ios::trunc);
+          f << fchkSum(udfFile);
+          f.close();
+        }
 
         // generate udfFileCache
         {
@@ -351,7 +412,8 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
       if(fs::exists(cache_dir + "/udf/okl.cpp")) 
         fs::rename(cache_dir + "/udf/okl.cpp", oudfFileCache);
 
-      adjustOudf(buildRequired, postOklSource, oudfFileCache); // called every time set BC found flags 
+      adjustOudf(buildRequired, postOklSource, oudfFileCache); // call every time for verifyOudf
+      bcMap::verifyOudf();
 
       fileSync(oudfFileCache.c_str());
 
@@ -362,6 +424,7 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
 
     return 0;
   }();
+
 
   options.setArgs("OKL FILE CACHE", oudfFileCache);
   if (platform->cacheBcast || platform->cacheLocal)

@@ -1,5 +1,6 @@
 #include "nekInterfaceAdapter.hpp" // for nek::coeffAB
 #include "lpm.hpp"
+#include "neknek.hpp"
 #include "nrs.hpp"
 #include "pointInterpolation.hpp"
 #include <algorithm>
@@ -34,6 +35,12 @@ lpm_t::lpm_t(nrs_t *nrs_, dfloat bb_tol_, dfloat newton_tol_)
            EXIT_FAILURE,
            "%s\n",
            "lpm_t::registerKernels has not been called prior to constructing lpm_t!");
+  
+  nrsCheck(neknekCoupled(),
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "%s\n",
+           "lpm_t + neknek is not supported!");
 
   nEXT = nrs->nEXT;
   nBDF = nrs->nBDF;

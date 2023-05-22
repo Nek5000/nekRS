@@ -189,7 +189,7 @@ void setup(MPI_Comm commg_in,
   }
 
   nrsSetup(comm, options, nrs);
-  if (checkCoupled(nrs)) {
+  if (neknekCoupled()) {
     new neknek_t(nrs, nSessions, sessionID);
   }
 

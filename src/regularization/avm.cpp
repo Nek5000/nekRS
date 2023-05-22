@@ -6,13 +6,14 @@
 #include "cds.hpp"
 #include "avm.hpp"
 #include "udf.hpp"
-#include "filter.hpp"
+#include "hpf.hpp"
 
 /**
  * Persson's artificial viscosity method (http://persson.berkeley.edu/pub/persson06shock.pdf) with P1
  **/
 
-namespace avm {
+namespace avm
+{
 
 static occa::kernel relativeMassHighestModeKernel;
 static occa::kernel computeMaxViscKernel;
@@ -27,9 +28,12 @@ static std::vector<occa::memory> o_filterMT;
 
 static double cachedDt = -1.0;
 static bool recomputeUrst = false;
-namespace {
+
+namespace
+{
 
 }
+
 void setup(cds_t *cds)
 {
   mesh_t *mesh = cds->mesh[0];
@@ -56,18 +60,12 @@ void setup(cds_t *cds)
 
       int filterNc = -1;
       platform->options.getArgs("SCALAR" + sid + " REGULARIZATION HPF MODES", filterNc);
-
-      const dlong Nmodes = cds->mesh[is]->N + 1;
-      o_filterMT.push_back(platform->device.malloc(Nmodes * Nmodes * sizeof(dfloat)));
-
-      dfloat *A = filterSetup(cds->mesh[is], filterNc);
-      o_filterMT[is].copyFrom(A, Nmodes * Nmodes * sizeof(dfloat));
-      free(A);
-    }
-    else {
+      o_filterMT.push_back(hpfSetup(cds->mesh[is], filterNc));
+    } else {
       o_filterMT.push_back(o_NULL);
-      if (udf.properties == nullptr)
+      if (udf.properties == nullptr) {
         o_diff0.push_back(o_NULL);
+      }
     }
   }
 
@@ -93,8 +91,9 @@ occa::memory computeEps(nrs_t *nrs, const dfloat time, const dlong scalarIndex, 
   cds_t *cds = nrs->cds;
 
   const dfloat TOL = 1e-10;
-  if (std::abs(cachedDt - time) > TOL)
+  if (std::abs(cachedDt - time) > TOL) {
     recomputeUrst = true;
+  }
 
   cachedDt = time;
 
@@ -202,8 +201,7 @@ occa::memory computeEps(nrs_t *nrs, const dfloat time, const dlong scalarIndex, 
     oogs_t *gsh;
     if (scalarIndex) {
       gsh = cds->gsh;
-    }
-    else {
+    } else {
       gsh = cds->gshT;
     }
     oogs::startFinish(o_epsilon, 1, cds->fieldOffset[scalarIndex], ogsDfloat, ogsMax, gsh);
@@ -235,7 +233,7 @@ void apply(nrs_t *nrs, const dfloat time, const dlong scalarIndex, occa::memory 
     const dfloat maxDiff = platform->linAlg->max(mesh->Nlocal, o_S_slice, platform->comm.mpiComm);
     const dfloat minDiff = platform->linAlg->min(mesh->Nlocal, o_S_slice, platform->comm.mpiComm);
 
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("Applying a min/max artificial viscosity of (%f,%f) to a field with min/max visc (%f,%f) (field "
              "= %d)\n",
              minEps,
@@ -243,6 +241,7 @@ void apply(nrs_t *nrs, const dfloat time, const dlong scalarIndex, occa::memory 
              minDiff,
              maxDiff,
              scalarIndex);
+    }
   }
 
   platform->linAlg->axpby(mesh->Nlocal, 1.0, o_eps, 1.0, cds->o_diff, 0, cds->fieldOffsetScan[scalarIndex]);
@@ -252,8 +251,9 @@ void apply(nrs_t *nrs, const dfloat time, const dlong scalarIndex, occa::memory 
     const dfloat maxDiff = platform->linAlg->max(mesh->Nlocal, o_S_slice, platform->comm.mpiComm);
     const dfloat minDiff = platform->linAlg->min(mesh->Nlocal, o_S_slice, platform->comm.mpiComm);
 
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("Field (%d) now has a min/max visc: (%f,%f)\n", scalarIndex, minDiff, maxDiff);
+    }
   }
 }
 

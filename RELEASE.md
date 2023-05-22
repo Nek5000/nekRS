@@ -34,6 +34,7 @@
 * [par] Replace `stressFormulation = true` by `equation = navierStokes+variableViscosity` 
 * [par] Replace bcType `fixedValue` by `codedFixedValue`
 * [par] Replace `elasticity` by `pcg+block` for mesh solver
+* Use occa::memory mesh_t objects for vgeo, cubvgeo, ggeom, sgeom, LMM, invLMM (no longer mirrored on host)
 * All `boundaryIDs` need to be assigned in  `boundaryTypeMap` (use `none` for an internal boundary)
 
 ## Known Bugs / Restrictions

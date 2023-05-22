@@ -30,6 +30,42 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
+void mesh_t::geometricFactors()
+{
+  geometricFactorsKernel(Nelements,
+                         o_D,
+                         o_gllw,
+                         o_x,
+                         o_y,
+                         o_z,
+                         o_LMM,
+                         o_vgeo,
+                         o_ggeo,
+                         platform->o_mempool.slice0);
+
+  const dfloat minJ =
+      platform->linAlg->min(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
+  const dfloat maxJ =
+      platform->linAlg->max(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
+
+  nrsCheck(minJ < 0 || maxJ < 0, platform->comm.mpiComm, EXIT_FAILURE,
+           "%s\n", "Invalid element Jacobian < 0 found!");
+
+  double flopsCubatureGeometricFactors = 0.0;
+  if (cubNq > 1) {
+    cubatureGeometricFactorsKernel(Nelements, o_cubD, o_x, o_y, o_z, o_cubInterpT, o_cubw, o_cubvgeo);
+
+    flopsCubatureGeometricFactors += 18 * Np * Nq;                                             // deriv
+    flopsCubatureGeometricFactors += 18 * (cubNq * Np + cubNq * cubNq * Nq * Nq + cubNp * Nq); // c->f interp
+    flopsCubatureGeometricFactors += 55 * cubNp; // geometric factor computation
+    flopsCubatureGeometricFactors *= static_cast<double>(Nelements);
+  }
+
+  double flopsGeometricFactors = 18 * Np * Nq + 91 * Np;
+  flopsGeometricFactors *= static_cast<double>(Nelements);
+  platform->flopCounter->add("mesh_t::update", flopsGeometricFactors + flopsCubatureGeometricFactors);
+}
+
 void interpolateHex3D(dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
 {
   dfloat* Ix1 = (dfloat*) calloc(N * N * M, sizeof(dfloat));
@@ -66,6 +102,7 @@ void interpolateHex3D(dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
   free(Ix2);
 }
 
+#if 0
 void meshGeometricFactorsHex3D(mesh_t *mesh)
 {
   double tStart = MPI_Wtime();
@@ -75,6 +112,8 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
   mesh->vgeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nvgeo * mesh->Np, sizeof(dfloat));
   mesh->cubvgeo = (dfloat *)calloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp, sizeof(dfloat));
   mesh->ggeo    = (dfloat*) calloc(mesh->Nelements * mesh->Nggeo * mesh->Np,    sizeof(dfloat));
+
+  return;
 
   dfloat minJ = 1e9, maxJ = -1e9, maxSkew = 0;
 
@@ -327,3 +366,4 @@ void meshGeometricFactorsHex3D(mesh_t *mesh)
   MPI_Barrier(platform->comm.mpiComm);
   if(platform->comm.mpiRank == 0)  printf("done (%gs)\n", MPI_Wtime() - tStart); fflush(stdout);
 }
+#endif

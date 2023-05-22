@@ -34,25 +34,8 @@ private:
   const std::string vectorName;
 };
 
-struct memPool_t{
-  void allocate(const dlong offset, const dlong fields);
-  dfloat *slice0 = nullptr;
-  dfloat *slice1 = nullptr; 
-  dfloat *slice2 = nullptr; 
-  dfloat *slice3 = nullptr; 
-  dfloat *slice4 = nullptr; 
-  dfloat *slice5 = nullptr; 
-  dfloat *slice6 = nullptr; 
-  dfloat *slice7 = nullptr;
-  dfloat *slice9 = nullptr;
-  dfloat *slice12 = nullptr; 
-  dfloat *slice15 = nullptr; 
-  dfloat *slice18 = nullptr; 
-  dfloat *slice19 = nullptr;
-  dfloat *ptr = nullptr;
-};
 struct deviceMemPool_t{
-  void allocate(memPool_t& hostMemory, const dlong offset, const dlong fields);
+  void allocate(const dlong offset, const dlong fields);
   occa::memory slice0;
   occa::memory slice1; 
   occa::memory slice2; 
@@ -99,7 +82,6 @@ public:
   bool serial;
   linAlg_t* linAlg;
   std::unique_ptr<flopCounter_t> flopCounter;
-  memPool_t mempool;
   int exitValue;
   std::string tmpDir;
   int verbose;

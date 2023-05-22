@@ -29,15 +29,6 @@ void velocityDirichletConditions(bcData *bc)
   bc->w = -vPiston * bc->nz;
 }
 
-void meshVelocityDirichletConditions(bcData *bc)
-{
-  const dfloat vPiston = p_AMP*sin(p_OMEGA*bc->time);
-
-  bc->meshu = -vPiston * bc->nx;
-  bc->meshv = -vPiston * bc->ny;
-  bc->meshw = -vPiston * bc->nz;
-}
-
 @kernel void fillProp(const dlong Nelements,
                       const dlong uOffset,
                       const dlong sOffset,
