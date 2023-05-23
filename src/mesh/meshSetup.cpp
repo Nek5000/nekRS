@@ -165,22 +165,25 @@ occa::properties meshKernelProperties(int N)
 static void loadKernels(mesh_t *mesh)
 {
   const std::string meshPrefix = "mesh-";
-  mesh->surfaceIntegralKernel = platform->kernels.get(meshPrefix + "surfaceIntegral");
+  const std::string orderSuffix = "_" + std::to_string(mesh->N);
+
+  mesh->surfaceIntegralKernel = platform->kernels.get(meshPrefix + "surfaceIntegral" + orderSuffix);
+  mesh->geometricFactorsKernel = platform->kernels.get(meshPrefix + "geometricFactorsHex3D" + orderSuffix);
+  mesh->surfaceGeometricFactorsKernel = platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D" + orderSuffix);
+  mesh->cubatureGeometricFactorsKernel = platform->kernels.get(meshPrefix + "cubatureGeometricFactorsHex3D" + orderSuffix);
+
   mesh->velocityDirichletKernel = platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
-  mesh->geometricFactorsKernel = platform->kernels.get(meshPrefix + "geometricFactorsHex3D");
-  mesh->surfaceGeometricFactorsKernel = platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D");
-  mesh->cubatureGeometricFactorsKernel = platform->kernels.get(meshPrefix + "cubatureGeometricFactorsHex3D");
   mesh->nStagesSumVectorKernel = platform->kernels.get(meshPrefix + "nStagesSumVector");
 }
 
 mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &kernelInfo)
 {
-  mesh_t *mesh = new mesh_t();
-  platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
+  mesh_t *mesh = new mesh_t();
+  platform->options.getArgs("MESH INTEGRATION ORDER", mesh->nAB);
   mesh->cht = cht;
 
   if (platform->comm.mpiRank == 0) {
@@ -191,7 +194,6 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
     }
   }
    
-  // get mesh from nek
   meshNekReaderHex3D(N, mesh);
 
   nrsCheck((hlong)mesh->Nelements * (mesh->Nvgeo * cubN) > std::numeric_limits<int>::max(),
@@ -206,13 +208,11 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
   // load reference (r,s,t) element nodes
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (platform->comm.mpiRank == 0) {
-    printf("N: %d, Nq: %d", mesh->N, mesh->Nq);
+    printf("polynomial order N: %d", mesh->N);
     if (cubN)
-      printf(", cubNq: %d", mesh->cubNq);
+      printf(", over-integration order cubN: %d", mesh->cubNq-1);
     printf("\n");
   }
-
-  platform->create_mempool(alignStride<dfloat>(mesh->Nlocal), 3);
 
   loadKernels(mesh);
 
@@ -244,7 +244,7 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
 
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nlocal, ogsDfloat, NULL, OOGS_AUTO);
 
-  mesh->update(true);
+  mesh->update();
 
   int err = 0;
   int Nfine;
@@ -429,7 +429,7 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     if (sum1 > 1e-14) {
       if (platform->comm.mpiRank == 0)
-        printf("multiplicity test err=%g!\n", sum1);
+        printf("invDegree test failed, err=%g!\n", sum1);
       fflush(stdout);
       err++;
     }

@@ -231,8 +231,8 @@ struct mesh_t
   occa::kernel surfaceIntegralKernel;
 };
 
-mesh_t *createMeshMG(mesh_t* _mesh,
-                     int Nc);
+mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &kernelInfo);
+mesh_t *createMeshMG(mesh_t* _mesh, int Nc);
 
 occa::properties meshKernelProperties(int N);
 // serial sort
@@ -290,8 +290,6 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
                                     oogs_mode gsMode,
                                     int verbose);
 
-// generic mesh setup
-mesh_t* meshSetup(char* filename, int N, setupAide &options);
 void meshFree(mesh_t*);
 
 void printMeshMetrics(mesh_t* mesh);

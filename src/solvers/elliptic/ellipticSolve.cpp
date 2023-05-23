@@ -29,9 +29,10 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
-
 void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 {
+  ellipticUpdateWorkspace(elliptic); // in case o_wrk has changed
+
   setupAide& options = elliptic->options;
   precon_t *precon = elliptic->precon;
 

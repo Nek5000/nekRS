@@ -128,7 +128,7 @@ echo "" >> $SFILE
 
 bin_nvme=$NVME_HOME"nekrs-bin"
 bin_nvme_libs=$bin_nvme"_libs"
-echo "sbcast --send-libs -pf $bin $bin_nvme" >> $SFILE
+echo "sbcast -fp --send-libs $bin $bin_nvme" >> $SFILE
 echo "if [ ! \"\$?\" == \"0\" ]; then"  >> $SFILE
 echo "    echo \"SBCAST failed!\"" >> $SFILE
 echo "    exit 1" >> $SFILE

@@ -29,6 +29,8 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
+occa::memory elliptic_t::o_wrk = occa::memory();
+
 void checkConfig(elliptic_t *elliptic)
 {
   mesh_t *mesh = elliptic->mesh;
@@ -73,6 +75,12 @@ void checkConfig(elliptic_t *elliptic)
   if (elliptic->mesh->ogs == NULL) {
     if (platform->comm.mpiRank == 0)
       printf("mesh->ogs == NULL!");
+    err++;
+  }
+
+  if (elliptic->Nfields < 1 || elliptic->Nfields > 3) {
+    if (platform->comm.mpiRank == 0)
+      printf("Invalid Nfields = %d!", elliptic->Nfields);
     err++;
   }
 
@@ -141,13 +149,6 @@ void ellipticSolveSetup(elliptic_t *elliptic)
 
   setupAide &options = elliptic->options;
   const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
-  const size_t offsetBytes = elliptic->fieldOffset * elliptic->Nfields * sizeof(dfloat);
-
-  nrsCheck(elliptic->o_wrk.size() < elliptic_t::NScratchFields * offsetBytes,
-           platform->comm.mpiComm,
-           EXIT_FAILURE,
-           "%s\n",
-           "mempool assigned for elliptic too small!");
 
   mesh_t *mesh = elliptic->mesh;
   const dlong Nlocal = mesh->Np * mesh->Nelements;
@@ -177,13 +178,8 @@ void ellipticSolveSetup(elliptic_t *elliptic)
 
   mesh->maskKernel = platform->kernels.get("mask");
   mesh->maskPfloatKernel = platform->kernels.get("maskPfloat");
-
-  elliptic->o_p = elliptic->o_wrk + 0 * offsetBytes;
-  elliptic->o_z = elliptic->o_wrk + 1 * offsetBytes;
-  elliptic->o_Ap = elliptic->o_wrk + 2 * offsetBytes;
-  elliptic->o_x0 = elliptic->o_wrk + 3 * offsetBytes;
-  elliptic->o_rPfloat = elliptic->o_wrk + 4 * offsetBytes;
-  elliptic->o_zPfloat = elliptic->o_wrk + 5 * offsetBytes;
+ 
+  ellipticUpdateWorkspace(elliptic);
 
   elliptic->tmpNormr = (dfloat *)calloc(Nblocks, sizeof(dfloat));
   elliptic->o_tmpNormr = platform->device.malloc(Nblocks * sizeof(dfloat), elliptic->tmpNormr);

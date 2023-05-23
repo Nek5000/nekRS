@@ -32,6 +32,11 @@
 
 void mesh_t::geometricFactors()
 {
+  const auto tmpSize = Nlocal * sizeof(dfloat);
+  occa::memory o_tmp = (platform->o_mempool.o_ptr.size() >= tmpSize) ?
+                       platform->o_mempool.slice0 : 
+                       platform->device.malloc(tmpSize); 
+
   geometricFactorsKernel(Nelements,
                          o_D,
                          o_gllw,
@@ -41,12 +46,13 @@ void mesh_t::geometricFactors()
                          o_LMM,
                          o_vgeo,
                          o_ggeo,
-                         platform->o_mempool.slice0);
+                         o_tmp);
+
 
   const dfloat minJ =
-      platform->linAlg->min(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
+      platform->linAlg->min(Nlocal, o_tmp, platform->comm.mpiComm);
   const dfloat maxJ =
-      platform->linAlg->max(Nelements * Np, platform->o_mempool.slice0, platform->comm.mpiComm);
+      platform->linAlg->max(Nlocal, o_tmp, platform->comm.mpiComm);
 
   nrsCheck(minJ < 0 || maxJ < 0, platform->comm.mpiComm, EXIT_FAILURE,
            "%s\n", "Invalid element Jacobian < 0 found!");
