@@ -9,7 +9,7 @@ dt = 2.0e-3
 timeStepper = tombo2
 subCyclingSteps = 2
 
-writeControl = runTime
+writeControl = simulationTime 
 writeInterval = 1
 
 regularization = hpfrt + nModes=2 + scalingCoeff=20 

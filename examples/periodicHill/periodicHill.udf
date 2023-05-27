@@ -1,0 +1,29 @@
+//
+// nekRS User Defined File
+//
+#include "udf.hpp"
+#include "plugins/tavg.hpp"
+
+#ifdef __okl__
+
+#endif
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options) {}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  tavg::setup(nrs);
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+  tavg::run(time);
+
+  if (nrs->isOutputStep) {
+    nek::ocopyToNek(time, tstep);
+    nek::userchk(); // compute lambda2
+    nek::ocopyFromNek(time);
+
+    tavg::outfld();
+  }
+}

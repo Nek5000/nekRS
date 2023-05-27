@@ -1,52 +1,54 @@
 //
 // nekRS User Defined File
 //
-#include <math.h>
 #include "udf.hpp"
 
 static dfloat Re_tau;
 static dfloat zLength;
+static dfloat dt0;
 
 #include "ci.inc"
 
-/* User Functions */
+#ifdef __okl__
+
+#include "turbPipe.oudf"
+
+#endif
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  mesh_t* mesh = nrs->meshV;
+  mesh_t *mesh = nrs->meshV;
   dfloat mue, rho;
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho);
-  const dfloat RE_B = rho/mue; 
-  const dfloat DPDZ = 4 * (2*Re_tau/RE_B)*(2*Re_tau/RE_B);
+  const dfloat RE_B = rho / mue;
+  const dfloat DPDZ = 4 * (2 * Re_tau / RE_B) * (2 * Re_tau / RE_B);
 
-  occa::memory o_FUz = o_FU + 2*nrs->fieldOffset*sizeof(dfloat);
+  occa::memory o_FUz = o_FU + 2 * nrs->fieldOffset * sizeof(dfloat);
   platform->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
-}
-
-/* UDF Functions */                                                      
-
-void UDF_LoadKernels(occa::properties& kernelInfo)
-{
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
-  platform->par->extract("casedata", "re_tau",Re_tau);
-  platform->par->extract("casedata", "zlength",zLength);
+  platform->par->extract("casedata", "re_tau", Re_tau);
+  platform->par->extract("casedata", "zlength", zLength);
 
   options.getArgs("CI-MODE", ciMode);
-  if (ciMode) ciSetup(comm, options);
+  if (ciMode) {
+    ciSetup(comm, options);
+  }
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
     nek_cb_scnrs[0] = zLength;
   }
+
+  platform->options.getArgs("DT", dt0);
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
-  if(platform->options.compareArgs("CONSTANT FLOW RATE", "FALSE")){
+  if (platform->options.compareArgs("CONSTANT FLOW RATE", "FALSE")) {
     // assign function pointer to drive flow by constant mean pressure gradient
     udf.uEqnSource = &userf;
   }
@@ -54,6 +56,15 @@ void UDF_Setup(nrs_t *nrs)
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
-  if (nrs->lastStep)
-    if (ciMode) ciTestErrors(nrs, time, tstep);
+  if (tstep < 5) {
+    nrs->dt[0] = 0.25 * dt0;
+  } else {
+    nrs->dt[0] = dt0;
+  }
+
+  if (nrs->lastStep) {
+    if (ciMode) {
+      ciTestErrors(nrs, time, tstep);
+    }
+  }
 }

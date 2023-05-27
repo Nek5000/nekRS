@@ -11,28 +11,11 @@ file(COPY
   RELEASE.md
   CONTRIBUTING.md
   config
+  doc
   examples 
-  okl 
+  kernels 
   scripts 
   src 
   DESTINATION ${DEST_DIR}
   PATTERN ".git" EXCLUDE
   PATTERN ".cache" EXCLUDE)
-
-file(COPY
-  ${OCCA_SOURCE_DIR}/
-  DESTINATION ${DEST_DIR}/3rd_party/occa
-  PATTERN ".git" EXCLUDE)
-
-file(COPY
-  ${HYPRE_SOURCE_DIR}/
-  DESTINATION ${DEST_DIR}/3rd_party/hypre
-  PATTERN ".git" EXCLUDE)
-
-file(COPY
-  ${NEK5000_SOURCE_DIR}/
-  DESTINATION ${DEST_DIR}/3rd_party/nek5000
-  REGEX "${NEK5000_SOURCE_DIR}/examples/*" EXCLUDE
-  PATTERN ".git" EXCLUDE
-  REGEX ".*\\.o$" EXCLUDE
-  REGEX ".*\\.a$" EXCLUDE)

@@ -1,0 +1,18 @@
+@kernel void copyNekNekPoints(const dlong Nlocal,
+  @restrict const dlong * pointMap,
+  @restrict const dfloat * x,
+  @restrict const dfloat * y,
+  @restrict const dfloat * z,
+  @restrict dfloat * neknekX,
+  @restrict dfloat * neknekY,
+  @restrict dfloat * neknekZ)
+{
+  for(int n = 0; n < Nlocal; ++n; @tile(p_blockSize, @outer, @inner)){
+    const dlong id = pointMap[n];
+    if(id >= 0){
+      neknekX[id] = x[n];
+      neknekY[id] = y[n];
+      neknekZ[id] = z[n];
+    }
+  }
+}

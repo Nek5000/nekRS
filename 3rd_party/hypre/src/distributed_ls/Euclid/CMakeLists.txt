@@ -1,9 +1,9 @@
-# Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+# Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
 # HYPRE Project Developers. See the top-level COPYRIGHT file for details.
 #
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
-set(EUCLID_SRCS
+set(SRCS
   blas_dh.c
   Euclid_apply.c
   Euclid_dh.c
@@ -33,9 +33,7 @@ set(EUCLID_SRCS
   Timer_dh.c
   Vec_dh.c
 )
-  
-convert_filenames_to_full_paths(EUCLID_SRCS)
 
-set(SRCS ${SRCS} ${EUCLID_SRCS} PARENT_SCOPE)
-
-
+target_sources(${PROJECT_NAME}
+  PRIVATE ${SRCS}
+)

@@ -9,58 +9,64 @@ static occa::memory o_nekFU;
 static occa::memory o_nekMue;
 static dfloat P_ROT;
 
-/* User Functions */
+#ifdef __okl__
+
+#include "channel.oudf"
+
+#endif
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  o_FU.copyFrom(o_nekFU, nrs->NVfields*nrs->fieldOffset*sizeof(dfloat));
+  o_FU.copyFrom(o_nekFU, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
 }
 
-void uservp(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_S,
-            occa::memory o_UProp, occa::memory o_SProp)
+void uservp(nrs_t *nrs,
+            dfloat time,
+            occa::memory o_U,
+            occa::memory o_S,
+            occa::memory o_UProp,
+            occa::memory o_SProp)
 {
-    mesh_t* mesh = nrs->meshV;
-    occa::memory o_mue = o_UProp.slice(0*nrs->fieldOffset*sizeof(dfloat));
-    occa::memory o_rho = o_UProp.slice(1*nrs->fieldOffset*sizeof(dfloat));
-    platform->linAlg->fill(mesh->Nlocal, 1.0, o_rho);
-    o_mue.copyFrom(o_nekMue, mesh->Nlocal*sizeof(dfloat));
-}
-
-void UDF_LoadKernels(occa::properties& kernelInfo)
-{
+  mesh_t *mesh = nrs->meshV;
+  occa::memory o_mue = o_UProp.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+  occa::memory o_rho = o_UProp.slice(1 * nrs->fieldOffset * sizeof(dfloat));
+  platform->linAlg->fill(mesh->Nlocal, 1.0, o_rho);
+  o_mue.copyFrom(o_nekMue, mesh->Nlocal * sizeof(dfloat));
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);
-  if (ciMode) ciSetup(comm, options);
+  if (ciMode) {
+    ciSetup(comm, options);
+  }
   platform->par->extract("casedata", "p_rot", P_ROT);
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    double* const nek_cb_scnrs = (double*) nek::ptr("cb_scnrs");
+    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
     nek_cb_scnrs[0] = P_ROT;
   }
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
-  platform_t* platform = platform_t::getInstance();
+  platform_t *platform = platform_t::getInstance();
   mesh_t *mesh = nrs->meshV;
 
   udf.uEqnSource = &userf;
   udf.properties = &uservp;
 
-  double *mul = (double *) nek::scPtr(1);
-  double *FUx = (double *) nek::scPtr(2);
-  double *FUy = (double *) nek::scPtr(3);
-  double *FUz = (double *) nek::scPtr(4);
+  double *mul = (double *)nek::scPtr(1);
+  double *FUx = (double *)nek::scPtr(2);
+  double *FUy = (double *)nek::scPtr(3);
+  double *FUz = (double *)nek::scPtr(4);
 
-  o_nekFU  = platform->device.malloc(nrs->NVfields*nrs->fieldOffset,  sizeof(dfloat));
-  o_nekMue = platform->device.malloc(              nrs->fieldOffset,  sizeof(dfloat));
+  o_nekFU = platform->device.malloc(nrs->NVfields * nrs->fieldOffset, sizeof(dfloat));
+  o_nekMue = platform->device.malloc(nrs->fieldOffset, sizeof(dfloat));
 
-  o_nekMue.copyFrom(mul, mesh->Nlocal*sizeof(dfloat));
-  o_nekFU.copyFrom (FUx, mesh->Nlocal*sizeof(dfloat), 0*nrs->fieldOffset*sizeof(dfloat));
-  o_nekFU.copyFrom (FUy, mesh->Nlocal*sizeof(dfloat), 1*nrs->fieldOffset*sizeof(dfloat));
-  o_nekFU.copyFrom (FUz, mesh->Nlocal*sizeof(dfloat), 2*nrs->fieldOffset*sizeof(dfloat));
+  o_nekMue.copyFrom(mul, mesh->Nlocal * sizeof(dfloat));
+  o_nekFU.copyFrom(FUx, mesh->Nlocal * sizeof(dfloat), 0 * nrs->fieldOffset * sizeof(dfloat));
+  o_nekFU.copyFrom(FUy, mesh->Nlocal * sizeof(dfloat), 1 * nrs->fieldOffset * sizeof(dfloat));
+  o_nekFU.copyFrom(FUz, mesh->Nlocal * sizeof(dfloat), 2 * nrs->fieldOffset * sizeof(dfloat));
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
@@ -69,5 +75,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     nek::ocopyToNek(time, tstep);
     nek::userchk();
   }
-  if (ciMode) ciTestErrors(nrs, time, tstep);
+  if (ciMode) {
+    ciTestErrors(nrs, time, tstep);
+  }
 }

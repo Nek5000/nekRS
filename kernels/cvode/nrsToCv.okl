@@ -1,0 +1,23 @@
+// pre: EField is C0 continuous
+@kernel void nrsToCv(const dlong N,
+                  const dlong NV,
+                  const dlong Nscalars,
+                  const dlong EFieldOffset,
+                  const dlong LFieldOffset,
+                  @restrict const dlong * scalarFieldToCvodeField,
+                  @restrict const dlong * EToLUnique,
+                  @restrict const dfloat* EField,
+                  @restrict dfloat      * LField){
+  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
+    const dlong lid = EToLUnique[n];
+    if(lid > - 1){
+      for(dlong fld=0;fld<Nscalars;++fld){
+        const dlong cvodeField = scalarFieldToCvodeField[fld];
+        bool isInMesh = fld == 0 || n < NV;
+        if(cvodeField > -1 && isInMesh){
+          LField[lid + LFieldOffset * cvodeField] = EField[n + EFieldOffset * fld];
+        }
+      }
+    }
+  }
+}

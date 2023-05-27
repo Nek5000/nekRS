@@ -1,0 +1,117 @@
+#define p_fieldBlockSize 4
+
+#define REDUCE(bs)                                                                                           \
+if (t < bs) {                                                                                                \
+  for (int fld = 0; fld < p_fieldBlockSize; fld++) {                                                         \
+      s_sum[fld][t] += s_sum[fld][t + bs];                                                                   \
+  }                                                                                                          \
+}
+
+@kernel void surfaceIntegral(const dlong Nelements,
+                             const dlong Nfields,
+                             const dlong fieldOffset,
+                             const dlong nbID,
+                             const dlong *bID,
+                             @ restrict const dfloat *sgeo,
+                             @ restrict const dlong *vmapM,
+                             @ restrict const int *EToBM,
+                             @ restrict const dfloat *U,
+                             @ restrict dfloat *sumU)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    for (int fldStart = 0; fldStart < Nfields; fldStart += p_fieldBlockSize) {
+      @shared volatile dfloat s_sum[p_fieldBlockSize][p_blockSize];
+
+      // reduce over all element faces
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        for (int fld = 0; fld < p_fieldBlockSize; fld++) {
+          s_sum[fld][t] = 0.0;
+        }
+        if (t < p_Nfp) {
+          for (int f = 0; f < p_Nfaces; f++) {
+            const dlong bIDM = EToBM[f + p_Nfaces * e];
+
+            if (bIDM > 0) {
+              for (int ibID = 0; ibID < nbID; ibID++) {
+                if (bIDM == bID[ibID]) {
+                  const int n = t + f * p_Nfp;
+                  const dlong sid = e * p_Nfaces * p_Nfp + n;
+
+                  const dlong idM = vmapM[sid];
+                  const dfloat sWJ = sgeo[sid * p_Nsgeo + p_WSJID];
+
+#pragma unroll p_fieldBlockSize
+                  for (int fld = 0; fld < p_fieldBlockSize; fld++) {
+                    if (fldStart + fld < Nfields)   
+                      s_sum[fld][t] += U[idM + (fldStart + fld) * fieldOffset] * sWJ;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      @barrier();
+
+      // reduce over face points
+#if p_blockSize > 512
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(512);
+      }
+      @barrier();
+#endif
+
+#if p_blockSize > 256
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(256);
+      }
+      @barrier();
+#endif
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(128);
+      }
+      @barrier();
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(64);
+      }
+      @barrier();
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(32);
+      }
+      @barrier();
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(16);
+      }
+      @barrier();
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(8);
+      }
+      @barrier();
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(4);
+      }
+      @barrier();
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        REDUCE(2);
+      }
+      @barrier();
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < 1) {
+          for (int fld = 0; fld < p_fieldBlockSize; fld++) {
+            if (fldStart + fld < Nfields)
+              sumU[e + (fldStart + fld) * Nelements] = s_sum[fld][0] + s_sum[fld][1];
+          }
+        }
+      }
+      @barrier();
+
+    } // field block
+  }
+}

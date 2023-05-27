@@ -35,8 +35,6 @@
 
 #include <inipp.hpp>
 
-int getDigitsRepresentation(int n) { return std::to_string(n).length(); }
-
 namespace inipp
 {
 namespace detail
@@ -79,12 +77,19 @@ bool Ini::extract(const std::string & key,
              const std::string & value,
              std::string & dst)
 {
-  if (sections[key].count(value)) {
-    dst = sections[key][value];
-    return true;
-  } else {
+  auto lowerCaseKey = toLowerCase(key);
+  auto lowerCaseValue = toLowerCase(value);
+
+  // section does not exist
+  if (sections.count(lowerCaseKey) == 0) {
     return false;
   }
+
+  if (sections[lowerCaseKey].count(lowerCaseValue)) {
+    dst = sections[lowerCaseKey][lowerCaseValue];
+    return true;
+  }
+  return false;
 }
 
 void Ini::generate(std::ostringstream & os) const
@@ -102,9 +107,9 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
   std::string section;
   while (!is.eof()) {
     std::getline(is, line);
-    auto it = std::find_if(line.rbegin(), line.rend(),
+    auto it = std::find_if(line.begin(), line.end(),
                            [](int ch) { return ch == char_comment; });
-    if (it != line.rend()) line.erase((++it).base(), line.end());
+    if (it != line.end()) line.erase(it, line.end());
     detail::ltrim(line);
     detail::rtrim(line);
 
@@ -119,6 +124,14 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
           section = line.substr(1, length - 2);
           transform(section.begin(), section.end(), section.begin(),
                     [](int c){return std::tolower(c);});
+          if(sections.count(section) != 0)
+          {
+            errors.push_back("found duplicate section " + section);
+          }
+
+          // add section to sections
+          sections[section];
+
         } else {
           errors.push_back(line);
         }
@@ -138,10 +151,11 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
         value.erase(std::remove(value.begin(), value.end(), '"'), value.end());
 
         auto & sec = sections[section];
-        if (sec.find(variable) == sec.end())
+        if (sec.find(variable) == sec.end()) {
           sec.insert(std::make_pair(variable, value));
-        else
-          errors.push_back(line);
+        } else {
+          errors.push_back("found duplicate key " + variable);
+        }
       }else {
         errors.push_back(line);
       }

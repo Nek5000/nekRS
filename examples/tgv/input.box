@@ -15,8 +15,8 @@ base.rea
 #=======================================================================
 #
 Box
--20  -20  -20                                        nelx,nely,nelz for Box
-0 8 1.                                               x0,x1,gain  (rescaled in usrdat)
-0 8 1.                                               y0,y1,gain  (rescaled in usrdat)
-0 8 1.                                               z0,z1,gain
+-36  -36  -36                                        nelx,nely,nelz for Box ! multiple of 3
+0 1 1.                                               x0,x1,gain  (rescaled in usrdat)
+0 1 1.                                               y0,y1,gain  (rescaled in usrdat)
+0 1 1.                                               z0,z1,gain
 P  ,P  ,P  ,P  ,P  ,P                                bc's  (3 chars each!)

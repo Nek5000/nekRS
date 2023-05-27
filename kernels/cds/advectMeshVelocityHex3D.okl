@@ -1,0 +1,139 @@
+/*
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+@kernel void advectMeshVelocityHex3D(const dlong Nelements,
+                                     @ restrict const dfloat *vgeo,
+                                     @ restrict const dfloat *D,
+                                     const dlong isOffset,
+                                     const dlong offset,
+                                     @ restrict const dfloat *rho,
+                                     @ restrict const dfloat *W,
+                                     @ restrict const dfloat *S,
+                                     @ restrict dfloat *divSW)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) { // for all elements
+
+    @shared dfloat s_SWx[p_Nq][p_Nq];
+    @shared dfloat s_SWy[p_Nq][p_Nq];
+    @shared dfloat s_SWz[p_Nq][p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @exclusive dfloat r_SWx[p_Nq];
+    @exclusive dfloat r_SWy[p_Nq];
+    @exclusive dfloat r_SWz[p_Nq];
+
+#ifdef smXX
+#pragma unroll
+#endif
+    for (int k = 0; k < p_Nq; ++k) {
+
+      @barrier();
+
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+
+          {
+            const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+            const dfloat Sn = S[id + isOffset];
+            const dfloat Wx = W[id + 0 * offset];
+            const dfloat Wy = W[id + 1 * offset];
+            const dfloat Wz = W[id + 2 * offset];
+
+            s_SWx[j][i] = Sn * Wx;
+            s_SWy[j][i] = Sn * Wy;
+            s_SWz[j][i] = Sn * Wz;
+          }
+
+          if (k == 0) {
+            s_D[j][i] = D[j * p_Nq + i];
+#pragma unroll
+            for (int l = 0; l < p_Nq; ++l) {
+
+              {
+                const dlong id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+                const dfloat Sn = S[id + isOffset];
+                const dfloat Wx = W[id + 0 * offset];
+                const dfloat Wy = W[id + 1 * offset];
+                const dfloat Wz = W[id + 2 * offset];
+
+                r_SWx[l] = Sn * Wx;
+                r_SWy[l] = Sn * Wy;
+                r_SWz[l] = Sn * Wz;
+              }
+            }
+          }
+        }
+      }
+
+      @barrier();
+
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          const dfloat rhoM = rho[id + isOffset];
+
+          dfloat d_swx_dr = 0.f, d_swx_ds = 0.f, d_swx_dt = 0.f;
+          dfloat d_swy_dr = 0.f, d_swy_ds = 0.f, d_swy_dt = 0.f;
+          dfloat d_swz_dr = 0.f, d_swz_ds = 0.f, d_swz_dt = 0.f;
+
+#pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; ++n) {
+            const dfloat Dr = s_D[i][n];
+            const dfloat Ds = s_D[j][n];
+            const dfloat Dt = s_D[k][n];
+
+            // sw terms
+            d_swx_dr += Dr * s_SWx[j][n];
+            d_swx_ds += Ds * s_SWx[n][i];
+            d_swx_dt += Dt * r_SWx[n];
+
+            d_swy_dr += Dr * s_SWy[j][n];
+            d_swy_ds += Ds * s_SWy[n][i];
+            d_swy_dt += Dt * r_SWy[n];
+
+            d_swz_dr += Dr * s_SWz[j][n];
+            d_swz_ds += Ds * s_SWz[n][i];
+            d_swz_dt += Dt * r_SWz[n];
+          }
+
+          divSW[id + isOffset] += rhoM * ((drdx * d_swx_dr + dsdx * d_swx_ds + dtdx * d_swx_dt);
+                                          +(drdy * d_swy_dr + dsdy * d_swy_ds + dtdy * d_swy_dt);
+                                          +(drdz * d_swz_dr + dsdz * d_swz_ds + dtdz * d_swz_dt));
+        }
+      }
+    }
+  }
+}

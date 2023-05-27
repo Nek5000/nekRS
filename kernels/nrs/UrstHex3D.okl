@@ -1,0 +1,53 @@
+@kernel void UrstHex3D(const dlong Nelements,
+                       @ restrict const dfloat *vgeo,
+                       const dlong offset,
+                       @ restrict const dfloat *U,
+                       @ restrict const dfloat *W,
+                       @ restrict dfloat *result)
+{
+  for (dlong element = 0; element < Nelements; ++element; @outer(0)) {
+
+#ifdef smXX
+#pragma unroll p_Nq
+#endif
+    for (int k = 0; k < p_Nq; ++k) {
+
+      @barrier();
+
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong gid = element * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          const dfloat JW = vgeo[gid + p_JWID * p_Np];
+
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          dfloat Un = U[id + 0 * offset];
+          dfloat Vn = U[id + 1 * offset];
+          dfloat Wn = U[id + 2 * offset];
+          if (p_relative) {
+            Un -= W[id + 0 * offset];
+            Vn -= W[id + 1 * offset];
+            Wn -= W[id + 2 * offset];
+          }
+
+          const dfloat Uhat = JW * (Un * drdx + Vn * drdy + Wn * drdz);
+          const dfloat Vhat = JW * (Un * dsdx + Vn * dsdy + Wn * dsdz);
+          const dfloat What = JW * (Un * dtdx + Vn * dtdy + Wn * dtdz);
+
+          result[id + 0 * offset] = Uhat;
+          result[id + 1 * offset] = Vhat;
+          result[id + 2 * offset] = What;
+        }
+      }
+    }
+  }
+}

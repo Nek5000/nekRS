@@ -1,0 +1,10 @@
+@kernel void scatter(const dlong numRows,
+                     @ restrict const hlong *dof_map,
+                     @ restrict const pfloat *z,
+                     @ restrict pfloat *buffer)
+{
+  for (dlong localRow = 0; localRow < numRows; ++localRow; @tile(p_blockSize, @outer, @inner)) {
+    if (localRow < numRows)
+      buffer[dof_map[localRow]] = z[localRow];
+  }
+}

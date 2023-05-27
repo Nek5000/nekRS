@@ -45,16 +45,20 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
   if(!mesh->cht) bid = nekData.boundaryID;
   for(int e = 0; e < mesh->Nelements; e++)
     for(int iface = 0; iface < mesh->Nfaces; iface++) {
-      if(*bid) NboundaryFaces++;
+      if(*bid > 0) NboundaryFaces++;
       bid++;
     }
-
-  int Nbid = nekData.NboundaryIDt;
-  if (!mesh->cht)
-    Nbid = nekData.NboundaryID;
   MPI_Allreduce(MPI_IN_PLACE, &NboundaryFaces, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+
+  int NelementsGlobal = mesh->Nelements;
+  MPI_Allreduce(MPI_IN_PLACE, &NelementsGlobal, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
+
+  mesh->Nbid = nekData.NboundaryIDt;
+  if (!mesh->cht)
+    mesh->Nbid = nekData.NboundaryID;
+
   if (platform->comm.mpiRank == 0)
-    printf("NboundaryIDs: %d, NboundaryFaces: %lld ", Nbid, NboundaryFaces);
+    printf("Nelements: %d, NboundaryIDs: %d, NboundaryFaces: %lld ", NelementsGlobal, mesh->Nbid , NboundaryFaces);
   mesh->NboundaryFaces = NboundaryFaces;
 
   // boundary face tags (face numbering is in pre-processor notation)
@@ -76,19 +80,14 @@ void meshNekReaderHex3D(int N, mesh_t* mesh)
       }
     }
   }
-  if (Nbid > 0) {
+  if (mesh->Nbid  > 0) {
     MPI_Allreduce(MPI_IN_PLACE, &minEToB, 1, MPI_INT, MPI_MIN, platform->comm.mpiComm);
-    if (minEToB != 1) {
-      if (platform->comm.mpiRank == 0)
-        printf("\nboundary IDs are not one-based, min(ID): %d!\n", minEToB);
-      EXIT_AND_FINALIZE(EXIT_FAILURE);
-    }
+    nrsCheck(minEToB != 1, platform->comm.mpiComm, EXIT_FAILURE,
+             "\nboundary ID needs to be one-based index but min(ID) is %d!\n", minEToB);
 #if 0
     MPI_Allreduce(MPI_IN_PLACE, &maxEToB, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    if (maxEToB - minEToB != Nbid - 1) {
-      if (platform->comm.mpiRank == 0)
-        printf("\nboundary IDs are not contiguous!\n");
-      EXIT_AND_FINALIZE(EXIT_FAILURE);
+    if (maxEToB - minEToB != mesh->Nbid  - 1) {
+      printf("\nboundary IDs are not contiguous!\n");
     }
 #endif
   }

@@ -1,3 +1,57 @@
+# Release v23.0
+
+## What is new? 
+
+* Lagrangian phase model (one-way coupling) 
+* Overset grids (neknek)
+* Particle tracking 
+* Single source udf+oudf
+* Device support BoomerAMG
+* Improved runtime statistics
+* 4th-kind Chebyshev smoothers
+* Configureable time averaging 
+* Extrapolation initialGuess method
+* Scaleable JIT compilation
+* Real gas support for lowMach
+* More examples
+* Various bug fixes 
+
+## Good to know
+
+* [udf] Changes in include files do not trigger a rebuild automatically 
+* [udf] Plugins kernels will be loaded automatically (call in `UDF_LoadKernels` no longer required)
+
+## Breaking Changes
+* [nrsconfig] Ensure env-vars `CC`, `CXX` and `FC` point to the correct MPI compiler wrappers (see README.md for an example)
+* [udf] Plugin header files need to be included explicitly
+* [udf] Rename `bc->wrk` => `bc->usrwrk`
+* [udf] Update to new API of lowMach plugin (see lowMach example)
+* Time step was added to `nekRS::outfld(..., int step, ...)`
+* [par] Use `pMGSchedule` instead of `pMultigridCoarsening` (see help for more details)
+* [par] Rename writeControl value `runTime` => `simulationTime`
+* [par] Remove multigrid qualifier `coarse`
+* [par] Remove SEMFEM solver specification from key `preconditioner`, use `semfemSolver` instead
+* [par] Replace `stressFormulation = true` by `equation = navierStokes+variableViscosity` 
+* [par] Replace bcType `fixedValue` by `codedFixedValue`
+* [par] Replace `elasticity` by `pcg+block` for mesh solver
+* Use occa::memory mesh_t objects for vgeo, cubvgeo, ggeom, sgeom, LMM, invLMM (no longer mirrored on host)
+* All `boundaryIDs` need to be assigned in  `boundaryTypeMap` (use `none` for an internal boundary)
+
+## Known Bugs / Restrictions
+
+* Code is not fully optimized on CPUs in general and Intel GPUs
+* [485](https://github.com/Nek5000/Nek5000/issues/485)
+* [729](https://github.com/Nek5000/Nek5000/issues/759)
+* [258](https://github.com/Nek5000/nekRS/issues/258)
+
+## Thanks to our Contributors
+
+@neil-lindquist, @kris-rowe, @pwang234, @nandu90, @yhaomin2007
+
+We are grateful to all who added new features, filed issues or helped resolve them, 
+asked and answered questions, and were part of inspiring discussions.
+
+
 # Release v22.0
 
 ## What is new? 

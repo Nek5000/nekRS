@@ -1,0 +1,17 @@
+@kernel void nStagesSumMany(const dlong N,
+                              const dlong fieldOffset,
+                              const dlong Nstates,
+                              const dlong Nfields,
+                              @ restrict const dfloat *coef,
+                              @ restrict const dfloat *field,
+                              @ restrict dfloat *result)
+{
+  for (dlong i = 0; i < N; ++i; @tile(p_blockSize, @outer, @inner)) {
+    for (int state = 0; state < Nstates; ++state) {
+      const dfloat coefState = coef[state];
+      for (int fld = 0; fld < Nfields; ++fld) {
+        result[i + fld * fieldOffset] += coefState * field[i + fld * fieldOffset + state * Nfields * fieldOffset];
+      }
+    }
+  }
+}

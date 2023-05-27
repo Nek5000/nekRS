@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -19,7 +19,7 @@
  * hypre_IJVectorDistribute
  *--------------------------------------------------------------------------*/
 
-HYPRE_Int 
+HYPRE_Int
 hypre_IJVectorDistribute( HYPRE_IJVector vector, const HYPRE_Int *vec_starts )
 {
    hypre_IJVector *vec = (hypre_IJVector *) vector;
@@ -28,11 +28,13 @@ hypre_IJVectorDistribute( HYPRE_IJVector vector, const HYPRE_Int *vec_starts )
    {
       hypre_printf("Vector variable is NULL -- hypre_IJVectorDistribute\n");
       exit(1);
-   } 
+   }
 
    if ( hypre_IJVectorObjectType(vec) == HYPRE_PARCSR )
 
-      return( hypre_IJVectorDistributePar(vec, vec_starts) );
+   {
+      return ( hypre_IJVectorDistributePar(vec, vec_starts) );
+   }
 
    else
    {
@@ -47,7 +49,7 @@ hypre_IJVectorDistribute( HYPRE_IJVector vector, const HYPRE_Int *vec_starts )
  * hypre_IJVectorZeroValues
  *--------------------------------------------------------------------------*/
 
-HYPRE_Int 
+HYPRE_Int
 hypre_IJVectorZeroValues( HYPRE_IJVector vector )
 {
    hypre_IJVector *vec = (hypre_IJVector *) vector;
@@ -56,7 +58,7 @@ hypre_IJVectorZeroValues( HYPRE_IJVector vector )
    {
       hypre_printf("Vector variable is NULL -- hypre_IJVectorZeroValues\n");
       exit(1);
-   } 
+   }
 
    /*  if ( hypre_IJVectorObjectType(vec) == HYPRE_PETSC )
 
@@ -69,9 +71,9 @@ hypre_IJVectorZeroValues( HYPRE_IJVector vector )
    else */
 
    if ( hypre_IJVectorObjectType(vec) == HYPRE_PARCSR )
-
-      return( hypre_IJVectorZeroValuesPar(vec) );
-
+   {
+      return ( hypre_IJVectorZeroValuesPar(vec) );
+   }
    else
    {
       hypre_printf("Unrecognized object type -- hypre_IJVectorZeroValues\n");

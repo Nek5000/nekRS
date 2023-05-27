@@ -32,44 +32,51 @@
 #include "platform.hpp"
 #include "nekInterfaceAdapter.hpp"
 
-void meshParallelGatherScatterSetup(mesh_t* mesh,
+void meshParallelGatherScatterSetup(mesh_t *mesh,
                                     dlong N,
-                                    hlong* globalIds,
+                                    hlong *globalIds,
                                     MPI_Comm &comm,
                                     oogs_mode gsMode,
                                     int verbose)
 {
-  
+
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  if(platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0)
     std::cout << "meshParallelGatherScatterSetup N=" << mesh->N << "\n";
   mesh->ogs = ogsSetup(N, globalIds, comm, verbose, platform->device.occaDevice());
 
-  //use the gs to find what nodes are local to this rank
-  int* minRank = (int*) calloc(N,sizeof(int));
-  int* maxRank = (int*) calloc(N,sizeof(int));
+  // use the gs to find what nodes are local to this rank
+  int *minRank = (int *)calloc(N, sizeof(int));
+  int *maxRank = (int *)calloc(N, sizeof(int));
   for (dlong i = 0; i < N; i++) {
     minRank[i] = rank;
     maxRank[i] = rank;
   }
 
-  ogsGatherScatter(minRank, ogsInt, ogsMin, mesh->ogs); //minRank[n] contains the smallest rank taking part in the gather of node n
-  ogsGatherScatter(maxRank, ogsInt, ogsMax, mesh->ogs); //maxRank[n] contains the largest rank taking part in the gather of node n
+  ogsGatherScatter(minRank,
+                   ogsInt,
+                   ogsMin,
+                   mesh->ogs); // minRank[n] contains the smallest rank taking part in the gather of node n
+  ogsGatherScatter(maxRank,
+                   ogsInt,
+                   ogsMax,
+                   mesh->ogs); // maxRank[n] contains the largest rank taking part in the gather of node n
 
   int overlap = 1;
-  if(platform->options.compareArgs("GS OVERLAP", "FALSE")) overlap = 0;
+  if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "FALSE"))
+    overlap = 0;
 
   // count elements that contribute to global C0 gather-scatter
   dlong globalCount = 0;
   dlong localCount = 0;
-  for(dlong e = 0; e < mesh->Nelements; ++e) {
+  for (dlong e = 0; e < mesh->Nelements; ++e) {
     int isHalo = 1;
-    if(overlap) {	  
+    if (overlap) {
       isHalo = 0;
-      for(int n = 0; n < mesh->Np; ++n) {
+      for (int n = 0; n < mesh->Np; ++n) {
         dlong id = e * mesh->Np + n;
         if ((minRank[id] != rank) || (maxRank[id] != rank)) {
           isHalo = 1;
@@ -82,8 +89,8 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
   }
 
   mesh->elementList = (dlong *)calloc(mesh->Nelements, sizeof(dlong));
-  mesh->globalGatherElementList = (dlong*) calloc(globalCount, sizeof(dlong));
-  mesh->localGatherElementList  = (dlong*) calloc(localCount, sizeof(dlong));
+  mesh->globalGatherElementList = (dlong *)calloc(globalCount, sizeof(dlong));
+  mesh->localGatherElementList = (dlong *)calloc(localCount, sizeof(dlong));
 
   for (dlong e = 0; e < mesh->Nelements; ++e) {
     mesh->elementList[e] = e;
@@ -92,11 +99,11 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
   globalCount = 0;
   localCount = 0;
 
-  for(dlong e = 0; e < mesh->Nelements; ++e) {
-      int isHalo = 1;
-      if(overlap) {	  
+  for (dlong e = 0; e < mesh->Nelements; ++e) {
+    int isHalo = 1;
+    if (overlap) {
       isHalo = 0;
-      for(int n = 0; n < mesh->Np; ++n) {
+      for (int n = 0; n < mesh->Np; ++n) {
         dlong id = e * mesh->Np + n;
         if ((minRank[id] != rank) || (maxRank[id] != rank)) {
           isHalo = 1;
@@ -104,7 +111,7 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
         }
       }
     }
-    if(isHalo)
+    if (isHalo)
       mesh->globalGatherElementList[globalCount++] = e;
     else
       mesh->localGatherElementList[localCount++] = e;
@@ -118,40 +125,42 @@ void meshParallelGatherScatterSetup(mesh_t* mesh,
 
   mesh->o_elementList = platform->device.malloc(mesh->Nelements * sizeof(dlong), mesh->elementList);
 
-  if(globalCount)
+  if (globalCount)
     mesh->o_globalGatherElementList =
-      platform->device.malloc(globalCount * sizeof(dlong), mesh->globalGatherElementList);
+        platform->device.malloc(globalCount * sizeof(dlong), mesh->globalGatherElementList);
 
-  if(localCount)
+  if (localCount)
     mesh->o_localGatherElementList =
-      platform->device.malloc(localCount * sizeof(dlong), mesh->localGatherElementList);
-  
+        platform->device.malloc(localCount * sizeof(dlong), mesh->localGatherElementList);
+
   { // sanity check
     int err = 0;
     dlong gNelements = mesh->Nelements;
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
- 
-    occa::memory o_tmp = platform->device.malloc(mesh->Nlocal ,  sizeof(dfloat));
+
+    occa::memory o_tmp = platform->device.malloc(mesh->Nlocal, sizeof(dfloat));
     platform->linAlg->fillKernel(mesh->Nlocal, 1.0, o_tmp);
- 
+
     ogsGatherScatter(o_tmp, ogsDfloat, ogsAdd, mesh->ogs);
- 
+
     platform->linAlg->axmyKernel(mesh->Nlocal, 1.0, mesh->ogs->o_invDegree, o_tmp);
-    dfloat* tmp = (dfloat*) calloc(mesh->Nlocal, sizeof(dfloat));
+    dfloat *tmp = (dfloat *)calloc(mesh->Nlocal, sizeof(dfloat));
     o_tmp.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
     dfloat sum1 = 0;
-    for(int i = 0; i < mesh->Nlocal; i++) sum1 += tmp[i];
+    for (int i = 0; i < mesh->Nlocal; i++)
+      sum1 += tmp[i];
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
     sum1 = abs(sum1 - sum2) / sum2;
-    if(sum1 > 1e-15) {
-      if(platform->comm.mpiRank == 0) printf("ogsGatherScatter test err=%g!\n", sum1);
+    if (sum1 > 1e-15) {
+      if (platform->comm.mpiRank == 0)
+        printf("ogsGatherScatter test err=%g!\n", sum1);
       fflush(stdout);
       err++;
     }
     o_tmp.free();
- 
-    if(err) ABORT(1);
+
+    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "sanity check failed");
     free(tmp);
   }
 }

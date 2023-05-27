@@ -1,0 +1,23 @@
+@kernel void E4(const dlong N,
+                const dlong offset,
+                const dlong Nfields,
+                const dfloat a,
+                const dfloat b,
+                @ restrict const dfloat *X1,
+                @ restrict const dfloat *X2,
+                @ restrict const dfloat *X3,
+                @ restrict const dfloat *X4,
+                @ restrict dfloat *OUT)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+    if (n < N) {
+      for (dlong fld = 0; fld < Nfields; ++fld) {
+        const dlong id = n + fld * offset;
+        const dfloat x1n = X1[id];
+        const dfloat x2n = X2[id];
+        const dfloat x3n = X3[id];
+        const dfloat x4n = X4[id];
+        OUT[id] = a * OUT[id] + b * x1n * x2n * x3n *x4n;
+      }
+    }
+}

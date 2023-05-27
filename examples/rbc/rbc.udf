@@ -1,25 +1,22 @@
 //
 // nekRS User Defined File
 //
-#include <math.h>
 #include "udf.hpp"
 
-static occa::kernel fillFUKernel; 
+#ifdef __okl__
+
+#include "rbc.oudf"
+
+#endif
 
 void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
 {
-  mesh_t* mesh = nrs->meshV;
-  fillFUKernel(mesh->Nlocal, nrs->fieldOffset, nrs->cds->o_S, nrs->o_FU);
-}
-
-void UDF_LoadKernels(occa::properties& kernelInfo)
-{
-  fillFUKernel = oudfBuildKernel(kernelInfo, "fillFU");
+  mesh_t *mesh = nrs->meshV;
+  cfill(mesh->Nlocal, nrs->fieldOffset, nrs->cds->o_S, nrs->o_FU);
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
-  // assign function pointer to drive flow by constant mean pressure gradient
   udf.uEqnSource = &userf;
 }
 

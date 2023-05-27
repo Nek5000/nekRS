@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -12,6 +12,7 @@
  *****************************************************************************/
 
 #include "_hypre_struct_mv.h"
+#include "_hypre_struct_mv.hpp"
 
 /*--------------------------------------------------------------------------
  * hypre_StructScale
@@ -22,15 +23,15 @@ hypre_StructScale( HYPRE_Complex       alpha,
                    hypre_StructVector *y     )
 {
    hypre_Box       *y_data_box;
-                   
+
    HYPRE_Complex   *yp;
-                   
+
    hypre_BoxArray  *boxes;
    hypre_Box       *box;
    hypre_Index      loop_size;
    hypre_IndexRef   start;
    hypre_Index      unit_stride;
-                   
+
    HYPRE_Int        i;
 
    hypre_SetIndex(unit_stride, 1);

@@ -1,0 +1,534 @@
+#if p_knl == 0
+@kernel void ellipticStressPartialAxCoeffHex3D_v0(const dlong Nelements,
+                                               const dlong offset,
+                                               const dlong loffset,
+                                               @ restrict const dlong *elementList,
+                                               @ restrict const dfloat *vgeo,
+                                               @ restrict const dfloat *D,
+                                               @ restrict const dfloat *S,
+                                               @ restrict const dfloat *lambda0,
+                                               @ restrict const dfloat *lambda1,
+                                               @ restrict const dfloat *q,
+                                               @ restrict dfloat *Aq)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @shared dfloat s_U[p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq];
+    @exclusive dfloat s_Uloc[p_Nq];
+    @exclusive dfloat s_Vloc[p_Nq];
+    @exclusive dfloat s_Wloc[p_Nq];
+    @shared dfloat s_SUr[p_Nq][p_Nq];
+    @shared dfloat s_SUs[p_Nq][p_Nq];
+    @exclusive dfloat s_SUtloc[p_Nq];
+
+    @shared dfloat s_SVr[p_Nq][p_Nq];
+    @shared dfloat s_SVs[p_Nq][p_Nq];
+    @exclusive dfloat s_SVt[p_Nq];
+
+    @shared dfloat s_SWr[p_Nq][p_Nq];
+    @shared dfloat s_SWs[p_Nq][p_Nq];
+    @exclusive dfloat s_SWt[p_Nq];
+
+    @exclusive dfloat rx, ry, rz;
+    @exclusive dfloat sx, sy, sz;
+    @exclusive dfloat tx, ty, tz;
+
+    @exclusive dfloat s11, s12, s13;
+    @exclusive dfloat s21, s22, s23;
+    @exclusive dfloat s31, s32, s33;
+
+    @exclusive dfloat r_Au[p_Nq];
+    @exclusive dfloat r_Av[p_Nq];
+    @exclusive dfloat r_Aw[p_Nq];
+    @exclusive dlong element;
+
+#pragma unroll p_Nq    
+    for (int k = 0; k < p_Nq; ++k) {
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1))
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          element = elementList[e];
+          if (k == 0)
+            s_D[j][i] = D[p_Nq * j + i];
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          s_U[j][i] = q[id + 0 * offset];
+          s_V[j][i] = q[id + 1 * offset];
+          s_W[j][i] = q[id + 2 * offset];
+          if (k == 0) {
+            for (int l = 0; l < p_Nq; ++l) {
+              const dlong other_id = element * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              s_Uloc[l] = q[other_id + 0 * offset];
+              s_Vloc[l] = q[other_id + 1 * offset];
+              s_Wloc[l] = q[other_id + 2 * offset];
+            }
+          }
+        }
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1))
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong gid = i + j * p_Nq + k * p_Nq * p_Nq + element * p_Np * p_Nvgeo;
+          rx = vgeo[gid + p_RXID * p_Np];
+          ry = vgeo[gid + p_RYID * p_Np];
+          rz = vgeo[gid + p_RZID * p_Np];
+
+          sx = vgeo[gid + p_SXID * p_Np];
+          sy = vgeo[gid + p_SYID * p_Np];
+          sz = vgeo[gid + p_SZID * p_Np];
+
+          tx = vgeo[gid + p_TXID * p_Np];
+          ty = vgeo[gid + p_TYID * p_Np];
+          tz = vgeo[gid + p_TZID * p_Np];
+
+          const dfloat JW = vgeo[gid + p_JWID * p_Np];
+
+          dfloat ur = 0.f, us = 0.f, ut = 0.f;
+          dfloat vr = 0.f, vs = 0.f, vt = 0.f;
+          dfloat wr = 0.f, ws = 0.f, wt = 0.f;
+          for (int m = 0; m < p_Nq; ++m) {
+            const dfloat Dim = s_D[i][m]; // Dr
+            const dfloat Djm = s_D[j][m]; // Ds
+            const dfloat Dkm = s_D[k][m]; // Dt
+
+            ur += Dim * s_U[j][m];
+            us += Djm * s_U[m][i];
+            ut += Dkm * s_Uloc[m];
+
+            vr += Dim * s_V[j][m];
+            vs += Djm * s_V[m][i];
+            vt += Dkm * s_Vloc[m];
+
+            wr += Dim * s_W[j][m];
+            ws += Djm * s_W[m][i];
+            wt += Dkm * s_Wloc[m];
+          }
+
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          const dfloat u_lam0 = lambda0[p_lambda*id + 0 * loffset];
+          const dfloat v_lam0 = lambda0[p_lambda*id + 1 * loffset];
+          const dfloat w_lam0 = lambda0[p_lambda*id + 2 * loffset];
+
+          const dfloat u_lam1 = lambda1[p_lambda*id + 0 * loffset];
+          const dfloat v_lam1 = lambda1[p_lambda*id + 1 * loffset];
+          const dfloat w_lam1 = lambda1[p_lambda*id + 2 * loffset];
+
+          const dfloat dudx = rx * ur + sx * us + tx * ut;
+          const dfloat dudy = ry * ur + sy * us + ty * ut;
+          const dfloat dudz = rz * ur + sz * us + tz * ut;
+
+          const dfloat dvdx = rx * vr + sx * vs + tx * vt;
+          const dfloat dvdy = ry * vr + sy * vs + ty * vt;
+          const dfloat dvdz = rz * vr + sz * vs + tz * vt;
+
+          const dfloat dwdx = rx * wr + sx * ws + tx * wt;
+          const dfloat dwdy = ry * wr + sy * ws + ty * wt;
+          const dfloat dwdz = rz * wr + sz * ws + tz * wt;
+
+          s11 = u_lam0 * JW * (dudx + dudx);
+          s12 = u_lam0 * JW * (dudy + dvdx);
+          s13 = u_lam0 * JW * (dudz + dwdx);
+
+          s21 = v_lam0 * JW * (dvdx + dudy);
+          s22 = v_lam0 * JW * (dvdy + dvdy);
+          s23 = v_lam0 * JW * (dvdz + dwdy);
+
+          s31 = w_lam0 * JW * (dwdx + dudz);
+          s32 = w_lam0 * JW * (dwdy + dvdz);
+          s33 = w_lam0 * JW * (dwdz + dwdz);
+
+          r_Au[k] = u_lam1 * JW * s_U[j][i];
+          r_Av[k] = v_lam1 * JW * s_V[j][i];
+          r_Aw[k] = w_lam1 * JW * s_W[j][i];
+        }
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1))
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          s_SUr[j][i] = rx * s11 + ry * s12 + rz * s13;
+          s_SUs[j][i] = sx * s11 + sy * s12 + sz * s13;
+          s_SUtloc[k] = tx * s11 + ty * s12 + tz * s13;
+
+          s_SVr[j][i] = rx * s21 + ry * s22 + rz * s23;
+          s_SVs[j][i] = sx * s21 + sy * s22 + sz * s23;
+          s_SVt[k] = tx * s21 + ty * s22 + tz * s23;
+
+          s_SWr[j][i] = rx * s31 + ry * s32 + rz * s33;
+          s_SWs[j][i] = sx * s31 + sy * s32 + sz * s33;
+          s_SWt[k] = tx * s31 + ty * s32 + tz * s33;
+        }
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+          for (int m = 0; m < p_Nq; m++) {
+            const dfloat Dim = s_D[m][i]; // Dr'
+            const dfloat Djm = s_D[m][j]; // Ds'
+
+            r_Au[k] += Dim * s_SUr[j][m];
+            r_Au[k] += Djm * s_SUs[m][i];
+
+            r_Av[k] += Dim * s_SVr[j][m];
+            r_Av[k] += Djm * s_SVs[m][i];
+
+            r_Aw[k] += Dim * s_SWr[j][m];
+            r_Aw[k] += Djm * s_SWs[m][i];
+          }
+        }
+      }
+    }
+
+#pragma unroll p_Nq    
+    for (int k = 0; k < p_Nq; ++k) {
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+          for (int m = 0; m < p_Nq; m++) {
+            const dfloat Dkm = s_D[m][k]; // Dt'
+
+            r_Au[k] += Dkm * s_SUtloc[m];
+
+            r_Av[k] += Dkm * s_SVt[m];
+
+            r_Aw[k] += Dkm * s_SWt[m];
+          }
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          Aq[id + 0 * offset] = r_Au[k];
+          Aq[id + 1 * offset] = r_Av[k];
+          Aq[id + 2 * offset] = r_Aw[k];
+        }
+      }
+    }
+  }
+}
+#endif
+
+
+#if p_knl == 1
+@kernel void ellipticStressPartialAxCoeffHex3D_v1(const dlong Nelements,
+                                               const dlong offset,
+                                               const dlong loffset,
+                                               @ restrict const dlong *elementList,
+                                               @ restrict const dfloat *vgeo,
+                                               @ restrict const dfloat *D,
+                                               @ restrict const dfloat *S,
+                                               @ restrict const dfloat *lambda0,
+                                               @ restrict const dfloat *lambda1,
+                                               @ restrict const dfloat *q,
+                                               @ restrict dfloat *Aq)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_tmp[3][p_Nq][p_Nq][p_Nq];
+
+    @exclusive dfloat rx, ry, rz;
+    @exclusive dfloat sx, sy, sz;
+    @exclusive dfloat tx, ty, tz;
+
+    @exclusive dfloat s11, s12, s13;
+    @exclusive dfloat s21, s22, s23;
+    @exclusive dfloat s31, s32, s33;
+
+    @exclusive dfloat r_AU[pts_per_thread];
+    @exclusive dfloat r_AV[pts_per_thread];
+    @exclusive dfloat r_AW[pts_per_thread];
+    @exclusive dlong element;
+
+    @exclusive dfloat r_Ut[pts_per_thread], r_Ur[pts_per_thread], r_Us[pts_per_thread];
+    @exclusive dfloat r_Vt[pts_per_thread], r_Vr[pts_per_thread], r_Vs[pts_per_thread];
+    @exclusive dfloat r_Wt[pts_per_thread], r_Wr[pts_per_thread], r_Ws[pts_per_thread];
+
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {    
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          element = elementList[e];
+          if (s == 0) {
+            s_D[j][i] = D[p_Nq * j + i];
+          }
+          const dlong base = i + j * p_Nq + element * p_Np;
+          for (int k = 0; k < pts_per_thread; ++k) {
+            const dlong id = base + (s+k*n_plane) * p_Nq * p_Nq;
+            s_tmp[0][s+k*n_plane][j][i] = q[id + 0 * offset];
+            s_tmp[1][s+k*n_plane][j][i] = q[id + 1 * offset];
+            s_tmp[2][s+k*n_plane][j][i] = q[id + 2 * offset];
+            r_Ur[k] = 0;
+            r_Us[k] = 0;
+            r_Ut[k] = 0;              
+            r_Vr[k] = 0;
+            r_Vs[k] = 0;
+            r_Vt[k] = 0;              
+            r_Wr[k] = 0;
+            r_Ws[k] = 0;
+            r_Wt[k] = 0;
+          }
+        }
+      }
+    }
+    @barrier();
+
+    // grad in r
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {    
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq        
+          for (int m = 0; m < p_Nq; ++m) {
+            const dfloat Dim = s_D[i][m]; 
+#pragma unroll p_Nq          
+            for (int k = 0; k < pts_per_thread; ++k) {
+              r_Ur[k] += Dim * s_tmp[0][s+k*n_plane][j][m];
+              r_Vr[k] += Dim * s_tmp[1][s+k*n_plane][j][m];
+              r_Wr[k] += Dim * s_tmp[2][s+k*n_plane][j][m];
+            }
+          }
+        }
+      }
+    }
+
+    // grad in s
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq        
+          for (int m = 0; m < p_Nq; ++m) {
+            const dfloat Djm = s_D[j][m];
+#pragma unroll p_Nq          
+            for (int k = 0; k < p_Nq; ++k) {
+              r_Us[k] += Djm * s_tmp[0][s+k*n_plane][m][i];
+              r_Vs[k] += Djm * s_tmp[1][s+k*n_plane][m][i];
+              r_Ws[k] += Djm * s_tmp[2][s+k*n_plane][m][i];
+            }
+          }
+        }
+      }
+    }
+
+    // grad in t
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll pts_per_thread          
+          for (int k2 = 0; k2 < pts_per_thread; k2++) {
+#pragma unroll n_plane            
+            for (int s2 = 0; s2 < n_plane; s2++) {
+              dfloat t_U = s_tmp[0][s2+k2*n_plane][j][i];
+              dfloat t_V = s_tmp[1][s2+k2*n_plane][j][i];
+              dfloat t_W = s_tmp[2][s2+k2*n_plane][j][i];
+#pragma unroll pts_per_thread              
+              for (int k = 0; k < pts_per_thread; k++) {
+                dfloat t_D = s_D[s+k*n_plane][s2+k2*n_plane];
+                r_Ut[k] += t_D * t_U;
+                r_Vt[k] += t_D * t_V;
+                r_Wt[k] += t_D * t_W;                                    
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          for (int k = 0; k < pts_per_thread; ++k) {
+            const dlong gid = i + j * p_Nq + (s+k*n_plane) * p_Nq * p_Nq + element * p_Np * p_Nvgeo;
+            rx = vgeo[gid + p_RXID * p_Np];
+            ry = vgeo[gid + p_RYID * p_Np];
+            rz = vgeo[gid + p_RZID * p_Np];
+            sx = vgeo[gid + p_SXID * p_Np];
+            sy = vgeo[gid + p_SYID * p_Np];
+            sz = vgeo[gid + p_SZID * p_Np];
+            tx = vgeo[gid + p_TXID * p_Np];
+            ty = vgeo[gid + p_TYID * p_Np];
+            tz = vgeo[gid + p_TZID * p_Np];
+            const dfloat JW = vgeo[gid + p_JWID * p_Np];
+            
+            const dlong id = element * p_Np + (s+k*n_plane) * p_Nq * p_Nq + j * p_Nq + i;
+
+            const dfloat u_lam0 = lambda0[p_lambda*id + 0 * loffset];
+            const dfloat v_lam0 = lambda0[p_lambda*id + 1 * loffset];
+            const dfloat w_lam0 = lambda0[p_lambda*id + 2 * loffset];
+  
+            const dfloat u_lam1 = lambda1[p_lambda*id + 0 * loffset];
+            const dfloat v_lam1 = lambda1[p_lambda*id + 1 * loffset];
+            const dfloat w_lam1 = lambda1[p_lambda*id + 2 * loffset];
+
+            const dfloat dudx = rx * r_Ur[k] + sx * r_Us[k] + tx * r_Ut[k];
+            const dfloat dudy = ry * r_Ur[k] + sy * r_Us[k] + ty * r_Ut[k];
+            const dfloat dudz = rz * r_Ur[k] + sz * r_Us[k] + tz * r_Ut[k];
+
+            const dfloat dvdx = rx * r_Vr[k] + sx * r_Vs[k] + tx * r_Vt[k];
+            const dfloat dvdy = ry * r_Vr[k] + sy * r_Vs[k] + ty * r_Vt[k];
+            const dfloat dvdz = rz * r_Vr[k] + sz * r_Vs[k] + tz * r_Vt[k];
+
+            const dfloat dwdx = rx * r_Wr[k] + sx * r_Ws[k] + tx * r_Wt[k];
+            const dfloat dwdy = ry * r_Wr[k] + sy * r_Ws[k] + ty * r_Wt[k];
+            const dfloat dwdz = rz * r_Wr[k] + sz * r_Ws[k] + tz * r_Wt[k];
+
+            s11 = u_lam0 * JW * (dudx + dudx);
+            s12 = u_lam0 * JW * (dudy + dvdx);
+            s13 = u_lam0 * JW * (dudz + dwdx);
+
+            s21 = v_lam0 * JW * (dvdx + dudy);
+            s22 = v_lam0 * JW * (dvdy + dvdy);
+            s23 = v_lam0 * JW * (dvdz + dwdy);
+
+            s31 = w_lam0 * JW * (dwdx + dudz);
+            s32 = w_lam0 * JW * (dwdy + dvdz);
+            s33 = w_lam0 * JW * (dwdz + dwdz);
+
+            r_AU[k] = u_lam1 * JW * s_tmp[0][s+k*n_plane][j][i];
+            r_AV[k] = v_lam1 * JW * s_tmp[1][s+k*n_plane][j][i];
+            r_AW[k] = w_lam1 * JW * s_tmp[2][s+k*n_plane][j][i];
+
+            r_Ur[k] = rx * s11 + ry * s12 + rz * s13;
+            r_Us[k] = sx * s11 + sy * s12 + sz * s13;
+            r_Ut[k] = tx * s11 + ty * s12 + tz * s13;
+
+            r_Vr[k] = rx * s21 + ry * s22 + rz * s23;
+            r_Vs[k] = sx * s21 + sy * s22 + sz * s23;
+            r_Vt[k] = tx * s21 + ty * s22 + tz * s23;
+
+            r_Wr[k] = rx * s31 + ry * s32 + rz * s33;
+            r_Ws[k] = sx * s31 + sy * s32 + sz * s33;
+            r_Wt[k] = tx * s31 + ty * s32 + tz * s33;          
+          }
+        }
+      }
+    }
+    @barrier();
+
+    // div in r
+    @barrier();
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll pts_per_thread          
+          for (int k = 0; k < pts_per_thread; k++) {
+            s_tmp[0][s+k*n_plane][j][i] = r_Ur[k];
+            s_tmp[1][s+k*n_plane][j][i] = r_Vr[k];
+            s_tmp[2][s+k*n_plane][j][i] = r_Wr[k];              
+          }
+        }
+      }
+    }
+    @barrier();      
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq          
+          for (int m = 0; m < p_Nq; m++) {
+            dfloat Dmi = s_D[m][i];
+#pragma unroll pts_per_thread            
+            for (int k = 0; k < pts_per_thread; k++) {
+              r_AU[k] += Dmi * s_tmp[0][s+k*n_plane][j][m];
+              r_AV[k] += Dmi * s_tmp[1][s+k*n_plane][j][m];
+              r_AW[k] += Dmi * s_tmp[2][s+k*n_plane][j][m];                
+            }
+          }
+        }
+      }
+    }
+    // div in s
+    @barrier();
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll pts_per_thread          
+          for (int k = 0; k < pts_per_thread; k++) {
+            s_tmp[0][s+k*n_plane][j][i] = r_Us[k];
+            s_tmp[1][s+k*n_plane][j][i] = r_Vs[k];
+            s_tmp[2][s+k*n_plane][j][i] = r_Ws[k];
+          }
+        }
+      }
+    }
+    @barrier();
+    for (int s = 0; s < n_plane; ++s; @inner(2)) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          for (int m = 0; m < p_Nq; m++) {
+            dfloat Dmj = s_D[m][j];
+#pragma unroll pts_per_thread  
+            for (int k = 0; k < pts_per_thread; k++) {
+              r_AU[k] += Dmj * s_tmp[0][s+k*n_plane][m][i];
+              r_AV[k] += Dmj * s_tmp[1][s+k*n_plane][m][i];
+              r_AW[k] += Dmj * s_tmp[2][s+k*n_plane][m][i];
+            }
+          }
+        }
+      }
+    }
+    // div in t
+    if (n_plane > 1) {
+      @barrier();
+      for (int s = 0; s < n_plane; ++s; @inner(2)) {
+        for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+          for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll pts_per_thread          
+            for (int k = 0; k < pts_per_thread; k++) {
+              s_tmp[0][s+k*n_plane][j][i] = r_Ut[k];
+              s_tmp[1][s+k*n_plane][j][i] = r_Vt[k];
+              s_tmp[2][s+k*n_plane][j][i] = r_Wt[k];              
+            }
+          }
+        }
+      }
+      @barrier();
+      for (int s = 0; s < n_plane; ++s; @inner(2)) {
+        for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+          for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+            for (int k = 0; k < pts_per_thread; k++) {
+              for (int s2 = 0; s2 < n_plane; s2++) {
+                dfloat Utk = s_tmp[0][s2+k*n_plane][j][i];
+                dfloat Vtk = s_tmp[1][s2+k*n_plane][j][i];
+                dfloat Wtk = s_tmp[2][s2+k*n_plane][j][i];
+#pragma unroll pts_per_thread              
+                for (int k2 = 0; k2 < pts_per_thread; k2++) {
+                  double t_D = s_D[s2+k*n_plane][s+k2*n_plane];
+                  r_AU[k2] += t_D * Utk;
+                  r_AV[k2] += t_D * Vtk;
+                  r_AW[k2] += t_D * Wtk;                  
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      for (int s = 0; s < n_plane; ++s; @inner(2)) {
+        for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+          for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+            for (int m = 0; m < p_Nq; m++) {
+#pragma unroll p_Nq          
+              for (int k = 0; k < p_Nq; ++k) {
+                const dfloat Dkm = s_D[m][k]; 
+                r_AU[k] += Dkm * r_Ut[m];
+                r_AV[k] += Dkm * r_Vt[m];
+                r_AW[k] += Dkm * r_Wt[m];            
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for (int s = 0; s < n_plane; ++s; @inner(2)) { 
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+          for (int k = 0; k < pts_per_thread; ++k) {          
+            const dlong id = element * p_Np + (s+k*n_plane) * p_Nq * p_Nq + j * p_Nq + i;
+            Aq[id + 0 * offset] = r_AU[k];
+            Aq[id + 1 * offset] = r_AV[k];
+            Aq[id + 2 * offset] = r_AW[k];
+          }
+        }
+      }
+    }
+  }    
+}
+#endif
+

@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -21,7 +21,7 @@
 typedef struct
 {
    void               *matrix;
-   HYPRE_Int               (*ColMap)(HYPRE_Int, void *);
+   HYPRE_Int         (*ColMap)(HYPRE_Int, void *);
    void               *MapData;
 
 } hypre_MappedMatrix;
@@ -32,9 +32,10 @@ typedef struct
 
 #define hypre_MappedMatrixMatrix(matrix)           ((matrix) -> matrix)
 #define hypre_MappedMatrixColMap(matrix)           ((matrix) -> ColMap)
-#define hypre_MappedMatrixMapData(matrix)           ((matrix) -> MapData)
+#define hypre_MappedMatrixMapData(matrix)          ((matrix) -> MapData)
 
 #define hypre_MappedMatrixColIndex(matrix,j) \
          (hypre_MappedMatrixColMap(matrix)(j,hypre_MappedMatrixMapData(matrix)))
 
 #endif
+

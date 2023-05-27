@@ -1,50 +1,44 @@
 #include <cstring>
+#include <occa/internal/modes/serial/buffer.hpp>
 #include <occa/internal/modes/serial/memory.hpp>
 #include <occa/internal/utils/sys.hpp>
 #include <occa/internal/core/device.hpp>
 
 namespace occa {
   namespace serial {
-    memory::memory(modeDevice_t *modeDevice_,
-                   udim_t size_,
-                   const occa::json &properties_) :
-      occa::modeMemory_t(modeDevice_, size_, properties_) {}
-
-    memory::~memory() {
-      if (ptr && isOrigin) {
-        sys::free(ptr);
-      }
-      ptr = NULL;
-      size = 0;
+    memory::memory(buffer *b,
+                   udim_t size_, dim_t offset_) :
+      occa::modeMemory_t(b, size_, offset_) {
+      ptr = b->ptr + offset;
     }
+
+    memory::memory(memoryPool *memPool,
+                   udim_t size_, dim_t offset_) :
+      occa::modeMemory_t(memPool, size_, offset_) {
+      ptr = memPool->buffer->ptr + offset;
+    }
+
+    memory::~memory() {}
 
     void* memory::getKernelArgPtr() const {
       return ptr;
     }
 
-    modeMemory_t* memory::addOffset(const dim_t offset) {
-      memory *m = new memory(modeDevice,
-                             size - offset,
-                             properties);
-      m->ptr = ptr + offset;
-      return m;
-    }
-
     void memory::copyTo(void *dest,
                         const udim_t bytes,
-                        const udim_t offset,
+                        const udim_t offset_,
                         const occa::json &props) const {
-      const void *srcPtr = ptr + offset;
+      const void *srcPtr = ptr + offset_;
 
       ::memcpy(dest, srcPtr, bytes);
     }
 
     void memory::copyFrom(const void *src,
                           const udim_t bytes,
-                          const udim_t offset,
+                          const udim_t offset_,
                           const occa::json &props) {
 
-      void *destPtr      = ptr + offset;
+      void *destPtr      = ptr + offset_;
       const void *srcPtr = src;
 
       ::memcpy(destPtr, srcPtr, bytes);
@@ -62,9 +56,8 @@ namespace occa {
       ::memcpy(destPtr, srcPtr, bytes);
     }
 
-    void memory::detach() {
-      ptr = NULL;
-      size = 0;
+    void* memory::unwrap() {
+      return static_cast<void*>(&ptr);
     }
   }
 }

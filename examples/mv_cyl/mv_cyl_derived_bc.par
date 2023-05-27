@@ -8,22 +8,19 @@ timeStepper = tombo3
 writeInterval = 50
 
 usr = "mv_cyl.usr"
-oudf = "mv_cyl_derived_bc.oudf"
-udf = "mv_cyl.udf"
 
 [MESH]
-solver = elasticity
+residualTol = 1e-6
+solver = pcg+block #user
+initialGuess = projection+nVector=1
 file = "mv_cyl.re2"
-
-[PROBLEMTYPE]
-stressFormulation = true
 
 [PRESSURE]
 residualTol = 1e-8
 initialGuess = previous
 
 [VELOCITY]
-boundaryTypeMap = fixedValue+moving, zeroValue, sym
+boundaryTypeMap = codedFixedValue+moving, zeroValue, sym
 residualTol = 1e-12
 
 [TEMPERATURE]

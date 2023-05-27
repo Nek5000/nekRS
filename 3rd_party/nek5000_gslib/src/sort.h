@@ -48,10 +48,12 @@
 #define sortv_ul     PREFIXED_NAME(sortv_ul)
 #define sortv_ull    PREFIXED_NAME(sortv_ull)
 #define sortv_double PREFIXED_NAME(sortv_double)
+#define sortv_float PREFIXED_NAME(sortv_float)
 #define sortp_ui     PREFIXED_NAME(sortp_ui)
 #define sortp_ul     PREFIXED_NAME(sortp_ul)
 #define sortp_ull    PREFIXED_NAME(sortp_ull)
 #define sortp_double PREFIXED_NAME(sortp_double)
+#define sortp_float PREFIXED_NAME(sortp_float)
 
 #define sortv TYPE_LOCAL(sortv_ui,sortv_ul,sortv_ull)
 #define sortp TYPE_LOCAL(sortp_ui,sortp_ul,sortp_ull)

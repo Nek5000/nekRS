@@ -93,6 +93,13 @@ module occa_device_m
       type(occaDevice), value :: device
     end subroutine
 
+    ! void occaDeviceFinishAll(occaDevice device);
+    subroutine occaDeviceFinishAll(device) bind(C, name="occaDeviceFinishAll")
+      import occaDevice
+      implicit none
+      type(occaDevice), value :: device
+    end subroutine
+
     ! bool occaDeviceHasSeparateMemorySpace(occaDevice device);
     logical(kind=C_bool) function occaDeviceHasSeparateMemorySpace(device) &
                                   bind(C, name="occaDeviceHasSeparateMemorySpace")
@@ -239,40 +246,6 @@ module occa_device_m
                               bind(C, name="occaDeviceTypedMalloc")
       import C_void_ptr, occaMemory, occaDevice, occaJson, occaUDim_t, &
              occaDtype
-      implicit none
-      type(occaDevice), value :: device
-      integer(occaUDim_t), value, intent(in) :: entries
-      type(occaDtype), value, intent(in) :: dtype
-      type(C_void_ptr), value, intent(in) :: src
-      type(occaJson), value :: props
-    end function
-
-    ! void* occaDeviceUMalloc(occaDevice device,
-    !                         const occaUDim_t bytes,
-    !                         const void *src,
-    !                         occaJson props);
-    type(C_void_ptr) function occaDeviceUMalloc(device, bytes, src, props) &
-                              bind(C, name="occaDeviceUMalloc")
-      import C_void_ptr, occaDevice, occaJson, occaUDim_t
-      implicit none
-      type(occaDevice), value :: device
-      integer(occaUDim_t), value, intent(in) :: bytes
-      type(C_void_ptr), value, intent(in) :: src
-      type(occaJson), value :: props
-    end function
-
-    ! void* occaDeviceTypedUMalloc(occaDevice device,
-    !                              const occaUDim_t entries,
-    !                              const occaDtype type,
-    !                              const void *src,
-    !                              occaJson props);
-    type(C_void_ptr) function occaDeviceTypedUMalloc(device, &
-                                                     entries, &
-                                                     dtype, &
-                                                     src, &
-                                                     props) &
-                              bind(C, name="occaDeviceTypedUMalloc")
-      import C_void_ptr, occaDevice, occaJson, occaUDim_t, occaDtype
       implicit none
       type(occaDevice), value :: device
       integer(occaUDim_t), value, intent(in) :: entries

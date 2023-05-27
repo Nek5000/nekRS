@@ -1,0 +1,113 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+// w = w - \sum_i^k (w^T v_i) v_i
+// w = w - \sum_i^k y_i v_i
+@kernel void gramSchmidtOrthogonalization(const dlong Nblock,
+                                          const dlong N,
+                                          const dlong offset,
+                                          const dlong gmresSize,
+                                          @ restrict const dfloat *weights,
+                                          @ restrict const dfloat *y,
+                                          @ restrict const dfloat *V,
+                                          @ restrict dfloat *w,
+                                          @ restrict dfloat *reduction)
+{
+  for (dlong b = 0; b < Nblock; ++b; @outer(0)) {
+    @shared volatile dfloat s_wxy[p_blockSize];
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      dlong n = t + b * p_blockSize;
+      s_wxy[t] = 0.0;
+      if (n < N) {
+        for (int j = 0; j < gmresSize; ++j) {
+          const dfloat yj = y[j];
+#pragma unroll
+          for (int fld = 0; fld < p_Nfields; fld++) {
+            const dfloat Vnj = V[n + fld * offset + j * offset * p_Nfields];
+            w[n + fld * offset] -= yj * Vnj;
+          }
+        }
+        dfloat sum = 0.0;
+        const dfloat weight = weights[n];
+#pragma unroll
+        for (int fld = 0; fld < p_Nfields; ++fld) {
+          const dfloat w_curr = w[n + fld * offset];
+          sum += w_curr * w_curr * weight;
+        }
+        s_wxy[t] = sum;
+      }
+    }
+    @barrier();
+#if p_blockSize > 512
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 512)
+        s_wxy[t] += s_wxy[t + 512];
+    @barrier();
+#endif
+#if p_blockSize > 256
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 256)
+        s_wxy[t] += s_wxy[t + 256];
+    @barrier();
+#endif
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 128)
+        s_wxy[t] += s_wxy[t + 128];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 64)
+        s_wxy[t] += s_wxy[t + 64];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 32)
+        s_wxy[t] += s_wxy[t + 32];
+    @barrier();
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 16)
+        s_wxy[t] += s_wxy[t + 16];
+    @barrier();
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 8)
+        s_wxy[t] += s_wxy[t + 8];
+    @barrier();
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 4)
+        s_wxy[t] += s_wxy[t + 4];
+    @barrier();
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 2)
+        s_wxy[t] += s_wxy[t + 2];
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 1)
+        reduction[b] = s_wxy[0] + s_wxy[1];
+  }
+}

@@ -1,0 +1,110 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+@kernel void strongAdvectionVolumeHex3D(const dlong Nelements,
+                                        const dlong Nscalars,
+                                        const dlong applyWeight,
+                                        @ restrict const dfloat *weight,
+                                        @ restrict const dfloat *vgeo,
+                                        @ restrict const dfloat *D,
+                                        @ restrict const dlong *computeScalar,
+                                        @ restrict const dlong *fieldOffsetScan,
+                                        const dlong voffset,
+                                        @ restrict const dfloat *S,
+                                        @ restrict const dfloat *Urst,
+                                        @ restrict const dfloat *RHO,
+                                        @ restrict dfloat *NS)
+{
+  for (dlong scalarId = 0; scalarId < Nscalars; ++scalarId; @outer(1)) {
+    for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+      if (computeScalar[scalarId]) {
+        @shared dfloat s_S[p_Nq][p_Nq];
+        @exclusive dfloat s_Sloc[p_Nq];
+        @shared dfloat s_D[p_Nq][p_Nq];
+
+#ifdef smXX
+#pragma unroll p_Nq
+#endif
+        for (int k = 0; k < p_Nq; ++k) {
+          @barrier();
+          for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+            for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+              dlong id = i + j * p_Nq;
+              if (k == 0)
+                s_D[j][i] = D[id];
+
+              id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+              const dfloat Sn = S[id + fieldOffsetScan[scalarId]];
+              s_S[j][i] = Sn;
+              if (k == 0) {
+#pragma unroll p_Nq
+                for (int l = 0; l < p_Nq; ++l) {
+                  const dlong offset = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i + fieldOffsetScan[scalarId];
+                  s_Sloc[l] = S[offset];
+                }
+              }
+            }
+          }
+
+          @barrier();
+
+          for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+            for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+              const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+              dfloat dSdr = 0, dSds = 0, dSdt = 0;
+
+#pragma unroll p_Nq
+              for (int n = 0; n < p_Nq; n++) {
+                const dfloat Dr = s_D[i][n];
+                const dfloat Ds = s_D[j][n];
+                const dfloat Dt = s_D[k][n];
+                dSdr += Dr * s_S[j][n];
+                dSds += Ds * s_S[n][i];
+                dSdt += Dt * s_Sloc[n];
+              }
+
+              const dfloat Uhat = Urst[id + 0 * voffset];
+              const dfloat Vhat = Urst[id + 1 * voffset];
+              const dfloat What = Urst[id + 2 * voffset];
+
+              const dfloat rhoM = RHO[id + fieldOffsetScan[scalarId]];
+              const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+              const dfloat IJW = vgeo[gid + p_IJWID * p_Np];
+
+              dfloat value = NS[id + fieldOffsetScan[scalarId]];
+              value -= IJW * rhoM * (Uhat * dSdr + Vhat * dSds + What * dSdt);
+              if(applyWeight){
+                value *= weight[id];
+              }
+              NS[id + fieldOffsetScan[scalarId]] = value;
+            }
+          }
+        }
+      }
+    }
+  }
+}

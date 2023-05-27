@@ -107,7 +107,7 @@ void meshParallelConnect(mesh_t* mesh)
         for(int n = 0; n < mesh->NfaceVertices; ++n) {
           int nid = mesh->faceVertices[f * mesh->NfaceVertices + n];
           hlong id = mesh->EToV[e * mesh->Nverts + nid];
-          maxv = mymax(maxv, id);
+          maxv = std::max(maxv, id);
         }
         int destRank = (int) (maxv % size);
 
@@ -161,7 +161,7 @@ void meshParallelConnect(mesh_t* mesh)
         for(int n = 0; n < mesh->NfaceVertices; ++n) {
           int nid = mesh->faceVertices[f * mesh->NfaceVertices + n];
           hlong id = mesh->EToV[e * mesh->Nverts + nid];
-          maxv = mymax(maxv, id);
+          maxv = std::max(maxv, id);
         }
         int destRank = (int) (maxv % size);
 

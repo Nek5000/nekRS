@@ -1,9 +1,0 @@
-@kernel void convertFP64ToFP32(const dlong N,
-  @restrict const double * from,
-  @restrict float * to)
-{
-  for(dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
-  {
-    to[n] = (float) from[n];
-  }
-}

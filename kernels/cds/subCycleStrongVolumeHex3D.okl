@@ -1,0 +1,131 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+@kernel void subCycleStrongVolumeHex3D(const dlong Nelements,
+                                       @ restrict const dlong *elementList,
+                                       @ restrict const dfloat *D,
+                                       const dlong offset,
+                                       const dlong NSOffset,
+                                       @ restrict const dfloat *invLumpedMassMatrix,
+                                       @ restrict const dfloat *BdivW,
+                                       const dfloat c0,
+                                       const dfloat c1,
+                                       const dfloat c2,
+                                       @ restrict const dfloat *conv,
+                                       @ restrict const dfloat *S,
+                                       @ restrict dfloat *NU)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @shared dfloat s_Ud[p_Nq][p_Nq];
+    @exclusive dfloat s_Udloc[p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    @exclusive dfloat r_c[p_nEXT];
+
+    @exclusive dlong element;
+
+#pragma unroll p_Nq
+    for (int k = 0; k < p_Nq; ++k) {
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          dlong id = i + j * p_Nq;
+          element = elementList[e];
+
+#pragma unroll p_nEXT
+          for (int s = 0; s < p_nEXT; s++) {
+            dfloat coeff = 0;
+            if (s == 0)
+              coeff = c0;
+            if (s == 1)
+              coeff = c1;
+            if (s == 2)
+              coeff = c2;
+            r_c[s] = coeff;
+          }
+
+          if (k == 0)
+            s_D[j][i] = D[id];
+
+          id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          const dfloat Udn = S[id];
+
+          s_Ud[j][i] = Udn;
+          if (k == 0) {
+#pragma unroll p_Nq
+            for (int l = 0; l < p_Nq; ++l) {
+              const dlong other_id = element * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              const dfloat locUdn = S[other_id];
+              s_Udloc[l] = locUdn;
+            }
+          }
+        }
+      }
+
+      @barrier();
+
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+
+          dfloat duddr = 0, dudds = 0, duddt = 0;
+
+#pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; n++) {
+            const dfloat Dr = s_D[i][n];
+            const dfloat Ds = s_D[j][n];
+            const dfloat Dt = s_D[k][n];
+            duddr += Dr * s_Ud[j][n];
+            dudds += Ds * s_Ud[n][i];
+            duddt += Dt * s_Udloc[n];
+          }
+
+          const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          dfloat invLMM = p_MovingMesh ? 0.0 : invLumpedMassMatrix[id];
+          dfloat bdivw = 0.0;
+          dfloat Ue = 0, Ve = 0, We = 0;
+#pragma unroll p_nEXT
+          for (int s = 0; s < p_nEXT; s++) {
+            dfloat Um = conv[id + 0 * offset + s * p_NVfields * offset];
+            dfloat Vm = conv[id + 1 * offset + s * p_NVfields * offset];
+            dfloat Wm = conv[id + 2 * offset + s * p_NVfields * offset];
+            Ue += r_c[s] * Um;
+            Ve += r_c[s] * Vm;
+            We += r_c[s] * Wm;
+            if (p_MovingMesh) {
+              invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
+              bdivw += r_c[s] * BdivW[id + s * offset];
+            }
+          }
+
+          NU[id + NSOffset] = (Ue * duddr + Ve * dudds + We * duddt - bdivw * S[id]) * invLMM;
+        }
+      }
+    }
+  }
+}

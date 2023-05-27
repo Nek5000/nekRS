@@ -1,0 +1,119 @@
+C-----------------------------------------------------------------------
+      subroutine useric(ix,iy,iz,ieg) ! set up initial conditions
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      ux   = 1.0
+      uy   = 0.0
+      uz   = 0.0
+      temp = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk()
+      include 'SIZE'
+      include 'TOTAL'
+
+      call lambda2(t)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat()   ! This routine to modify element vertices
+      include 'SIZE'
+      include 'TOTAL'
+
+      pi = atan(4.0)
+      n = nelt * 2**ndim
+
+      ymin = glmin(yc,n)
+      ymax = glmax(yc,n)
+      yscale = 1./(ymax-ymin)
+
+      do i=1,n
+         y = yscale*yc(i,1)
+         yc(i,1) = 0.5*(1.0 - cos(y*pi))
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2()  ! This routine to modify mesh coordinates
+      include 'SIZE'
+      include 'TOTAL'
+
+      xmin = 0.
+      xmax = 9.0
+
+      ymin = 0.
+      ymax = 3.035
+
+      zmin = 0.
+      zmax = 4.5
+
+      call rescale_x(xm1,xmin,xmax)
+      call rescale_x(ym1,ymin,ymax)
+      call rescale_x(zm1,zmin,zmax)
+
+      hmax = 28.0
+
+      ntot = nx1*ny1*nz1*nelt
+      do i=1,ntot
+        x  = xm1(i,1,1,1)
+        y  = ym1(i,1,1,1)
+
+        yw = bottomph(hmax*x,hmax*xmin,hmax*xmax)/hmax
+        ym1(i,1,1,1) = (1. - yw/ymax)*y + yw 
+      enddo
+
+      do e=1,nelt
+      do f=1,2*ndim
+        if (cbc(f,e,1) .eq. 'W  ') boundaryID(f,e) = 1
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3()
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      function bottomph(xin,xmin,xmax)
+
+      xx  = xin
+      if (xin .gt. xmax/2) xx  = xin - xmax	! for reflection-like
+      x = abs(xx)
+   
+      if ( ( x >= xmin ).and.( x <= 9.0 ) ) then
+        y = min(28.0,  2.800000000000e+01 + 0.000000000000e+00*x +
+     &       6.775070969851E-03*x*x - 2.124527775800E-03*x*x*x)
+      else if( ( x > 9.0 ).and.( x <= 14.0 ) ) then
+        y =  2.507355893131e+01 + 9.754803562315e-01*x - 
+     &       1.016116352781e-01*x*x + 1.889794677828e-03*x*x*x
+      else if( ( x > 14.0 ).and.( x <= 20.0 ) ) then
+        y = 2.579601052357e+01 + 8.206693007457e-01*x -
+     &       9.055370274339e-02*x*x + 1.626510569859e-03*x*x*x
+      else if( ( x > 20.0 ).and.( x <= 30.0 ) ) then
+        y =  4.046435022819e+01 - 1.379581654948e+00*x 
+     &     + 1.945884504128e-02*x*x - 2.070318932190e-04*x*x*x
+      else if( ( x > 30.0 ).and.( x <= 40.0 ) ) then
+        y =  1.792461334664E+01 + 8.743920332081E-01*x
+     &     - 5.567361123058e-02*x*x + 6.277731764683e-04*x*x*x
+      else if( ( x > 40.0 ).and.( x <= 54.0 ) ) then
+        y = max( 0.0,  5.639011190988e+01 - 2.010520359035e+00*x
+     &           + 1.644919857549e-02*x*x + 2.674976141766e-05*x*x*x )
+      ELSE IF( ( x > 54.0 ).AND.( x <= xmax ) ) THEN
+        y = 0.0
+      endif
+ 
+      bottomph = y
+
+      return
+      END
+c-----------------------------------------------------------------------

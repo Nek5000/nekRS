@@ -1,0 +1,18 @@
+@kernel void extrapolateDirichlet(
+  const dlong nMasked,
+  const dlong maskOffset,
+  const dlong Nstages,
+  @ restrict const dlong *maskIds,
+  @ restrict const dfloat *c,
+  @ restrict const dfloat *maskValues,
+  @ restrict dfloat *values)
+{
+  for (dlong n = 0; n < nMasked; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dlong id = maskIds[n];
+    dfloat extValue = 0.0;
+    for(int s = 0; s < Nstages; ++s){
+      extValue += c[s] * maskValues[n + s * maskOffset];
+    }
+    values[id] = extValue;
+  }
+}

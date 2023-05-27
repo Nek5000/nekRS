@@ -1,0 +1,140 @@
+@kernel void UrstCubatureHex3D(const dlong Nelements,
+                               @ restrict const dfloat *cubvgeo,
+                               @ restrict const dfloat *cubInterpT,
+                               const dlong offset,
+                               const dlong cubatureOffset,
+                               @ restrict const dfloat *U,
+                               @ restrict const dfloat *W,
+                               @ restrict dfloat *result)
+{
+  for (dlong element = 0; element < Nelements; ++element; @outer(0)) {
+    @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
+
+    @shared dfloat s_U[p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq];
+
+    @shared dfloat s_U1[p_Nq][p_cubNq];
+    @shared dfloat s_V1[p_Nq][p_cubNq];
+    @shared dfloat s_W1[p_Nq][p_cubNq];
+
+    @exclusive dfloat r_U[p_cubNq], r_V[p_cubNq], r_W[p_cubNq];
+
+    for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+      for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+        const int id = i + j * p_cubNq;
+
+        if (id < p_Nq * p_cubNq)
+          s_cubInterpT[j][i] = cubInterpT[id];
+      }
+    }
+
+    @barrier();
+
+    for (int c = 0; c < p_Nq; ++c) {
+      @barrier();
+
+      for (int b = 0; b < p_cubNq; ++b; @inner(1))
+        for (int a = 0; a < p_cubNq; ++a; @inner(0)) {
+          if (c == 0) {
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_U[k] = 0.0;
+              r_V[k] = 0.0;
+              r_W[k] = 0.0;
+            }
+          }
+          if (a < p_Nq && b < p_Nq) {
+            const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+
+            dfloat Ue = U[id + 0 * offset];
+            dfloat Ve = U[id + 1 * offset];
+            dfloat We = U[id + 2 * offset];
+            if (p_relative) {
+              Ue -= W[id + 0 * offset];
+              Ve -= W[id + 1 * offset];
+              We -= W[id + 2 * offset];
+            }
+
+            s_U[b][a] = Ue;
+            s_V[b][a] = Ve;
+            s_W[b][a] = We;
+          }
+        }
+
+      @barrier();
+
+      // interpolate in 'r'
+      for (int b = 0; b < p_cubNq; ++b; @inner(1))
+        for (int i = 0; i < p_cubNq; ++i; @inner(0))
+          if (b < p_Nq) {
+            dfloat U1 = 0, V1 = 0, W1 = 0;
+
+            for (int a = 0; a < p_Nq; ++a) {
+              dfloat Iia = s_cubInterpT[a][i];
+              U1 += Iia * s_U[b][a];
+              V1 += Iia * s_V[b][a];
+              W1 += Iia * s_W[b][a];
+            }
+
+            s_U1[b][i] = U1;
+            s_V1[b][i] = V1;
+            s_W1[b][i] = W1;
+          }
+
+      @barrier();
+
+      // interpolate in 's'
+      for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+        for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+          dfloat U2 = 0, V2 = 0, W2 = 0;
+
+          // interpolate in b
+          for (int b = 0; b < p_Nq; ++b) {
+            dfloat Ijb = s_cubInterpT[b][j];
+            U2 += Ijb * s_U1[b][i];
+            V2 += Ijb * s_V1[b][i];
+            W2 += Ijb * s_W1[b][i];
+          }
+
+          // interpolate in c progressively
+          for (int k = 0; k < p_cubNq; ++k) {
+            dfloat Ikc = s_cubInterpT[c][k];
+            r_U[k] += Ikc * U2;
+            r_V[k] += Ikc * V2;
+            r_W[k] += Ikc * W2;
+          }
+        }
+      }
+    }
+
+    for (int k = 0; k < p_cubNq; ++k) {
+
+      @barrier();
+
+      for (int j = 0; j < p_cubNq; ++j; @inner(1))
+        for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+
+          const dlong gid = element * p_cubNp * p_Nvgeo + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+          const dfloat drdx = cubvgeo[gid + p_RXID * p_cubNp];
+          const dfloat drdy = cubvgeo[gid + p_RYID * p_cubNp];
+          const dfloat drdz = cubvgeo[gid + p_RZID * p_cubNp];
+          const dfloat dsdx = cubvgeo[gid + p_SXID * p_cubNp];
+          const dfloat dsdy = cubvgeo[gid + p_SYID * p_cubNp];
+          const dfloat dsdz = cubvgeo[gid + p_SZID * p_cubNp];
+          const dfloat dtdx = cubvgeo[gid + p_TXID * p_cubNp];
+          const dfloat dtdy = cubvgeo[gid + p_TYID * p_cubNp];
+          const dfloat dtdz = cubvgeo[gid + p_TZID * p_cubNp];
+          const dfloat JW = cubvgeo[gid + p_JWID * p_cubNp];
+
+          const dfloat Un = r_U[k];
+          const dfloat Vn = r_V[k];
+          const dfloat Wn = r_W[k];
+
+          const dlong id = element * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+          result[id + 0 * cubatureOffset] = JW * (Un * drdx + Vn * drdy + Wn * drdz);
+          result[id + 1 * cubatureOffset] = JW * (Un * dsdx + Vn * dsdy + Wn * dsdz);
+          result[id + 2 * cubatureOffset] = JW * (Un * dtdx + Vn * dtdy + Wn * dtdz);
+        }
+    }
+  }
+}

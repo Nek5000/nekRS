@@ -1,43 +1,41 @@
-#include <occa/internal/modes/metal/memory.hpp>
 #include <occa/internal/modes/metal/device.hpp>
+#include <occa/internal/modes/metal/memory.hpp>
+#include <occa/internal/modes/metal/buffer.hpp>
 #include <occa/internal/utils/sys.hpp>
 
 namespace occa {
   namespace metal {
-    memory::memory(modeDevice_t *modeDevice_,
-                   udim_t size_,
-                   const occa::json &properties_) :
-        occa::modeMemory_t(modeDevice_, size_, properties_),
-        bufferOffset(0) {}
+    memory::memory(buffer *b,
+                   udim_t size_, dim_t offset_) :
+      occa::modeMemory_t(b, size_, offset_),
+      bufferOffset(offset) {
+      metalBuffer = b->metalBuffer;
+      ptr = (char*) metalBuffer.getPtr();
+    }
+
+    memory::memory(memoryPool *memPool,
+                   udim_t size_, dim_t offset_) :
+      occa::modeMemory_t(memPool, size_, offset_),
+      bufferOffset(offset) {
+      metal::buffer* b = dynamic_cast<metal::buffer*>(memPool->buffer);
+      metalBuffer = b->metalBuffer;
+      ptr = (char*) metalBuffer.getPtr();
+    }
 
     memory::~memory() {
-      if (isOrigin) {
-        metalBuffer.free();
-      }
-      size = 0;
+      metalBuffer = NULL;
+      bufferOffset = 0;
     }
 
     void* memory::getKernelArgPtr() const {
       return nullptr;
     }
 
-    modeMemory_t* memory::addOffset(const dim_t offset) {
-      memory *m = new memory(modeDevice,
-                             size - offset,
-                             properties);
-      m->metalBuffer = metalBuffer;
-      m->bufferOffset = bufferOffset + offset;
-      return m;
-    }
-
     const api::metal::buffer_t& memory::getMetalBuffer() {
       return metalBuffer;
     }
 
-    void* memory::getPtr() {
-      if (!ptr) {
-        ptr = (char*) metalBuffer.getPtr();
-      }
+    void* memory::getPtr() const {
       return ptr;
     }
 
@@ -47,15 +45,15 @@ namespace occa {
 
     void memory::copyFrom(const void *src,
                           const udim_t bytes,
-                          const udim_t offset,
+                          const udim_t offset_,
                           const occa::json &props) {
       const bool async = props.get("async", false);
 
       api::metal::commandQueue_t &metalCommandQueue = (
-        ((metal::device*) modeDevice)->metalCommandQueue
+        ((metal::device*) getModeDevice())->metalCommandQueue
       );
       metalCommandQueue.memcpy(metalBuffer,
-                               offset,
+                               bufferOffset+offset_,
                                src,
                                bytes,
                                async);
@@ -69,35 +67,35 @@ namespace occa {
       const bool async = props.get("async", false);
 
       api::metal::commandQueue_t &metalCommandQueue = (
-        ((metal::device*) modeDevice)->metalCommandQueue
+        ((metal::device*) getModeDevice())->metalCommandQueue
       );
       metalCommandQueue.memcpy(metalBuffer,
-                               destOffset,
+                               bufferOffset+destOffset,
                                ((const metal::memory*) src)->metalBuffer,
-                               srcOffset,
+                               ((const metal::memory*) src)->bufferOffset + srcOffset,
                                bytes,
                                async);
     }
 
     void memory::copyTo(void *dest,
                         const udim_t bytes,
-                        const udim_t offset,
+                        const udim_t offset_,
                         const occa::json &props) const {
 
       const bool async = props.get("async", false);
 
       api::metal::commandQueue_t &metalCommandQueue = (
-        ((metal::device*) modeDevice)->metalCommandQueue
+        ((metal::device*) getModeDevice())->metalCommandQueue
       );
       metalCommandQueue.memcpy(dest,
                                metalBuffer,
-                               offset,
+                               bufferOffset + offset_,
                                bytes,
                                async);
     }
 
-    void memory::detach() {
-      size = 0;
+    void* memory::unwrap() {
+      return static_cast<void*>(&ptr);
     }
   }
 }

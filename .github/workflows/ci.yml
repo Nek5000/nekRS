@@ -11,15 +11,15 @@ on:
 env:
   GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
   NEKRS_HOME: "${{ github.workspace }}/.local/nekrs"
-  NEKRS_INSTALL_DIR: "${{ github.workspace }}/.local/nekrs"
   MPICH_FC: "gfortran"
   NEKRS_EXAMPLES: "${{ github.workspace }}/.local/nekrs/examples"
-  OCCA_CUDA_ENABLED: "0"
-  OCCA_HIP_ENABLED: "0"
-  OCCA_OPENCL_ENABLED: "0"
-  NEKRS_COMPILER_FLAGS: "-O2"
+  ENABLE_CUDA: "0"
+  ENABLE_HIP: "0"
+  NEKRS_COMPILER_FLAGS: "-O2 -march=x86-64-v3"
+  OCCA_CXXFLAGS: "-O2"
   NEKRS_OCCA_MODE_DEFAULT: "SERIAL"
-  NEKRS_CI: "1"
+  NRSCONFIG_NOBUILD: "1"
+  RUNNER_ARCH: "X64"
 
 defaults:
   run:
@@ -28,10 +28,10 @@ defaults:
 jobs:
 
   install:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -42,7 +42,7 @@ jobs:
 
     - name: nrsconfig and build
       run: |
-        ./nrsconfig
+        CC=mpicc CXX=mpic++ FC=mpif77 ./nrsconfig -DENABLE_CVODE=ON -DCMAKE_INSTALL_PREFIX=${{ env.NEKRS_HOME }}
         cmake --build build --target install -j 2
 
     - name: Upload install dir
@@ -50,15 +50,15 @@ jobs:
       with:
         name: install-dir
         retention-days: 2 
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
         if-no-files-found: error
 
   ethier:
     needs: install
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -71,10 +71,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'ethier default'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
@@ -129,12 +129,36 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethierScalar 2 --cimode 13
 
+    - name: 'ethier additive V-cycle'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 14
+
+    - name: 'ethier linAlg + point interp + surface integral'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: |
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 15
+
+    - name: 'ethier cvode, both scalars'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: |
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 16
+
+    - name: 'ethier mixed elliptic/cvode'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: |
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 17
+    
+    - name: 'ethier cvode, both scalars, no dealiasing, hpfrt'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: |
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 18
+
   lowMach:
     needs: install
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -147,22 +171,26 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'lowMach default'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 --cimode 1
 
+    - name: 'lowMach + CVODE'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 --cimode 3
+
 
   mv_cyl:
     needs: install
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -175,10 +203,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'mv_cyl'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
@@ -188,22 +216,25 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 2
 
-    - name: 'mv_cyl + subcycling + elasticity solve'
+    - name: 'mv_cyl + subcycling + elasticity solve + projection'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 3
-
-    - name: 'mv_cyl + subcycling + elasticity solve (projection)'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 4
 
     - name: 'mv_cyl + unaligned SYM'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 5
 
-    # TODO: resolve error in unaligned SYM + mesh solver
-    #- name: 'mv_cyl + unaligned SYM + mesh solver'
-    #  working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-    #  run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 6
+    - name: 'mv_cyl + unaligned SYM + mesh solver'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 6
+
+    - name: 'mv_cyl + CVODE'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 7
+
+    - name: 'mv_cyl + CVODE + unaligned SYM + mesh solver'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 8
 
     - name: 'mv_cyl, derived bc'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
@@ -217,26 +248,21 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 3
 
-    - name: 'mv_cyl + subcycling + elasticity solve (projection), derived bc'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 4
-
     - name: 'mv_cyl + unaligned SYM, derived bc'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 5
 
-    # TODO: resolve error in unaligned SYM + mesh solver
-    #- name: 'mv_cyl + unaligned SYM + mesh solver, derived bc'
-    #  working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-    #  run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 6
+    - name: 'mv_cyl + unaligned SYM + mesh solver, derived bc'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 6
 
 
   conj_ht:
     needs: install
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -249,22 +275,30 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'conj_ht'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 1
 
+    - name: 'conj_ht + subcycling'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 2
+
+    - name: 'conj_ht + CVODE'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 3
+
 
   channelStress:
     needs: install
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -277,10 +311,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'channelStress (no rotation)'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
@@ -292,10 +326,10 @@ jobs:
 
   tractionBoundary:
     needs: install
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         clean: true
 
@@ -308,10 +342,10 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: install-dir
-        path: ${{ env.NEKRS_INSTALL_DIR }}
+        path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
-      run: chmod -R 755 ${{ env.NEKRS_INSTALL_DIR }}
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'traction channel (no rotation)'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
@@ -321,233 +355,64 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 2
 
-  kershaw:
-    runs-on: ubuntu-18.04
+  eddyNekNek:
+    needs: install
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
-        submodules: recursive
+        clean: true
 
     - name: APT dependencies
       run: |
         sudo apt -y update
         sudo apt install -y mpich libmpich-dev
 
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_HOME }}
 
-    - name: 'kershaw pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/kershaw
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre kershaw 1
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
+    - name: 'eddyNekNek'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNek.sess 2 --cimode 1
+
+    - name: 'eddyNekNekMv'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNekMv.sess 2 --cimode 2
+    
+    - name: 'eddyNekNek, velocity:solver = none'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNek.sess 2 --cimode 3
 
   ktauChannel:
-    runs-on: ubuntu-18.04
+    needs: install
+    runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
-        submodules: recursive
+        clean: true
 
     - name: APT dependencies
       run: |
         sudo apt -y update
         sudo apt install -y mpich libmpich-dev
 
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
+    - name: Download install dir
+      uses: actions/download-artifact@v2
+      with:
+        name: install-dir
+        path: ${{ env.NEKRS_HOME }}
 
-    - name: 'ktauChannel pre-compile'
+    - name: Set install dir permissions
+      run: chmod -R 755 ${{ env.NEKRS_HOME }}
+
+    - name: 'ktauChannel'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ktauChannel
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre channel 1
-
-
-  turbPipe:
-    runs-on: ubuntu-18.04
-    steps:
-
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: APT dependencies
-      run: |
-        sudo apt -y update
-        sudo apt install -y mpich libmpich-dev
-
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
-
-    - name: 'turbPipe pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/turbPipe
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre turbPipe 1
-
-
-  turbPipePeriodic:
-    runs-on: ubuntu-18.04
-    steps:
-
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: APT dependencies
-      run: |
-        sudo apt -y update
-        sudo apt install -y mpich libmpich-dev
-
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
-
-    - name: 'turbPipePeriodic pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/turbPipePeriodic
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre turbPipe 1
-
-
-  pb146:
-    runs-on: ubuntu-18.04
-    steps:
-
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: APT dependencies
-      run: |
-        sudo apt -y update
-        sudo apt install -y mpich libmpich-dev
-
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
-
-    - name: 'pb146 pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/pb146
-      run: |
-        tar -xvf pb.re2.tgz
-        ${{ env.NEKRS_HOME }}/bin/nrspre pb 6
-
-
-  rbc:
-    runs-on: ubuntu-18.04
-    steps:
-
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: APT dependencies
-      run: |
-        sudo apt -y update
-        sudo apt install -y mpich libmpich-dev
-
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
-
-    - name: 'rbc pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/rbc
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre rbc 1
-
-
-  tgv:
-    runs-on: ubuntu-18.04
-    steps:
-
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: APT dependencies
-      run: |
-        sudo apt -y update
-        sudo apt install -y mpich libmpich-dev
-
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
-
-    - name: 'tgv pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/tgv
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre tgv 1
-
-
-  double_shear:
-    runs-on: ubuntu-18.04
-    steps:
-
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: APT dependencies
-      run: |
-        sudo apt -y update
-        sudo apt install -y mpich libmpich-dev
-
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
-
-    - name: 'double_shear pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/double_shear
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre double_shear 1
-
-
-  eddyPeriodic:
-    runs-on: ubuntu-18.04
-    steps:
-
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: APT dependencies
-      run: |
-        sudo apt -y update
-        sudo apt install -y mpich libmpich-dev
-
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
-
-    - name: 'eddyPeriodic pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyPeriodic
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre eddy 1
-
-
-  gabls1:
-    runs-on: ubuntu-18.04
-    steps:
-
-    - uses: actions/checkout@v2
-      with:
-        submodules: recursive
-
-    - name: APT dependencies
-      run: |
-        sudo apt -y update
-        sudo apt install -y mpich libmpich-dev
-
-    - name: install
-      run: |
-        ./nrsconfig
-        cmake --build build --target install -j 2
-
-    - name: 'gabls pre-compile'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/gabls1
-      run: ${{ env.NEKRS_HOME }}/bin/nrspre gabls 1
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 1

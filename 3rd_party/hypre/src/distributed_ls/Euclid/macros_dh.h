@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -29,11 +29,8 @@
 #endif
 
 /* used in Mat_SEQ_PrintTriples, so matlab won't discard zeros (yuck!) */
-#ifdef HYPRE_SINGLE
-#define _MATLAB_ZERO_  1e-30
-#else // default
-#define _MATLAB_ZERO_  1e-100
-#endif
+#define _MATLAB_ZERO_  HYPRE_REAL_MIN
+
 
 
 /*---------------------------------------------------------------------- 

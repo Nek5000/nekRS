@@ -1,0 +1,38 @@
+@kernel void remapParticles(const dlong N,
+  const dlong fieldOffset,
+  const dlong newOffset,
+  const dlong nProps,
+  const dlong nInterpFields,
+  const dlong nDOFs,
+  const dlong nAB,
+  @restrict const dlong * remainingMap,
+  @restrict const dfloat * y,
+  @restrict const dfloat * ydot,
+  @restrict const dfloat * prop,
+  @restrict const dfloat * interpFld,
+  @restrict dfloat * yNew,
+  @restrict dfloat * ydotNew,
+  @restrict dfloat * propNew,
+  @restrict dfloat * interpFldNew)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+  {
+    const dlong id = remainingMap[n];
+    if(id > -1){
+      for(int dof = 0; dof < nDOFs; ++dof){
+        yNew[id + newOffset * dof] = y[n + fieldOffset * dof];
+        for(int s = 0; s < nAB; ++s){
+          ydotNew[id + newOffset * dof + s * newOffset * nDOFs] = ydot[n + fieldOffset * dof + s * fieldOffset * nDOFs];
+        }
+      }
+
+      for(int propId = 0; propId < nProps; ++propId){
+        propNew[id + newOffset * propId] = prop[n + fieldOffset * propId];
+      }
+
+      for(int fld = 0; fld < nInterpFields; ++fld){
+        interpFldNew[id + newOffset * fld] = interpFld[n + fieldOffset * fld];
+      }
+    }
+  }
+}

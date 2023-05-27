@@ -1,0 +1,203 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+#define surfaceTerms(sk, face, m, i, j)                                                                      \
+  {                                                                                                          \
+    const dlong idM = vmapM[sk];                                                                             \
+    const dlong id = j * p_Nq + i;                                                                           \
+                                                                                                             \
+    const dfloat nx = sgeo[sk * p_Nsgeo + p_NXID];                                                           \
+    const dfloat ny = sgeo[sk * p_Nsgeo + p_NYID];                                                           \
+    const dfloat nz = sgeo[sk * p_Nsgeo + p_NZID];                                                           \
+    const dfloat u = U[idM + 0 * offset];                                                                    \
+    const dfloat v = U[idM + 1 * offset];                                                                    \
+    const dfloat w = U[idM + 2 * offset];                                                                    \
+    const dfloat WSJ = sgeo[sk * p_Nsgeo + p_WSJID];                                                         \
+    const dlong bcType = EToB[face + p_Nfaces * e];                                                          \
+    dfloat flux = 0;                                                                                         \
+    if (bcType == p_bcTypeV || bcType == p_bcTypeINT) {                                                                               \
+      flux = (nx * u + ny * v + nz * w);                                                                     \
+    }                                                                                                        \
+    s_flux[id] += WSJ * flux;                                                                                \
+  }
+
+// WARNING: This kernel implicitly assumes that p_blockSize > p_Nq * p_Nq.
+// If this is not the case, then the results produced by this kernel will be garbage.
+@kernel void surfaceFlux(const dlong Nelements,
+                         @ restrict const dfloat *sgeo,
+                         @ restrict const dlong *vmapM,
+                         @ restrict const int *EToB,
+                         const dlong offset,
+                         @ restrict const dfloat *U,
+                         @ restrict dfloat *flux)
+{
+  // for all elements
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    // @shared storage for flux terms
+    @shared dfloat s_flux[p_blockSize];
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        for (int k = j * p_Nq + i; k < p_blockSize; k += p_Nq * p_Nq)
+          s_flux[k] = 0.0;
+      }
+    }
+    @barrier();
+
+    // for all face nodes of all elements
+    // face 0 & 5
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+
+        const dlong sk0 = e * p_Nfp * p_Nfaces + 0 * p_Nfp + i + j * p_Nq;
+        const dlong sk5 = e * p_Nfp * p_Nfaces + 5 * p_Nfp + i + j * p_Nq;
+
+        surfaceTerms(sk0, 0, 0, i, j);
+        surfaceTerms(sk5, 5, 1, i, j);
+      }
+    }
+
+    @barrier();
+
+    // face 1 & 3
+    for (int k = 0; k < p_Nq; ++k; @inner(1))
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const dlong sk1 = e * p_Nfp * p_Nfaces + 1 * p_Nfp + i + k * p_Nq;
+        const dlong sk3 = e * p_Nfp * p_Nfaces + 3 * p_Nfp + i + k * p_Nq;
+
+        surfaceTerms(sk1, 1, 0, i, k);
+        surfaceTerms(sk3, 3, 1, i, k);
+      }
+
+    @barrier();
+
+    // face 2 & 4
+    for (int k = 0; k < p_Nq; ++k; @inner(1))
+      for (int j = 0; j < p_Nq; ++j; @inner(0)) {
+        const dlong sk2 = e * p_Nfp * p_Nfaces + 2 * p_Nfp + j + k * p_Nq;
+        const dlong sk4 = e * p_Nfp * p_Nfaces + 4 * p_Nfp + j + k * p_Nq;
+
+        surfaceTerms(sk2, 2, 0, j, k);
+        surfaceTerms(sk4, 4, 1, j, k);
+      }
+
+    @barrier();
+
+// reduce p_Nq * p_Nq to single value
+#if p_blockSize > 512
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 512) {
+          s_flux[t] += s_flux[t + 512];
+        }
+      }
+    }
+    @barrier();
+#endif
+#if p_blockSize > 256
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 256) {
+          s_flux[t] += s_flux[t + 256];
+        }
+      }
+    }
+    @barrier();
+#endif
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 128) {
+          s_flux[t] += s_flux[t + 128];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 64) {
+          s_flux[t] += s_flux[t + 64];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 32) {
+          s_flux[t] += s_flux[t + 32];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 16) {
+          s_flux[t] += s_flux[t + 16];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 8) {
+          s_flux[t] += s_flux[t + 8];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 4) {
+          s_flux[t] += s_flux[t + 4];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 2) {
+          s_flux[t] += s_flux[t + 2];
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int t = j * p_Nq + i;
+        if (t < 1) {
+          flux[e] = s_flux[0] + s_flux[1];
+        }
+      }
+    }
+  }
+}

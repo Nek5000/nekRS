@@ -1,0 +1,80 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+#define Nverts (8)
+
+inline dfloat interp(const dfloat rn, const dfloat sn, const dfloat tn, const dfloat* vertexValues)
+{
+  const dfloat v1 = vertexValues[0];
+  const dfloat v2 = vertexValues[1];
+  const dfloat v3 = vertexValues[2];
+  const dfloat v4 = vertexValues[3];
+  const dfloat v5 = vertexValues[4];
+  const dfloat v6 = vertexValues[5];
+  const dfloat v7 = vertexValues[6];
+  const dfloat v8 = vertexValues[7];
+  const dfloat coeff = 1.0 / Nverts;
+  return coeff * ((1 - rn) * (1 - sn) * (1 - tn) * v1 + (1 + rn) * (1 - sn) * (1 - tn) * v2 +
+                  (1 + rn) * (1 + sn) * (1 - tn) * v3 + (1 - rn) * (1 + sn) * (1 - tn) * v4 +
+                  (1 - rn) * (1 - sn) * (1 + tn) * v5 + (1 + rn) * (1 - sn) * (1 + tn) * v6 +
+                  (1 + rn) * (1 + sn) * (1 + tn) * v7 + (1 - rn) * (1 + sn) * (1 + tn) * v8);
+}
+
+@kernel void interpolateP1(const dlong Nelements,
+                           @ restrict const dlong *vertexIds,
+                           @ restrict const dfloat *rCoords,
+                           @ restrict const dfloat *sCoords,
+                           @ restrict const dfloat *tCoords,
+                           @ restrict dfloat *field)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer) {
+    @shared dfloat vertexValues[8];
+
+    for (int j = 0; j < p_Nq; ++j; @inner) {
+      for (int i = 0; i < p_Nq; ++i; @inner) {
+        if (i == 0 && j == 0) {
+          for (int vertex = 0; vertex < Nverts; ++vertex) {
+            const dlong vid = vertexIds[vertex];
+            vertexValues[vertex] = field[vid + e * p_Np];
+          }
+        }
+      }
+    }
+    @barrier();
+    for (int j = 0; j < p_Nq; ++j; @inner) {
+      for (int i = 0; i < p_Nq; ++i; @inner) {
+        for (int k = 0; k < p_Nq; ++k) {
+          const dlong tid = j * p_Nq * p_Nq + i * p_Nq + k;
+          const dlong id = e * p_Np + tid;
+          const dfloat r = rCoords[tid];
+          const dfloat s = sCoords[tid];
+          const dfloat t = tCoords[tid];
+          field[id] = interp(r, s, t, vertexValues);
+        }
+      }
+    }
+  }
+}

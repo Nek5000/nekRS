@@ -8,7 +8,7 @@ dt = 7e-3
 timeStepper = tombo2
 subCyclingSteps = 1
 
-writeControl = runTime
+writeControl = simulationTime 
 writeInterval = 1.0
 
 regularization = hpfrt + nModes = 1 + scalingCoeff = 8
@@ -21,3 +21,9 @@ boundaryTypeMap = inlet, outlet, wall, slipY, slipZ
 residualTol = 1e-06
 density = 1.0
 viscosity = -1400
+
+[CASEDATA]
+# inject nParticlesInject particles every injectionFrequency time steps
+nParticlesInject = 1024
+injectionFrequency = 50
+Stk = 5

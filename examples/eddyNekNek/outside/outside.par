@@ -1,0 +1,25 @@
+[GENERAL]
+# polynomial order of session need not match that of another session
+polynomialOrder = 7
+#startFrom = "restart.fld"
+numSteps = 100
+dt = 1e-04
+timeStepper = tombo2
+writeInterval = 20
+
+[NEKNEK]
+boundaryEXTOrder = 1
+
+[PRESSURE]
+residualTol = 1e-08
+
+[VELOCITY]
+residualTol = 1e-12
+density = 1.0
+viscosity = 0.05
+boundaryTypeMap = int
+
+[CASEDATA]
+P_U0 = 5.0
+P_V0 = 1.5
+P_OMEGA = 2 # multiplied by pi

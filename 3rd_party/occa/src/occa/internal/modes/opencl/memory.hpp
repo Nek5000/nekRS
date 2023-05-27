@@ -3,58 +3,50 @@
 
 #include <occa/internal/core/memory.hpp>
 #include <occa/internal/modes/opencl/polyfill.hpp>
+#include <occa/internal/modes/opencl/buffer.hpp>
+#include <occa/internal/modes/opencl/memoryPool.hpp>
 
 namespace occa {
   namespace opencl {
-    class device;
+    // class device;
 
     class memory : public occa::modeMemory_t {
-      friend class opencl::device;
-
       friend cl_mem getCLMemory(occa::memory memory);
 
-      friend occa::memory wrapMemory(occa::device device,
-                                     cl_mem clMem,
-                                     const udim_t bytes,
-                                     const occa::json &props);
-
-    private:
-      cl_mem *rootClMem;
-      dim_t rootOffset;
-
+    public:
       cl_mem clMem;
       bool useHostPtr;
 
     public:
-      memory(modeDevice_t *modeDevice_,
-             udim_t size_,
-             const occa::json &properties_ = occa::json());
-      ~memory();
+      memory(buffer *b,
+             udim_t size_, dim_t offset_);
+      memory(memoryPool *memPool,
+             udim_t size_, dim_t offset_);
+      virtual ~memory();
 
       cl_command_queue& getCommandQueue() const;
 
-      void* getKernelArgPtr() const;
+      void* getKernelArgPtr() const override;
 
-      modeMemory_t* addOffset(const dim_t offset);
-
-      void* getPtr();
+      void* getPtr() const override;
 
       void copyTo(void *dest,
                   const udim_t bytes,
                   const udim_t destOffset = 0,
-                  const occa::json &props = occa::json()) const;
+                  const occa::json &props = occa::json()) const override;
 
       void copyFrom(const void *src,
                     const udim_t bytes,
                     const udim_t offset = 0,
-                    const occa::json &props = occa::json());
+                    const occa::json &props = occa::json()) override;
 
       void copyFrom(const modeMemory_t *src,
                     const udim_t bytes,
                     const udim_t destOffset = 0,
                     const udim_t srcOffset = 0,
-                    const occa::json &props = occa::json());
-      void detach();
+                    const occa::json &props = occa::json()) override;
+
+      void* unwrap() override;
     };
   }
 }

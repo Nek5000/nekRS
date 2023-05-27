@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -160,30 +160,25 @@ void *hypre_mymalloc(HYPRE_Int nbytes,const char *msg)
 
 
 /*************************************************************************
-* This function is my wrapper around free, allows multiple pointers    
+* This function is my wrapper around free, allows multiple pointers
 **************************************************************************/
 #if 0
 void hypre_free_multi(void *ptr1,...)
 {
-  va_list plist;
-  void *ptr;
+   va_list plist;
+   void *ptr;
 
-  if (ptr1 != NULL)
-    free(ptr1);
-  ptr1 = NULL;
+   hypre_TFree(ptr1, HYPRE_MEMORY_HOST);
 
-  va_start(plist, ptr1);
+   va_start(plist, ptr1);
 
-  while ( (ptr = va_arg(plist, void *)) != ((void *) -1) ) {
-    if (ptr != NULL)
-      free(ptr);
-    ptr = NULL;
-  }
+   while ( (ptr = va_arg(plist, void *)) != ((void *) -1) ) {
+      hypre_TFree(ptr, HYPRE_MEMORY_HOST);
+   }
 
-  va_end(plist);
-
-}    
-#endif        
+   va_end(plist);
+}
+#endif
 
 /*************************************************************************
 * The following function copies an HYPRE_Int (HYPRE_Int) array
@@ -203,14 +198,14 @@ void hypre_memcpy_idx( HYPRE_Int *dest, const HYPRE_Int *src, size_t n )
 
 /*************************************************************************
 * The following function copies a floating point (HYPRE_Real) array.
-* Note this assumes BLAS 1 routine SCOPY. An alternative would be memcpy.
+* Note this assumes BLAS 1 routine hypre_dcopy. An alternative would be memcpy.
 * There is a noticeable difference between this and just a for loop.
 **************************************************************************/
 void hypre_memcpy_fp( HYPRE_Real *dest, const HYPRE_Real *src, size_t n )
 {
   HYPRE_Int i, ni = (HYPRE_Int) n;
 
-  /*SCOPY(&n, src, &inc, dest, &inc);*/
+  /*hypre_dcopy(&n, src, &inc, dest, &inc);*/
   for (i=0; i<ni; i++) dest[i] = src[i];
 }
 

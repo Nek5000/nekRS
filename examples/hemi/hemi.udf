@@ -1,24 +1,243 @@
 //
 // nekRS User Defined File
 //
-#include <math.h>
 #include "udf.hpp"
+#include "plugins/lpm.hpp"
+#include "linspaceVector.hpp"
 
-/* UDF Functions */                                                      
+static dfloat Stk;
+static dlong nParticlesInject;
+static dlong injectionFrequency;
+static occa::memory o_yNewPart; // for adding new particles
+static occa::memory o_propNewPart;
 
-void UDF_LoadKernels(occa::properties& kernelInfo)
+static dfloat xMin;
+static dfloat yMin;
+static dfloat zMin;
+static dfloat xMax;
+static dfloat yMax;
+static dfloat zMax;
+
+static lpm_t *particles = nullptr;
+
+#ifdef __okl__
+
+#include "hemi.oudf"
+
+#endif
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
+  int commSize;
+  MPI_Comm_size(comm, &commSize);
+
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  platform->par->extract("casedata", "stk", Stk);
+  platform->par->extract("casedata", "nparticlesinject", nParticlesInject);
+  platform->par->extract("casedata", "injectionfrequency", injectionFrequency);
+}
+
+void userRHS(nrs_t *nrs, lpm_t *lpm, dfloat time, occa::memory o_y, void *userdata, occa::memory o_ydot)
+{
+  auto offset = lpm->fieldOffset();
+
+  // evaluate fluid fields at particle positions
+  lpm->interpolate();
+
+  auto o_Uinterp = lpm->getInterpField("fluid_velocity");
+
+  if (lpm->numParticles()) {
+    particleRHS(lpm->numParticles(), offset, o_y, lpm->o_prop, o_Uinterp, o_ydot);
+  }
+}
+
+// generate uniform points distributed at inflow
+auto generateInflowPoints(nrs_t *nrs)
+{
+  auto numGlobalParticles = particles->numGlobalParticles();
+
+  std::vector<dfloat> xPart, yPart, zPart;
+
+  auto mesh = nrs->meshV;
+
+  const auto py = static_cast<int>(std::round(std::sqrt(nParticlesInject)));
+  const auto pz = py;
+
+  const auto yPoint = linspace<dfloat>(yMin, yMax, py);
+  const auto zPoint = linspace<dfloat>(zMin, zMax, pz);
+
+  for (auto &&y : yPoint) {
+    for (auto &&z : zPoint) {
+      if (numGlobalParticles % platform->comm.mpiCommSize == platform->comm.mpiRank) {
+        xPart.push_back(xMin);
+        yPart.push_back(y);
+        zPart.push_back(z);
+      }
+      numGlobalParticles++;
+    }
+  }
+
+  return std::make_tuple(xPart, yPart, zPart);
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
+  auto *mesh = nrs->meshV;
+
+  xMin = platform->linAlg->min(mesh->Nlocal, mesh->o_x, platform->comm.mpiComm);
+  yMin = platform->linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+  zMin = platform->linAlg->min(mesh->Nlocal, mesh->o_z, platform->comm.mpiComm);
+
+  xMax = platform->linAlg->max(mesh->Nlocal, mesh->o_x, platform->comm.mpiComm);
+  yMax = platform->linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+  zMax = platform->linAlg->max(mesh->Nlocal, mesh->o_z, platform->comm.mpiComm);
+
+  const dfloat newton_tol = 5e-13;
+  const dfloat bb_tol = 1e-4;
+
+  particles = new lpm_t(nrs, bb_tol, newton_tol);
+  particles->setUserRHS(userRHS);
+
+  particles->setSolver("AB");
+
+  // register fluid velocity as an interpolated quantity
+  particles->registerInterpField("fluid_velocity", nrs->NVfields, nrs->o_U);
+
+  // register particle velocity as DOF
+  particles->registerDOF(nrs->NVfields, "velocity");
+
+  // register Stokes number as a property
+  particles->registerProp("stokes_number");
+
+  auto [xPart, yPart, zPart] = generateInflowPoints(nrs);
+  const dlong nParticles = xPart.size();
+
+  // interpolate initial fluid velocity onto particle positions
+  std::vector<dfloat> particleU0(nrs->NVfields * nParticles);
+  auto interpolator = pointInterpolation_t(nrs);
+  interpolator.setPoints(nParticles, xPart.data(), yPart.data(), zPart.data());
+  interpolator.find();
+
+  interpolator.eval(nrs->NVfields, nrs->fieldOffset, nrs->U, nParticles, particleU0.data());
+
+  // set particle initial positions and velocities
+  std::vector<dfloat> y0(particles->nDOFs() * nParticles);
+
+  for (int pid = 0; pid < nParticles; ++pid) {
+    const auto x = xPart[pid];
+    const auto y = yPart[pid];
+    const auto z = zPart[pid];
+
+    const auto u = particleU0[pid + 0 * nParticles];
+    const auto v = particleU0[pid + 1 * nParticles];
+    const auto w = particleU0[pid + 2 * nParticles];
+
+    y0[pid + 0 * nParticles] = x;
+    y0[pid + 1 * nParticles] = y;
+    y0[pid + 2 * nParticles] = z;
+
+    y0[pid + 3 * nParticles] = u;
+    y0[pid + 4 * nParticles] = v;
+    y0[pid + 5 * nParticles] = w;
+  }
+
+  dfloat t0;
+  platform->options.getArgs("START TIME", t0);
+  particles->initialize(nParticles, t0, y0);
+
+  // set Stokes number
+  platform->linAlg->fill(nParticles, Stk, particles->o_prop);
+}
+
+void addNewParticles(nrs_t *nrs, dfloat time, int tstep)
+{
+  auto numGlobalParticles = particles->numGlobalParticles();
+
+  auto [xPart, yPart, zPart] = generateInflowPoints(nrs);
+  const int nPartAdd = xPart.size();
+
+  const auto NbytesNewYPart = nPartAdd * particles->nDOFs() * sizeof(dfloat);
+  if (o_yNewPart.size() < NbytesNewYPart) {
+    if (o_yNewPart.size()) {
+      o_yNewPart.free();
+    }
+    o_yNewPart = platform->device.malloc(NbytesNewYPart);
+  }
+
+  const auto NbytesNewPropPart = nPartAdd * particles->nProps() * sizeof(dfloat);
+  if (o_propNewPart.size() < NbytesNewPropPart) {
+    if (o_propNewPart.size()) {
+      o_propNewPart.free();
+    }
+    o_propNewPart = platform->device.malloc(NbytesNewPropPart);
+  }
+
+  auto o_xPart = o_yNewPart + 0 * nPartAdd * sizeof(dfloat);
+  auto o_yPart = o_yNewPart + 1 * nPartAdd * sizeof(dfloat);
+  auto o_zPart = o_yNewPart + 2 * nPartAdd * sizeof(dfloat);
+  auto o_UPart = o_yNewPart + 3 * nPartAdd * sizeof(dfloat);
+
+  o_xPart.copyFrom(xPart.data(), nPartAdd * sizeof(dfloat));
+  o_yPart.copyFrom(yPart.data(), nPartAdd * sizeof(dfloat));
+  o_zPart.copyFrom(zPart.data(), nPartAdd * sizeof(dfloat));
+
+  // set property with Stokes number
+  platform->linAlg->fill(nPartAdd, Stk, o_propNewPart);
+
+  // interpolate fluid velocity onto new particle positions (set initial velocity as fluid velocity)
+  auto interpolator = pointInterpolation_t(nrs);
+  interpolator.setPoints(nPartAdd, xPart.data(), yPart.data(), zPart.data());
+  interpolator.find();
+
+  interpolator.eval(nrs->NVfields, nrs->fieldOffset, nrs->o_U, nPartAdd, o_UPart);
+
+  particles->addParticles(nPartAdd, o_yNewPart, o_propNewPart);
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 {
+  particles->integrate(time);
+
+  if (tstep % injectionFrequency == 0) {
+    addNewParticles(nrs, time, tstep);
+  }
+
+  // Perform a particle migration if either condition is true:
+  // If more than 10% of particles cannot be evaluated on the owning processor, migrate particles to the
+  // correct position. If more than 10% of particles are unfound, migrate particles to the correct position.
+  const auto migrationFraction = 0.1;
+  const auto numNonLocalParticles = particles->numNonLocalParticles();
+  const auto numUnfoundParticles = particles->numUnfoundParticles();
+
+  double nonLocalParticleFraction = 0.0;
+  double unfoundParticleFraction = 0.0;
+  if (particles->numParticles()) {
+    nonLocalParticleFraction = (double)numNonLocalParticles / (double)particles->numParticles();
+    unfoundParticleFraction = (double)numUnfoundParticles / (double)particles->numParticles();
+  }
+
+  std::array<dfloat, 2> maxFractions = {nonLocalParticleFraction, unfoundParticleFraction};
+  MPI_Allreduce(MPI_IN_PLACE,
+                maxFractions.data(),
+                maxFractions.size(),
+                MPI_DFLOAT,
+                MPI_MAX,
+                platform->comm.mpiComm);
+  if (platform->comm.mpiRank == 0) {
+    printf("nonLocalParticleFraction = %f, unfoundParticleFraction = %f\n", maxFractions[0], maxFractions[1]);
+  }
+
+  if ((maxFractions[0] > migrationFraction) || (maxFractions[1] > migrationFraction)) {
+    particles->migrate();
+  }
+
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);
     nek::userchk(); // compute lambda2
     nek::ocopyFromNek(time);
+
+    particles->writeFld();
   }
 }

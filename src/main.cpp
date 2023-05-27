@@ -1,3 +1,4 @@
+
 /*---------------------------------------------------------------------------*\
    Copyright (c) 2019-2022, UCHICAGO ARGONNE, LLC.
 
@@ -65,17 +66,22 @@
 #include <fstream>
 #include <cstdio>
 #include <string>
+#include <sstream>
 #include <cstring>
 #include <getopt.h>
 #include <cfenv>
 #include <limits>
 #include <math.h>
 #include <unistd.h>
+#include <libgen.h>
 #include <vector>
 #include <algorithm>
 #include <sstream>
 #include <fcntl.h>
 #include <chrono>
+#include <csignal>
+#include "stacktrace.hpp"
+#include <filesystem>
 
 #include "nekrs.hpp"
 
@@ -83,20 +89,7 @@
 
 namespace {
 
-std::vector<std::string> serializeString(const std::string sin, char dlim)
-{
-  std::vector<std::string> slist;
-  std::string s(sin);
-  s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
-  std::stringstream ss;
-  ss.str(s);
-  while( ss.good() ) {
-    std::string substr;
-    std::getline(ss, substr, dlim);
-    if(!substr.empty()) slist.push_back(substr);
-  }
-  return slist;
-}
+int worldRank;
 
 struct cmdOptions
 {
@@ -108,13 +101,30 @@ struct cmdOptions
   std::string setupFile;
   std::string deviceID;
   std::string backend;
+  int nSessions = 1;
+  int sessionID = 0;
+  bool redirectOutput;
 };
 
-struct session
-{
+struct session_t {
   int size;
   std::string setupFile;
 };
+
+std::vector<std::string> serializeString(const std::string sin, char dlim)
+{
+  std::vector<std::string> slist;
+  std::string s(sin);
+  s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+  std::stringstream ss;
+  ss.str(s);
+  while (ss.good()) {
+    std::string substr;
+    std::getline(ss, substr, dlim);
+    if(!substr.empty()) slist.push_back(substr);
+  }
+  return slist;
+}
 
 cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
 {
@@ -165,8 +175,8 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
         break;
       case 'c':
         cmdOpt->ciMode = atoi(optarg);
-        if (cmdOpt->ciMode < 1) {
-          std::cout << "ERROR: ci test id has to be >0!\n";
+        if (cmdOpt->ciMode < 0) {
+          std::cout << "ERROR: ci test id has to be >= 0!\n";
           printHelp = 1;
         }
         break;
@@ -188,24 +198,33 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
         err = 1;
       }
     }
+
+    if(cmdOpt->setupFile.empty() && cmdOpt->multiSessionFile.empty()){
+      int cnt = 0;
+      for (auto &p : std::filesystem::directory_iterator{"."})
+      {
+        if (p.path().extension() == ".par") {
+          cmdOpt->setupFile.assign(p.path().stem().string());
+          cnt++; 
+        }
+      }
+      if(cnt > 1) {
+        std::cout << "Multiple .par files found!\n"; 
+        err++; 
+      }
+    }
   }
 
-  char buf[FILENAME_MAX];
-  strcpy(buf, cmdOpt->multiSessionFile.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
-  cmdOpt->multiSessionFile.assign(buf);
-
-  strcpy(buf, cmdOpt->setupFile.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
-  cmdOpt->setupFile.assign(buf);
-
-  strcpy(buf, cmdOpt->deviceID.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
-  cmdOpt->deviceID.assign(buf);
-
-  strcpy(buf, cmdOpt->backend.c_str());
-  MPI_Bcast(buf, sizeof(buf), MPI_BYTE, 0, comm);
-  cmdOpt->backend.assign(buf);
+  for(auto opt: {&cmdOpt->multiSessionFile, &cmdOpt->setupFile, &cmdOpt->deviceID, &cmdOpt->backend})
+  {
+    int bufSize = opt->size() + 1;
+    MPI_Bcast(&bufSize, 1, MPI_INT, 0, comm);
+    auto buf = (char*) std::calloc(bufSize, sizeof(char));
+    if(rank == 0) std::strcpy(buf, opt->c_str());
+    MPI_Bcast(buf, bufSize, MPI_BYTE, 0, comm);
+    opt->assign(buf);
+    free(buf);
+  }
 
   MPI_Bcast(&cmdOpt->buildOnly, sizeof(cmdOpt->buildOnly), MPI_BYTE, 0, comm);
   MPI_Bcast(&cmdOpt->sizeTarget, sizeof(cmdOpt->sizeTarget), MPI_BYTE, 0, comm);
@@ -222,14 +241,14 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
       if (helpCat == "par") {
         std::string installDir;
         installDir.assign(getenv("NEKRS_HOME"));
-        std::ifstream f(installDir + "/include/parHelp.txt");
+        std::ifstream f(installDir + "/doc/parHelp.txt");
         if (f.is_open()) std::cout << f.rdbuf();
         f.close();
       } else {
         std::cout << "usage: ./nekrs [--help <par>] "
                   << "--setup <par|sess file> "
                   << "[ --build-only <#procs> ] [ --cimode <id> ] [ --debug ] "
-                  << "[ --backend <CPU|CUDA|HIP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
+                  << "[ --backend <CPU|CUDA|HIP|DPCPP|OPENCL> ] [ --device-id <id|LOCAL-RANK> ]"
                   << "\n";
       }
     }
@@ -240,7 +259,7 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
   return cmdOpt;
 }
 
-MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
+MPI_Comm setupSession(cmdOptions *cmdOpt, const MPI_Comm &comm)
 {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -272,7 +291,7 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
     free(buf);
 
     auto list = serializeString(multiSessionFileContent, ';');
-    auto sessionList = new session[list.size()];
+    auto sessionList = new session_t[list.size()];
 
     int nSessions = 0;
     int rankSum = 0;
@@ -319,13 +338,14 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
 
     cmdOpt->setupFile = sessionList[color].setupFile;
     cmdOpt->sizeTarget = size;
+    cmdOpt->sessionID = color;
+    cmdOpt->nSessions = nSessions;
+
+    delete[] sessionList;
 
     if(cmdOpt->debug) {
-      std::cout << "globalRank:" << rankGlobal
-                << " localRank: " << rank
-                << " commSize: " << size
-                << " setupFile:" << cmdOpt->setupFile
-                << "\n";
+      std::cout << "globalRank:" << rankGlobal << " localRank: " << rank << " pid: " << ::getpid()
+                << " commSize: " << size << " setupFile:" << cmdOpt->setupFile << "\n";
     }
     fflush(stdout);
     MPI_Barrier(comm);
@@ -333,7 +353,7 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
     if(rank == 0) {
       const std::string outputFile = cmdOpt->setupFile + ".log";
       std::cout << "redirecting output to " << outputFile << " ...\n";
-      const int fd = open(outputFile.c_str(), O_WRONLY|O_CREAT|O_APPEND, S_IWUSR|S_IRUSR);
+      const int fd = open(outputFile.c_str(), O_WRONLY|O_CREAT|O_TRUNC, S_IWUSR|S_IRUSR);
       dup2(fd, fileno(stderr));
       dup2(fd, fileno(stdout));
     }
@@ -341,11 +361,26 @@ MPI_Comm setupSession(cmdOptions* cmdOpt, const MPI_Comm &comm)
   return newComm;
 }
 
+void signalHandler(int signum) 
+{
+   { // needs to be refactored as this is not async-signal-safe
+     std::cerr << "generating stacktrace ...\n";
+
+     const std::string fileName = "stacktrace." + std::to_string(worldRank);
+
+     FILE *fp;
+     fp = fopen (fileName.c_str(), "w");
+     print_stacktrace(fp);
+     fclose(fp);
+   }
 }
+
+} // namespace
 
 
 int main(int argc, char** argv)
 {
+
   const auto timeStart = std::chrono::high_resolution_clock::now();
   {
     int request = MPI_THREAD_SINGLE;
@@ -359,6 +394,13 @@ int main(int argc, char** argv)
       std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
       exit(EXIT_FAILURE);
     }
+    MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
+  }
+
+  {
+    const char* env_val = std::getenv("NEKRS_SIGNUM_BACKTRACE");
+    if (env_val)
+      std::signal(std::atoi(env_val), signalHandler);  
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
@@ -385,13 +427,23 @@ int main(int argc, char** argv)
   }
 
   cmdOptions* cmdOpt = processCmdLineOptions(argc, argv, commGlobal);
+
   MPI_Comm comm = setupSession(cmdOpt, commGlobal);
 
   int rank, size;
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
+  if (rank == 0) {
+     time_t now = time(0);
+     tm *gmtm = gmtime(&now);
+     char *dt = asctime(gmtm);
+     std::cout << "UTC time: " << dt << std::endl;
+     fflush(stdout);
+  }
+
   if (cmdOpt->debug) {
+    MPI_Barrier(comm);
     for(int currRank = 0; currRank < size; ++currRank)
       if(rank == currRank) printf("rank %d: pid<%d>\n", rank, ::getpid());
     fflush(stdout);
@@ -400,6 +452,8 @@ int main(int argc, char** argv)
     if (rank == 0) std::cin.get();
     MPI_Barrier(comm);
   }
+
+  try{
 
   if (cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);
 
@@ -416,6 +470,7 @@ int main(int argc, char** argv)
     	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
                cmdOpt->ciMode, cmdOpt->setupFile,
                cmdOpt->backend, cmdOpt->deviceID,
+               cmdOpt->nSessions, cmdOpt->sessionID,
                cmdOpt->debug);
 
   if (cmdOpt->buildOnly) {
@@ -423,8 +478,6 @@ int main(int argc, char** argv)
     MPI_Finalize();
     return EXIT_SUCCESS;
   }
-
-  const int updCheckFreq = 20;
 
   int tStep = 0;
   double time = nekrs::startTime();
@@ -440,13 +493,24 @@ int main(int argc, char** argv)
       std::cout << "initialization took " << elapsedTime << " s" << std::endl;
   }
 
-  nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
+  int isLastStep = 1;
+  if (nekrs::endTime() > nekrs::startTime() || nekrs::numSteps() > tStep) {
+    isLastStep = 0;
+  }
+  nekrs::lastStep(isLastStep);
 
-  int lastStep = nekrs::lastStep(time, tStep, elapsedTime);
+  nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
+  nekrs::resetTimer("udfExecuteStep");
+
   double elapsedStepSum = 0;
 
-  if (rank == 0 && !lastStep) {
-    if (nekrs::endTime() > nekrs::startTime())
+  double tSolveStepMin = std::numeric_limits<double>::max();
+  double tSolveStepMax = std::numeric_limits<double>::min();
+
+  if (rank == 0) {
+    if (isLastStep)
+      std::cout << "endTime or numSteps reached already -> skip timestepping\n"; 
+    else if (nekrs::endTime() > nekrs::startTime())
       std::cout << "\ntimestepping to time " << nekrs::endTime() << " ...\n";
     else
       std::cout << "\ntimestepping for " << nekrs::numSteps() << " steps ...\n";
@@ -454,58 +518,92 @@ int main(int argc, char** argv)
 
   fflush(stdout);
   MPI_Pcontrol(1);
-  while (!lastStep) {
+  while (!isLastStep) {
     MPI_Barrier(comm);
     const double timeStartStep = MPI_Wtime();
 
     ++tStep;
-    lastStep = nekrs::lastStep(time, tStep, elapsedTime);
+    isLastStep = nekrs::lastStep(time, tStep, elapsedTime);
 
     double dt;
-    if (lastStep && nekrs::endTime() > 0)
+    if (isLastStep && nekrs::endTime() > 0)
       dt = nekrs::endTime() - time;
     else
       dt = nekrs::dt(tStep);
 
     int outputStep = nekrs::outputStep(time + dt, tStep);
     if (nekrs::writeInterval() == 0) outputStep = 0;
-    if (lastStep) outputStep = 1;
+    if (isLastStep) outputStep = 1;
     if (nekrs::writeInterval() < 0) outputStep = 0;
     nekrs::outputStep(outputStep);
 
     if (tStep <= 1000) nekrs::verboseInfo(true); 
 
-    nekrs::runStep(time, dt, tStep);
-    time += dt;
+    nekrs::initStep(time, dt, tStep);
+    
+    int corrector = 1;
+    bool converged = false;
+    do {
+      converged = nekrs::runStep(corrector++);
+    } while (!converged);
+ 
+    time = nekrs::finishStep();
 
-    if (outputStep) nekrs::outfld(time);
+    if(nekrs::updateFileCheckFreq()) {
+      if(tStep % nekrs::updateFileCheckFreq()) 
+        nekrs::processUpdFile();
+    }
 
-    if(tStep % updCheckFreq) nekrs::processUpdFile();
+    if (nekrs::printInfoFreq()) {
+      if (tStep % nekrs::printInfoFreq() == 0)
+        nekrs::printInfo(time, tStep, false, true);
+    }
+
+    if (outputStep) nekrs::outfld(time, tStep);
 
     MPI_Barrier(comm);
     const double elapsedStep = MPI_Wtime() - timeStartStep;
+    tSolveStepMin = std::min(elapsedStep, tSolveStepMin);
+    tSolveStepMax = std::max(elapsedStep, tSolveStepMax);
+    nekrs::updateTimer("minSolveStep", tSolveStepMin);
+    nekrs::updateTimer("maxSolveStep", tSolveStepMax);
+
     elapsedStepSum += elapsedStep;
     elapsedTime += elapsedStep;
     nekrs::updateTimer("elapsedStep", elapsedStep);
     nekrs::updateTimer("elapsedStepSum", elapsedStepSum);
     nekrs::updateTimer("elapsed", elapsedTime);
 
-    nekrs::printInfo(time, tStep);
+    if (nekrs::printInfoFreq()) {
+      if (tStep % nekrs::printInfoFreq() == 0)
+        nekrs::printInfo(time, tStep, true, false);
+    }
 
-    if (tStep % nekrs::runTimeStatFreq() == 0 || lastStep)
-      nekrs::printRuntimeStatistics(tStep);
+    if(nekrs::runTimeStatFreq()) {
+      if (tStep % nekrs::runTimeStatFreq() == 0 || isLastStep)
+        nekrs::printRuntimeStatistics(tStep);
+    }
 
-    if (tStep % 10 == 0) fflush(stdout);
+    if (tStep % 100 == 0) fflush(stdout);
   }
   MPI_Pcontrol(0);
 
-  nekrs::finalize();
+  delete cmdOpt;
+
+  const int exitValue = nekrs::finalize();
 
   MPI_Barrier(commGlobal);
-  if (rank == 0)
-    std::cout << "End\n";
-
   MPI_Finalize();
 
-  return EXIT_SUCCESS;
+  if(exitValue)
+    return EXIT_FAILURE;
+  else
+    return EXIT_SUCCESS;
+
+  } // try
+  catch(const std::exception& ex)
+  {
+    std::cerr << ex.what() << std::endl;
+    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+  }
 }

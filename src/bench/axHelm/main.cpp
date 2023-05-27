@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "omp.h"
+#include <getopt.h>
 #include <unistd.h>
 #include "mpi.h"
 
@@ -37,6 +37,7 @@ int main(int argc, char** argv)
   int Ntests = -1;
   size_t wordSize = 8;
   int computeGeom = 0;
+  bool stressForm = false;
 
   while(1) {
     static struct option long_options[] =
@@ -52,6 +53,7 @@ int main(int argc, char** argv)
       {"fp32", no_argument, 0, 'f'},
       {"help", required_argument, 0, 'h'},
       {"iterations", required_argument, 0, 'i'},
+      {"stress", no_argument, 0, 's'},
       {0, 0, 0, 0}
     };
     int option_index = 0;
@@ -85,6 +87,9 @@ int main(int argc, char** argv)
     case 'm':
       BKmode = 1;
       break;
+    case 's':
+      stressForm = true;
+      break;
     case 'f':
       wordSize = 4;;
       break;
@@ -101,12 +106,15 @@ int main(int argc, char** argv)
 
   if(err || cmdCheck != 3) {
     if(rank == 0)
-      printf("Usage: ./nekrs-axhelm  --p-order <n> --elements <n> --backend <CPU|CUDA|HIP|OPENCL>\n"
+      printf("Usage: ./nekrs-axhelm  --p-order <n> --elements <n> --backend <CPU|CUDA|HIP|DPCPP|OPENCL>\n"
              "                    [--block-dim <n>]\n"
              "                    [--g-order <n>] [--computeGeom]\n"
-             "                    [--bk-mode] [--fp32] [--iterations <n>]\n"); 
+             "                    [--bk-mode] [--fp32] [--stress] [--iterations <n>]\n"); 
     exit(1); 
   }
+
+  if(stressForm)
+    Ndim = 3;
 
   if(Ng < 0) Ng = N; 
   Nelements = std::max(1, Nelements/size);
@@ -136,7 +144,7 @@ int main(int argc, char** argv)
                 computeGeom,
                 wordSize,
                 Ndim,
-                false, // no stress formulation
+                stressForm,
                 verbosity,
                 Ntests,
                 true,
@@ -152,7 +160,7 @@ int main(int argc, char** argv)
                 computeGeom,
                 wordSize,
                 Ndim,
-                false, // no stress formulation
+                stressForm,
                 verbosity,
                 targetTime,
                 true,

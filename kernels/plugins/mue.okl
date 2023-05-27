@@ -1,0 +1,25 @@
+
+
+@kernel void mue(const dlong N,
+                 const dlong offset,
+                 const dfloat rho,
+                 const dfloat mueLam,
+                 @ restrict const dfloat *K,
+                 @ restrict const dfloat *TAU,
+                 @ restrict dfloat *MUET,
+                 @ restrict dfloat *MUE,
+                 @ restrict dfloat *DIFF)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+    if (n < N) {
+      const dfloat k = K[n];
+      const dfloat tau = TAU[n];
+      const dfloat mut = rho * p_alpinf_str * k * tau;
+
+      MUET[n] = mut;
+
+      MUE[n] = mueLam + mut;
+      DIFF[n + 0 * offset] = mueLam + p_sigma_k * mut;
+      DIFF[n + 1 * offset] = mueLam + p_sigma_tau * mut;
+    }
+}

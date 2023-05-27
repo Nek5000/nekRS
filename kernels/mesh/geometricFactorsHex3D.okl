@@ -1,0 +1,143 @@
+/*
+
+The MIT License (MIT)
+
+Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+@kernel void geometricFactorsHex3D(const dlong Nelements,
+                                   @ restrict const dfloat *D,
+                                   @ restrict const dfloat *gllw,
+                                   @ restrict const dfloat *x,
+                                   @ restrict const dfloat *y,
+                                   @ restrict const dfloat *z,
+                                   @ restrict dfloat *massMatrix,
+                                   @ restrict dfloat *vgeo,
+                                   @ restrict dfloat *ggeo,
+                                   @ restrict dfloat *Jacobians)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) { // for all elements
+    @shared dfloat s_D[p_Nq][p_Nq];
+    @shared dfloat s_x[p_Nq][p_Nq];
+    @shared dfloat s_y[p_Nq][p_Nq];
+    @shared dfloat s_z[p_Nq][p_Nq];
+
+    @exclusive dfloat r_x[p_Nq];
+    @exclusive dfloat r_y[p_Nq];
+    @exclusive dfloat r_z[p_Nq];
+
+    @shared dfloat s_gllw[p_Nq];
+
+#pragma unroll p_Nq
+    for (int k = 0; k < p_Nq; ++k) {
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          s_D[j][i] = D[j * p_Nq + i];
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          s_x[j][i] = x[id];
+          s_y[j][i] = y[id];
+          s_z[j][i] = z[id];
+          if (k == 0 && j == 0) {
+            s_gllw[i] = gllw[i];
+          }
+          if (k == 0) {
+#pragma unroll p_Nq
+            for (int l = 0; l < p_Nq; ++l) {
+              const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              r_x[l] = x[other_id];
+              r_y[l] = y[other_id];
+              r_z[l] = z[other_id];
+            }
+          }
+        }
+      }
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          dfloat xr = 0, yr = 0, zr = 0;
+          dfloat xs = 0, ys = 0, zs = 0;
+          dfloat xt = 0, yt = 0, zt = 0;
+#pragma unroll p_Nq
+          for (int m = 0; m < p_Nq; ++m) {
+            const dfloat Dim = s_D[i][m];
+            const dfloat Djm = s_D[j][m];
+            const dfloat Dkm = s_D[k][m];
+            xr += Dim * s_x[j][m];
+            xs += Djm * s_x[m][i];
+            xt += Dkm * r_x[m];
+            yr += Dim * s_y[j][m];
+            ys += Djm * s_y[m][i];
+            yt += Dkm * r_y[m];
+            zr += Dim * s_z[j][m];
+            zs += Djm * s_z[m][i];
+            zt += Dkm * r_z[m];
+          }
+          /* compute geometric factors for affine coordinate transform*/
+          const dfloat J = xr * (ys * zt - zs * yt) - yr * (xs * zt - zs * xt) + zr * (xs * yt - ys * xt);
+          const dfloat Jinv = 1. / J;
+          dfloat JW = J * s_gllw[i] * s_gllw[j] * s_gllw[k];
+          const dfloat rx = (ys * zt - zs * yt) * Jinv, ry = -(xs * zt - zs * xt) * Jinv,
+                       rz = (xs * yt - ys * xt) * Jinv;
+          const dfloat sx = -(yr * zt - zr * yt) * Jinv, sy = (xr * zt - zr * xt) * Jinv,
+                       sz = -(xr * yt - yr * xt) * Jinv;
+          const dfloat tx = (yr * zs - zr * ys) * Jinv, ty = -(xr * zs - zr * xs) * Jinv,
+                       tz = (xr * ys - yr * xs) * Jinv;
+          const dlong n = i + j * p_Nq + k * p_Nq * p_Nq;
+
+          // store mesh quality metrics
+          Jacobians[e * p_Np + n] = J;
+
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_RXID] = rx;
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_RYID] = ry;
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_RZID] = rz;
+
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_SXID] = sx;
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_SYID] = sy;
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_SZID] = sz;
+
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_TXID] = tx;
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_TYID] = ty;
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_TZID] = tz;
+
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_JID] = J;
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_JWID] = JW;
+
+          /** update the mass matrix **/
+          massMatrix[p_Np * e + n] = JW;
+          vgeo[p_Nvgeo * p_Np * e + n + p_Np * p_IJWID] = 1. / JW;
+
+          ggeo[p_Nggeo * p_Np * e + n + p_Np * p_G00ID] = JW * (rx * rx + ry * ry + rz * rz);
+          ggeo[p_Nggeo * p_Np * e + n + p_Np * p_G01ID] = JW * (rx * sx + ry * sy + rz * sz);
+          ggeo[p_Nggeo * p_Np * e + n + p_Np * p_G02ID] = JW * (rx * tx + ry * ty + rz * tz);
+
+          ggeo[p_Nggeo * p_Np * e + n + p_Np * p_G11ID] = JW * (sx * sx + sy * sy + sz * sz);
+          ggeo[p_Nggeo * p_Np * e + n + p_Np * p_G12ID] = JW * (sx * tx + sy * ty + sz * tz);
+
+          ggeo[p_Nggeo * p_Np * e + n + p_Np * p_G22ID] = JW * (tx * tx + ty * ty + tz * tz);
+
+          ggeo[p_Nggeo * p_Np * e + n + p_Np * p_GWJID] = JW;
+        }
+      }
+    }
+  }
+}

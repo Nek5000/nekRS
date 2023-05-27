@@ -1,0 +1,246 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+#define surfaceTerms(sk, face, i, j)                                                                         \
+{                                                                                                            \
+const dlong bcType = EToB[face + p_Nfaces * e + scalarId * EToBOffset];                                      \
+if (bcType == p_bcTypeF) {                                                                                   \
+struct bcData bc;                                                                                            \
+bc.idM = vmapM[sk];                                                                                          \
+bc.time = time;                                                                                              \
+bc.id = EToBM[face + p_Nfaces * e];                                                                          \
+bc.nx = sgeo[sk * p_Nsgeo + p_NXID];                                                                         \
+bc.ny = sgeo[sk * p_Nsgeo + p_NYID];                                                                         \
+bc.nz = sgeo[sk * p_Nsgeo + p_NZID];                                                                         \
+bc.t1x = sgeo[sk * p_Nsgeo + p_T1XID];                                                                       \
+bc.t1y = sgeo[sk * p_Nsgeo + p_T1YID];                                                                       \
+bc.t1z = sgeo[sk * p_Nsgeo + p_T1ZID];                                                                       \
+bc.t2x = sgeo[sk * p_Nsgeo + p_T2XID];                                                                       \
+bc.t2y = sgeo[sk * p_Nsgeo + p_T2YID];                                                                       \
+bc.t2z = sgeo[sk * p_Nsgeo + p_T2ZID];                                                                       \
+bc.u = U[bc.idM + 0 * offset];                                                                               \
+bc.v = U[bc.idM + 1 * offset];                                                                               \
+bc.w = U[bc.idM + 2 * offset];                                                                               \
+bc.x = x[bc.idM];                                                                                            \
+bc.y = y[bc.idM];                                                                                            \
+bc.z = z[bc.idM];                                                                                            \
+bc.trans = rho[bc.idM + scalarId * offset];                                                                  \
+bc.diff = diff[bc.idM + scalarId * offset];                                                                  \
+bc.fieldOffset = offset;                                                                                     \
+bc.s = S[bc.idM + scalarId * offset];                                                                        \
+bc.usrwrk = W;                                                                                               \
+const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];                                                             \
+bc.scalarId = scalarId;                                                                                      \
+bc.flux = 0;                                                                                                 \
+scalarNeumannConditions(&bc);                                                                                \
+s_ndU[j][i] = -WsJ * (bc.flux);                                                                              \
+}                                                                                                            \
+else {                                                                                                       \
+s_ndU[j][i] = 0;                                                                                             \
+}                                                                                                            \
+}
+
+// RHS contributions for continuous solver
+@kernel void neumannBCHex3D(const dlong Nelements,
+                            const dlong Nscalars,
+                            @ restrict const dfloat *sgeo,
+                            @ restrict const dlong *vmapM,
+                            @ restrict const int *EToBM,
+                            const dlong startScalar,
+                            const dfloat time,
+                            const dlong offset,
+                            const dlong EToBOffset,
+                            @ restrict const dfloat *x,
+                            @ restrict const dfloat *y,
+                            @ restrict const dfloat *z,
+                            @ restrict const dfloat *U,
+                            @ restrict const dfloat *S,
+                            @ restrict const int *EToB,
+                            @ restrict const dfloat *diff,
+                            @ restrict const dfloat *rho,
+                            @ restrict const dfloat *W,
+                            @ restrict dfloat *rhsU)
+{
+  for (dlong scalarId = startScalar; scalarId < (startScalar + Nscalars); ++scalarId; @outer(1)) {
+    for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+      @shared dfloat s_ndU[p_Nq][p_Nq];
+
+      @exclusive dfloat r_rhsU[p_Nq]; // array  for results Au(i,j,0:N)
+
+      // for all face nodes of all elements
+      // face 0
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; ++k) {
+            r_rhsU[k] = 0.f;
+          }
+
+          const dlong sk0 = e * p_Nfp * p_Nfaces + 0 * p_Nfp + i + j * p_Nq;
+          surfaceTerms(sk0, 0, i, j);
+        }
+      }
+
+      @barrier();
+
+      // face 0
+      for (int j = 0; j < p_Nq; ++j; @inner(1))
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          // face 0
+          if (EToBM[e * p_Nfaces + 0] > 0)
+            r_rhsU[0] += s_ndU[j][i];
+        }
+
+      @barrier();
+
+      // face 5
+      for (int j = 0; j < p_Nq; ++j; @inner(1))
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong sk5 = e * p_Nfp * p_Nfaces + 5 * p_Nfp + i + j * p_Nq;
+          surfaceTerms(sk5, 5, i, j);
+        }
+
+      @barrier();
+
+      // face 5
+      for (int j = 0; j < p_Nq; ++j; @inner(1))
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          // face 5
+          if (EToBM[e * p_Nfaces + 5] > 0)
+            r_rhsU[p_Nq - 1] += s_ndU[j][i];
+        }
+
+      @barrier();
+
+      // face 1
+      for (int k = 0; k < p_Nq; ++k; @inner(1))
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong sk1 = e * p_Nfp * p_Nfaces + 1 * p_Nfp + i + k * p_Nq;
+          surfaceTerms(sk1, 1, i, k);
+        }
+
+      @barrier();
+
+      // face 1
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          if (j == 0) { // face 1
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; k++) {
+              if (EToBM[e * p_Nfaces + 1] > 0)
+                r_rhsU[k] += s_ndU[k][i];
+            }
+          }
+        }
+      }
+
+      @barrier();
+
+      // face 3
+      for (int k = 0; k < p_Nq; ++k; @inner(1))
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong sk3 = e * p_Nfp * p_Nfaces + 3 * p_Nfp + i + k * p_Nq;
+          surfaceTerms(sk3, 3, i, k);
+        }
+
+      @barrier();
+
+      // face 3
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          if (j == p_Nq - 1) { // face 3
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; k++) {
+              if (EToBM[e * p_Nfaces + 3] > 0)
+                r_rhsU[k] += s_ndU[k][i];
+            }
+          }
+        }
+      }
+
+      @barrier();
+
+      // face 2
+      for (int k = 0; k < p_Nq; ++k; @inner(1))
+        for (int j = 0; j < p_Nq; ++j; @inner(0)) {
+          const dlong sk2 = e * p_Nfp * p_Nfaces + 2 * p_Nfp + j + k * p_Nq;
+          surfaceTerms(sk2, 2, j, k);
+        }
+
+      @barrier();
+
+      // face 2
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          if (i == p_Nq - 1) { // face 2
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; k++) {
+              if (EToBM[e * p_Nfaces + 2] > 0)
+                r_rhsU[k] += s_ndU[k][j];
+            }
+          }
+        }
+      }
+
+      @barrier();
+
+      // face 4
+      for (int k = 0; k < p_Nq; ++k; @inner(1))
+        for (int j = 0; j < p_Nq; ++j; @inner(0)) {
+          const dlong sk4 = e * p_Nfp * p_Nfaces + 4 * p_Nfp + j + k * p_Nq;
+          surfaceTerms(sk4, 4, j, k);
+        }
+
+      @barrier();
+
+      // face 4
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          if (i == 0) { // face 4
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; k++) {
+              if (EToBM[e * p_Nfaces + 4] > 0)
+                r_rhsU[k] += s_ndU[k][j];
+            }
+          }
+        }
+      }
+
+      @barrier();
+
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; k++) {
+            const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+            rhsU[id + scalarId * offset] -= r_rhsU[k];
+          }
+        }
+      }
+    }
+  }
+}

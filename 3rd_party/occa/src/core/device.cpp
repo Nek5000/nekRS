@@ -3,6 +3,7 @@
 #include <occa/internal/core/device.hpp>
 #include <occa/internal/core/kernel.hpp>
 #include <occa/internal/core/memory.hpp>
+#include <occa/internal/core/memoryPool.hpp>
 #include <occa/internal/modes.hpp>
 #include <occa/internal/utils/sys.hpp>
 #include <occa/internal/utils/env.hpp>
@@ -121,7 +122,7 @@ namespace occa {
     return (modeDevice != other.modeDevice);
   }
 
-  bool device::isInitialized() {
+  bool device::isInitialized() const {
     return (modeDevice != NULL);
   }
 
@@ -232,26 +233,23 @@ namespace occa {
     return 0;
   }
 
+  udim_t device::maxMemoryAllocated() const {
+    if (modeDevice) {
+      return modeDevice->maxBytesAllocated;
+    }
+    return 0;
+  }
+
   void device::finish() {
-    if (!modeDevice) {
-      return;
+    if (modeDevice) {
+      modeDevice->finish();
     }
-    if (modeDevice->hasSeparateMemorySpace()) {
-      const size_t staleEntries = uvaStaleMemory.size();
-      for (size_t i = 0; i < staleEntries; ++i) {
-        occa::modeMemory_t *mem = uvaStaleMemory[i];
+  }
 
-        mem->copyTo(mem->uvaPtr, mem->size, 0, "async: true");
-
-        mem->memInfo &= ~uvaFlag::inDevice;
-        mem->memInfo &= ~uvaFlag::isStale;
-      }
-      if (staleEntries) {
-        uvaStaleMemory.clear();
-      }
+  void device::finishAll() {
+    if (modeDevice) {
+      modeDevice->finishAll();
     }
-
-    modeDevice->finish();
   }
 
   bool device::hasSeparateMemorySpace() {
@@ -263,6 +261,14 @@ namespace occa {
   stream device::createStream(const occa::json &props) {
     assertInitialized();
     return modeDevice->createStream(streamProperties(props));
+  }
+
+  stream device::wrapStream(void* ptr, const occa::json &props) {
+    assertInitialized();
+
+    occa::json streamProps = streamProperties(props);
+
+    return modeDevice->wrapStream(ptr, streamProps);
   }
 
   stream device::getStream() {
@@ -299,11 +305,9 @@ namespace occa {
     assertInitialized();
 
     kernelProps = kernelProperties(props);
-    auto suffix = kernelProps.get<std::string>("kernelNameSuffix", "");
 
     kernelHash = (
       hash()
-      ^ occa::hash(suffix.c_str())
       ^ modeDevice->kernelHash(kernelProps)
       ^ kernelHeaderHash(kernelProps)
       ^ sourceHash
@@ -399,16 +403,19 @@ namespace occa {
     setupKernelInfo(props, occa::hash(content),
                     allProps, kernelHash);
 
-    io::lock_t lock(kernelHash, "occa-device");
-    std::string stringSourceFile = io::hashDir(kernelHash);
-    stringSourceFile += "string_source.cpp";
+    std::string stringSourceFile = (
+      io::hashDir(kernelHash)
+      + "string_source.cpp"
+    );
 
-    if (lock.isMine()) {
-      if (!io::isFile(stringSourceFile)) {
-        io::write(stringSourceFile, content);
+    io::stageFile(
+      stringSourceFile,
+      true,
+      [&](const std::string &tempFilename) -> bool {
+        io::write(tempFilename, content);
+        return true;
       }
-      lock.release();
-    }
+    );
 
     return buildKernel(stringSourceFile,
                        kernelName,
@@ -447,6 +454,9 @@ namespace occa {
     mem.setDtype(dtype);
 
     modeDevice->bytesAllocated += bytes;
+    modeDevice->maxBytesAllocated = std::max(
+      modeDevice->maxBytesAllocated, modeDevice->bytesAllocated
+    );
 
     return mem;
   }
@@ -488,53 +498,6 @@ namespace occa {
     return malloc(entries, dtype::byte, NULL, props);
   }
 
-  void* device::umalloc(const dim_t entries,
-                        const dtype_t &dtype,
-                        const void *src,
-                        const occa::json &props) {
-    void *ptr = umalloc(entries, dtype, occa::memory(), props);
-
-    if (src && entries) {
-      const dim_t bytes = entries * dtype.bytes();
-      ::memcpy(ptr, src, bytes);
-    }
-
-    return ptr;
-  }
-
-  void* device::umalloc(const dim_t entries,
-                        const dtype_t &dtype,
-                        const occa::memory src,
-                        const occa::json &props) {
-    assertInitialized();
-
-    if (entries == 0) {
-      return NULL;
-    }
-
-    occa::json memProps = memoryProperties(props);
-
-    memory mem = malloc(entries, dtype, src, memProps);
-    mem.setDtype(dtype);
-    mem.dontUseRefs();
-    mem.setupUva();
-
-    if (memProps.get("managed", true)) {
-      mem.startManaging();
-    }
-    void *ptr = mem.modeMemory->uvaPtr;
-    if (src.size()) {
-      mem.copyTo(ptr);
-    }
-    return ptr;
-  }
-
-  void* device::umalloc(const dim_t entries,
-                        const dtype_t &dtype,
-                        const occa::json &props) {
-    return umalloc(entries, dtype, NULL, props);
-  }
-
   template <>
   occa::memory device::wrapMemory<void>(const void *ptr,
                                         const dim_t entries,
@@ -557,10 +520,26 @@ namespace occa {
     memory mem(modeDevice->wrapMemory(ptr, bytes, memProps));
 
     mem.setDtype(dtype);
-    mem.dontUseRefs();
 
     return mem;
   }
+
+  memoryPool device::createMemoryPool(const occa::json &props) {
+    assertInitialized();
+
+    occa::json memProps = memoryProperties(props);
+
+    memoryPool memPool(modeDevice->createMemoryPool(memProps));
+
+    return memPool;
+  }
+  //  |=================================
+
+  void* device::unwrap() {
+    assertInitialized();
+    return modeDevice->unwrap();
+  }
+
   //  |=================================
 
   template <>

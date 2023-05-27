@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -1151,7 +1151,7 @@ void Mat_dhFixDiags(Mat_dh A)
   for (i=0; i<m; ++i) {
     HYPRE_Real sum = 0.0;
     for (j=rp[i]; j<rp[i+1]; ++j) {
-      sum += fabs(aval[j]);
+      sum += hypre_abs(aval[j]);
     }
     for (j=rp[i]; j<rp[i+1]; ++j) {
       if (cval[j] == i) {

@@ -1,5 +1,6 @@
 #include <occa/internal/core/device.hpp>
 #include <occa/internal/core/kernel.hpp>
+#include <occa/internal/core/buffer.hpp>
 #include <occa/internal/core/memory.hpp>
 #include <occa/internal/core/stream.hpp>
 #include <occa/internal/core/streamTag.hpp>
@@ -11,7 +12,8 @@ namespace occa {
     mode((std::string) properties_["mode"]),
     properties(properties_),
     needsLauncherKernel(false),
-    bytesAllocated(0) {}
+    bytesAllocated(0),
+    maxBytesAllocated(0) {}
 
   modeDevice_t::~modeDevice_t() {
     // Null all wrappers
@@ -25,7 +27,7 @@ namespace occa {
   // Must be called before ~modeDevice_t()!
   void modeDevice_t::freeResources() {
     freeRing<modeKernel_t>(kernelRing);
-    freeRing<modeMemory_t>(memoryRing);
+    freeRing<modeBuffer_t>(memoryRing);
     freeRing<modeStream_t>(streamRing);
     freeRing<modeStreamTag_t>(streamTagRing);
   }
@@ -54,12 +56,12 @@ namespace occa {
     kernelRing.removeRef(kernel);
   }
 
-  void modeDevice_t::addMemoryRef(modeMemory_t *memory) {
-    memoryRing.addRef(memory);
+  void modeDevice_t::addMemoryRef(modeBuffer_t *buffer) {
+    memoryRing.addRef(buffer);
   }
 
-  void modeDevice_t::removeMemoryRef(modeMemory_t *memory) {
-    memoryRing.removeRef(memory);
+  void modeDevice_t::removeMemoryRef(modeBuffer_t *buffer) {
+    memoryRing.removeRef(buffer);
   }
 
   void modeDevice_t::addStreamRef(modeStream_t *stream) {
@@ -76,6 +78,16 @@ namespace occa {
 
   void modeDevice_t::removeStreamTagRef(modeStreamTag_t *streamTag) {
     streamTagRing.removeRef(streamTag);
+  }
+
+  void modeDevice_t::finish() const {
+    currentStream.getModeStream()->finish();
+  }
+
+  void modeDevice_t::finishAll() const {
+    for(auto* stream : streams) {
+      if(stream) stream->finish();
+    }
   }
 
   hash_t modeDevice_t::versionedHash() const {
@@ -96,7 +108,7 @@ namespace occa {
     infoProps["kernel/metadata"] = sourceMetadata.getKernelMetadataJson();
     infoProps["kernel/dependencies"] = sourceMetadata.getDependencyJson();
 
-    io::writeBuildFile(filename, kernelHash, infoProps);
+    io::writeBuildFile(filename, infoProps);
   }
 
   std::string modeDevice_t::getKernelHash(const std::string &fullHash,

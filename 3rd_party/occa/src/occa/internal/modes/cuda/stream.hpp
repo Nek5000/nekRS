@@ -12,11 +12,17 @@ namespace occa {
     public:
       CUstream cuStream;
 
+      bool isWrapped;
+
       stream(modeDevice_t *modeDevice_,
              const occa::json &properties_,
-             CUstream cuStream_);
+             CUstream cuStream_,
+             bool isWrapped_=false);
 
       virtual ~stream();
+      void finish() override;
+
+      void* unwrap() override;
     };
   }
 }

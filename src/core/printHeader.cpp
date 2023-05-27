@@ -11,6 +11,6 @@ void printHeader()
             << "v" << NEKRS_VERSION << "." << NEKRS_SUBVERSION << "." << NEKRS_PATCHVERSION 
 	    << " (" GITCOMMITHASH << ")" << std::endl
             << std::endl
-            << "COPYRIGHT (c) 2019-2022 UCHICAGO ARGONNE, LLC" << std::endl
+            << "COPYRIGHT (c) 2019-2023 UCHICAGO ARGONNE, LLC" << std::endl
             << std::endl;
 }

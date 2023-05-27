@@ -7,8 +7,7 @@ timeStepper = tombo2
 writeInterval = 0
 
 [PROBLEMTYPE]
-equation = Stokes
-stressFormulation = true # required for variable viscosity
+equation = Stokes+variableViscosity
 
 [PRESSURE]
 residualTol = 1e-08

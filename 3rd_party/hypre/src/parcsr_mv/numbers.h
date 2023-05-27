@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -37,17 +37,10 @@
 #ifndef hypre_NUMBERS_HEADER
 #define hypre_NUMBERS_HEADER
 
-typedef struct hypre_NumbersNode{
+typedef struct hypre_NumbersNode
+{
    struct hypre_NumbersNode * digit[11];
-/* ... should be   hypre_NumbersNode * digit[11]; */
 } hypre_NumbersNode;
 
-hypre_NumbersNode * hypre_NumbersNewNode(void);
-void hypre_NumbersDeleteNode( hypre_NumbersNode * node );
-HYPRE_Int hypre_NumbersEnter( hypre_NumbersNode * node, const HYPRE_Int n );
-HYPRE_Int hypre_NumbersNEntered( hypre_NumbersNode * node );
-HYPRE_Int hypre_NumbersQuery( hypre_NumbersNode * node, const HYPRE_Int n );
-HYPRE_Int * hypre_NumbersArray( hypre_NumbersNode * node );
-
-
 #endif
+

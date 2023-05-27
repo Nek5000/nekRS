@@ -9,25 +9,29 @@
 #include "nrssys.hpp"
 #include "mesh3D.h"
 #include "elliptic.h"
-
-#define NSCALAR_MAX 100
+#include "neknek.hpp"
+#include "cvode.hpp"
 
 struct cds_t
 {
-  static constexpr double targetBenchmark {0.1};
+  static constexpr double targetTimeBenchmark {0.2};
   int dim, elementType;
 
   mesh_t* mesh[NSCALAR_MAX];
   dlong fieldOffset[NSCALAR_MAX];
   dlong fieldOffsetScan[NSCALAR_MAX];
+  occa::memory o_fieldOffsetScan;
   dlong fieldOffsetSum;
   mesh_t* meshV;
   elliptic_t* solver[NSCALAR_MAX];
+  neknek_t* neknek;
+  cvode_t* cvode;
+
+  bool anyCvodeSolver = false;
+  bool anyEllipticSolver = false;
 
   int NVfields;            // Number of velocity fields
   int NSfields;            // Number of scalar fields
-
-  setupAide options[NSCALAR_MAX];
 
   oogs_t *gsh, *gshT;
 
@@ -43,6 +47,9 @@ struct cds_t
   int dtAdaptStep;
 
   int compute[NSCALAR_MAX];
+  int cvodeSolve[NSCALAR_MAX];
+  occa::memory o_compute;
+  occa::memory o_cvodeSolve;
 
   dfloat *U, *S;
 
@@ -50,7 +57,10 @@ struct cds_t
   int filterNc;
   dfloat filterS[NSCALAR_MAX];
   dfloat* filterM;
+  occa::memory o_applyFilterRT;
+  occa::memory o_filterS;
   occa::memory o_filterMT;
+  int applyFilter;
 
   //RK Subcycle Data
   int nRK;
@@ -61,23 +71,22 @@ struct cds_t
   occa::memory o_Urst;
 
   //EXTBDF data
-  dfloat* coeffEXT, * coeffBDF, * coeffSubEXT;
+  dfloat* coeffEXT, * coeffBDF;
 
-  int* EToB[NSCALAR_MAX];
-  occa::memory o_EToB[NSCALAR_MAX];
+  int* EToB;
+  occa::memory o_EToB;
+  dlong EToBOffset;
 
   occa::memory* o_usrwrk;
 
   int Nsubsteps;
 
-  dfloat* Ue;
   occa::memory o_Ue;
 
-  dfloat* prop;
   occa::memory o_prop, o_ellipticCoeff;
   occa::memory o_rho, o_diff;
 
-  dfloat* cU, * cSd, * cS, * FS, * BF;
+  dfloat* cU, * cSd, * cS;
   occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF, o_BFDiag;
 
   occa::kernel sumMakefKernel;
@@ -91,14 +100,12 @@ struct cds_t
 
   occa::kernel nStagesSum3Kernel;
 
-  occa::kernel filterRTKernel; // Relaxation-Term based filtering
-  // occa::kernel constrainKernel;
+  occa::kernel filterRTKernel;
 
   occa::memory o_U;
   occa::memory o_S, o_Se;
 
-  //EXTBDF data
-  occa::memory o_coeffEXT, o_coeffBDF, o_coeffSubEXT;
+  occa::memory o_coeffEXT, o_coeffBDF;
 
   occa::kernel advectionVolumeKernel;
   occa::kernel advectionSurfaceKernel;
@@ -108,12 +115,12 @@ struct cds_t
   occa::kernel strongAdvectionCubatureVolumeKernel;
   occa::kernel advectMeshVelocityKernel;
 
-  occa::kernel helmholtzRhsIpdgBCKernel;
-  occa::kernel helmholtzRhsBCKernel;
+  occa::kernel neumannBCKernel;
   occa::kernel dirichletBCKernel;
   occa::kernel setEllipticCoeffKernel;
 
   occa::kernel maskCopyKernel;
+  occa::kernel maskCopy2Kernel;
 
   occa::properties* kernelInfo;
 };
