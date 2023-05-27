@@ -969,6 +969,7 @@ void pMGLevel::build(elliptic_t *pSolver)
       };
 
       double overlappedTime;
+      auto overlapEnabled = true;
       if (options.compareArgs("MULTIGRID SMOOTHER", "RAS")) {
         auto maskedGlobalIds = (hlong *)calloc(mesh->Nlocal, sizeof(hlong));
         memcpy(maskedGlobalIds, mesh->globalIds, mesh->Nlocal * sizeof(hlong));
@@ -991,8 +992,10 @@ void pMGLevel::build(elliptic_t *pSolver)
                                          oogsMode);
 
         overlappedTime = timeOperator(o_u, o_Su);
-        if (overlappedTime > nonOverlappedTime)
+        if (overlappedTime > nonOverlappedTime) {
           ogsOverlap = nullptr;
+          overlapEnabled = false;
+        }
       }
       else {
         ogsExtOverlap = (void *)oogs::setup(Nelements * Np_e,
@@ -1007,8 +1010,10 @@ void pMGLevel::build(elliptic_t *pSolver)
                                             oogsMode);
 
         overlappedTime = timeOperator(o_u, o_Su);
-        if (overlappedTime > nonOverlappedTime)
+        if (overlappedTime > nonOverlappedTime) {
           ogsExtOverlap = nullptr;
+          overlapEnabled = false;
+        }
       }
 
       o_u.free();
@@ -1016,9 +1021,9 @@ void pMGLevel::build(elliptic_t *pSolver)
 
       if (platform->comm.mpiRank == 0) {
         printf("autotuning overlap in smoothSchwarz: %.2es %.2es ", nonOverlappedTime, overlappedTime);
-        if (ogsExtOverlap)
+        if (overlapEnabled) {
           printf("(overlap enabled)");
-
+        }
         printf("\n");
       }
     }

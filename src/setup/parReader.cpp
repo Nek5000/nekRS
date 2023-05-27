@@ -389,7 +389,7 @@ void checkValidity(const int rank, const std::vector<std::string> &validValues, 
 {
   bool valid = false;
   for (auto &&v : validValues) {
-    valid |= (entry.find(v) != std::string::npos);
+    valid |= (entry.find(v) == 0);
   }
 
   if (!valid) {

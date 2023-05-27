@@ -33,8 +33,10 @@ void compileKernels() {
   occa::properties kernelInfoBC = compileUDFKernels(); // includes plugins
 
   const double tStart = MPI_Wtime();
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0 &&
+      !platform->options.compareArgs("BUILD ONLY", "TRUE")) {
     std::cout << "benchmarking hot kernels ..." << std::endl;
+  }
 
   registerLinAlgKernels();
 
@@ -89,10 +91,10 @@ void compileKernels() {
     registerEllipticPreconditionerKernels(section, poissonEquation);
   }
 
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     printf("JIT compiling kernels (this may take awhile if they are not in cache) ...\n");
-  fflush(stdout);
-
+    fflush(stdout);
+  }
 
   platform->kernels.compile();
 
