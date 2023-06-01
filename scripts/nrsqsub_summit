@@ -135,7 +135,7 @@ echo "" >> $SFILE
 
 
 if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
-echo "jsrun --smpiargs='-gpu' -X 1 -n1 -r1 -a1 -c2 -g1 -b rs -d packed \$bin --setup \$case --backend \$backend --device-id 0 --build-only \$nn" >> $SFILE
+echo "jsrun --smpiargs='-gpu' -X 1 -n1 -r1 -a1 -c2 -g1 -b rs -d packed \$bin --setup \$case --backend \$backend --device-id 0 --build-only \$ntasks" >> $SFILE
 fi
 
 echo "if [ \$CPUONLY -eq 1 ]; then" >> $SFILE
