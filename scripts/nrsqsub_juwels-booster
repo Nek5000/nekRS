@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: ${PROJ_ID:="dems"}
+: ${PROJ_ID:=""}
 : ${QUEUE:=""}
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
 : ${NEKRS_CACHE_BCAST:=0}
@@ -57,14 +57,15 @@ fi
 # romio setup
 export ROMIO_HINTS="$(pwd)/.romio_hint"
 if [ ! -f "$ROMIO_HINTS" ]; then
-  echo "romio_no_indep_rw true"   >$ROMIO_HINTS
-  echo "romio_cb_write enable"   >>$ROMIO_HINTS
-  echo "romio_ds_write enable"   >>$ROMIO_HINTS
-  echo "romio_cb_read enable"    >>$ROMIO_HINTS
-  echo "romio_ds_read enable"    >>$ROMIO_HINTS
-  echo "IBM_largeblock_io true"  >>$ROMIO_HINTS
-  echo "cb_buffer_size 16777216" >>$ROMIO_HINTS
-  echo "cb_config_list *:1"      >>$ROMIO_HINTS
+  echo "romio_no_indep_rw true"     >$ROMIO_HINTS
+  echo "cb_buffer_size 67108864"   >>$ROMIO_HINTS
+  echo "romio_cb_alltoall disable" >>$ROMIO_HINTS
+  echo "romio_cb_read enable"      >>$ROMIO_HINTS
+  echo "romio_cb_write enable"     >>$ROMIO_HINTS
+  echo "romio_ds_read disable"     >>$ROMIO_HINTS
+  echo "romio_ds_write disable"    >>$ROMIO_HINTS
+  echo "IBM_largeblock_io true"    >>$ROMIO_HINTS
+  echo "cb_config_list *:1"        >>$ROMIO_HINTS
 fi
 
 
@@ -84,7 +85,7 @@ echo "#SBATCH --gres=gpu:$gpu_per_node" >> $SFILE
 echo "#SBATCH --gpu-bind=closest" >>$SFILE
 echo "#SBATCH --distribution=block:cyclic:fcyclic" >> $SFILE
 
-echo "module load CMake GCC CUDA OpenMPI" >>$SFILE
+echo "module load GCC OpenMPI CUDA CMake " >>$SFILE
 echo "module list" >>$SFILE
 
 echo "nvidia-smi" >>$SFILE
@@ -109,6 +110,7 @@ fi
 echo "" >> $SFILE
 
 echo "date" >>$SFILE
+echo "export OMP_NUM_THREADS=\${SLURM_CPUS_PER_TASK}" >>$SFILE
 echo "srun --cpu-bind=cores $bin --backend $backend --device-id 0 --setup $case" >>$SFILE
 
 sbatch $SFILE
