@@ -13,15 +13,14 @@ void runBenchmarks(nrs_t *nrs)
 {
   mesh_t *mesh = nrs->meshV;
 
-  auto o_P0 = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
-  std::vector<dfloat> P0;
-  P0.reserve(nrs->fieldOffset);
+  std::vector<dfloat> rhs;
+  rhs.reserve(nrs->fieldOffset);
 
   for (int i = 0; i < mesh->Nlocal; i++) {
     const dfloat lambda = 0;
-    P0[i] = (3 * M_PI * M_PI + lambda) * sin(M_PI * mesh->x[i]) * sin(M_PI * mesh->y[i]) * sin(M_PI * mesh->z[i]);
+    rhs[i] = (3 * M_PI * M_PI + lambda) * sin(M_PI * mesh->x[i]) * sin(M_PI * mesh->y[i]) * sin(M_PI * mesh->z[i]);
   }
-  o_P0.copyFrom(P0.data());
+  auto o_rhs = platform->device.malloc<dfloat>(nrs->fieldOffset, rhs.data());
 
   platform->linAlg->fillKernel(2 * nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
 
@@ -65,10 +64,9 @@ void runBenchmarks(nrs_t *nrs)
 
     for (int i = 0; i < Nrep; i++) {
       platform->linAlg->fillKernel(nrs->fieldOffset, 0.0, nrs->o_P);
-      platform->o_mempool.slice0.copyFrom(o_P0, nrs->fieldOffset * sizeof(dfloat));
 
       // warm-up
-      ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
+      ellipticSolve(nrs->pSolver, o_rhs, nrs->o_P);
 
       platform->timer.reset();
       platform->flopCounter->clear();
@@ -76,7 +74,7 @@ void runBenchmarks(nrs_t *nrs)
       MPI_Barrier(platform->comm.mpiComm);
       const auto tStart = MPI_Wtime();
 
-      ellipticSolve(nrs->pSolver, platform->o_mempool.slice0, nrs->o_P);
+      ellipticSolve(nrs->pSolver, o_rhs, nrs->o_P);
 
       platform->device.finish();
       platform->timer.set("pressureSolve", MPI_Wtime() - tStart);
@@ -165,7 +163,7 @@ void UDF_Setup(nrs_t *nrs)
 #endif
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   mesh_t *mesh = nrs->meshV;
 

@@ -45,29 +45,23 @@ void reserveAllocation(nrs_t *nrs, dlong npt)
     neknek->o_pointMap.free();
   }
 
-  // compute page-aligned fieldOffset
-  neknek->fieldOffset = npt;
-  const int pageW = ALIGN_SIZE / sizeof(dfloat);
-  if (neknek->fieldOffset % pageW)
-    neknek->fieldOffset = (neknek->fieldOffset / pageW + 1) * pageW;
-
+  neknek->fieldOffset = alignStride<dfloat>(npt);
   neknek->pointMap.resize(nrs->fieldOffset + 1);
-  neknek->o_pointMap = platform->device.malloc((nrs->fieldOffset + 1) * sizeof(dlong));
+  neknek->o_pointMap = platform->device.malloc<dlong>((nrs->fieldOffset + 1));
 
   if (npt) {
     neknek->o_U =
-        platform->device.malloc(nrs->NVfields * neknek->fieldOffset * (neknek->nEXT + 1) * sizeof(dfloat));
+        platform->device.malloc<dfloat>(nrs->NVfields * neknek->fieldOffset * (neknek->nEXT + 1));
     if (neknek->Nscalar) {
-      neknek->o_S = platform->device.malloc(neknek->Nscalar * neknek->fieldOffset * (neknek->nEXT + 1) *
-                                            sizeof(dfloat));
+      neknek->o_S = platform->device.malloc<dfloat>(neknek->Nscalar * neknek->fieldOffset * (neknek->nEXT + 1));
     }
     else {
-      neknek->o_S = platform->device.malloc(1 * sizeof(dfloat));
+      neknek->o_S = platform->device.malloc<dfloat>(1);
     }
   }
   else {
-    neknek->o_U = platform->device.malloc(1 * sizeof(dfloat));
-    neknek->o_S = platform->device.malloc(1 * sizeof(dfloat));
+    neknek->o_U = platform->device.malloc<dfloat>(1);
+    neknek->o_S = platform->device.malloc<dfloat>(1);
   }
   neknek->npt = npt;
 }
@@ -85,8 +79,8 @@ void updateInterpPoints(nrs_t *nrs)
   auto *mesh = nrs->meshV;
 
   // Setup findpts
-  const dfloat tol = 5e-13;
-  constexpr dlong npt_max = 128;
+  const dfloat tol = (sizeof(dfloat) == sizeof(double)) ? 5e-13 : 1e-6;
+  constexpr dlong npt_max = 1;
   const dfloat bb_tol = 0.01;
 
   auto &device = platform->device.occaDevice();
@@ -122,9 +116,9 @@ void updateInterpPoints(nrs_t *nrs)
 
   neknek->interpolator->setPoints(neknek->npt, neknek->o_x, neknek->o_y, neknek->o_z);
 
-  const auto warningLevel = pointInterpolation_t::VerbosityLevel::Detailed;
+  const auto verboseLevel = pointInterpolation_t::VerbosityLevel::Detailed;
   for (dlong sess = 0; sess < nsessions; ++sess) {
-    sessionInterpolators[sess]->find(warningLevel);
+    sessionInterpolators[sess]->find(verboseLevel);
   }
 
   auto &sessionData = neknek->interpolator->data();
@@ -147,7 +141,7 @@ void updateInterpPoints(nrs_t *nrs)
     }
   }
 
-  neknek->interpolator->update();
+  neknek->interpolator->o_update();
 }
 
 dlong computeNumInterpPoints(nrs_t *nrs)
@@ -169,7 +163,7 @@ dlong computeNumInterpPoints(nrs_t *nrs)
   return numInterpFaces * mesh->Nfp;
 }
 
-void findInterpPoints(nrs_t *nrs)
+void findIntPoints(nrs_t *nrs)
 {
   auto *neknek = nrs->neknek;
   const dlong nsessions = neknek->nsessions;
@@ -178,8 +172,8 @@ void findInterpPoints(nrs_t *nrs)
   auto *mesh = nrs->meshV;
 
   // Setup findpts
-  const dfloat tol = 5e-13;
-  constexpr dlong npt_max = 128;
+  const dfloat tol = (sizeof(dfloat) == sizeof(double)) ? 5e-13 : 1e-6;
+  constexpr dlong npt_max = 1;
   const dfloat bb_tol = 0.01;
 
   auto &device = platform->device.occaDevice();
@@ -244,9 +238,9 @@ void findInterpPoints(nrs_t *nrs)
 
   neknek->interpolator->setPoints(numPoints, neknekX.data(), neknekY.data(), neknekZ.data());
 
-  const auto warningLevel = pointInterpolation_t::VerbosityLevel::Detailed;
+  const auto verboseLevel = pointInterpolation_t::VerbosityLevel::Detailed;
   for (dlong sess = 0; sess < nsessions; ++sess) {
-    sessionInterpolators[sess]->find(warningLevel);
+    sessionInterpolators[sess]->find(verboseLevel);
   }
 
   auto &sessionData = neknek->interpolator->data();
@@ -267,14 +261,13 @@ void findInterpPoints(nrs_t *nrs)
       sessionData.dist2[pt] = data.dist2[pt];
     }
   }
-
-  neknek->interpolator->update();
+  neknek->interpolator->o_update();
 
   // allocate device coordinates for later use
   if (neknek->globalMovingMesh) {
-    neknek->o_x = platform->device.malloc(neknek->npt * sizeof(dfloat), neknekX.data());
-    neknek->o_y = platform->device.malloc(neknek->npt * sizeof(dfloat), neknekY.data());
-    neknek->o_z = platform->device.malloc(neknek->npt * sizeof(dfloat), neknekZ.data());
+    neknek->o_x = platform->device.malloc<dfloat>(neknek->npt, neknekX.data());
+    neknek->o_y = platform->device.malloc<dfloat>(neknek->npt, neknekY.data());
+    neknek->o_z = platform->device.malloc<dfloat>(neknek->npt, neknekZ.data());
   }
 }
 
@@ -282,36 +275,45 @@ void neknekSetup(nrs_t *nrs)
 {
   neknek_t *neknek = nrs->neknek;
 
-  nrsCheck(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE"), platform->comm.mpiComm, EXIT_FAILURE,
-           "%s\n", "constant flow rate support not supported");
-
-  const dlong nsessions = neknek->nsessions;
-
   dlong globalRank;
   MPI_Comm_rank(platform->comm.mpiCommParent, &globalRank);
 
-  if(globalRank == 0) printf("configuring neknek with %d sessions\n", nsessions);
+  const int nsessions = neknek->nsessions;
+  if(platform->comm.mpiRank == 0) {
+    printf("configuring neknek with %d sessions\n", nsessions);
+    std::fflush(stdout);
+  }
 
-  std::vector<int> Nscalars(nsessions, -1);
+  nrsCheck(static_cast<bool>(platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")), 
+           platform->comm.mpiComm, EXIT_FAILURE,
+           "%s\n", "constant flow rate support not supported");
+
+  if(nrs->pSolver) {
+    nrsCheck(static_cast<bool>(nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE")), 
+             platform->comm.mpiComm, EXIT_FAILURE, 
+             "%s\n", "variable p0th is not supported!");
+  }
+
+  std::vector<int> Nscalars(nsessions, 0);
   Nscalars[neknek->sessionID] = nrs->Nscalar;
 
-  MPI_Allreduce(MPI_IN_PLACE, Nscalars.data(), nsessions, MPI_DLONG, MPI_MAX, platform->comm.mpiCommParent);
+  MPI_Allreduce(MPI_IN_PLACE, Nscalars.data(), nsessions, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
+
   auto minNscalar = *std::min_element(Nscalars.begin(),Nscalars.end());
 
   bool allSame = std::all_of(Nscalars.begin(), Nscalars.end(), [minNscalar] (auto v) {return v == minNscalar;});
 
-  if(globalRank == 0 && !allSame){
-    std::cout << "WARNING: Nscalar is not the same across all sessions. Using the minimum value: " << minNscalar << "\n";
+  if(platform->comm.mpiRank == 0 && !allSame){
+    std::cout << "WARNING: Nscalar is not the same across all sessions -> using the minimum value: " << minNscalar << "\n";
   }
 
   neknek->Nscalar = minNscalar;
   
-  const dlong movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-  dlong globalMovingMesh;
-  MPI_Allreduce(&movingMesh, &globalMovingMesh, 1, MPI_DLONG, MPI_MAX, platform->comm.mpiCommParent);
-  neknek->globalMovingMesh = globalMovingMesh;
+  int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+  MPI_Allreduce(MPI_IN_PLACE, &movingMesh, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
+  neknek->globalMovingMesh = movingMesh; 
 
-  findInterpPoints(nrs);
+  findIntPoints(nrs);
 }
 
 } // namespace
@@ -370,19 +372,9 @@ neknek_t::neknek_t(nrs_t *nrs, dlong _nsessions, dlong _sessionID)
   platform->options.setArgs("NEKNEK BOUNDARY EXT ORDER", std::to_string(this->nEXT));
 
   this->coeffEXT.resize(this->nEXT);
-  this->o_coeffEXT = platform->device.malloc(this->nEXT * sizeof(dfloat));
+  this->o_coeffEXT = platform->device.malloc<dfloat>(this->nEXT);
 
   neknekSetup(nrs);
-
-  // variable p0th + nek-nek is not supported
-  int issueError = 0;
-  if(nrs->pSolver){
-    if (nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE")) {
-      issueError = 1;
-    }
-  }
-
-  nrsCheck(issueError, platform->comm.mpiCommParent, EXIT_FAILURE, "%s\n", "variable p0th is not supported!");
 
   this->copyNekNekPointsKernel = platform->kernels.get("copyNekNekPoints");
 }
@@ -426,18 +418,18 @@ void neknek_t::updateBoundary(nrs_t *nrs, int tstep, int stage)
     for (int i = this->nEXT; i > extOrder; i--)
       this->coeffEXT[i - 1] = 0.0;
 
-    this->o_coeffEXT.copyFrom(this->coeffEXT.data(), this->nEXT * sizeof(dfloat));
+    this->o_coeffEXT.copyFrom(this->coeffEXT.data(), this->nEXT);
 
     for (int s = this->nEXT + 1; s > 1; s--) {
-      auto Nbyte = nrs->NVfields * this->fieldOffset * sizeof(dfloat);
-      this->o_U.copyFrom(this->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+      auto N = nrs->NVfields * this->fieldOffset;
+      this->o_U.copyFrom(this->o_U, N, (s - 1) * N, (s - 2) * N);
 
-      Nbyte = this->Nscalar * this->fieldOffset * sizeof(dfloat);
-      this->o_S.copyFrom(this->o_S, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+      N = this->Nscalar * this->fieldOffset;
+      this->o_S.copyFrom(this->o_S, N, (s - 1) * N, (s - 2) * N);
     }
 
-    auto o_Uold = this->o_U + this->fieldOffset * nrs->NVfields * sizeof(dfloat);
-    auto o_Sold = this->o_S + this->fieldOffset * this->Nscalar * sizeof(dfloat);
+    auto o_Uold = this->o_U + this->fieldOffset * nrs->NVfields;
+    auto o_Sold = this->o_S + this->fieldOffset * this->Nscalar;
 
     if(this->npt){
       nrs->extrapolateKernel(this->npt,

@@ -27,7 +27,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   }
 }
 
-void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   if (!nrs->lastStep) {
     return;
@@ -41,13 +41,13 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   std::vector<dfloat> Uy(mesh->Nlocal, 0.0);
   std::vector<dfloat> Uz(mesh->Nlocal, 0.0);
 
-  auto o_Ux = nrs->o_U + (0 * sizeof(dfloat)) * nrs->fieldOffset;
-  auto o_Uy = nrs->o_U + (1 * sizeof(dfloat)) * nrs->fieldOffset;
-  auto o_Uz = nrs->o_U + (2 * sizeof(dfloat)) * nrs->fieldOffset;
+  auto o_Ux = nrs->o_U + 0 * nrs->fieldOffset;
+  auto o_Uy = nrs->o_U + 1 * nrs->fieldOffset;
+  auto o_Uz = nrs->o_U + 2 * nrs->fieldOffset;
 
-  o_Ux.copyTo(Ux.data(), mesh->Nlocal * sizeof(dfloat));
-  o_Uy.copyTo(Uy.data(), mesh->Nlocal * sizeof(dfloat));
-  o_Uz.copyTo(Uz.data(), mesh->Nlocal * sizeof(dfloat));
+  o_Ux.copyTo(Ux.data(), mesh->Nlocal);
+  o_Uy.copyTo(Uy.data(), mesh->Nlocal);
+  o_Uz.copyTo(Uz.data(), mesh->Nlocal);
 
   dfloat theta = 0.0;
   platform->par->extract("casedata", "p_rot", theta);

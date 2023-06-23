@@ -77,7 +77,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
     for(int i = 0; i < elliptic->mesh->Nlocal; i++) {
        tmp[i] = (pfloat) elliptic->ogs->invDegree[i];
     }
-    elliptic->o_invDegree = platform->device.malloc(elliptic->mesh->Nlocal * sizeof(pfloat), tmp);
+    elliptic->o_invDegree = platform->device.malloc<pfloat>(elliptic->mesh->Nlocal, tmp);
     free(tmp);
   }
 
@@ -107,8 +107,7 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
       {
         const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
-        elliptic->AxPfloatKernel =
-          platform->kernels.get(poissonPrefix + kernelName + kernelSuffix);
+        elliptic->AxKernel = platform->kernels.get(poissonPrefix + kernelName + kernelSuffix);
       }
   }
 
@@ -126,17 +125,19 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   }
 
-  elliptic->o_lambda0 = platform->device.malloc(mesh->Nlocal, sizeof(pfloat));
-  if(!baseElliptic->poisson)
-    elliptic->o_lambda1 = platform->device.malloc(mesh->Nlocal, sizeof(pfloat));
+  elliptic->o_lambda0 = platform->device.malloc<pfloat>(mesh->Nlocal);
+  if(baseElliptic->poisson)
+    elliptic->o_lambda1 = nullptr;
+  else
+    elliptic->o_lambda1 = platform->device.malloc<pfloat>(mesh->Nlocal);
 
   const int Nfq = Nf+1;
   const int Ncq = Nc+1;
   dfloat* fToCInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
   InterpolationMatrix1D(Nf, Nfq, baseElliptic->mesh->r, Ncq, mesh->r, fToCInterp);
 
-  occa::memory o_interp = platform->device.malloc(Nfq * Ncq * sizeof(dfloat), fToCInterp);
-  elliptic->o_interp = platform->device.malloc(Nfq * Ncq * sizeof(pfloat));
+  occa::memory o_interp = platform->device.malloc<dfloat>(Nfq * Ncq, fToCInterp);
+  elliptic->o_interp = platform->device.malloc<pfloat>(Nfq * Ncq);
   platform->copyDfloatToPfloatKernel(Nfq * Ncq, o_interp, elliptic->o_interp);
 
   precon->coarsenKernel(mesh->Nelements, elliptic->o_interp, 

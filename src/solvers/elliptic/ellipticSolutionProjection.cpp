@@ -33,11 +33,11 @@
 
 void SolutionProjection::matvec(occa::memory &o_Ax,
                                 const dlong Ax_offset,
-                                occa::memory &o_x,
+                                const occa::memory &o_x,
                                 const dlong x_offset)
 {
-  occa::memory o_xtmp = o_x + (Nfields * x_offset * sizeof(dfloat)) * fieldOffset;
-  occa::memory o_Axtmp = o_Ax + (Nfields * Ax_offset * sizeof(dfloat)) * fieldOffset;
+  occa::memory o_xtmp = o_x + (Nfields * x_offset) * fieldOffset;
+  occa::memory o_Axtmp = o_Ax + (Nfields * Ax_offset) * fieldOffset;
   matvecOperator(o_xtmp, o_Axtmp);
 }
 
@@ -61,7 +61,7 @@ void SolutionProjection::updateProjectionSpace()
       platform->comm.mpiComm,
       o_alpha,
       (type == ProjectionType::CLASSIC) ? Nfields * (numVecsProjection - 1) * fieldOffset : 0);
-  o_alpha.copyTo(alpha, sizeof(dfloat) * numVecsProjection);
+  o_alpha.copyTo(alpha, numVecsProjection);
 #else
   platform->linAlg->weightedInnerProdMulti(
       Nlocal,
@@ -74,7 +74,7 @@ void SolutionProjection::updateProjectionSpace()
       platform->comm.mpiComm,
       alpha,
       (type == ProjectionType::CLASSIC) ? Nfields * (numVecsProjection - 1) * fieldOffset : 0);
-  o_alpha.copyFrom(alpha, sizeof(dfloat) * numVecsProjection);
+  o_alpha.copyFrom(alpha, numVecsProjection);
 #endif
 
   const dfloat norm_orig = alpha[numVecsProjection - 1];
@@ -106,7 +106,7 @@ void SolutionProjection::updateProjectionSpace()
   // printf("norm_new:%g norm_orig:%g sumAlpha:%g\n", norm_new, norm_orig, sumAlpha);
   norm_new = sqrt(norm_new);
 
-  dfloat tol = 1e-7;
+  dfloat tol = 1e-6;
   const dfloat test = norm_new / norm_orig;
   if (test > tol) {
     const dfloat scale = 1.0 / norm_new;
@@ -170,7 +170,7 @@ void SolutionProjection::computePreProjection(occa::memory &o_r)
                                            platform->comm.mpiComm,
                                            alpha,
                                            Nfields * 0 * fieldOffset);
-  o_alpha.copyFrom(alpha, sizeof(dfloat) * numVecsProjection);
+  o_alpha.copyFrom(alpha, numVecsProjection);
 #endif
 
   // o_xbar = sum_i alpha_i * o_xx_i
@@ -199,20 +199,19 @@ void SolutionProjection::computePostProjection(occa::memory &o_x)
   if (numVecsProjection == 0) {
     // reset bases
     numVecsProjection = 1;
-    o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
+    o_xx.copyFrom(o_x, Nfields * fieldOffset);
   }
   else if (numVecsProjection == maxNumVecsProjection) {
     numVecsProjection = 1;
     platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
-    o_xx.copyFrom(o_x, Nfields * fieldOffset * sizeof(dfloat));
+    o_xx.copyFrom(o_x, Nfields * fieldOffset);
   }
   else {
     numVecsProjection++;
     // xx[m-1] = x
     o_xx.copyFrom(o_x,
-                  fieldOffset *  Nfields * sizeof(dfloat),
-                  fieldOffset * (Nfields * sizeof(dfloat) * (numVecsProjection - 1)),
-                  0);
+                  fieldOffset *  Nfields,
+                  fieldOffset * Nfields * (numVecsProjection - 1), 0);
     // x = x + xbar
     platform->linAlg->axpbyMany(Nlocal, Nfields, fieldOffset, one, o_xbar, one, o_x);
   }
@@ -224,7 +223,7 @@ void SolutionProjection::computePostProjection(occa::memory &o_x)
   if (numVecsProjection < previousNumVecsProjection) { // Last vector was linearly dependent, reset space
     numVecsProjection = 1;
     o_xx.copyFrom(o_x,
-                  Nfields * fieldOffset * sizeof(dfloat)); // writes first n words of o_xx, first approximation vector
+                  Nfields * fieldOffset); // writes first n words of o_xx, first approximation vector
     matvec(o_bb, 0, o_xx, 0);
     updateProjectionSpace();
   }
@@ -245,13 +244,19 @@ SolutionProjection::SolutionProjection(elliptic_t &elliptic,
 
   platform_t *platform = platform_t::getInstance();
 
-  o_alpha = platform->device.malloc(maxNumVecsProjection * sizeof(dfloat));
-  o_xbar = platform->device.malloc((Nfields * sizeof(dfloat)) * fieldOffset);
-  o_xx = platform->device.malloc((Nfields * maxNumVecsProjection * sizeof(dfloat)) * fieldOffset);
-  o_bb =
-      platform->device.malloc((type == ProjectionType::CLASSIC) ? Nfields * fieldOffset * maxNumVecsProjection
-                                                                : Nfields * fieldOffset,
-                              sizeof(dfloat));
+  o_alpha = platform->device.malloc<dfloat>(maxNumVecsProjection);
+  o_xbar = platform->device.malloc<dfloat>(Nfields * fieldOffset);
+
+  nrsCheck(Nfields * maxNumVecsProjection * static_cast<size_t>(fieldOffset) > std::numeric_limits<int>::max(),
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "%s\n",
+           "Nfields * maxNumVecsProjection * fieldOffset exceeds int limit!");
+
+  o_xx = platform->device.malloc<dfloat>(Nfields * maxNumVecsProjection * fieldOffset);
+  o_bb = platform->device.malloc<dfloat>((type == ProjectionType::CLASSIC) ? 
+                                        Nfields * fieldOffset * maxNumVecsProjection :
+                                        Nfields * fieldOffset);
 
   const std::string sectionIdentifier = std::to_string(Nfields) + "-";
 
@@ -260,7 +265,7 @@ SolutionProjection::SolutionProjection(elliptic_t &elliptic,
     accumulateKernel = platform->kernels.get(sectionIdentifier + "accumulate");
   }
 
-  matvecOperator = [&](occa::memory &o_x, occa::memory &o_Ax) {
+  matvecOperator = [&](const occa::memory &o_x, occa::memory &o_Ax) {
     ellipticOperator(&elliptic, o_x, o_Ax, dfloatString);
   };
 

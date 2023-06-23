@@ -29,7 +29,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   }
 }
 
-void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   if (!nrs->lastStep) {
     return;

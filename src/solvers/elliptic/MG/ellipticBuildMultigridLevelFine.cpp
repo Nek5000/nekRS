@@ -44,18 +44,23 @@ std::string gen_suffix(const elliptic_t * elliptic, const char * floatString)
 elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
 {
   
-  elliptic_t* elliptic = new elliptic_t();
+  auto elliptic = new elliptic_t();
   memcpy(elliptic, baseElliptic, sizeof(*baseElliptic));
+
+  auto mesh = new mesh_t();
+  memcpy(mesh, baseElliptic->mesh, sizeof(*baseElliptic->mesh));
+  elliptic->mesh = mesh;
 
   elliptic->mgLevel = true;
 
-  mesh_t* mesh = elliptic->mesh;
   ellipticBuildPreconditionerKernels(elliptic);
 
-  elliptic->o_lambda0 = platform->device.malloc(mesh->Nlocal, sizeof(pfloat));
+  elliptic->o_lambda0 = platform->device.malloc<pfloat>(mesh->Nlocal);
   platform->copyDfloatToPfloatKernel(mesh->Nlocal, baseElliptic->o_lambda0, elliptic->o_lambda0);
-  if(!baseElliptic->poisson) {
-    elliptic->o_lambda1 = platform->device.malloc(mesh->Nlocal, sizeof(pfloat));
+  if(baseElliptic->poisson) { 
+    elliptic->o_lambda1 = nullptr; 
+  } else {
+    elliptic->o_lambda1 = platform->device.malloc<pfloat>(mesh->Nlocal);
     platform->copyDfloatToPfloatKernel(mesh->Nlocal, baseElliptic->o_lambda1, elliptic->o_lambda1);
   }
 
@@ -63,23 +68,23 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   for(int i = 0; i < mesh->Nlocal; i++) {
      tmp[i] = (pfloat) baseElliptic->ogs->invDegree[i];
   }
-  elliptic->o_invDegree = platform->device.malloc(mesh->Nlocal * sizeof(pfloat), tmp);
+  elliptic->o_invDegree = platform->device.malloc<pfloat>(mesh->Nlocal, tmp);
   free(tmp);
 
-  if(!strstr(pfloatString,dfloatString)) {
-    mesh->o_ggeoPfloat = platform->device.malloc(mesh->Nelements * mesh->Np * mesh->Nggeo, sizeof(pfloat));
-    mesh->o_DPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
-    mesh->o_DTPfloat = platform->device.malloc(mesh->Nq * mesh->Nq, sizeof(pfloat));
+  if(!std::is_same<pfloat, dfloat>::value) {
+    mesh->o_ggeo = platform->device.malloc<pfloat>(mesh->Nelements * mesh->Np * mesh->Nggeo);
+    mesh->o_D = platform->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
+    mesh->o_DT = platform->device.malloc<pfloat>(mesh->Nq * mesh->Nq);
 
     platform->copyDfloatToPfloatKernel(mesh->Nelements * mesh->Np * mesh->Nggeo,
-                                       mesh->o_ggeo,
-                                       elliptic->mesh->o_ggeoPfloat);
+                                       baseElliptic->mesh->o_ggeo,
+                                       mesh->o_ggeo);
     platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       mesh->o_D,
-                                       elliptic->mesh->o_DPfloat);
+                                       baseElliptic->mesh->o_D,
+                                       mesh->o_D);
     platform->copyDfloatToPfloatKernel(mesh->Nq * mesh->Nq,
-                                       mesh->o_DT,
-                                       elliptic->mesh->o_DTPfloat);
+                                       baseElliptic->mesh->o_DT,
+                                       mesh->o_DT);
   }
 
   std::string suffix = "CoeffHex3D";
@@ -94,8 +99,7 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
     kernelName = "ellipticPartialAx" + suffix;
 
   const std::string kernelSuffix = gen_suffix(elliptic, pfloatString);
-  elliptic->AxPfloatKernel =
-    platform->kernels.get(poissonPrefix + kernelName + kernelSuffix);
+  elliptic->AxKernel = platform->kernels.get(poissonPrefix + kernelName + kernelSuffix);
 
   return elliptic;
 }

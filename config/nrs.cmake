@@ -39,7 +39,6 @@ set(SRC
     src/navierStokes/constantFlowRate.cpp
     src/navierStokes/Urst.cpp
     src/cds/cdsSolve.cpp
-    src/cds/subCycling.cpp
     src/setup/parReader.cpp
     src/io/re2Reader.cpp
     src/setup/configReader.cpp
@@ -60,7 +59,7 @@ set(SRC
     src/plugins/RANSktau.cpp
     src/plugins/lowMach.cpp
     src/plugins/lpm.cpp
-    src/findpts/findpts.cpp
+    src/pointInterpolation/findpts/findpts.cpp
     src/pointInterpolation/pointInterpolation.cpp
     src/neknek/neknek.cpp
     src/udf/udf.cpp
@@ -107,7 +106,7 @@ target_include_directories(nekrs-lib
   src/navierStokes
   src/neknek
   src/cds
-  src/findpts
+  src/pointInterpolation/findpts
   src/postProcessing
   src/pointInterpolation
   src/solvers/cvode
@@ -128,6 +127,11 @@ target_include_directories(nekrs-lib
   ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx
   ${ELLIPTIC_SOURCE_DIR}/MG
 )
+
+if(NEKRS_USE_DFLOAT_FLOAT)
+  target_compile_definitions(nekrs-lib PUBLIC -DNEKRS_USE_DFLOAT_FLOAT)
+  target_compile_definitions(nekrs-lib PUBLIC -DOGS_USE_DFLOAT_FLOAT)
+endif()
 
 add_executable(nekrs-bin src/main.cpp)
 target_include_directories(nekrs-bin PRIVATE src/lib src/utils)

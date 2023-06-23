@@ -25,7 +25,7 @@ boundaryAlignment_t computeAlignment(mesh_t *mesh, dlong element, dlong face)
   dfloat nzDiff = 0.0;
 
   std::vector<dfloat> sgeo;
-  sgeo.reserve(mesh->o_sgeo.size()/sizeof(dfloat));
+  sgeo.reserve(mesh->o_sgeo.length());
   mesh->o_sgeo.copyTo(sgeo.data());
 
   for (int fp = 0; fp < mesh->Nfp; ++fp) {
@@ -551,8 +551,9 @@ void checkBoundaryAlignment(mesh_t *mesh)
 {
   bool bail = false;
   for (auto &&field : fields) {
-    if (field != std::string("velocity") && field != std::string("mesh"))
+    if (field != std::string("velocity") && field != std::string("mesh")) {
       continue;
+    }
 
     const int nid = size(field);
 

@@ -46,7 +46,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   zLength = 6;
 }
 
-void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   const int rank = platform->comm.mpiRank;
   mesh_t *mesh = nrs->meshV;

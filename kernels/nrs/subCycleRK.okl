@@ -38,12 +38,11 @@
   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
     for (int fld = 0; fld < Nfields; ++fld) {
       const dlong fieldOffset = fld * offset;
-      dfloat sn = 0.0;
-      sn -= sdt * rkb[0] * r1[n + fieldOffset];
-      sn -= sdt * rkb[1] * r2[n + fieldOffset];
-      sn -= sdt * rkb[2] * r3[n + fieldOffset];
-      sn -= sdt * rkb[3] * r4[n + fieldOffset];
-      y[n + fieldOffset] += sn;
+      const dfloat sn1 = sdt * rkb[0] * r1[n + fieldOffset];
+      const dfloat sn2 = sdt * rkb[1] * r2[n + fieldOffset];
+      const dfloat sn3 = sdt * rkb[2] * r3[n + fieldOffset];
+      const dfloat sn4 = sdt * rkb[3] * r4[n + fieldOffset];
+      y[n + fieldOffset] -= (sn1 + sn2 + sn3 + sn4);
     }
   }
 }

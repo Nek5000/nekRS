@@ -65,7 +65,7 @@ void UDF_Setup(nrs_t *nrs)
   udf.timeStepConverged = timeStepConverged;
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
 
   auto *mesh = nrs->meshV;
@@ -78,14 +78,14 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->o_U);
   }
 
-  auto o_Uexact = platform->o_mempool.slice0;
+  auto o_Uexact = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
   exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, o_Uexact);
 
   platform->linAlg->axpbyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, nrs->o_U, -1.0, o_Uexact);
 
-  auto o_UerrX = o_Uexact + 0 * nrs->fieldOffset * sizeof(dfloat);
-  auto o_UerrY = o_Uexact + 1 * nrs->fieldOffset * sizeof(dfloat);
-  auto o_UerrZ = o_Uexact + 2 * nrs->fieldOffset * sizeof(dfloat);
+  auto o_UerrX = o_Uexact + 0 * nrs->fieldOffset;
+  auto o_UerrY = o_Uexact + 1 * nrs->fieldOffset;
+  auto o_UerrZ = o_Uexact + 2 * nrs->fieldOffset;
 
   platform->linAlg->abs(mesh->Nlocal, o_UerrX);
   platform->linAlg->abs(mesh->Nlocal, o_UerrY);

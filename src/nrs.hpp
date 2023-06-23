@@ -56,7 +56,7 @@ struct nrs_t {
   dfloat g0, ig0;
   dfloat CFL, unitTimeCFL;
 
-  dfloat timePrevious;
+  double timePrevious;
 
   dfloat p0th[3] = {0.0, 0.0, 0.0};
   dfloat p0the = 0.0;
@@ -124,14 +124,12 @@ struct nrs_t {
   occa::kernel pressureAddQtlKernel;
   occa::kernel pressureStressKernel;
   occa::kernel extrapolateKernel;
+
   occa::kernel subCycleRKKernel;
   occa::kernel subCycleInitU0Kernel;
   occa::kernel nStagesSum3Kernel;
   occa::kernel wgradientVolumeKernel;
 
-  occa::kernel subCycleVolumeKernel, subCycleCubatureVolumeKernel;
-  occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
-  occa::kernel subCycleRKUpdateKernel;
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
 

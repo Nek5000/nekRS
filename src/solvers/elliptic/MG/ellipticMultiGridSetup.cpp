@@ -34,26 +34,26 @@ void pMGLevelAllocateStorage(pMGLevel *level, int k)
 {
   // allocate but reuse finest level
   if (k)
-    level->o_x = platform->device.malloc(level->Ncols * sizeof(pfloat));
+    level->o_x = platform->device.malloc<pfloat>(level->Ncols);
   if (k)
-    level->o_rhs = platform->device.malloc(level->Nrows * sizeof(pfloat));
+    level->o_rhs = platform->device.malloc<pfloat>(level->Nrows);
 
-  level->o_res = platform->device.malloc(level->Ncols * sizeof(pfloat));
+  level->o_res = platform->device.malloc<pfloat>(level->Ncols);
 
   // extra storage for smoother
-  const size_t Nbytes = level->Ncols * sizeof(pfloat);
+  const size_t N = level->Ncols;
 
-  if (pMGLevel::o_smootherResidual.size() < Nbytes) {
+  if (pMGLevel::o_smootherResidual.length() < N) {
     pMGLevel::o_smootherResidual.free();
-    pMGLevel::o_smootherResidual = platform->device.malloc(Nbytes);
+    pMGLevel::o_smootherResidual = platform->device.malloc<pfloat>(N);
   }
-  if (pMGLevel::o_smootherResidual2.size() < Nbytes) {
+  if (pMGLevel::o_smootherResidual2.length() < N) {
     pMGLevel::o_smootherResidual2.free();
-    pMGLevel::o_smootherResidual2 = platform->device.malloc(Nbytes);
+    pMGLevel::o_smootherResidual2 = platform->device.malloc<pfloat>(N);
   }
-  if (pMGLevel::o_smootherUpdate.size() < Nbytes) {
+  if (pMGLevel::o_smootherUpdate.length() < N) {
     pMGLevel::o_smootherUpdate.free();
-    pMGLevel::o_smootherUpdate = platform->device.malloc(Nbytes);
+    pMGLevel::o_smootherUpdate = platform->device.malloc<pfloat>(N);
   }
 }
 
@@ -285,13 +285,13 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_, precon_t *precon_)
       coarseLevel->ogs = ellipticCoarse->ogs;
       coarseLevel->o_weight = ellipticCoarse->o_invDegree;
       coarseLevel->weight = (pfloat *)calloc(ellipticCoarse->mesh->Nlocal, sizeof(pfloat));
-      coarseLevel->o_weight.copyTo(coarseLevel->weight, ellipticCoarse->mesh->Nlocal * sizeof(pfloat));
-      coarseLevel->h_Gx = platform->device.mallocHost(coarseLevel->ogs->Ngather * sizeof(pfloat));
+      coarseLevel->o_weight.copyTo(coarseLevel->weight, ellipticCoarse->mesh->Nlocal);
+      coarseLevel->h_Gx = platform->device.mallocHost<pfloat>(coarseLevel->ogs->Ngather);
       coarseLevel->Gx = (pfloat *)coarseLevel->h_Gx.ptr();
-      coarseLevel->o_Gx = platform->device.malloc(coarseLevel->ogs->Ngather * sizeof(pfloat));
-      coarseLevel->h_Sx = platform->device.mallocHost(ellipticCoarse->mesh->Nlocal * sizeof(pfloat));
+      coarseLevel->o_Gx = platform->device.malloc<pfloat>(coarseLevel->ogs->Ngather);
+      coarseLevel->h_Sx = platform->device.mallocHost<pfloat>(ellipticCoarse->mesh->Nlocal);
       coarseLevel->Sx = (pfloat *)coarseLevel->h_Sx.ptr();
-      coarseLevel->o_Sx = platform->device.malloc(ellipticCoarse->mesh->Nlocal * sizeof(pfloat));
+      coarseLevel->o_Sx = platform->device.malloc<pfloat>(ellipticCoarse->mesh->Nlocal);
 
       if (options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE")) {
         auto baseLevel = (pMGLevel *)levels[numMGLevels - 1];

@@ -51,7 +51,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   }
 }
 
-void ciTestPointInterp(nrs_t *nrs, dfloat time, int tstep)
+void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
 {
   // query velocity solution from outer session
   std::vector<dfloat> x = {0.25 * M_PI, M_PI, M_PI, 1.75 * M_PI};
@@ -59,11 +59,11 @@ void ciTestPointInterp(nrs_t *nrs, dfloat time, int tstep)
   std::vector<dfloat> z = {0.05, 0.05, 0.05, 0.05};
   int n = x.size();
 
-  auto o_xinterp = platform->device.malloc(n * sizeof(dfloat), x.data());
-  auto o_yinterp = platform->device.malloc(n * sizeof(dfloat), y.data());
-  auto o_zinterp = platform->device.malloc(n * sizeof(dfloat), z.data());
-  auto o_UouterExact = platform->device.malloc(nrs->NVfields * n * sizeof(dfloat));
-  auto o_Uouter = platform->device.malloc(nrs->NVfields * n * sizeof(dfloat));
+  auto o_xinterp = platform->device.malloc<dfloat>(n, x.data());
+  auto o_yinterp = platform->device.malloc<dfloat>(n, y.data());
+  auto o_zinterp = platform->device.malloc<dfloat>(n, z.data());
+  auto o_UouterExact = platform->device.malloc<dfloat>(nrs->NVfields * n);
+  auto o_Uouter = platform->device.malloc<dfloat>(nrs->NVfields * n);
   
   exactUVW(n, n, time, o_xinterp, o_yinterp, o_zinterp, o_UouterExact);
 
@@ -73,10 +73,10 @@ void ciTestPointInterp(nrs_t *nrs, dfloat time, int tstep)
   interp.eval(nrs->NVfields, nrs->fieldOffset, nrs->o_U, n, o_Uouter);
 
   std::vector<dfloat> UouterExact(nrs->NVfields * n);
-  o_UouterExact.copyTo(UouterExact.data(), nrs->NVfields * n * sizeof(dfloat));
+  o_UouterExact.copyTo(UouterExact.data(), nrs->NVfields * n);
 
   std::vector<dfloat> Uouter(nrs->NVfields * n);
-  o_Uouter.copyTo(Uouter.data(), nrs->NVfields * n * sizeof(dfloat));
+  o_Uouter.copyTo(Uouter.data(), nrs->NVfields * n);
 
   // compare difference
   dfloat maxErrU = 0.0;
@@ -111,7 +111,7 @@ void ciTestPointInterp(nrs_t *nrs, dfloat time, int tstep)
   }
 }
 
-void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   const int rank = platform->comm.mpiRank;
 
@@ -123,14 +123,14 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
 
   auto *mesh = nrs->meshV;
 
-  auto o_Uexact = platform->o_mempool.slice0;
+  auto o_Uexact = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
   exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, o_Uexact);
 
   platform->linAlg->axpbyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, nrs->o_U, -1.0, o_Uexact);
 
-  auto o_UerrX = o_Uexact + 0 * nrs->fieldOffset * sizeof(dfloat);
-  auto o_UerrY = o_Uexact + 1 * nrs->fieldOffset * sizeof(dfloat);
-  auto o_UerrZ = o_Uexact + 2 * nrs->fieldOffset * sizeof(dfloat);
+  auto o_UerrX = o_Uexact + 0 * nrs->fieldOffset;
+  auto o_UerrY = o_Uexact + 1 * nrs->fieldOffset;
+  auto o_UerrZ = o_Uexact + 2 * nrs->fieldOffset;
 
   platform->linAlg->abs(mesh->Nlocal, o_UerrX);
   platform->linAlg->abs(mesh->Nlocal, o_UerrY);

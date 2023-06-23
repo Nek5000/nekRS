@@ -26,7 +26,7 @@
 
 // We are solving for Pressure Difference
 @kernel void pressureDirichletBCHex3D(const dlong Nelements,
-                                      const dfloat time,
+                                      const double time,
                                       const dlong offset,
                                       @ restrict const dfloat *sgeo,
                                       @ restrict const dfloat *x,

@@ -101,8 +101,10 @@ echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 echo "export MPICH_MPIIO_HINTS=$MPICH_MPIIO_HINTS" >>$SFILE
 echo "export MPICH_MPIIO_STATS=1" >>$SFILE
 
-echo "# Workaround for https://github.com/Nek5000/Nek5000/issues/759" >> $SFILE
-echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE
+#echo "# Workaround for https://github.com/Nek5000/Nek5000/issues/759" >> $SFILE
+#echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE
+
+echo "export FI_CXI_RX_MATCH_MODE=hybrid" >> $SFILE  
 
 echo "if [ \$NEKRS_CACHE_BCAST -eq 1 ]; then" >> $SFILE
 echo "  export NEKRS_LOCAL_TMP_DIR=\$TMPDIR/nrs" >> $SFILE

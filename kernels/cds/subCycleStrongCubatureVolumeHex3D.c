@@ -24,7 +24,7 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
                                                   const dfloat * __restrict__ cubInterpT,
                                                   const int & offset,
                                                   const int & cubatureOffset,
-                                                  const int & NSOffset,
+                                                  const int & meshOffset,
                                                   const dfloat * __restrict__ invLumpedMassMatrix,
                                                   const dfloat * __restrict__ BdivW,
                                                   const dfloat & c0,
@@ -212,11 +212,11 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
             if (p_MovingMesh) {
               for (int s = 0; s < p_nEXT; s++) {
                 const dfloat coeff = r_c[s];
-                invLMM += coeff * invLumpedMassMatrix[id + s * offset];
-                bdivw += coeff * BdivW[id + s * offset];
+                invLMM += coeff * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += coeff * BdivW[id + s * meshOffset];
               }
             }
-            NU[id + NSOffset] = (rhsU - bdivw * S[id]) * invLMM;
+            NU[id] = (rhsU - bdivw * S[id]) * invLMM;
         }
       }
     }

@@ -84,6 +84,9 @@ struct gs_data {
 
 namespace oogs {
   occa::kernel packBufFloatAddKernel, unpackBufFloatAddKernel;
+  occa::kernel packBufFloatMinKernel, unpackBufFloatMinKernel;
+  occa::kernel packBufFloatMaxKernel, unpackBufFloatMaxKernel;
+
   occa::kernel packBufDoubleAddKernel, unpackBufDoubleAddKernel;
   occa::kernel packBufDoubleMinKernel, unpackBufDoubleMinKernel;
   occa::kernel packBufDoubleMaxKernel, unpackBufDoubleMaxKernel;
@@ -194,14 +197,14 @@ static void pairwiseExchange(int unit_size, oogs_t *gs)
 }
 void occaGatherScatterLocal(const dlong NlocalGather,
                             const dlong NrowBlocks,
-                            occa::memory &o_bstart,
-                            occa::memory &o_gstart,
-                            occa::memory &o_gids,
+                            const occa::memory &o_bstart,
+                            const occa::memory &o_gstart,
+                            const occa::memory &o_gids,
                             const int Nvectors,
                             const dlong stride,
                             const char *type,
                             const char *op,
-                            occa::memory &o_v)
+                            const occa::memory &o_v)
 {
 #if 1
   occaGatherScatterMany(NlocalGather, Nvectors, stride, o_gstart, o_gids, type, op, o_v);
@@ -280,8 +283,14 @@ void oogs::compile(const occa::device &device, ogsBuildKernel_t buildKernel, std
   unpackBufFloatAddKernel  = buildKernel(oklpath + "oogs.okl", "unpackBuf_floatAdd", props);
   packBufDoubleAddKernel   = buildKernel(oklpath + "oogs.okl", "packBuf_doubleAdd", props);
   unpackBufDoubleAddKernel = buildKernel(oklpath + "oogs.okl", "unpackBuf_doubleAdd", props);
+
+  packBufFloatMinKernel    = buildKernel(oklpath + "oogs.okl", "packBuf_floatMin", props);
+  unpackBufFloatMinKernel  = buildKernel(oklpath + "oogs.okl", "unpackBuf_floatMin", props);
   packBufDoubleMinKernel   = buildKernel(oklpath + "oogs.okl", "packBuf_doubleMin", props);
   unpackBufDoubleMinKernel = buildKernel(oklpath + "oogs.okl", "unpackBuf_doubleMin", props);
+
+  packBufFloatMaxKernel    = buildKernel(oklpath + "oogs.okl", "packBuf_floatMax", props);
+  unpackBufFloatMaxKernel  = buildKernel(oklpath + "oogs.okl", "unpackBuf_floatMax", props);
   packBufDoubleMaxKernel   = buildKernel(oklpath + "oogs.okl", "packBuf_doubleMax", props);
   unpackBufDoubleMaxKernel = buildKernel(oklpath + "oogs.okl", "unpackBuf_doubleMax", props);
 
@@ -440,6 +449,7 @@ oogs_t *oogs::setup(ogs_t *ogs,
     oogs_modeExchange_list.push_back(OOGS_EX_NBC);
   }
 
+
   if (gsMode == OOGS_AUTO) {
     if (gs->rank == 0)
       printf("timing gs: ");
@@ -453,7 +463,6 @@ oogs_t *oogs::setup(ogs_t *ogs,
     occa::memory o_q = device.malloc(std::max(stride, ogs->N) * nVec * Nbytes, q);
     free(q);
  
-
     for (auto const &mode : oogs_mode_list) {
       gs->mode = mode;
 
@@ -499,9 +508,25 @@ oogs_t *oogs::setup(ogs_t *ogs,
           }
           MPI_Allreduce(MPI_IN_PLACE, &elapsedTest, 1, MPI_DOUBLE, MPI_MAX, gs->comm);
 
+          if (gs->mode == OOGS_LOCAL && gs->rank == 0) {
+            printf("local ");
+          }
+
           if (gs->rank == 0)
             printf("%.2es ", elapsedTest);
           fflush(stdout);
+
+          if (gs->mode == OOGS_LOCAL) {
+            double localGsBw = 0;
+            for (dlong i=0;i<ogs->NlocalGather;i++) {
+              const dlong rowSize = ogs->localGatherOffsets[i+1]-ogs->localGatherOffsets[i];
+              localGsBw += rowSize; 
+            }
+            localGsBw *= (2 * nVec * Nbytes) / elapsedTest; 
+            MPI_Allreduce(MPI_IN_PLACE, &localGsBw, 1, MPI_DOUBLE, MPI_MIN, gs->comm);
+
+            if (gs->rank == 0) printf("(%.1fGB/s) - ", localGsBw/1e9);
+          }
 
           if (elapsedTest < elapsedMin) {
             if (gs->mode != OOGS_LOCAL) {
@@ -531,6 +556,7 @@ oogs_t *oogs::setup(ogs_t *ogs,
 #ifdef DISABLE_OOGS
   gs->mode = OOGS_DEFAULT;
 #endif
+
 
   double elapsedMinMPI = std::numeric_limits<double>::max();
   {
@@ -583,14 +609,11 @@ oogs_t *oogs::setup(ogs_t *ogs,
         }
         printf("\nused config: %s ", configStr.c_str());
         if (tavg/size > MPI_Wtick())
-          printf("(MPI min/max/avg: %.2es %.2es %.2es / avg bi-bw: %.1fGB/s/rank)\n",
-                 tmin, tmax, tavg/size,
+          printf("(MPI min/max/avg: %.2es %.2es %.2es / bi-bw: %.1fGB/s/rank)\n",
+                 tmin, tmax, tmax/size,
                  nBytesExchange / tavg / 1e9);
         else
           printf("\n");
-      }
-      else {
-        printf("\nused config: local\n");
       }
     }
     fflush(stdout);
@@ -617,69 +640,89 @@ static void packBuf(oogs_t *gs,
                     const dlong Ngather,
                     const int k,
                     const dlong stride,
-                    occa::memory &o_gstarts,
-                    occa::memory &o_gids,
-                    occa::memory &o_sstarts,
-                    occa::memory &o_sids,
+                    const occa::memory &o_gstarts,
+                    const occa::memory &o_gids,
+                    const occa::memory &o_sstarts,
+                    const occa::memory &o_sids,
                     const char *type,
                     const char *op,
-                    occa::memory &o_v,
-                    occa::memory &o_gv)
+                    const occa::memory &o_v,
+                    const occa::memory &o_gv)
 {
   if(Ngather == 0) return;
 
+  occa::kernel kernel;
+
   if (!strcmp(type, "float") && !strcmp(op, ogsAdd)) {
-    oogs::packBufFloatAddKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
+    kernel = oogs::packBufFloatAddKernel;
+  }
+  else if (!strcmp(type, "float") && !strcmp(op, ogsMin)) {
+    kernel =  oogs::packBufFloatMinKernel;
+  }
+  else if (!strcmp(type, "float") && !strcmp(op, ogsMax)) {
+    kernel =  oogs::packBufFloatMaxKernel;
   }
   else if (!strcmp(type, "double") && !strcmp(op, ogsAdd)) {
-    oogs::packBufDoubleAddKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
+    kernel = oogs::packBufDoubleAddKernel;
   }
   else if (!strcmp(type, "double") && !strcmp(op, ogsMin)) {
-    oogs::packBufDoubleMinKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
+    kernel = oogs::packBufDoubleMinKernel;
   }
   else if (!strcmp(type, "double") && !strcmp(op, ogsMax)) {
-    oogs::packBufDoubleMaxKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
+    kernel = oogs::packBufDoubleMaxKernel;
   }
   else {
-    printf("oogs: unsupported operation or datatype!\n");
+    printf("oogs: unsupported operation %s or datatype %s!\n", op, type);
     exit(1);
   }
+
+  kernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
 }
 
 static void unpackBuf(oogs_t *gs,
                       const dlong Ngather,
                       const int k,
                       const dlong stride,
-                      occa::memory &o_gstarts,
-                      occa::memory &o_gids,
-                      occa::memory &o_sstarts,
-                      occa::memory &o_sids,
+                      const occa::memory &o_gstarts,
+                      const occa::memory &o_gids,
+                      const occa::memory &o_sstarts,
+                      const occa::memory &o_sids,
                       const char *type,
                       const char *op,
-                      occa::memory &o_v,
-                      occa::memory &o_gv)
+                      const occa::memory &o_v,
+                      const occa::memory &o_gv)
 {
   if(Ngather == 0) return;
 
+  occa::kernel kernel;
+
   if (!strcmp(type, "float") && !strcmp(op, ogsAdd)) {
-    oogs::unpackBufFloatAddKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
+    kernel = oogs::unpackBufFloatAddKernel;
+  }
+  else if (!strcmp(type, "float") && !strcmp(op, ogsMin)) {
+    kernel =  oogs::unpackBufFloatMinKernel;
+  }
+  else if (!strcmp(type, "float") && !strcmp(op, ogsMax)) {
+    kernel =  oogs::unpackBufFloatMaxKernel;
   }
   else if (!strcmp(type, "double") && !strcmp(op, ogsAdd)) {
-    oogs::unpackBufDoubleAddKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
+    kernel = oogs::unpackBufDoubleAddKernel;
   }
   else if (!strcmp(type, "double") && !strcmp(op, ogsMin)) {
-    oogs::unpackBufDoubleMinKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
+    kernel = oogs::unpackBufDoubleMinKernel;
   }
   else if (!strcmp(type, "double") && !strcmp(op, ogsMax)) {
-    oogs::unpackBufDoubleMaxKernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
+    kernel = oogs::unpackBufDoubleMaxKernel;
   }
   else {
-    printf("oogs: unsupported operation or datatype!\n");
+    printf("oogs: unsupported operation %s or datatype %s!\n", op, type);
     exit(1);
   }
+
+  kernel(Ngather, k, stride, o_gstarts, o_gids, o_sstarts, o_sids, o_v, o_gv);
 }
 
-void oogs::start(occa::memory &o_v,
+void oogs::start(const occa::memory &o_v,
                  const int k,
                  const dlong stride,
                  const char *type,
@@ -737,7 +780,7 @@ void oogs::start(occa::memory &o_v,
   }
 }
 
-void oogs::finish(occa::memory &o_v,
+void oogs::finish(const occa::memory &o_v,
                   const int k,
                   const dlong stride,
                   const char *type,
@@ -825,7 +868,7 @@ void oogs::startFinish(void *v, const int k, const dlong stride, const char *typ
   ogsGatherScatterMany(v, k, stride, type, op, h->ogs);
 }
 
-void oogs::startFinish(occa::memory &o_v,
+void oogs::startFinish(const occa::memory &o_v,
                        const int k,
                        const dlong stride,
                        const char *type,

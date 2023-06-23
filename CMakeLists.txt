@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(NekRS LANGUAGES C CXX Fortran VERSION 23.0.7)
+project(NekRS LANGUAGES C CXX Fortran VERSION 23.1.1)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
@@ -139,6 +139,8 @@ set(ENABLE_HYPRE_GPU OFF CACHE BOOL "Enable HYPRE GPU support")
 set(NEKRS_GPU_MPI ON CACHE BOOL "Enable GPU aware MPI")
 set(ENABLE_CVODE OFF CACHE BOOL "Enable CVODE support")
 
+set(NEKRS_USE_DFLOAT_FLOAT OFF CACHE BOOL "use dfloat = float")
+
 ###############################################################################
 # Set compiler flags                                                          #
 ###############################################################################
@@ -257,6 +259,11 @@ if (ENABLE_CVODE)
   set(EXAMPLES_ENABLE_F2003 OFF)
   set(BUILD_TESTING OFF)
   set(BUILD_SHARED_LIBS ON)
+
+  if(NEKRS_USE_DFLOAT_FLOAT)
+    set(SUNDIALS_PRECISION "single")
+  endif()
+
 
   add_subdirectory(3rd_party/cvode)
  

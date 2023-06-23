@@ -123,15 +123,15 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
   mesh->NglobalGatherElements = globalCount;
   mesh->NlocalGatherElements = localCount;
 
-  mesh->o_elementList = platform->device.malloc(mesh->Nelements * sizeof(dlong), mesh->elementList);
+  mesh->o_elementList = platform->device.malloc<dlong>(mesh->Nelements, mesh->elementList);
 
   if (globalCount)
     mesh->o_globalGatherElementList =
-        platform->device.malloc(globalCount * sizeof(dlong), mesh->globalGatherElementList);
+        platform->device.malloc<dlong>(globalCount, mesh->globalGatherElementList);
 
   if (localCount)
     mesh->o_localGatherElementList =
-        platform->device.malloc(localCount * sizeof(dlong), mesh->localGatherElementList);
+        platform->device.malloc<dlong>(localCount, mesh->localGatherElementList);
 
   { // sanity check
     int err = 0;
@@ -139,28 +139,27 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
     MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
     const dfloat sum2 = (dfloat)gNelements * mesh->Np;
 
-    occa::memory o_tmp = platform->device.malloc(mesh->Nlocal, sizeof(dfloat));
-    platform->linAlg->fillKernel(mesh->Nlocal, 1.0, o_tmp);
+    occa::memory o_tmp = platform->device.malloc<dfloat>(mesh->Nlocal);
+    platform->linAlg->fill(mesh->Nlocal, 1.0, o_tmp);
 
     ogsGatherScatter(o_tmp, ogsDfloat, ogsAdd, mesh->ogs);
+    platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->ogs->o_invDegree, o_tmp);
 
-    platform->linAlg->axmyKernel(mesh->Nlocal, 1.0, mesh->ogs->o_invDegree, o_tmp);
-    dfloat *tmp = (dfloat *)calloc(mesh->Nlocal, sizeof(dfloat));
-    o_tmp.copyTo(tmp, mesh->Nlocal * sizeof(dfloat));
+    auto tmp = (dfloat *)calloc(mesh->Nlocal, sizeof(dfloat));
+    o_tmp.copyTo(tmp);
     dfloat sum1 = 0;
-    for (int i = 0; i < mesh->Nlocal; i++)
+    for (int i = 0; i < mesh->Nlocal; i++) {
       sum1 += tmp[i];
+    }
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-    sum1 = abs(sum1 - sum2) / sum2;
-    if (sum1 > 1e-15) {
-      if (platform->comm.mpiRank == 0)
-        printf("ogsGatherScatter test err=%g!\n", sum1);
-      fflush(stdout);
+
+    const auto errVal = abs(sum1 - sum2) / sum2;
+    if (errVal > 10.0 * std::numeric_limits<dfloat>::epsilon()) {
       err++;
     }
     o_tmp.free();
 
-    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "sanity check failed");
+    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "invDegree check failed");
     free(tmp);
   }
 }

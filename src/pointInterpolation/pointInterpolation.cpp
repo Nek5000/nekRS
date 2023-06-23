@@ -38,18 +38,19 @@ pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
     comm,
     EXIT_FAILURE,
     "%s",
-    "Communicator passed to pointInterpolation_t must be either platform->comm.mpiComm or platform->comm.mpiCommParent");
+    "Communicator must be either platform->comm.mpiComm or platform->comm.mpiCommParent");
 
-  newton_tol = std::max(5e-13, newton_tol_);
+  newton_tol = (sizeof(dfloat) == sizeof(double)) 
+               ? std::max(5e-13, newton_tol_) : std::max(1e-6, newton_tol_);
 
-  const int npt_max = 128;
+  const int npt_max = 1;
 
   mesh_t *mesh = nrs->_mesh;
 
   if (mySession) {
-    mesh->o_x.copyTo(mesh->x, mesh->Nlocal * sizeof(dfloat));
-    mesh->o_y.copyTo(mesh->y, mesh->Nlocal * sizeof(dfloat));
-    mesh->o_z.copyTo(mesh->z, mesh->Nlocal * sizeof(dfloat));
+    mesh->o_x.copyTo(mesh->x, mesh->Nlocal);
+    mesh->o_y.copyTo(mesh->y, mesh->Nlocal);
+    mesh->o_z.copyTo(mesh->z, mesh->Nlocal);
   }
 
   findpts_ = std::make_unique<findpts::findpts_t>(comm,
@@ -74,14 +75,8 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity)
 
   int iErr = 0;
   iErr += !pointsAdded;
-  MPI_Allreduce(MPI_IN_PLACE, &iErr, 1, MPI_DLONG, MPI_MAX, platform->comm.mpiComm);
-  if (iErr) {
-    if (platform->comm.mpiRank == 0) {
-      std::cout << "pointInterpolation_t::find called without any points added!\n";
-    }
-  }
-  
-  nrsCheck(iErr, platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
+  nrsCheck(iErr, platform->comm.mpiComm, EXIT_FAILURE, 
+           "%s\n", "find called without any points added!");
 
   const auto n = nPoints;
 
@@ -101,9 +96,9 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity)
       h_x = h_x_vec.data();
       h_y = h_y_vec.data();
       h_z = h_z_vec.data();
-      _o_x.copyTo(h_x, n * sizeof(dfloat));
-      _o_y.copyTo(h_y, n * sizeof(dfloat));
-      _o_z.copyTo(h_z, n * sizeof(dfloat));
+      _o_x.copyTo(h_x, n);
+      _o_y.copyTo(h_y, n);
+      _o_z.copyTo(h_z, n);
     }
 
     dlong nOutside = 0;
@@ -113,7 +108,7 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity)
         if (data_.dist2_base[in] > 10 * newton_tol) {
           nBoundary += 1;
           if (nBoundary < 5 && verbosity == VerbosityLevel::Detailed) {
-            std::cout << " WARNING: point on boundary or outside the mesh xy[z]d^2: " << h_x[in] << ","
+            std::cout << " WARNING: point on boundary or outside the mesh distNorm2: " << h_x[in] << ","
                       << h_y[in] << ", " << h_z[in] << ", " << data_.dist2_base[in] << std::endl;
           }
         }
@@ -137,14 +132,19 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity)
   if (timerLevel != TimerLevel::None) {
     platform->timer.toc("pointInterpolation_t::find");
   }
+
+  findCalled = true;
 }
 
 void pointInterpolation_t::eval(dlong nFields,
                                 dlong inputFieldOffset,
-                                occa::memory o_in,
+                                const occa::memory& o_in,
                                 dlong outputFieldOffset,
-                                occa::memory o_out)
+                                occa::memory& o_out)
 {
+  nrsCheck(!findCalled, platform->comm.mpiComm, EXIT_FAILURE, 
+           "%s\n", "find has not been called prior to eval!");
+ 
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic("pointInterpolation_t::eval", 1);
   }
@@ -183,6 +183,9 @@ void pointInterpolation_t::eval(dlong nFields,
                                 dlong outputFieldOffset,
                                 dfloat *out)
 {
+  nrsCheck(!findCalled, platform->comm.mpiComm, EXIT_FAILURE, 
+           "%s\n", "find has not been called prior to eval!");
+
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic("pointInterpolation_t::eval", 1);
   }
@@ -219,7 +222,7 @@ void pointInterpolation_t::setPoints(int n, dfloat *x, dfloat *y, dfloat *z)
   _z = z;
 }
 
-void pointInterpolation_t::setPoints(int n, occa::memory o_x, occa::memory o_y, occa::memory o_z)
+void pointInterpolation_t::setPoints(int n, const occa::memory& o_x, const occa::memory& o_y, const occa::memory& o_z)
 {
 
   pointsAdded = true;
@@ -230,15 +233,17 @@ void pointInterpolation_t::setPoints(int n, occa::memory o_x, occa::memory o_y, 
     data_ = findpts::data_t(n);
   }
 
+  if(n > 0) {
+    _o_x = o_x;
+    _o_y = o_y;
+    _o_z = o_z;
+ 
+    h_x_vec.resize(n);
+    h_y_vec.resize(n);
+    h_z_vec.resize(n);
+  }
+
   nPoints = n;
-
-  _o_x = o_x;
-  _o_y = o_y;
-  _o_z = o_z;
-
-  h_x_vec.resize(n);
-  h_y_vec.resize(n);
-  h_z_vec.resize(n);
 }
 
 void pointInterpolation_t::setTimerLevel(TimerLevel level)
@@ -255,4 +260,8 @@ void pointInterpolation_t::setTimerName(std::string name)
   findpts_->setTimerName(name);
 }
 
-void pointInterpolation_t::update() { findpts_->update(data_); }
+void pointInterpolation_t::o_update() 
+{ 
+  if(data_.r.size()) findCalled = true;
+  findpts_->o_update(data_); 
+}

@@ -15,12 +15,12 @@ occa::memory o_kappa;
 
 #endif
 
-void qtl(nrs_t *nrs, dfloat time, occa::memory o_div)
+void qtl(nrs_t *nrs, double time, occa::memory o_div)
 {
   lowMach::qThermalSingleComponent(time, o_div);
 }
 
-void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
+void userq(nrs_t *nrs, double time, occa::memory o_S, occa::memory o_FS)
 {
   cds_t *cds = nrs->cds;
   mesh_t *mesh = cds->mesh[0];
@@ -29,7 +29,7 @@ void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
 }
 
 void uservp(nrs_t *nrs,
-            dfloat time,
+            double time,
             occa::memory o_U,
             occa::memory o_S,
             occa::memory o_UProp,
@@ -74,8 +74,8 @@ void UDF_Setup(nrs_t *nrs)
   udf.sEqnSource = &userq;
   udf.properties = &uservp;
 
-  o_beta = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
-  o_kappa = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  o_beta = platform->device.malloc<dfloat>(nrs->fieldOffset);
+  o_kappa = platform->device.malloc<dfloat>(nrs->fieldOffset);
 
   // alphaRef := p0thRef/(rhoRef * cpRef * TRef)
   // translates to (gammaRef - 1)/gammaRef in case of an ideal gas
@@ -85,7 +85,7 @@ void UDF_Setup(nrs_t *nrs)
   udf.div = &qtl;
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);

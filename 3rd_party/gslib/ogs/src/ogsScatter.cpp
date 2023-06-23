@@ -43,7 +43,7 @@ void ogsScatter(occa::memory o_sv,
 }
 
 void ogsScatterStart(occa::memory o_sv, 
-                    occa::memory o_v, 
+                    occa::memory o_vIn, 
                     const char *type, 
                     const char *op, 
                     ogs_t *ogs){
@@ -56,6 +56,8 @@ void ogsScatterStart(occa::memory o_sv,
     Nbytes = sizeof(int);
   else if (!strcmp(type, "long long int")) 
     Nbytes = sizeof(long long int);
+
+  auto o_v = o_vIn.cast(occa::dtype::byte);
 
   if (ogs->NhaloGather) {
     if (ogs::o_haloBuf.size() < ogs->NhaloGather*Nbytes) {

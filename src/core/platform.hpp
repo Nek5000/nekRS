@@ -8,6 +8,7 @@
 #include "comm.hpp"
 #include "inipp.hpp"
 #include "device.hpp"
+#include "device.tpp"
 #include "kernelRequestManager.hpp"
 #include <set>
 #include <map>
@@ -17,45 +18,8 @@ class setupAide;
 class linAlg_t;
 class flopCounter_t;
 
-class deviceVector_t{
-public:
-// allow implicit conversion between this and the underlying occa::memory object
-  operator occa::memory&(){ return o_vector; }
-// allow implicit conversion between this and kernelArg (for passing to kernels)
-  operator occa::kernelArg(){ return o_vector; }
-  deviceVector_t(const size_t _offset, const size_t _nVectors, const size_t _wordSize, std::string _vectorName = "");
-  occa::memory& at(const int);
-  const size_t offset;
-private:
-  occa::memory o_vector;
-  std::vector<occa::memory> slices;
-  const size_t nVectors;
-  const size_t wordSize;
-  const std::string vectorName;
-};
-
-struct deviceMemPool_t{
-  void allocate(const dlong offset, const dlong fields);
-  occa::memory slice0;
-  occa::memory slice1; 
-  occa::memory slice2; 
-  occa::memory slice3; 
-  occa::memory slice4; 
-  occa::memory slice5; 
-  occa::memory slice6; 
-  occa::memory slice7;
-  occa::memory slice9;
-  occa::memory slice12; 
-  occa::memory slice15; 
-  occa::memory slice18; 
-  occa::memory slice19;
-  occa::memory o_ptr;
-  size_t bytesAllocated;
-};
-
 struct platform_t{
 public:
-  void create_mempool(const dlong offset, const dlong fields);
   platform_t(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm);
 
   static platform_t* getInstance(setupAide& _options, MPI_Comm _commg, MPI_Comm _comm){
@@ -76,7 +40,7 @@ public:
   device_t device;
   occa::properties kernelInfo;
   timer::timer_t timer;
-  deviceMemPool_t o_mempool;
+  occa::experimental::memoryPool o_memPool;
   kernelRequestManager_t kernels;
   inipp::Ini *par;
   bool serial;

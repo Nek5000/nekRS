@@ -119,6 +119,10 @@ echo "export MPICH_MPIIO_STATS=1" >>$SFILE
 echo "export MPICH_OFI_NIC_POLICY=NUMA" >>$SFILE
 echo "export NEKRS_CACHE_BCAST=$NEKRS_CACHE_BCAST" >> $SFILE
 
+echo "export FI_CXI_RX_MATCH_MODE=hybrid" >> $SFILE  
+
+echo "export PMI_MMAP_SYNC_WAIT_TIME=600" >> $SFILE
+
 echo "if [ \$NEKRS_CACHE_BCAST -eq 1 ]; then" >> $SFILE
 echo "  export NEKRS_LOCAL_TMP_DIR=\$NVME_HOME" >> $SFILE
 echo "fi" >> $SFILE

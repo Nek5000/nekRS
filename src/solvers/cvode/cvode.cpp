@@ -53,6 +53,10 @@ cvode_t::cvode_t(nrs_t *_nrs)
 {
 }
 
+void cvode_t::initialize()
+{
+}
+
 cvode_t::~cvode_t()
 {
 }
@@ -69,7 +73,7 @@ void cvode_t::setupDirichletMask()
 {
 }
 
-void cvode_t::applyDirichlet(dfloat time)
+void cvode_t::applyDirichlet(double time)
 {
 }
 
@@ -77,19 +81,19 @@ void cvode_t::computeErrorWeight(occa::memory o_y, occa::memory o_ewt)
 {
 }
 
-void cvode_t::rhs(dfloat time, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::rhs(double time, occa::memory o_y, occa::memory o_ydot)
 {
 }
 
-void cvode_t::jtvRHS(dfloat time, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::jtvRHS(double time, occa::memory o_y, occa::memory o_ydot)
 {
 }
 
-void cvode_t::defaultRHS(dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::defaultRHS(double time, double t0, occa::memory o_y, occa::memory o_ydot)
 {
 }
 
-void cvode_t::makeq(dfloat time)
+void cvode_t::makeq(double time)
 {
 }
 

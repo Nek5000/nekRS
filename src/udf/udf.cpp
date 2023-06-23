@@ -386,15 +386,19 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
             printf("Cannot find oudf or okl section in udf\n");
           return EXIT_FAILURE;
         }
+  
+        const std::string useFloat = (sizeof(dfloat) == sizeof(float)) ? "ON" : "OFF";
 
         sprintf(cmd,
                 "rm -f %s/*.so && cmake %s -S %s -B %s "
+                "-DNEKRS_USE_DFLOAT_FLOAT=%s "
                 "-DNEKRS_INSTALL_DIR=\"%s\" -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" "
                 "-DCMAKE_CXX_FLAGS=\"$NEKRS_CXXFLAGS\" %s >cmake.log 2>&1",
                 cmakeBuildDir.c_str(),
                 cmakeFlags.c_str(),
                 cmakeBuildDir.c_str(),
                 cmakeBuildDir.c_str(),
+                useFloat.c_str(),
                 installDir.c_str(),
                 case_dir.c_str(),
                 pipeToNull.c_str());

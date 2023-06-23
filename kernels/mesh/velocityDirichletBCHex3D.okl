@@ -25,7 +25,7 @@
  */
 @kernel void velocityDirichletBCHex3D(const dlong Nelements,
                                       const dlong offset,
-                                      const dfloat time,
+                                      const double time,
                                       const int useDerivedBoundaryCondition,
                                       @ restrict const dfloat *sgeo,
                                       @ restrict const dfloat *mask,

@@ -79,14 +79,13 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
   mesh_t* mesh = elliptic->mesh;
   setupAide& options = elliptic->options;
 
-  std::vector<dfloat> ggeo;
-  ggeo.reserve(mesh->o_ggeo.size()/sizeof(dfloat));
+  std::vector<pfloat> ggeo(mesh->o_ggeo.length());
   mesh->o_ggeo.copyTo(ggeo.data());
 
   // here we assume lambda0 is constant (in space and time) 
   // use first entry of o_lambda as representative value 
   pfloat lambda0;
-  elliptic->o_lambda0.copyTo(&lambda0, sizeof(pfloat));
+  elliptic->o_lambda0.copyTo(&lambda0, 1);
   const dfloat lambda1 = 0.0;  // Poisson
 
   int rank = platform->comm.mpiRank;
@@ -133,7 +132,7 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
   int* mask = (int*) calloc(mesh->Np * mesh->Nelements,sizeof(int));
   if(elliptic->Nmasked > 0){
     dlong* maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
-    elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked * sizeof(dlong));
+    elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked);
     for (dlong i = 0; i < elliptic->Nmasked; i++) mask[maskIds[i]] = 1.;
     free(maskIds);
   }
@@ -438,7 +437,7 @@ void ellipticBuildFEMGalerkinHex3D(elliptic_t* elliptic,
   int* mask = (int*) calloc(mesh->Np * mesh->Nelements,sizeof(int));
   if(elliptic->Nmasked > 0){
     dlong* maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
-    elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked * sizeof(dlong));
+    elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked);
     for (dlong i = 0; i < elliptic->Nmasked; i++) mask[maskIds[i]] = 1.;
     free(maskIds);
   }
@@ -450,10 +449,10 @@ void ellipticBuildFEMGalerkinHex3D(elliptic_t* elliptic,
   q = (dfloat*)calloc(meshf->Np * mesh->Nelements,sizeof(dfloat));
   Aq = (dfloat*)calloc(meshf->Np * mesh->Nelements,sizeof(dfloat));
 
-  occa::memory o_q = platform->device.malloc(meshf->Nlocal * sizeof(dfloat), q);
-  occa::memory o_qPfloat = platform->device.malloc(meshf->Nlocal * sizeof(pfloat));
-  occa::memory o_Aq = platform->device.malloc(meshf->Nlocal * sizeof(dfloat),Aq);
-  occa::memory o_AqPfloat = platform->device.malloc(meshf->Nlocal * sizeof(pfloat));
+  occa::memory o_q = platform->device.malloc<dfloat>(meshf->Nlocal, q);
+  occa::memory o_qPfloat = platform->device.malloc<pfloat>(meshf->Nlocal);
+  occa::memory o_Aq = platform->device.malloc<dfloat>(meshf->Nlocal,Aq);
+  occa::memory o_AqPfloat = platform->device.malloc<pfloat>(meshf->Nlocal);
 
   for(int jj = 0; jj < mesh->Np; jj++)
     ellipticGenerateCoarseBasisHex3D(b,jj,ellipticFine);

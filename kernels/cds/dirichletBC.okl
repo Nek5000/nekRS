@@ -29,7 +29,7 @@
 @kernel void dirichletBC(const dlong Nelements,
                          const dlong offset,
                          const dlong scalarId,
-                         const dfloat time,
+                         const double time,
                          @ restrict const dfloat *sgeo,
                          @ restrict const dfloat *x,
                          @ restrict const dfloat *y,

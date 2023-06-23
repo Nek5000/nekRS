@@ -45,7 +45,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   }
 }
 
-void ciTestPointInterpolation(nrs_t *nrs, dfloat time, int tstep)
+void ciTestPointInterpolation(nrs_t *nrs, double time, int tstep)
 {
   if(ciMode != 1) return;
 
@@ -60,10 +60,10 @@ void ciTestPointInterpolation(nrs_t *nrs, dfloat time, int tstep)
   const auto verbosity = pointInterpolation_t::VerbosityLevel::Basic;
   interp.find(verbosity);
   
-  auto o_Tint = platform->device.malloc(nPoints * sizeof(dfloat));
+  auto o_Tint = platform->device.malloc<dfloat>(nPoints);
   interp.eval(1, nrs->fieldOffset, nrs->cds->o_S, nPoints, o_Tint);
   std::vector<dfloat> Tint(nPoints);
-  o_Tint.copyTo(Tint.data(), nPoints * sizeof(dfloat));
+  o_Tint.copyTo(Tint.data(), nPoints);
 
   std::vector<dfloat> Texpected = {13.921, 0.00133, 9.62969};
 
@@ -98,7 +98,7 @@ void ciTestPointInterpolation(nrs_t *nrs, dfloat time, int tstep)
 
 }
 
-void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   if (!nrs->lastStep) return;
 

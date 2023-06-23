@@ -39,7 +39,7 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   platform->par->extract("casedata", "injectionfrequency", injectionFrequency);
 }
 
-void userRHS(nrs_t *nrs, lpm_t *lpm, dfloat time, occa::memory o_y, void *userdata, occa::memory o_ydot)
+void userRHS(nrs_t *nrs, lpm_t *lpm, double time, occa::memory o_y, void *userdata, occa::memory o_ydot)
 {
   auto offset = lpm->fieldOffset();
 
@@ -49,7 +49,8 @@ void userRHS(nrs_t *nrs, lpm_t *lpm, dfloat time, occa::memory o_y, void *userda
   auto o_Uinterp = lpm->getInterpField("fluid_velocity");
 
   if (lpm->numParticles()) {
-    particleRHS(lpm->numParticles(), offset, o_y, lpm->o_prop, o_Uinterp, o_ydot);
+    auto o_prop = particles->getProp("stokes_number"); 
+    particleRHS(lpm->numParticles(), offset, o_y, o_prop, o_Uinterp, o_ydot);
   }
 }
 
@@ -148,40 +149,42 @@ void UDF_Setup(nrs_t *nrs)
   particles->initialize(nParticles, t0, y0);
 
   // set Stokes number
-  platform->linAlg->fill(nParticles, Stk, particles->o_prop);
+  auto o_tmp = platform->device.malloc<dfloat>(nParticles);
+  platform->linAlg->fill(nParticles, Stk, o_tmp);
+  particles->setProp("stokes_number", o_tmp); 
 }
 
-void addNewParticles(nrs_t *nrs, dfloat time, int tstep)
+void addNewParticles(nrs_t *nrs, double time, int tstep)
 {
   auto numGlobalParticles = particles->numGlobalParticles();
 
   auto [xPart, yPart, zPart] = generateInflowPoints(nrs);
   const int nPartAdd = xPart.size();
 
-  const auto NbytesNewYPart = nPartAdd * particles->nDOFs() * sizeof(dfloat);
-  if (o_yNewPart.size() < NbytesNewYPart) {
+  const auto NNewYPart = nPartAdd * particles->nDOFs();
+  if (o_yNewPart.length() < NNewYPart) {
     if (o_yNewPart.size()) {
       o_yNewPart.free();
     }
-    o_yNewPart = platform->device.malloc(NbytesNewYPart);
+    o_yNewPart = platform->device.malloc<dfloat>(NNewYPart);
   }
 
-  const auto NbytesNewPropPart = nPartAdd * particles->nProps() * sizeof(dfloat);
-  if (o_propNewPart.size() < NbytesNewPropPart) {
+  const auto NNewPropPart = nPartAdd * particles->nProps();
+  if (o_propNewPart.length() < NNewPropPart) {
     if (o_propNewPart.size()) {
       o_propNewPart.free();
     }
-    o_propNewPart = platform->device.malloc(NbytesNewPropPart);
+    o_propNewPart = platform->device.malloc<dfloat>(NNewPropPart);
   }
 
-  auto o_xPart = o_yNewPart + 0 * nPartAdd * sizeof(dfloat);
-  auto o_yPart = o_yNewPart + 1 * nPartAdd * sizeof(dfloat);
-  auto o_zPart = o_yNewPart + 2 * nPartAdd * sizeof(dfloat);
-  auto o_UPart = o_yNewPart + 3 * nPartAdd * sizeof(dfloat);
+  auto o_xPart = o_yNewPart + 0 * nPartAdd;
+  auto o_yPart = o_yNewPart + 1 * nPartAdd;
+  auto o_zPart = o_yNewPart + 2 * nPartAdd;
+  auto o_UPart = o_yNewPart + 3 * nPartAdd;
 
-  o_xPart.copyFrom(xPart.data(), nPartAdd * sizeof(dfloat));
-  o_yPart.copyFrom(yPart.data(), nPartAdd * sizeof(dfloat));
-  o_zPart.copyFrom(zPart.data(), nPartAdd * sizeof(dfloat));
+  o_xPart.copyFrom(xPart.data(), nPartAdd);
+  o_yPart.copyFrom(yPart.data(), nPartAdd);
+  o_zPart.copyFrom(zPart.data(), nPartAdd);
 
   // set property with Stokes number
   platform->linAlg->fill(nPartAdd, Stk, o_propNewPart);
@@ -196,7 +199,7 @@ void addNewParticles(nrs_t *nrs, dfloat time, int tstep)
   particles->addParticles(nPartAdd, o_yNewPart, o_propNewPart);
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   particles->integrate(time);
 

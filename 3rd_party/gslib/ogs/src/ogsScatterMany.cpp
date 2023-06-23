@@ -52,13 +52,14 @@ void ogsScatterMany(occa::memory o_sv,
 }
 
 void ogsScatterManyStart(occa::memory o_sv, 
-                    occa::memory o_v, 
+                    occa::memory o_vIn, 
                     const int k,
                     const dlong sstride,
                     const dlong stride,
                     const char *type, 
                     const char *op, 
-                    ogs_t *ogs){
+                    ogs_t *ogs)
+{
   size_t Nbytes;
   if (!strcmp(type, "float")) 
     Nbytes = sizeof(float);
@@ -68,6 +69,8 @@ void ogsScatterManyStart(occa::memory o_sv,
     Nbytes = sizeof(int);
   else if (!strcmp(type, "long long int")) 
     Nbytes = sizeof(long long int);
+
+  auto o_v = o_vIn.cast(occa::dtype::byte);
 
   if (ogs->NhaloGather) {
     if (ogs::o_haloBuf.size() < ogs->NhaloGather*Nbytes*k) {
@@ -94,7 +97,6 @@ void ogsScatterManyStart(occa::memory o_sv,
     ogs->device.setStream(ogs::defaultStream);
   }
 }
-
 
 void ogsScatterManyFinish(occa::memory o_sv, 
                      occa::memory o_v, 

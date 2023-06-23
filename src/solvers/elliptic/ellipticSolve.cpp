@@ -28,10 +28,11 @@
 #include "ellipticPrecon.h"
 #include "platform.hpp"
 #include "linAlg.hpp"
+#include "fldFile.hpp"
 
-void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
+void ellipticSolve(elliptic_t* elliptic, const occa::memory& o_rhs, occa::memory o_x)
 {
-  ellipticUpdateWorkspace(elliptic); // in case o_wrk has changed
+  ellipticAllocateWorkspace(elliptic);
 
   setupAide& options = elliptic->options;
   precon_t *precon = elliptic->precon;
@@ -55,11 +56,13 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
         elliptic->Nfields,
         elliptic->fieldOffset,
         elliptic->o_invDegree,
-        o_r,
+        o_rhs,
         platform->comm.mpiComm
       )
       * sqrt(elliptic->resNormFactor); 
     if(platform->comm.mpiRank == 0) printf("%s RHS norm: %.15e\n", elliptic->name.c_str(), rhsNorm);
+    nrsCheck(std::isnan(rhsNorm), MPI_COMM_SELF, EXIT_FAILURE,
+             "%s unreasonable rhsNorm!\n", name.c_str());
   }
 
   if(verbose) {
@@ -88,21 +91,23 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
   }
 
   // compute initial residual r = rhs - Ax0
+  auto o_r = platform->o_memPool.reserve<dfloat>(elliptic->Nfields * elliptic->fieldOffset);
+
   ellipticAx(elliptic, mesh->Nelements, mesh->o_elementList, o_x, elliptic->o_Ap, dfloatString);
-  platform->linAlg->axpbyMany(
+  platform->linAlg->axpbyzMany(
     mesh->Nlocal,
     elliptic->Nfields,
     elliptic->fieldOffset,
     -1.0,
     elliptic->o_Ap,
     1.0,
-    o_r
-  );
+    o_rhs,
+    o_r);
   if(elliptic->allNeumann) ellipticZeroMean(elliptic, o_r);
   ellipticApplyMask(elliptic, o_r, dfloatString);
   oogs::startFinish(o_r, elliptic->Nfields, elliptic->fieldOffset, ogsDfloat, ogsAdd, elliptic->oogs);
 
-  elliptic->o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->fieldOffset * sizeof(dfloat));
+  elliptic->o_x0.copyFrom(o_x);
   platform->linAlg->fill(elliptic->fieldOffset * elliptic->Nfields, 0.0, o_x);
   if(options.compareArgs("INITIAL GUESS","PROJECTION") ||
      options.compareArgs("INITIAL GUESS","PROJECTION-ACONJ")) {
@@ -150,9 +155,9 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
     elliptic->resNorm = elliptic->res0Norm;
 
     if(options.compareArgs("SOLVER", "PCG")) {
-      elliptic->Niter = pcg (elliptic, o_r, o_x, tol, maxIter, elliptic->resNorm);
+      elliptic->Niter = pcg (elliptic, tol, maxIter, elliptic->resNorm, o_r, o_x);
     } else if(options.compareArgs("SOLVER", "PGMRES")) {
-      elliptic->Niter = pgmres (elliptic, o_r, o_x, tol, maxIter, elliptic->resNorm);
+      elliptic->Niter = pgmres (elliptic, tol, maxIter, elliptic->resNorm, o_r, o_x);
     } else{
       nrsAbort(platform->comm.mpiComm, EXIT_FAILURE,
                "Linear solver %s is not supported!\n", options.getArgs("SOLVER").c_str());
@@ -187,4 +192,6 @@ void ellipticSolve(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x)
 
   if(elliptic->allNeumann)
     ellipticZeroMean(elliptic, o_x);
+
+  ellipticFreeWorkspace(elliptic);
 }

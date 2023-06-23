@@ -9,7 +9,7 @@ void postProcessing::strainRotationRate(nrs_t *nrs, bool smooth, bool rotationRa
 
   const int nFields = (rotationRate) ? 2*nrs->NVfields + nrs->NVfields : 2*nrs->NVfields;
 
-  nrsCheck(o_SO.size() < (nFields*nrs->fieldOffset*sizeof(dfloat)),
+  nrsCheck(o_SO.length() < (nFields*nrs->fieldOffset),
            MPI_COMM_SELF, EXIT_FAILURE, "o_SO too small to store %d fields!\n", nFields); 
  
   nrs->SijOijKernel(mesh->Nelements,

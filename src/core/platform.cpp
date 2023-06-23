@@ -25,31 +25,8 @@ static void compileDummyKernel(platform_t &plat)
 
 } // namespace
 
-deviceVector_t::deviceVector_t(const size_t _offset,
-                               const size_t _nVectors,
-                               const size_t _wordSize,
-                               const std::string _vectorName)
-    : nVectors(_nVectors), wordSize(_wordSize), vectorName(_vectorName), offset(_offset)
-{
-  nrsCheck(offset <= 0 || nVectors <= 0 || wordSize <= 0, MPI_COMM_SELF, EXIT_FAILURE,
-           "%s\n", "deviceVector_t invalid input!");
-
-  o_vector = platform->device.malloc(nVectors * offset * wordSize);
-  for (int s = 0; s < nVectors; ++s) {
-    slices.push_back(o_vector + (s * wordSize) * offset);
-  }
-}
-
-occa::memory &deviceVector_t::at(const int i)
-{
-  nrsCheck(i >= nVectors, MPI_COMM_SELF, EXIT_FAILURE,
-           "deviceVector_t(%s) has %zu size, but an attempt to access entry %i was made!\n",
-           vectorName.c_str(), nVectors, i);
-
-  return slices[i];
-}
-
 platform_t *platform_t::singleton = nullptr;
+
 platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
     : options(_options), warpSize(32), comm(_commg, _comm), device(options, comm),
       timer(_comm, device.occaDevice(), 0, 0), kernels(*this)
@@ -196,47 +173,8 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
   kernelName = "copyPfloatToDfloat";
   fileName = oklpath + "/core/" + kernelName + extension;
   this->kernels.add(kernelName, fileName, this->kernelInfo);
-}
 
-void deviceMemPool_t::allocate(const dlong offset, const dlong fields)
-{
-  bytesAllocated = (fields * sizeof(dfloat)) * offset;
-
-  if (platform->comm.mpiRank == 0 && platform->verbose)
-    printf("deviceMemPool_t::allocate %ld bytes\n", bytesAllocated);
-
-  o_ptr.free();
-  o_ptr = platform->device.malloc(bytesAllocated);
-  if (fields > 0)
-    slice0 = o_ptr.slice((0 * sizeof(dfloat)) * offset);
-  if (fields > 1)
-    slice1 = o_ptr.slice((1 * sizeof(dfloat)) * offset);
-  if (fields > 2)
-    slice2 = o_ptr.slice((2 * sizeof(dfloat)) * offset);
-  if (fields > 3)
-    slice3 = o_ptr.slice((3 * sizeof(dfloat)) * offset);
-  if (fields > 4)
-    slice4 = o_ptr.slice((4 * sizeof(dfloat)) * offset);
-  if (fields > 5)
-    slice5 = o_ptr.slice((5 * sizeof(dfloat)) * offset);
-  if (fields > 6)
-    slice6 = o_ptr.slice((6 * sizeof(dfloat)) * offset);
-  if (fields > 7)
-    slice7 = o_ptr.slice((7 * sizeof(dfloat)) * offset);
-  if (fields > 9)
-    slice9 = o_ptr.slice((9 * sizeof(dfloat)) * offset);
-  if (fields > 12)
-    slice12 = o_ptr.slice((12 * sizeof(dfloat)) * offset);
-  if (fields > 15)
-    slice15 = o_ptr.slice((15 * sizeof(dfloat)) * offset);
-  if (fields > 18)
-    slice18 = o_ptr.slice((18 * sizeof(dfloat)) * offset);
-  if (fields > 19)
-    slice19 = o_ptr.slice((19 * sizeof(dfloat)) * offset);
-}
-
-void platform_t::create_mempool(const dlong offset, const dlong fields)
-{
-  if (platform->o_mempool.o_ptr.size() < ((fields * sizeof(dfloat)) * offset))
-    o_mempool.allocate(offset, fields);
+  occa::json properties;
+  o_memPool = device.occaDevice().createMemoryPool(properties);
+  o_memPool.setAlignment(ALIGN_SIZE);
 }

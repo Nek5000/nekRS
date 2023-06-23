@@ -393,6 +393,9 @@ ogs_t *ogsSetup(dlong N, hlong *ids, MPI_Comm &comm,
 
   setupRowBlocks(ogs, device);
 
+  ogs->o_invDegree.free();
+  ogs->o_invDegree = device.malloc<dfloat>(N, ogs->invDegree);
+
   return ogs;
 }
 

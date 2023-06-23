@@ -159,13 +159,6 @@ void J_xr_map(double J_xr[3][3], double q_r[4][3], double x_t[3][4])
   }
 }
 
-occa::memory scratchOrAllocateMemory(int nWords,
-                                     int sizeT,
-                                     void *src,
-                                     size_t &bytesRemaining,
-                                     size_t &byteOffset,
-                                     size_t &bytesAllocated,
-                                     bool &allocated);
 static occa::kernel computeStiffnessMatrixKernel;
 static occa::memory o_x;
 static occa::memory o_y;
@@ -572,9 +565,9 @@ void fem_assembly_host(hypreWrapper::IJ_t &hypreIJ)
   double *x = (double *)malloc(n_xyze * sizeof(double));
   double *y = (double *)malloc(n_xyze * sizeof(double));
   double *z = (double *)malloc(n_xyze * sizeof(double));
-  o_x.copyTo(x, n_xyze * sizeof(double));
-  o_y.copyTo(y, n_xyze * sizeof(double));
-  o_z.copyTo(z, n_xyze * sizeof(double));
+  o_x.copyTo(x, n_xyze);
+  o_y.copyTo(y, n_xyze);
+  o_z.copyTo(z, n_xyze);
 
   const int n_quad = 4;
   const int num_fem = 8;
@@ -702,60 +695,23 @@ void fem_assembly_device(hypreWrapper::IJ_t &hypreIJ)
   long long *cols = coo_graph.cols;
   float *vals = coo_graph.vals;
 
-  struct AllocationTracker {
-    bool o_maskAlloc;
-    bool o_glo_numAlloc;
-    bool o_rowOffsetsAlloc;
-    bool o_rowsAlloc;
-    bool o_colsAlloc;
-    bool o_valsAlloc;
-  };
-  AllocationTracker allocations;
-  size_t bytesRemaining = platform->o_mempool.bytesAllocated;
-  size_t byteOffset = 0;
-  size_t bytesAllocated = 0;
-  occa::memory o_mask = scratchOrAllocateMemory(n_xyze,
-                                                sizeof(double),
-                                                pmask,
-                                                bytesRemaining,
-                                                byteOffset,
-                                                bytesAllocated,
-                                                allocations.o_maskAlloc);
-  occa::memory o_glo_num = scratchOrAllocateMemory(n_xyze,
-                                                   sizeof(long long),
-                                                   glo_num,
-                                                   bytesRemaining,
-                                                   byteOffset,
-                                                   bytesAllocated,
-                                                   allocations.o_glo_numAlloc);
-  occa::memory o_rows = scratchOrAllocateMemory(nrows,
-                                                sizeof(long long),
-                                                rows,
-                                                bytesRemaining,
-                                                byteOffset,
-                                                bytesAllocated,
-                                                allocations.o_rowsAlloc);
-  occa::memory o_rowOffsets = scratchOrAllocateMemory(nrows + 1,
-                                                      sizeof(long long),
-                                                      rowOffsets,
-                                                      bytesRemaining,
-                                                      byteOffset,
-                                                      bytesAllocated,
-                                                      allocations.o_rowOffsetsAlloc);
-  occa::memory o_cols = scratchOrAllocateMemory(nnz,
-                                                sizeof(long long),
-                                                cols,
-                                                bytesRemaining,
-                                                byteOffset,
-                                                bytesAllocated,
-                                                allocations.o_colsAlloc);
-  occa::memory o_vals = scratchOrAllocateMemory(nnz,
-                                                sizeof(float),
-                                                vals,
-                                                bytesRemaining,
-                                                byteOffset,
-                                                bytesAllocated,
-                                                allocations.o_valsAlloc);
+  occa::memory o_mask = platform->device.malloc<double>(n_xyze);
+  o_mask.copyFrom(pmask);
+
+  occa::memory o_glo_num = platform->device.malloc<long long>(n_xyze);
+  o_glo_num.copyFrom(glo_num);
+
+  occa::memory o_rows = platform->device.malloc<long long>(nrows);
+  o_rows.copyFrom(rows);
+
+  occa::memory o_rowOffsets= platform->device.malloc<long long>((nrows+1));
+  o_rowOffsets.copyFrom(rowOffsets);
+
+  occa::memory o_cols = platform->device.malloc<long long>((nnz+1));
+  o_cols.copyFrom(cols); 
+
+  occa::memory o_vals = platform->device.malloc<dfloat>(nnz);
+  o_vals.copyFrom(vals);
 
   computeStiffnessMatrixKernel(n_elem,
                                (int)nrows,
@@ -768,20 +724,7 @@ void fem_assembly_device(hypreWrapper::IJ_t &hypreIJ)
                                o_rowOffsets,
                                o_cols,
                                o_vals);
-  o_vals.copyTo(vals, nnz * sizeof(float));
-
-  if (allocations.o_maskAlloc)
-    o_mask.free();
-  if (allocations.o_glo_numAlloc)
-    o_glo_num.free();
-  if (allocations.o_rowOffsetsAlloc)
-    o_rowOffsets.free();
-  if (allocations.o_rowsAlloc)
-    o_rows.free();
-  if (allocations.o_colsAlloc)
-    o_cols.free();
-  if (allocations.o_valsAlloc)
-    o_vals.free();
+  o_vals.copyTo(vals, nnz);
 
   int err = hypreIJ.MatrixAddToValues(nrows, ncols, rows, cols, vals);
   nrsCheck(err != 0, comm.c, EXIT_FAILURE,
@@ -916,30 +859,6 @@ void mesh_connectivity(int v_coord[8][3], int t_map[8][4])
   (t_map)[7][1] = 3;
   (t_map)[7][2] = 6;
   (t_map)[7][3] = 5;
-}
-
-occa::memory scratchOrAllocateMemory(int nWords,
-                                     int sizeT,
-                                     void *src,
-                                     size_t &bytesRemaining,
-                                     size_t &byteOffset,
-                                     size_t &bytesAllocated,
-                                     bool &allocated)
-{
-  occa::memory o_mem;
-  if (nWords * sizeT < bytesRemaining) {
-    o_mem = platform->o_mempool.o_ptr.slice(byteOffset);
-    o_mem.copyFrom(src, nWords * sizeT);
-    bytesRemaining -= nWords * sizeT;
-    byteOffset += nWords * sizeT;
-    allocated = false;
-  }
-  else {
-    o_mem = platform->device.malloc(nWords * sizeT, src);
-    allocated = true;
-    bytesAllocated += nWords * sizeT;
-  }
-  return o_mem;
 }
 
 } // namespace

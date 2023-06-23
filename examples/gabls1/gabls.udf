@@ -60,7 +60,7 @@ void avgBoundaryValue(nrs_t *nrs, int BID, int nflds, occa::memory o_flds, dfloa
   static occa::memory o_area;
 
   if (!o_sumFace.isInitialized()) {
-    o_sumFace = platform->device.malloc((nflds + 1) * Nfaces * Nelements * sizeof(dfloat));
+    o_sumFace = platform->device.malloc<dfloat>((nflds + 1) * Nfaces * Nelements);
     sumFace = (dfloat *)calloc((nflds + 1) * Nfaces * Nelements, sizeof(dfloat));
     sum = (dfloat *)calloc(nflds + 1, sizeof(dfloat));
   }
@@ -74,7 +74,7 @@ void avgBoundaryValue(nrs_t *nrs, int BID, int nflds, occa::memory o_flds, dfloa
               mesh->o_vmapM,
               o_flds,
               o_sumFace);
-  o_sumFace.copyTo(sumFace, (nflds + 1) * Nfaces * Nelements * sizeof(dfloat));
+  o_sumFace.copyTo(sumFace, (nflds + 1) * Nfaces * Nelements);
 
   for (int j = 0; j < nflds + 1; ++j) {
     sum[j] = 0;
@@ -137,47 +137,44 @@ void findUThetaTau(dfloat uWall, dfloat tempWall, dfloat &rLength, dfloat &uTau,
 void planarAverage(nrs_t *nrs)
 {
   mesh_t *mesh = nrs->meshV;
-  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
 
   // <u>(y)
-  auto o_uAvg = o_work.slice(0 * fieldOffsetByte, fieldOffsetByte);
-  auto o_ux = nrs->o_U.slice(0 * fieldOffsetByte, fieldOffsetByte);
-  o_uAvg.copyFrom(o_ux, fieldOffsetByte);
+  auto o_uAvg = o_work.slice(0 * nrs->fieldOffset, nrs->fieldOffset);
+  auto o_ux = nrs->o_U.slice(0 * nrs->fieldOffset, nrs->fieldOffset);
+  o_uAvg.copyFrom(o_ux, nrs->fieldOffset);
 
   // <w>(y)
-  auto o_wAvg = o_work.slice(1 * fieldOffsetByte, fieldOffsetByte);
-  auto o_uz = nrs->o_U.slice(2 * fieldOffsetByte, fieldOffsetByte);
-  o_wAvg.copyFrom(o_uz, fieldOffsetByte);
+  auto o_wAvg = o_work.slice(1 * nrs->fieldOffset, nrs->fieldOffset);
+  auto o_uz = nrs->o_U.slice(2 * nrs->fieldOffset, nrs->fieldOffset);
+  o_wAvg.copyFrom(o_uz, nrs->fieldOffset);
 
   // <temp>(y)
-  auto o_tempAvg = o_work.slice(2 * fieldOffsetByte, fieldOffsetByte);
-  auto o_temp = nrs->cds->o_S.slice(0 * fieldOffsetByte, fieldOffsetByte);
-  o_tempAvg.copyFrom(o_temp, fieldOffsetByte);
+  auto o_tempAvg = o_work.slice(2 * nrs->fieldOffset, nrs->fieldOffset);
+  auto o_temp = nrs->cds->o_S.slice(0 * nrs->fieldOffset, nrs->fieldOffset);
+  o_tempAvg.copyFrom(o_temp, nrs->fieldOffset );
 
   // d<u,w,temp>/dy(y)
-  auto o_ddyAvg = o_work.slice(3 * fieldOffsetByte, 3 * fieldOffsetByte);
+  auto o_ddyAvg = o_work.slice(3 * nrs->fieldOffset, 3 * nrs->fieldOffset);
   gradY(mesh->Nelements, mesh->o_vgeo, mesh->o_D, nrs->fieldOffset, mesh->o_invLMM, o_work, o_ddyAvg);
   oogs::startFinish(o_ddyAvg, 3, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
   postProcessing::planarAvg(nrs, "xz", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 6, o_work);
 }
 
-void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
+void userf(nrs_t *nrs, double time, occa::memory o_U, occa::memory o_FU)
 {
   mesh_t *mesh = nrs->meshV;
-  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
   coriolis(mesh->Nlocal, nrs->fieldOffset, nrs->meshV->o_y, nrs->cds->o_S, nrs->o_U, o_divTau, o_FU);
 }
 
-void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
+void userq(nrs_t *nrs, double time, occa::memory o_S, occa::memory o_SU)
 {
   mesh_t *mesh = nrs->meshV;
-  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
-  auto o_divTauY = o_divTau.slice(1 * fieldOffsetByte, fieldOffsetByte);
+  auto o_divTauY = o_divTau.slice(1 * nrs->fieldOffset , nrs->fieldOffset);
   platform->linAlg->axpby(mesh->Nlocal, -1.0, o_divTauY, 1.0, o_SU, 0, 0);
 }
 
-void writeStatistics(nrs_t *nrs, dfloat time, int tstep, const std::string& fname)
+void writeStatistics(nrs_t *nrs, double time, int tstep, const std::string& fname)
 {
   auto mesh = nrs->meshV;
 
@@ -204,7 +201,7 @@ void writeStatistics(nrs_t *nrs, dfloat time, int tstep, const std::string& fnam
         zp.push_back(z0);
       }
 
-      o_fields1D = platform->device.malloc(Nfields * offset * sizeof(dfloat));
+      o_fields1D = platform->device.malloc<dfloat>(Nfields * offset);
     }
 
     interpolator = new pointInterpolation_t(nrs);
@@ -218,9 +215,7 @@ void writeStatistics(nrs_t *nrs, dfloat time, int tstep, const std::string& fnam
     }
   }
   
-  const auto fieldOffsetBytes = nrs->fieldOffset * sizeof(dfloat);
-
-  o_work.copyFrom(tavg::o_avg(), 3 * fieldOffsetBytes);
+  o_work.copyFrom(tavg::o_avg(), 3 * nrs->fieldOffset);
 
   gradY(mesh->Nelements, 
         mesh->o_vgeo, 
@@ -228,11 +223,11 @@ void writeStatistics(nrs_t *nrs, dfloat time, int tstep, const std::string& fnam
         nrs->fieldOffset, 
         mesh->o_invLMM, 
         tavg::o_avg(), 
-        o_work + 3 * fieldOffsetBytes);
+        o_work + 3 * nrs->fieldOffset );
 
-  o_work.copyFrom(tavg::o_avg() + 3 * fieldOffsetBytes, 
-                  3 * fieldOffsetBytes,
-                  6 * fieldOffsetBytes);
+  o_work.copyFrom(tavg::o_avg() + 3 * nrs->fieldOffset , 
+                  3 * nrs->fieldOffset ,
+                  6 * nrs->fieldOffset );
 
   postProcessing::planarAvg(nrs, 
                             "xz", 
@@ -249,7 +244,7 @@ void writeStatistics(nrs_t *nrs, dfloat time, int tstep, const std::string& fnam
                      o_fields1D);
 
   if (platform->comm.mpiRank == 0) {
-    std::vector<dfloat> fields1D(o_fields1D.size() / sizeof(dfloat));
+    std::vector<dfloat> fields1D(o_fields1D.length());
     o_fields1D.copyTo(fields1D.data());
 
     const auto sep = "  ";
@@ -353,13 +348,10 @@ void UDF_Setup(nrs_t *nrs)
     rescale(0.0, YLEN, mesh->y);
     rescale(0.0, ZLEN, mesh->z);
   }
+  o_divTau = platform->device.malloc<dfloat>(3 * nrs->fieldOffset);
 
-  o_divTau = platform->device.malloc(3 * nrs->fieldOffset * sizeof(dfloat));
 
-  // scratch space
-  o_work = platform->device.malloc(9 * nrs->fieldOffset * sizeof(dfloat));
-
-  nrs->o_usrwrk = platform->device.malloc(5 * sizeof(dfloat));
+  nrs->o_usrwrk = platform->device<dfloat>.malloc(5);
 
   udf.uEqnSource = &userf;
   udf.sEqnSource = &userq;
@@ -380,11 +372,10 @@ void UDF_Setup(nrs_t *nrs)
 
   {
     std::vector<std::vector<occa::memory>> tavgFields;
-    const auto fieldOffsetBytes = nrs->fieldOffset * sizeof(dfloat);
 
-    auto o_u    = nrs->o_U.slice(0 * fieldOffsetBytes, fieldOffsetBytes);
-    auto o_w    = nrs->o_U.slice(2 * fieldOffsetBytes, fieldOffsetBytes);
-    auto o_temp = nrs->cds->o_S.slice(0 * fieldOffsetBytes, fieldOffsetBytes);
+    auto o_u    = nrs->o_U.slice(0 * nrs->fieldOffset , nrs->fieldOffset);
+    auto o_w    = nrs->o_U.slice(2 * nrs->fieldOffset , nrs->fieldOffset);
+    auto o_temp = nrs->cds->o_S.slice(0 * cds->fieldOffset[0], cds->fieldOffset[0]);
 
     tavgFields.push_back({o_u});
     tavgFields.push_back({o_w});
@@ -427,10 +418,11 @@ void UDF_Setup(nrs_t *nrs)
   }
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   mesh_t *mesh = nrs->meshV;
-  const auto fieldOffsetByte = nrs->fieldOffset * sizeof(dfloat);
+
+  o_work = platform->o_memPool.reserve(9 * nrs->fieldOffset);
 
   {
     static int calld = 0;
@@ -466,15 +458,16 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
 
   const auto factru = (1. + BETAM * ZWALL * rLength) / KAPPA / ZWALL;
   const auto scale = 1. / (factru * factru);
-  auto o_ddyAvg = o_work.slice(3 * fieldOffsetByte, 3 * fieldOffsetByte);
+  auto o_ddyAvg = o_work.slice(3 * nrs->fieldOffset, 3 * nrs->fieldOffset);
+  auto o_visMF = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
   visMF(mesh->Nlocal, 
         nrs->fieldOffset, 
         scale, 
         o_ddyAvg, 
-        platform->o_mempool.slice0);
+        o_visMF);
 
 #if 0
-    platform->lingAlg->fill(mesh->Nlocal, 0.0, platform->o_mempool.slice0);
+    platform->lingAlg->fill(mesh->Nlocal, 0.0, o_visMF);
 #endif
 
   divStress(mesh->Nelements,
@@ -482,9 +475,10 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
             mesh->o_invLMM,
             mesh->o_vgeo,
             mesh->o_D,
-            platform->o_mempool.slice0,
+            o_visMF,
             o_ddyAvg,
             o_divTau);
+  o_visMF.free();
   oogs::startFinish(o_divTau, 3, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
   if (nrs->isOutputStep) {
@@ -503,4 +497,6 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     writeStatistics(nrs, time, tstep, "profiles.dat");
     // tavg::outfld();
   }
+
+  o_work.free();
 }

@@ -27,7 +27,7 @@ public:
   // OUTPUTS:
   //   o_ydot: derivatives
   using rhsFunc_t = std::function<
-      void(nrs_t *nrs, lpm_t *lpm, dfloat time, occa::memory o_y, void *userdata, occa::memory o_ydot)>;
+      void(nrs_t *nrs, lpm_t *lpm, double time, const occa::memory& o_y, void *userdata, occa::memory o_ydot)>;
 
   // User-defined ODE solver
   // Integrate from t0 to tf
@@ -42,12 +42,12 @@ public:
   //   o_ydot: scratch space
   using odeSolverFunc_t = std::function<void(nrs_t *nrs,
                                              lpm_t *lpm,
-                                             dfloat t0,
-                                             dfloat tf,
+                                             double t0,
+                                             double tf,
                                              int step,
-                                             occa::memory o_y,
+                                             const occa::memory& o_y,
                                              void *userdata,
-                                             occa::memory o_ydot)>;
+                                             occa::memory& o_ydot)>;
 
   lpm_t(nrs_t *nrs, dfloat bb_tol_ = 0.01, dfloat newton_tol_ = 0.0);
 
@@ -60,7 +60,7 @@ public:
   void rkOrder(int order);
 
   // set ODE solver
-  void setSolver(std::string solver);
+  void setSolver(const std::string& solver);
 
   // static kernel registration function
   // This *MUST* be called during UDF_LoadKernels
@@ -73,11 +73,11 @@ public:
   // By default, only the particle coordinates are automatically registered.
   // Pre:
   //   initialized() = false
-  void registerDOF(std::string dofName, bool output = true);
+  void registerDOF(const std::string& dofName, bool output = true);
 
   // Multi-component field version
   // On output, this field will be output to the VTU file as a vector quantity.
-  void registerDOF(dlong Nfields, std::string dofName, bool output = true);
+  void registerDOF(dlong Nfields, const std::string& dofName, bool output = true);
 
   // Properties associated with the particle
   // NOTE: these are _not_ degrees of freedom. Use registerDOF(...) for that.
@@ -85,11 +85,11 @@ public:
   // flag whether a field should be output during a lpm_t::writeFld(...) call.
   // Pre:
   //   initialized() = false
-  void registerProp(std::string propName, bool output = true);
+  void registerProp(const std::string& propName, bool output = true);
 
   // Multi-component field version
   // On output, this field will be output to the VTU file as a vector quantity.
-  void registerProp(dlong Nfields, std::string propName, bool output = true);
+  void registerProp(dlong Nfields, const std::string& propName, bool output = true);
 
   // Fields associated with the fluid mesh to be interpolated
   // to the particle locations.
@@ -99,32 +99,32 @@ public:
   // flag whether a field should be output during a lpm_t::writeFld(...) call.
   // Pre:
   //   initialized() = false
-  void registerInterpField(std::string interpFieldName, occa::memory o_fld, bool output = true);
+  void registerInterpField(const std::string& interpFieldName, const occa::memory& o_fld, bool output = true);
 
   // Multi-component field version
   // Prefer using this version for multi-component fields, as the performance
   // will be better during interpolation.
   // On output, this field will be output to the VTU file as a vector quantity.
   void
-  registerInterpField(std::string interpFieldName, dlong Nfields, occa::memory o_fld, bool output = true);
+  registerInterpField(const std::string& interpFieldName, dlong Nfields, const occa::memory& o_fld, bool output = true);
 
   // Get field index associated with a degree of freedom
-  int dofId(std::string dofName) const;
+  int dofId(const std::string& dofName) const;
 
   // Number of fields associated with a DOF
-  int numDOFs(std::string dofName) const;
+  int numDOFs(const std::string& dofName) const;
 
   // Get field index associated with a property
-  int propId(std::string propName) const;
+  int propId(const std::string& propName) const;
 
   // Number of fields associated with a property
-  int numProps(std::string propName) const;
+  int numProps(const std::string& propName) const;
 
   // Get field index associated with an interpolated field
-  int interpFieldId(std::string interpFieldName) const;
+  int interpFieldId(const std::string& interpFieldName) const;
 
   // Number of fields associated with an interpolated field
-  int numFieldsInterp(std::string interpFieldName) const;
+  int numFieldsInterp(const std::string& interpFieldName) const;
 
   bool initialized() const { return initialized_; }
 
@@ -138,18 +138,15 @@ public:
   void addUserData(void *userdata);
 
   // Create nParticles particles with initial condition y0
-  void initialize(int nParticles, dfloat t0, std::vector<dfloat> &y0);
+  void initialize(int nParticles, double t0, const std::vector<dfloat> &y0);
 
   // Create nParticles particles with initial condition o_y0
-  void initialize(int nParticles, dfloat t0, occa::memory o_y0);
+  void initialize(int nParticles, double t0, const occa::memory& o_y0);
 
   // Page-aligned offset >= nParticles
   // Required to access particle-specific fields
   // NOT valid until construct() is called
   int fieldOffset() const { return fieldOffset_; }
-
-  // Compute page-aligned offset >= n
-  static int fieldOffset(int n);
 
   // Number of particle degrees of freedom
   int nDOFs() const { return nDOFs_; }
@@ -166,41 +163,32 @@ public:
   // Integrate to state tf
   // Pre:
   //   initialized() = true
-  void integrate(dfloat tf);
+  void integrate(double tf);
 
   // Write particle data to file
   void writeFld();
 
   // Read particle data from file
   // Can be called in lieu of construct
-  void restart(std::string restartFile);
+  void restart(const std::string& restartFile);
 
   // Get particle degrees of freedom on device
   // Pre:
   //  initialized() = true
-  occa::memory getDOF(int dofId);
-  occa::memory getDOF(std::string dofName);
+  const occa::memory getDOF(const std::string& dofName);
 
-  // Get particle coordinates on host
-  std::vector<dfloat> getDOFHost(std::string dofName);
 
   // Get particle property on device
   // Pre:
   //  initialized() = true
-  occa::memory getProp(int propId);
-  occa::memory getProp(std::string propName);
+  const occa::memory getProp(const std::string& propName);
 
-  // Get particle properties on host
-  std::vector<dfloat> getPropHost(std::string propName);
+  void setProp(const std::string& propName, const occa::memory& o_fld, dlong _offset = 0);
 
   // Get interpolated field on device
   // Pre:
   //  initialized() = true
-  occa::memory getInterpField(int interpFieldId);
-  occa::memory getInterpField(std::string interpFieldName);
-
-  // Get interpolated fields on host
-  std::vector<dfloat> getInterpFieldHost(std::string interpFieldName);
+  const occa::memory getInterpField(const std::string& interpFieldName);
 
   // Get the underlying pointInterpolation_t object
   pointInterpolation_t &interpolator() { return *interp; }
@@ -209,20 +197,20 @@ public:
   void interpolate();
 
   // Interpolate specific field name from the fluid mesh to the particle locations
-  void interpolate(std::string interpFieldName);
+  void interpolate(const std::string& interpFieldName);
 
   // Add new particles
   // The lagged ydot values are assumed to be zero in this case --
   // if accuracy matters, consider using an explicit RK method as the integrator,
   // or call the addParticles(...) overload that takes ydot as an argument.
-  void addParticles(int nParticles, occa::memory o_yNewPart, occa::memory o_propNewPart);
+  void addParticles(int nParticles, const occa::memory& o_yNewPart, const occa::memory& o_propNewPart);
   void
   addParticles(int nParticles, const std::vector<dfloat> &yNewPart, const std::vector<dfloat> &propNewPart);
 
   void addParticles(int nParticles,
-                    occa::memory o_yNewPart,
-                    occa::memory o_propNewPart,
-                    occa::memory o_ydotNewPart);
+                    const occa::memory& o_yNewPart,
+                    const occa::memory& o_propNewPart,
+                    const occa::memory& o_ydotNewPart);
   void addParticles(int nParticles,
                     const std::vector<dfloat> &yNewPart,
                     const std::vector<dfloat> &propNewPart,
@@ -243,18 +231,13 @@ public:
   // Number of particles that cannot be processed on the current rank
   int numNonLocalParticles() const;
 
-  occa::memory o_prop;      // particle properties
-  occa::memory o_interpFld; // interpolated field outputs
-  occa::memory o_y;         // particle degrees of freedom
-  occa::memory o_ydot;      // derivatives
-
   // set timer level
   void setTimerLevel(TimerLevel level);
   TimerLevel getTimerLevel() const;
 
   // set timer name
   // this is used to prefix the timer names
-  void setTimerName(std::string name);
+  void setTimerName(const std::string& name);
 
   // enables verbose warnings from findpts
   void setVerbosity(VerbosityLevel level) { verbosityLevel = level; };
@@ -266,6 +249,11 @@ public:
 private:
   dlong nEXT, nBDF;
 
+  occa::memory o_prop;      // particle properties
+  occa::memory o_interpFld; // interpolated field outputs
+  occa::memory o_y;         // particle degrees of freedom
+  occa::memory o_ydot;      // derivatives
+
   static constexpr int bootstrapRKOrder = 4;
   
   // maximum number of entries valid for lpm_t::migration call
@@ -276,9 +264,18 @@ private:
   occa::memory o_ytmp; // scratch memory for RK integrators
   occa::memory o_k;    // k1, ... for RK integrators
 
-  static SolverType stringToSolverType(std::string solverType);
+  static SolverType stringToSolverType(const std::string& solverType);
 
   SolverType solverType = SolverType::AB;
+
+  // Get particle coordinates on host
+  const std::vector<dfloat> getDOFHost(const std::string& dofName);
+
+  // Get particle properties on host
+  const std::vector<dfloat> getPropHost(const std::string& propName);
+
+  // Get interpolated fields on host
+  const std::vector<dfloat> getInterpFieldHost(const std::string& interpFieldName);
 
   // Required to handle runtime -> compile time switch needed for sarray_transfer
   template <int N>
@@ -303,10 +300,10 @@ private:
                   int entriesPerParticle);
 
   // helper function to handle allocations dependent on nParticles
-  void handleAllocation(int offset);
+  void handleAllocation(size_t offset);
 
   // helper function to call findpts to set up interpolation, given a new particle locations
-  void find(occa::memory o_yNew);
+  void find(const occa::memory& o_yNew);
 
   // helper function to extrapolate fluid state to a specified time
   void extrapolateFluidState(dfloat tEXT);
@@ -326,7 +323,7 @@ private:
 
   void abCoeff(dfloat *dt, int tstep);
 
-  dfloat time = 0.0;
+  double time = 0.0;
   int tstep = 0;
 
   std::string timerName = "lpm_t::";
@@ -368,6 +365,7 @@ private:
   std::map<std::string, FieldType> fieldType;
 
   // DOFs
+  std::vector<std::string> dofNames;
   std::map<std::string, int> dofIds;
   std::map<std::string, int> dofCounts;
   std::map<std::string, bool> outputDofs;

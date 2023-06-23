@@ -82,7 +82,7 @@
                                     @ restrict const dlong *vmapM,
                                     @ restrict const int *EToBM,
                                     @ restrict const int *EToB,
-                                    const dfloat time,
+                                    const double time,
                                     @ restrict const dfloat *x,
                                     @ restrict const dfloat *y,
                                     @ restrict const dfloat *z,

@@ -48,7 +48,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("SCALAR02 INITIAL GUESS", "EXTRAPOLATION");
 }
 
-void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   if (!nrs->lastStep) {
     return;
@@ -57,16 +57,17 @@ void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
   mesh_t *mesh = nrs->meshV;
 
   std::vector<int> bidWall = {1};
-  occa::memory o_bidWall = platform->device.malloc(bidWall.size() * sizeof(int), bidWall.data());
+  occa::memory o_bidWall = platform->device.malloc<int>(bidWall.size(), bidWall.data());
 
-  occa::memory &o_Sij = platform->o_mempool.slice0;
+  auto o_Sij = platform->o_memPool.reserve<dfloat>(2 * nrs->NVfields * nrs->fieldOffset);
   postProcessing::strainRate(nrs, true, o_Sij);
 
   const auto drag = postProcessing::viscousDrag(nrs, bidWall.size(), o_bidWall, o_Sij);
+  o_Sij.free();
 
-  platform->linAlg->fill(mesh->Nlocal, 1.0, platform->o_mempool.slice0);
-  const auto areaWall =
-      mesh->surfaceIntegral(1, nrs->fieldOffset, bidWall.size(), o_bidWall, platform->o_mempool.slice0);
+  auto o_tmp = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  platform->linAlg->fill(mesh->Nlocal, 1.0, o_tmp);
+  const auto areaWall = mesh->surfaceIntegral(bidWall.size(), o_bidWall, o_tmp);
 
   // https://turbulence.oden.utexas.edu/channel2015/data/LM_Channel_2000_mean_prof.dat
   const auto utauRef = 4.58794e-02;

@@ -6,7 +6,7 @@ struct bcData
   int fieldOffset;
   int id;
 
-  dfloat time;
+  double time;
   dfloat x, y, z;
   dfloat nx, ny, nz;
 

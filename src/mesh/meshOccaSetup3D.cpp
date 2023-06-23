@@ -42,7 +42,7 @@ void reportMemoryUsage(occa::device &device, const char* mess)
 
 void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::properties &kernelInfo)
 {
-  mesh->o_elementInfo = platform->device.malloc(mesh->Nelements * sizeof(dlong), 
+  mesh->o_elementInfo = platform->device.malloc<dlong>(mesh->Nelements, 
 		                            mesh->elementInfo);
 
   if(mesh->cubNq > 1) { 
@@ -59,27 +59,27 @@ void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::prop
         cubDWT[n + m * mesh->cubNq] = mesh->cubDW[n * mesh->cubNq + m];
  
     mesh->o_cubInterpT =
-      platform->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
+      platform->device.malloc<dfloat>(mesh->Nq * mesh->cubNq,
                           cubInterpT);
     mesh->o_cubProjectT =
-      platform->device.malloc(mesh->Nq * mesh->cubNq * sizeof(dfloat),
+      platform->device.malloc<dfloat>(mesh->Nq * mesh->cubNq,
                           cubProjectT);
     mesh->o_cubDWT =
-      platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat),
+      platform->device.malloc<dfloat>(mesh->cubNq * mesh->cubNq,
                           cubDWT);
     mesh->o_cubD =
-      platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat),
+      platform->device.malloc<dfloat>(mesh->cubNq * mesh->cubNq,
                           mesh->cubD);
     mesh->o_cubDWmatrices = 
-      platform->device.malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat), cubDWT);
+      platform->device.malloc<dfloat>(mesh->cubNq * mesh->cubNq, cubDWT);
 
     mesh->o_cubw =
-      platform->device.malloc( mesh->cubNq * sizeof(dfloat), mesh->cubw);
+      platform->device.malloc<dfloat>( mesh->cubNq, mesh->cubw);
  
     mesh->o_cubDiffInterpT = mesh->o_cubDWmatrices;
 
     mesh->o_cubvgeo =
-        platform->device.malloc(mesh->Nelements * mesh->Nvgeo * mesh->cubNp * sizeof(dfloat));
+        platform->device.malloc<dfloat>(mesh->Nelements * mesh->Nvgeo * mesh->cubNp);
  
     free(cubProjectT);
     free(cubInterpT);
@@ -88,62 +88,62 @@ void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::prop
 
 
   mesh->o_LMM =
-    platform->device.malloc(mesh->Nlocal ,  sizeof(dfloat));
+    platform->device.malloc<dfloat>(mesh->Nlocal);
 
   mesh->o_invLMM =
-    platform->device.malloc(mesh->Nlocal ,  sizeof(dfloat));
+    platform->device.malloc<dfloat>(mesh->Nlocal);
 
-  mesh->o_D = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->D);
-  mesh->o_DW = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), mesh->DW);
-  dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq,sizeof(dfloat));
+  mesh->o_D = platform->device.malloc<dfloat>(mesh->Nq * mesh->Nq, mesh->D);
+  mesh->o_DW = platform->device.malloc<dfloat>(mesh->Nq * mesh->Nq, mesh->DW);
+  dfloat* DT = (dfloat*) calloc(mesh->Nq * mesh->Nq, sizeof(dfloat));
   for(int j = 0; j < mesh->Nq; ++j)
     for(int i = 0; i < mesh->Nq; ++i)
       DT[i * mesh->Nq + j] = mesh->D[j * mesh->Nq + i];
-  mesh->o_DT = platform->device.malloc(mesh->Nq * mesh->Nq * sizeof(dfloat), DT); //dummy
+  mesh->o_DT = platform->device.malloc<dfloat>(mesh->Nq * mesh->Nq, DT); //dummy
   free(DT);
 
   mesh->o_vgeo =
-    platform->device.malloc(mesh->Nlocal * mesh->Nvgeo * sizeof(dfloat));
+    platform->device.malloc<dfloat>(mesh->Nlocal * mesh->Nvgeo);
 
   mesh->o_sgeo =
-      platform->device.malloc(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo * sizeof(dfloat));
+      platform->device.malloc<dfloat>(mesh->Nelements * mesh->Nfaces * mesh->Nfp * mesh->Nsgeo);
 
   mesh->o_ggeo =
-    platform->device.malloc(mesh->Nlocal * mesh->Nggeo * sizeof(dfloat));
+    platform->device.malloc<dfloat>(mesh->Nlocal * mesh->Nggeo);
 
   mesh->o_vmapM =
-      platform->device.malloc(mesh->Nelements * mesh->Nfp * mesh->Nfaces * sizeof(dlong), mesh->vmapM);
+      platform->device.malloc<dlong>(mesh->Nelements * mesh->Nfp * mesh->Nfaces, mesh->vmapM);
   mesh->o_EToB =
-    platform->device.malloc(mesh->Nelements * mesh->Nfaces * sizeof(int),
+    platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces,
                         mesh->EToB);
 
   mesh->o_x =
-    platform->device.malloc(mesh->Nlocal * sizeof(dfloat), mesh->x);
+    platform->device.malloc<dfloat>(mesh->Nlocal, mesh->x);
   mesh->o_y =
-    platform->device.malloc(mesh->Nlocal * sizeof(dfloat), mesh->y);
+    platform->device.malloc<dfloat>(mesh->Nlocal, mesh->y);
   mesh->o_z =
-    platform->device.malloc(mesh->Nlocal * sizeof(dfloat), mesh->z);
+    platform->device.malloc<dfloat>(mesh->Nlocal, mesh->z);
 
   mesh->o_gllw =
-    platform->device.malloc( mesh->Nq * sizeof(dfloat), mesh->gllw);
+    platform->device.malloc<dfloat>(mesh->Nq, mesh->gllw);
 
-  mesh->o_gllz = platform->device.malloc(mesh->Nq * sizeof(dfloat), mesh->gllz);
+  mesh->o_gllz = platform->device.malloc<dfloat>(mesh->Nq, mesh->gllz);
 
   mesh->o_faceNodes =
-    platform->device.malloc(mesh->Nfaces * mesh->Nfp * sizeof(int), mesh->faceNodes);
+    platform->device.malloc<int>(mesh->Nfaces * mesh->Nfp, mesh->faceNodes);
 
   if(mesh->totalHaloPairs > 0) {
     mesh->o_haloElementList =
-      platform->device.malloc(mesh->totalHaloPairs * sizeof(dlong), mesh->haloElementList);
+      platform->device.malloc<dlong>(mesh->totalHaloPairs, mesh->haloElementList);
 
     mesh->o_haloBuffer =
-      platform->device.malloc(mesh->totalHaloPairs * mesh->Np * mesh->Nfields ,  sizeof(dfloat));
+      platform->device.malloc<dfloat>(mesh->totalHaloPairs * mesh->Np * mesh->Nfields);
 
     mesh->o_haloGetNodeIds =
-      platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloGetNodeIds);
+      platform->device.malloc<dlong>(mesh->Nfp * mesh->totalHaloPairs, mesh->haloGetNodeIds);
 
     mesh->o_haloPutNodeIds =
-      platform->device.malloc(mesh->Nfp * mesh->totalHaloPairs * sizeof(dlong), mesh->haloPutNodeIds);
+      platform->device.malloc<dlong>(mesh->Nfp * mesh->totalHaloPairs, mesh->haloPutNodeIds);
   }
 
   kernelInfo += meshKernelProperties(mesh->N);

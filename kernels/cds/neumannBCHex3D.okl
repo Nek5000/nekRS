@@ -70,7 +70,7 @@ s_ndU[j][i] = 0;                                                                
                             @ restrict const dlong *vmapM,
                             @ restrict const int *EToBM,
                             const dlong startScalar,
-                            const dfloat time,
+                            const double time,
                             const dlong offset,
                             const dlong EToBOffset,
                             @ restrict const dfloat *x,

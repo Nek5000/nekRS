@@ -2,7 +2,7 @@
 #define nekrs_nrssys_hpp_
 
 //float data type
-#if 0
+#ifdef NEKRS_USE_DFLOAT_FLOAT 
 using dfloat = float;
 #define DFLOAT_SINGLE
 #define MPI_DFLOAT MPI_FLOAT
@@ -71,9 +71,11 @@ using dlong = long long int;
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <numeric>
 #include <functional>
 #include <cstdio>
 #include <cstdlib>
+#include <cstddef>
 #include <unistd.h>
 #include <getopt.h>
 #include <sys/stat.h>
@@ -184,6 +186,25 @@ void upperCase(std::string& s)
   std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
 }
 
+double setPrecision(double val, int n)
+{
+  std::stringstream tmp;
+  tmp << std::setprecision(n) << std::scientific << val;
+  return std::stod(tmp.str());
 }
 
+template<typename T = dfloat>
+void print(const occa::memory& o_u, const std::string& txt = "")
+{
+  std::vector<T> u(o_u.size()/sizeof(T));
+  o_u.copyTo(u.data());
+  std::stringstream msg;
+  msg << txt << " ";
+  for (const auto& i: u) {
+    msg << i << ", ";
+  }
+  std::cerr << msg.str() << std::endl;
+}
+
+}
 #endif

@@ -14,10 +14,10 @@ void writeFld(nrs_t *nrs, dfloat t, int step, int outXYZ, int FP64);
 void writeFld(nrs_t *nrs, dfloat t, int step, int outXYZ, int FP64, std::string suffix);
 
 void writeFld(std::string suffix, dfloat t, int step, int outXYZ, int FP64,
-              void* o_s, int NSfields);
+              const occa::memory& o_s, int NSfields);
 
 void writeFld(std::string suffix, dfloat t, int step, int outXYZ, int FP64,
-              void* o_u, void *o_p,  void *o_s,
+              const occa::memory& o_u, const occa::memory& o_p,  const occa::memory& o_s,
               int NSfields);
 
 #endif

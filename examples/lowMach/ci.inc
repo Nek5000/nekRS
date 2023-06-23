@@ -54,7 +54,7 @@ dfloat computeLInfError(nrs_t *nrs, occa::memory o_a, occa::memory o_b)
   dfloat LInfError = 0.0;
 
   for (int fld = 0; fld < nrs->NVfields; ++fld) {
-    auto o_fld_slice = o_tmp + (fld * sizeof(dfloat)) * nrs->fieldOffset;
+    auto o_fld_slice = o_tmp + fld * nrs->fieldOffset;
     platform->linAlg->abs(mesh->Nlocal, o_fld_slice);
     LInfError = std::max(LInfError, platform->linAlg->max(mesh->Nlocal, o_fld_slice, platform->comm.mpiComm));
   }
@@ -78,16 +78,16 @@ void setField(nrs_t *nrs, occa::memory &o_fld, int field)
     o_dir = mesh->o_z;
   }
 
-  auto o_fld_slice = o_fld + (field * sizeof(dfloat)) * nrs->fieldOffset;
+  auto o_fld_slice = o_fld + field * nrs->fieldOffset;
 
-  o_fld_slice.copyFrom(o_dir, mesh->Nlocal * sizeof(dfloat));
+  o_fld_slice.copyFrom(o_dir, mesh->Nlocal);
 }
 
 void testDirection(nrs_t *nrs, std::string dir)
 {
   auto *mesh = nrs->meshV;
-  auto o_fields = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
-  auto o_refFields = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
+  auto o_fields = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  auto o_refFields = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
   for (int fld = 0; fld < nrs->NVfields; ++fld) {
     setField(nrs, o_fields, fld);
   }
@@ -95,19 +95,19 @@ void testDirection(nrs_t *nrs, std::string dir)
 
   if (dir == "x") {
     platform->linAlg->fill(mesh->Nlocal, 0.0, o_refFields);
-    o_refFields.copyFrom(mesh->o_y, mesh->Nlocal * sizeof(dfloat), nrs->fieldOffset * sizeof(dfloat), 0);
-    o_refFields.copyFrom(mesh->o_z, mesh->Nlocal * sizeof(dfloat), 2 * nrs->fieldOffset * sizeof(dfloat), 0);
+    o_refFields.copyFrom(mesh->o_y, mesh->Nlocal, 1 * nrs->fieldOffset, 0);
+    o_refFields.copyFrom(mesh->o_z, mesh->Nlocal, 2 * nrs->fieldOffset, 0);
   }
   if (dir == "y") {
-    o_refFields.copyFrom(mesh->o_x, mesh->Nlocal * sizeof(dfloat), 0 * nrs->fieldOffset * sizeof(dfloat), 0);
-    auto o_slice = o_refFields + (1 * sizeof(dfloat)) * nrs->fieldOffset;
+    o_refFields.copyFrom(mesh->o_x, mesh->Nlocal, 0 * nrs->fieldOffset, 0);
+    auto o_slice = o_refFields + 1 * nrs->fieldOffset;
     platform->linAlg->fill(mesh->Nlocal, 0.5, o_slice);
-    o_refFields.copyFrom(mesh->o_z, mesh->Nlocal * sizeof(dfloat), 2 * nrs->fieldOffset * sizeof(dfloat), 0);
+    o_refFields.copyFrom(mesh->o_z, mesh->Nlocal, 2 * nrs->fieldOffset, 0);
   }
   if (dir == "z") {
-    o_refFields.copyFrom(mesh->o_x, mesh->Nlocal * sizeof(dfloat), 0 * nrs->fieldOffset * sizeof(dfloat), 0);
-    o_refFields.copyFrom(mesh->o_y, mesh->Nlocal * sizeof(dfloat), 1 * nrs->fieldOffset * sizeof(dfloat), 0);
-    auto o_slice = o_refFields + (2 * sizeof(dfloat)) * nrs->fieldOffset;
+    o_refFields.copyFrom(mesh->o_x, mesh->Nlocal, 0 * nrs->fieldOffset, 0);
+    o_refFields.copyFrom(mesh->o_y, mesh->Nlocal, 1 * nrs->fieldOffset, 0);
+    auto o_slice = o_refFields + 2 * nrs->fieldOffset;
     platform->linAlg->fill(mesh->Nlocal, 0.5, o_slice);
   }
 
@@ -128,13 +128,13 @@ void testFusedPlanarAvg(nrs_t *nrs, std::string dir)
     CIFAIL;
   }
 
-  auto o_fields = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
-  auto o_refFields = platform->device.malloc((nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset);
+  auto o_fields = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  auto o_refFields = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
   for (int fld = 0; fld < nrs->NVfields; ++fld) {
     setField(nrs, o_fields, fld);
   }
 
-  o_refFields.copyFrom(o_fields, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  o_refFields.copyFrom(o_fields, nrs->NVfields * nrs->fieldOffset);
 
   const auto firstDir = dir.substr(0, 1);
   const auto secondDir = dir.substr(1);
@@ -158,7 +158,7 @@ void testFusedPlanarAvg(nrs_t *nrs, std::string dir)
   for (int fld = 0; fld < nrs->NVfields; ++fld) {
     setField(nrs, o_fields, fld);
   }
-  o_refFields.copyFrom(o_fields, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  o_refFields.copyFrom(o_fields, nrs->NVfields * nrs->fieldOffset);
 
   postProcessing::planarAvg(nrs, dir, NELGX, NELGY, NELGZ, nrs->NVfields, o_fields);
 
@@ -175,7 +175,7 @@ void testFusedPlanarAvg(nrs_t *nrs, std::string dir)
   for (int fld = 0; fld < nrs->NVfields; ++fld) {
     setField(nrs, o_fields, fld);
   }
-  o_refFields.copyFrom(o_fields, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  o_refFields.copyFrom(o_fields, nrs->NVfields * nrs->fieldOffset);
 
   postProcessing::planarAvg(nrs, secondDir + firstDir, NELGX, NELGY, NELGZ, nrs->NVfields, o_fields);
 
@@ -209,7 +209,7 @@ void ciTestPlanarAvg(nrs_t *nrs)
   testFusedPlanarAvg(nrs, "yz");
 }
 
-void ciTestErrors(nrs_t *nrs, dfloat time, int tstep)
+void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   if (!nrs->lastStep) {
     return;

@@ -29,8 +29,6 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
-occa::memory elliptic_t::o_wrk = occa::memory();
-
 void checkConfig(elliptic_t *elliptic)
 {
   mesh_t *mesh = elliptic->mesh;
@@ -162,7 +160,7 @@ void ellipticSolveSetup(elliptic_t *elliptic)
   MPI_Allreduce(&NelementsLocal, &NelementsGlobal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
   elliptic->NelementsGlobal = NelementsGlobal;
 
-  elliptic->o_EToB = platform->device.malloc(mesh->Nelements * mesh->Nfaces * elliptic->Nfields * sizeof(int),
+  elliptic->o_EToB = platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces * elliptic->Nfields,
                                              elliptic->EToB);
 
   checkConfig(elliptic);
@@ -179,10 +177,10 @@ void ellipticSolveSetup(elliptic_t *elliptic)
   mesh->maskKernel = platform->kernels.get("mask");
   mesh->maskPfloatKernel = platform->kernels.get("maskPfloat");
  
-  ellipticUpdateWorkspace(elliptic);
+  ellipticAllocateWorkspace(elliptic);
 
   elliptic->tmpNormr = (dfloat *)calloc(Nblocks, sizeof(dfloat));
-  elliptic->o_tmpNormr = platform->device.malloc(Nblocks * sizeof(dfloat), elliptic->tmpNormr);
+  elliptic->o_tmpNormr = platform->device.malloc<dfloat>(Nblocks, elliptic->tmpNormr);
 
   elliptic->allNeumann = 0;
   if (elliptic->poisson) {
@@ -319,6 +317,8 @@ void ellipticSolveSetup(elliptic_t *elliptic)
 
     elliptic->solutionProjection = new SolutionProjection(*elliptic, type, nVecsProject, nStepsStart);
   }
+
+  ellipticFreeWorkspace(elliptic);
 
   MPI_Barrier(platform->comm.mpiComm);
   if (platform->comm.mpiRank == 0)

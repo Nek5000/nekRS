@@ -27,8 +27,8 @@ static bool setupCalled = 0;
 
 static int counter = 0;
 
-static dfloat atime;
-static dfloat timel;
+static double atime;
+static double timel;
 
 static int outfldCounter = 0;
 
@@ -96,7 +96,7 @@ void tavg::reset()
   atime = 0;
 }
 
-void tavg::run(dfloat time)
+void tavg::run(double time)
 {
   nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
            "%s\n", "called prior to tavg::setup()!");
@@ -110,7 +110,7 @@ void tavg::run(dfloat time)
   }
   counter++;
 
-  const dfloat dtime = time - timel;
+  const double dtime = time - timel;
   atime += dtime;
 
   if (atime == 0 || dtime == 0)
@@ -122,7 +122,7 @@ void tavg::run(dfloat time)
   if(userFieldList.size()) {
     int cnt = 0;
     for(auto& entry : userFieldList) {
-      auto o_avg = o_AVG.slice(cnt*nrs->fieldOffset*sizeof(dfloat), nrs->fieldOffset*sizeof(dfloat));
+      auto o_avg = o_AVG.slice(cnt*nrs->fieldOffset, nrs->fieldOffset);
       const auto N = nrs->fieldOffset;
 
       if(entry.size() == 1) 
@@ -150,14 +150,14 @@ void tavg::run(dfloat time)
     EX(N, a, b, nrs->NVfields, nrs->o_U, o_Uavg);
     EXY(N, a, b, nrs->NVfields, nrs->o_U, nrs->o_U, o_Urms);
  
-    const dlong offsetByte = nrs->fieldOffset * sizeof(dfloat);
-    occa::memory o_vx = nrs->o_U + 0 * offsetByte;
-    occa::memory o_vy = nrs->o_U + 1 * offsetByte;
-    occa::memory o_vz = nrs->o_U + 2 * offsetByte;
+    const dlong offset = nrs->fieldOffset;
+    occa::memory o_vx = nrs->o_U + 0 * offset;
+    occa::memory o_vy = nrs->o_U + 1 * offset;
+    occa::memory o_vz = nrs->o_U + 2 * offset;
  
-    EXY(N, a, b, 1, o_vx, o_vy, o_Urm2 + 0 * offsetByte);
-    EXY(N, a, b, 1, o_vy, o_vz, o_Urm2 + 1 * offsetByte);
-    EXY(N, a, b, 1, o_vz, o_vx, o_Urm2 + 2 * offsetByte);
+    EXY(N, a, b, 1, o_vx, o_vy, o_Urm2 + 0 * offset);
+    EXY(N, a, b, 1, o_vy, o_vz, o_Urm2 + 1 * offset);
+    EXY(N, a, b, 1, o_vz, o_vx, o_Urm2 + 2 * offset);
  
     // pressure
     EX(N, a, b, 1, nrs->o_P, o_Pavg);
@@ -184,7 +184,7 @@ void tavg::setup(nrs_t *nrs_, const fields& flds)
              "%s\n", "invalid number of vectors in one of the user list entries!");
 
     for(auto& entry_i : entry) {
-      nrsCheck(entry_i.size() < (nrs_->fieldOffset*sizeof(dfloat)), 
+      nrsCheck(entry_i.length() < nrs_->fieldOffset, 
                platform->comm.mpiComm, EXIT_FAILURE,
                "%s\n", "vector size in one of the user list entries smaller than nrs_t::fieldOffset");
     }
@@ -204,28 +204,28 @@ void tavg::setup(nrs_t *nrs_)
   nrs = nrs_;
 
   if(userFieldList.size() == 0) {
-    o_Uavg = platform->device.malloc(nrs->fieldOffset * nrs->NVfields, sizeof(dfloat));
-    o_Urms = platform->device.malloc(nrs->fieldOffset * nrs->NVfields, sizeof(dfloat));
+    o_Uavg = platform->device.malloc<dfloat>(nrs->fieldOffset * nrs->NVfields);
+    o_Urms = platform->device.malloc<dfloat>(nrs->fieldOffset * nrs->NVfields);
     platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Uavg);
     platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urms);
  
-    o_Urm2 = platform->device.malloc(nrs->fieldOffset * nrs->NVfields, sizeof(dfloat));
+    o_Urm2 = platform->device.malloc<dfloat>(nrs->fieldOffset * nrs->NVfields);
     platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Urm2);
  
-    o_Pavg = platform->device.malloc(nrs->fieldOffset, sizeof(dfloat));
-    o_Prms = platform->device.malloc(nrs->fieldOffset, sizeof(dfloat));
+    o_Pavg = platform->device.malloc<dfloat>(nrs->fieldOffset);
+    o_Prms = platform->device.malloc<dfloat>(nrs->fieldOffset);
     platform->linAlg->fill(nrs->fieldOffset, 0.0, o_Pavg);
     platform->linAlg->fill(nrs->fieldOffset, 0.0, o_Prms);
  
     if (nrs->Nscalar) {
       cds_t *cds = nrs->cds;
-      o_Savg = platform->device.malloc(cds->fieldOffsetSum, sizeof(dfloat));
-      o_Srms = platform->device.malloc(cds->fieldOffsetSum, sizeof(dfloat));
+      o_Savg = platform->device.malloc<dfloat>(cds->fieldOffsetSum);
+      o_Srms = platform->device.malloc<dfloat>(cds->fieldOffsetSum);
       platform->linAlg->fill(cds->fieldOffsetSum, 0.0, o_Savg);
       platform->linAlg->fill(nrs->fieldOffset, 0.0, o_Srms);
     }
   } else {
-    o_AVG = platform->device.malloc(userFieldList.size()*nrs->fieldOffset*sizeof(dfloat)); 
+    o_AVG = platform->device.malloc<dfloat>(userFieldList.size()*nrs->fieldOffset); 
   }
 
   setupCalled = 1;
@@ -246,7 +246,7 @@ void tavg::outfld(int _outXYZ, int FP64)
   occa::memory o_Tavg, o_Trms;
 
   if(userFieldList.size()) {
-    writeFld("ust", atime, outfldCounter, outXYZ, FP64, &o_NULL, &o_NULL, &o_AVG, userFieldList.size());
+    writeFld("ust", atime, outfldCounter, outXYZ, FP64, o_NULL, o_NULL, o_AVG, userFieldList.size());
   } else {
     const int Nscalar = nrs->Nscalar;
     if (nrs->Nscalar) {
@@ -254,11 +254,11 @@ void tavg::outfld(int _outXYZ, int FP64)
       o_Trms = o_Srms;
     }
  
-    writeFld("avg", atime, outfldCounter, outXYZ, FP64, &o_Uavg, &o_Pavg, &o_Tavg, Nscalar);
+    writeFld("avg", atime, outfldCounter, outXYZ, FP64, o_Uavg, o_Pavg, o_Tavg, Nscalar);
  
-    writeFld("rms", atime, outfldCounter, outXYZ, FP64, &o_Urms, &o_Prms, &o_Trms, Nscalar);
+    writeFld("rms", atime, outfldCounter, outXYZ, FP64, o_Urms, o_Prms, o_Trms, Nscalar);
  
-    writeFld("rm2", atime, outfldCounter, outXYZ, FP64, &o_Urm2, &o_NULL, &o_NULL, 0);
+    writeFld("rm2", atime, outfldCounter, outXYZ, FP64, o_Urm2, o_NULL, o_NULL, 0);
   }
 
   atime = 0;

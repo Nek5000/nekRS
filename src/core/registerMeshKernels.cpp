@@ -25,10 +25,18 @@ void registerMeshKernels(occa::properties kernelInfoBC)
  
     std::string fileName;
     std::string kernelName;
+
+    {
+      auto prop = kernelInfo;
+      prop["defines/p_vector"] = 0;  
+      kernelName = "surfaceIntegral";
+      fileName = oklpath + "/mesh/" + kernelName + ".okl";
+      platform->kernels.add(meshPrefix + kernelName + orderSuffix, fileName, prop);
  
-    kernelName = "surfaceIntegral";
-    fileName = oklpath + "/mesh/" + kernelName + ".okl";
-    platform->kernels.add(meshPrefix + kernelName + orderSuffix, fileName, kernelInfo);
+      prop["defines/p_vector"] = 1;  
+      kernelName = "surfaceIntegralVector";
+      platform->kernels.add(meshPrefix + kernelName + orderSuffix, fileName, prop);
+    }
  
     occa::properties meshKernelInfo = kernelInfo;
     meshKernelInfo["defines/p_cubNq"] = cubNq;

@@ -30,8 +30,8 @@
 
 void ellipticAx(elliptic_t* elliptic,
                 dlong NelementsList,
-                occa::memory &o_elementsList,
-                occa::memory &o_q,
+                const occa::memory &o_elementsList,
+                const occa::memory &o_q,
                 occa::memory &o_Aq,
                 const char* precision)
 {
@@ -45,13 +45,13 @@ void ellipticAx(elliptic_t* elliptic,
   const bool continuous = options.compareArgs("DISCRETIZATION", "CONTINUOUS");
   const int mapType = (elliptic->elementType == HEXAHEDRA &&
                        options.compareArgs("ELEMENT MAP", "TRILINEAR")) ? 1:0;
-  const std::string precisionStr(precision);
-  const std::string dFloatStr(dfloatString);
 
+  const std::string precisionStr(precision);
+  const auto mixedPrecision = (precisionStr == pfloatString) && !std::is_same<pfloat, dfloat>::value; 
 
   bool valid = true;
   valid &= continuous;
-  if(precisionStr != dFloatStr) {
+  if(mixedPrecision) {
     valid &= !elliptic->blockSolver;
     valid &= mapType == 0;
   }
@@ -69,16 +69,13 @@ void ellipticAx(elliptic_t* elliptic,
   };
   nrsCheck(!valid, MPI_COMM_SELF, EXIT_FAILURE, errTxt().c_str(), "");
 
-  occa::memory & o_geom_factors =
-    (precisionStr != dFloatStr) ? mesh->o_ggeoPfloat :
-      elliptic->stressForm ? mesh->o_vgeo : mesh->o_ggeo;
-  occa::memory & o_D = (precisionStr != dFloatStr) ? mesh->o_DPfloat : mesh->o_D;
-  occa::memory & o_DT = (precisionStr != dFloatStr) ? mesh->o_DTPfloat : mesh->o_DT;
+  occa::memory & o_geom_factors = elliptic->stressForm ? mesh->o_vgeo : mesh->o_ggeo; 
+  occa::memory & o_D = mesh->o_D;
+  occa::memory & o_DT = mesh->o_DT;
   occa::memory & o_lambda0 = elliptic->o_lambda0;
   occa::memory & o_lambda1 = elliptic->o_lambda1;
 
-  occa::kernel &AxKernel =
-      (precisionStr != dFloatStr) ? elliptic->AxPfloatKernel : elliptic->AxKernel;
+  occa::kernel &AxKernel = elliptic->AxKernel;
 
   AxKernel(NelementsList,
            elliptic->fieldOffset,
@@ -106,8 +103,7 @@ void ellipticAx(elliptic_t* elliptic,
 
   flopCount *= elliptic->Nfields * static_cast<double>(NelementsList);
 
-
-  const double factor = std::is_same<pfloat, float>::value && (precisionStr != dFloatStr) ? 0.5 : 1.0;
+  const double factor = (mixedPrecision) ? 0.5 : 1.0;
 
   platform->flopCounter->add(elliptic->name + " Ax, N=" + std::to_string(mesh->N) + ", " +
                              std::string(precision),
@@ -115,7 +111,7 @@ void ellipticAx(elliptic_t* elliptic,
 }
 
 void ellipticOperator(elliptic_t* elliptic,
-                      occa::memory &o_q,
+                      const occa::memory &o_q,
                       occa::memory &o_Aq,
                       const char* precision,
                       bool masked)

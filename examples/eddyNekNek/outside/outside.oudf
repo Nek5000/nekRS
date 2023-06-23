@@ -1,4 +1,4 @@
-void exact(dfloat *uu, dfloat *vv, dfloat *ww, dfloat xx, dfloat yy, dfloat zz, dfloat time, dfloat visc)
+void exact(dfloat *uu, dfloat *vv, dfloat *ww, dfloat xx, dfloat yy, dfloat zz, double time, dfloat visc)
 {
   const dfloat a[10] = {-.2, -.2, .25, 0.0, 0, 0, 0, 0, 0, 0};
   const dfloat cpsi[10] = {0, 5, 3, 4, 0, 0, 0, 0, 0, 0};
@@ -76,7 +76,7 @@ void velocityDirichletConditions(bcData *bc)
 
 @kernel void exactUVW(const dlong Ntotal,
                       const dlong offset,
-                      const dfloat time,
+                      const double time,
                       @ restrict const dfloat *X,
                       @ restrict const dfloat *Y,
                       @ restrict const dfloat *Z,

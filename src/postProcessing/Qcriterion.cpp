@@ -5,7 +5,7 @@
 
 void postProcessing::Qcriterion(nrs_t *nrs, occa::memory& o_Q)
 {
-  occa::memory o_SijOij = platform->o_mempool.slice2;
+  occa::memory o_SijOij = platform->o_memPool.reserve<dfloat>(3 * nrs->NVfields * nrs->fieldOffset);
   strainRotationRate(nrs, true, true, o_SijOij); 
 
   auto kernel = platform->kernels.get("Qcriterion");

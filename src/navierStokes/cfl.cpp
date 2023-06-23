@@ -11,7 +11,7 @@ occa::memory h_scratch;
 void setup(nrs_t *nrs)
 {
   mesh_t *mesh = nrs->meshV;
-  h_scratch = platform->device.mallocHost(mesh->Nelements * sizeof(dfloat));
+  h_scratch = platform->device.mallocHost<dfloat>(mesh->Nelements);
 
   if (nrs->elementType == QUADRILATERALS || nrs->elementType == HEXAHEDRA) {
     auto dH = (dfloat *) calloc((mesh->N + 1), sizeof(dfloat));
@@ -27,7 +27,7 @@ void setup(nrs_t *nrs)
     for (int n = 0; n < (mesh->N + 1); n++)
       dH[n] = 1.0 / dH[n];
 
-    nrs->o_idH = platform->device.malloc((mesh->N + 1) * sizeof(dfloat), dH);
+    nrs->o_idH = platform->device.malloc<dfloat>((mesh->N + 1), dH);
     free(dH);
   }
   firstTime = 0;
@@ -40,6 +40,8 @@ dfloat computeCFL(nrs_t *nrs)
   if (firstTime)
     setup(nrs);
 
+  auto o_cfl = platform->o_memPool.reserve<dfloat>(mesh->Nelements);
+
   nrs->cflKernel(mesh->Nelements,
                  nrs->dt[0],
                  mesh->o_vgeo,
@@ -47,10 +49,10 @@ dfloat computeCFL(nrs_t *nrs)
                  nrs->fieldOffset,
                  nrs->o_U,
                  mesh->o_U,
-                 platform->o_mempool.slice0);
+                 o_cfl);
 
   auto scratch = (dfloat *) h_scratch.ptr();
-  platform->o_mempool.slice0.copyTo(scratch, mesh->Nelements * sizeof(dfloat));
+  o_cfl.copyTo(scratch);
 
   dfloat cfl = 0;
   for (dlong n = 0; n < mesh->Nelements; ++n) {

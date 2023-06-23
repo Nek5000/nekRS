@@ -46,7 +46,6 @@ template <int N> struct evalOutPt_t {
   int index, proc;
 };
 
-// ======= Legacy setup =======
 extern "C" {
 struct hash_data_3 {
   ulong hash_n;
@@ -60,14 +59,14 @@ struct findpts_data_3 {
   struct hash_data_3 hash;
 };
 
-auto *legacyFindptsSetup(MPI_Comm mpi_comm,
-                         const dfloat *const elx[findpts::dim],
+auto *gslibFindptsSetup(MPI_Comm mpi_comm,
+                         const dfloat *const _elx[findpts::dim],
                          const dlong n[findpts::dim],
                          const dlong nel,
                          const dlong m[findpts::dim],
                          const dfloat bbox_tol,
-                         const hlong local_hash_size,
-                         const hlong global_hash_size,
+                         const dlong local_hash_size,
+                         const dlong global_hash_size,
                          const dlong npt_max,
                          const dfloat newt_tol)
 {
@@ -77,21 +76,38 @@ auto *legacyFindptsSetup(MPI_Comm mpi_comm,
 
   const unsigned int n_[findpts::dim] = {(unsigned int)n[0], (unsigned int)n[1], (unsigned int)n[2]};
   const unsigned int m_[findpts::dim] = {(unsigned int)m[0], (unsigned int)m[1], (unsigned int)m[2]};
-  auto *legacyFD = findpts_setup_3(&gs_comm,
-                                   elx,
-                                   n_,
-                                   nel,
-                                   m_,
-                                   bbox_tol,
-                                   local_hash_size,
-                                   global_hash_size,
-                                   npt_max,
-                                   newt_tol);
+
+  const auto Nlocal = nel * n[0] * n[1] * n[2];
+  std::vector<double> x(Nlocal);
+  std::vector<double> y(Nlocal);
+  std::vector<double> z(Nlocal);
+  const double *elx[3] = {x.data(), y.data(), z.data()};
+  {
+    auto _x = _elx[0];
+    auto _y = _elx[1];
+    auto _z = _elx[2];
+    for(int i = 0; i < Nlocal; i++) {
+      x[i] = _x[i];
+      y[i] = _y[i];
+      z[i] = _z[i];
+    }
+  }
+
+  auto *h = findpts_setup_3(&gs_comm,
+                            elx,
+                            n_,
+                            (uint) nel,
+                            m_,
+                            (double) bbox_tol,
+                            (uint) local_hash_size,
+                            (uint) global_hash_size,
+                            (unsigned) npt_max,
+                            (double) newt_tol);
+
   comm_free(&gs_comm);
-  return legacyFD;
+  return h;
 }
 } // extern "C"
-// ======= Legacy setup =======
 
 namespace findpts {
 namespace {
@@ -372,7 +388,7 @@ void findpts_t::findptsLocalEvalInternal(OutputType *opt,
                                          const int nFields,
                                          const int inputOffset,
                                          const int outputOffset,
-                                         occa::memory &o_in)
+                                         const occa::memory &o_in)
 {
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.tic(timerName + "findptsLocalEvalInternal", 1);
@@ -446,7 +462,7 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
                                 const int nFields,
                                 const int inputOffset,
                                 const int outputOffset,
-                                occa::memory &o_in,
+                                const occa::memory &o_in,
                                 hashData_t &hash,
                                 crystal &cr)
 {
@@ -808,8 +824,8 @@ findpts_t::findpts_t(MPI_Comm comm,
                      const dlong Nelements,
                      const dlong m,
                      const dfloat bbox_tol,
-                     const hlong local_hash_size,
-                     const hlong global_hash_size,
+                     const dlong local_hash_size,
+                     const dlong global_hash_size,
                      const dlong npt_max,
                      const dfloat newt_tol)
 {
@@ -819,16 +835,16 @@ findpts_t::findpts_t(MPI_Comm comm,
   const int n[dim] = {Nq, Nq, Nq};
   const int ms[dim] = {m, m, m};
 
-  this->_findptsData = legacyFindptsSetup(comm,
-                                          elx,
-                                          n,
-                                          Nelements,
-                                          ms,
-                                          bbox_tol,
-                                          local_hash_size,
-                                          global_hash_size,
-                                          npt_max,
-                                          newt_tol);
+  this->_findptsData = gslibFindptsSetup(comm,
+                                         elx,
+                                         n,
+                                         Nelements,
+                                         ms,
+                                         bbox_tol,
+                                         local_hash_size,
+                                         global_hash_size,
+                                         npt_max,
+                                         newt_tol);
 
   auto *findptsData = (findpts_data_3 *)this->_findptsData;
 
@@ -951,11 +967,15 @@ struct outPt_t {
 };
 
 void findpts_t::find(data_t *const findPtsData,
-                     occa::memory o_xint,
-                     occa::memory o_yint,
-                     occa::memory o_zint,
+                     const occa::memory& o_xintIn,
+                     const occa::memory& o_yintIn,
+                     const occa::memory& o_zintIn,
                      const dlong npt)
 {
+  const auto o_xint = o_xintIn.isInitialized() ? o_xintIn.cast(occa::dtype::byte) : o_xintIn;
+  const auto o_yint = o_yintIn.isInitialized() ? o_yintIn.cast(occa::dtype::byte) : o_yintIn;
+  const auto o_zint = o_zintIn.isInitialized() ? o_zintIn.cast(occa::dtype::byte) : o_zintIn;
+
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic(timerName + "find", 1);
   }
@@ -1564,7 +1584,7 @@ void findpts_t::find(data_t *const findPtsData,
   }
 }
 
-void findpts_t::eval(const dlong npt, occa::memory o_in, data_t *findPtsData, occa::memory o_out)
+void findpts_t::eval(const dlong npt, const occa::memory& o_in, data_t *findPtsData, occa::memory& o_out)
 {
   this->eval(npt, 1, 0, npt, o_in, findPtsData, o_out);
 }
@@ -1578,10 +1598,13 @@ void findpts_t::eval(const dlong npt,
                      const dlong nFields,
                      const dlong inputOffset,
                      const dlong outputOffset,
-                     occa::memory o_in,
+                     const occa::memory& o_fldIn,
                      data_t *findPtsData,
-                     occa::memory o_out)
+                     occa::memory& o_fldOut)
 {
+  auto o_in = o_fldIn.isInitialized() ? o_fldIn.cast(occa::dtype::byte) : o_fldIn;
+  auto o_out = o_fldOut.isInitialized() ? o_fldOut.cast(occa::dtype::byte) : o_fldOut;
+
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic(timerName + "eval", 1);
   }
@@ -1639,6 +1662,7 @@ void findpts_t::eval(const dlong npt,
   tuple_for_each(fieldSizesTuple, [&](auto T) {
     if (nFields != decltype(T)::value)
       return;
+
     findptsEvalImpl<evalOutPt_t<decltype(T)::value>>(out,
                                                      findPtsData->code_base,
                                                      findPtsData->proc_base,
@@ -1669,7 +1693,7 @@ void findpts_t::eval(const dlong npt,
 
 crystal *findpts_t::crystalRouter() { return this->cr; }
 
-void findpts_t::update(data_t &data)
+void findpts_t::o_update(data_t &data)
 {
   auto npt = data.code.size();
   if (npt == 0)

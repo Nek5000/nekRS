@@ -15,12 +15,8 @@ void evaluateProperties(nrs_t *nrs, const double timeNew)
   cds_t *cds = nrs->cds;
 
   if (udf.properties) {
-    occa::memory o_S = platform->o_mempool.slice0;
-    occa::memory o_SProp = platform->o_mempool.slice0;
-    if (nrs->Nscalar) {
-      o_S = cds->o_S;
-      o_SProp = cds->o_prop;
-    }
+    occa::memory o_S = (nrs->Nscalar) ? cds->o_S : o_NULL;
+    occa::memory o_SProp = (nrs->Nscalar) ? cds->o_prop : o_NULL;
     udf.properties(nrs, timeNew, nrs->o_U, o_S, nrs->o_prop, o_SProp);
   }
 

@@ -40,7 +40,7 @@ void registerNekNekKernels()
   findptsKernelInfo["defines/dlong"] = dlongString;
   findptsKernelInfo["defines/hlong"] = hlongString;
   findptsKernelInfo["defines/dfloat"] = dfloatString;
-  findptsKernelInfo["defines/DBL_MAX"] = std::numeric_limits<dfloat>::max();
+  findptsKernelInfo["defines/DBL_MAX"] = 1e30;
 
   // findpts kernel currently requires INNER_SIZE > 3 * p_Nq
   // However, we must also make this a multiple of the warp size

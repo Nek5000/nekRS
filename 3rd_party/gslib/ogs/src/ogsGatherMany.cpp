@@ -87,14 +87,15 @@ void ogsGatherManyStart(occa::memory o_gv,
 }
 
 
-void ogsGatherManyFinish(occa::memory o_gv, 
+void ogsGatherManyFinish(occa::memory o_gvIn, 
                      occa::memory o_v, 
                      const int k,
                      const dlong gstride,
                      const dlong stride, 
                      const char *type, 
                      const char *op, 
-                     ogs_t *ogs){
+                     ogs_t *ogs)
+{
   size_t Nbytes;
   if (!strcmp(type, "float")) 
     Nbytes = sizeof(float);
@@ -104,6 +105,8 @@ void ogsGatherManyFinish(occa::memory o_gv,
     Nbytes = sizeof(int);
   else if (!strcmp(type, "long long int")) 
     Nbytes = sizeof(long long int);
+
+  auto o_gv = o_gvIn.cast(occa::dtype::byte);
 
   if(ogs->NlocalGather) {
     occaGatherMany(ogs->NlocalGather, k, stride, gstride, ogs->o_localGatherOffsets, ogs->o_localGatherIds, type, op, o_v, o_gv);

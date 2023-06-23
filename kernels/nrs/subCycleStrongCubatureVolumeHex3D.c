@@ -24,7 +24,7 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
                                                   const dfloat * __restrict__ cubInterpT,
                                                   const int & offset,
                                                   const int & cubatureOffset,
-                                                  const int & NUoffset,
+                                                  const int & meshOffset,
                                                   const dfloat * __restrict__ invLumpedMassMatrix,
                                                   const dfloat * __restrict__ BdivW,
                                                   const dfloat & c0,
@@ -258,13 +258,13 @@ extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
             if (p_MovingMesh) {
               for (int s = 0; s < p_nEXT; s++) {
                 const dfloat coeff = r_c[s];
-                invLMM += coeff * invLumpedMassMatrix[id + s * offset];
-                bdivw += coeff * BdivW[id + s * offset];
+                invLMM += coeff * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += coeff * BdivW[id + s * meshOffset];
               }
             }
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Ud[id + 0 * offset]) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Ud[id + 1 * offset]) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Ud[id + 2 * offset]) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Ud[id + 0 * offset]) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Ud[id + 1 * offset]) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Ud[id + 2 * offset]) * invLMM;
         }
       }
     }

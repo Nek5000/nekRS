@@ -31,7 +31,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -300,14 +300,14 @@
             if (p_MovingMesh) {
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-                bdivw += r_c[s] * BdivW[id + s * offset];
+                invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += r_c[s] * BdivW[id + s * meshOffset];
               }
             }
 
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
           }
         }
       }
@@ -323,7 +323,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -634,14 +634,14 @@
             if (p_MovingMesh) {
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-                bdivw += r_c[s] * BdivW[id + s * offset];
+                invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += r_c[s] * BdivW[id + s * meshOffset];
               }
             }
 
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
           }
         }
       }
@@ -658,7 +658,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -983,14 +983,14 @@
             if (p_MovingMesh) {
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-                bdivw += r_c[s] * BdivW[id + s * offset];
+                invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += r_c[s] * BdivW[id + s * meshOffset];
               }
             }
 
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
           }
         }
       }
@@ -1007,7 +1007,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -1330,14 +1330,14 @@
             if (p_MovingMesh) {
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-                bdivw += r_c[s] * BdivW[id + s * offset];
+                invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += r_c[s] * BdivW[id + s * meshOffset];
               }
             }
 
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
           }
         }
       }
@@ -1355,7 +1355,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -1672,8 +1672,8 @@
             if (p_MovingMesh) {
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-                bdivw += r_c[s] * BdivW[id + s * offset];
+                invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += r_c[s] * BdivW[id + s * meshOffset];
               }
             }
 
@@ -1681,9 +1681,9 @@
             const dfloat Uyd = Ud[id + 1 * offset];
             const dfloat Uzd = Ud[id + 2 * offset];
 
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
           }
         }
       }
@@ -1700,7 +1700,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -2017,21 +2017,21 @@
             dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
             for (int s = 0; s < p_nEXT; s++) {
-              invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-              bdivw += r_c[s] * BdivW[id + s * offset];
+              invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+              bdivw += r_c[s] * BdivW[id + s * meshOffset];
             }
             const dfloat Uxd = Ud[id + 0 * offset];
             const dfloat Uyd = Ud[id + 1 * offset];
             const dfloat Uzd = Ud[id + 2 * offset];
 
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
 #else
             dfloat invLMM = invLumpedMassMatrix[id];
-            NU[id + 0 * offset + NUoffset] = (rhsU)*invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV)*invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW)*invLMM;
+            NU[id + 0 * offset] = (rhsU)*invLMM;
+            NU[id + 1 * offset] = (rhsV)*invLMM;
+            NU[id + 2 * offset] = (rhsW)*invLMM;
 #endif
           }
         }
@@ -2048,7 +2048,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -2401,21 +2401,21 @@
             dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
             for (int s = 0; s < p_nEXT; s++) {
-              invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-              bdivw += r_c[s] * BdivW[id + s * offset];
+              invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+              bdivw += r_c[s] * BdivW[id + s * meshOffset];
             }
             const dfloat Uxd = Ud[id + 0 * offset];
             const dfloat Uyd = Ud[id + 1 * offset];
             const dfloat Uzd = Ud[id + 2 * offset];
 
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
 #else
             dfloat invLMM = invLumpedMassMatrix[id];
-            NU[id + 0 * offset + NUoffset] = (rhsU)*invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV)*invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW)*invLMM;
+            NU[id + 0 * offset] = (rhsU)*invLMM;
+            NU[id + 1 * offset] = (rhsV)*invLMM;
+            NU[id + 2 * offset] = (rhsW)*invLMM;
 #endif
           }
         }
@@ -2433,7 +2433,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -2740,21 +2740,21 @@
             dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
             for (int s = 0; s < p_nEXT; s++) {
-              invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-              bdivw += r_c[s] * BdivW[id + s * offset];
+              invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+              bdivw += r_c[s] * BdivW[id + s * meshOffset];
             }
             const dfloat Uxd = Ud[id + 0 * offset];
             const dfloat Uyd = Ud[id + 1 * offset];
             const dfloat Uzd = Ud[id + 2 * offset];
 
-            NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
 #else
             dfloat invLMM = invLumpedMassMatrix[id];
-            NU[id + 0 * offset + NUoffset] = (rhsU)*invLMM;
-            NU[id + 1 * offset + NUoffset] = (rhsV)*invLMM;
-            NU[id + 2 * offset + NUoffset] = (rhsW)*invLMM;
+            NU[id + 0 * offset] = (rhsU)*invLMM;
+            NU[id + 1 * offset] = (rhsV)*invLMM;
+            NU[id + 2 * offset] = (rhsW)*invLMM;
 #endif
           }
         }
@@ -2772,7 +2772,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -3142,21 +3142,21 @@
                 dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
                 for (int s = 0; s < p_nEXT; s++) {
-                  invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
-                  bdivw += s_c[s] * BdivW[id + s * offset];
+                  invLMM += s_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                  bdivw += s_c[s] * BdivW[id + s * meshOffset];
                 }
                 const dfloat Uxd = Ud[id + 0 * offset];
                 const dfloat Uyd = Ud[id + 1 * offset];
                 const dfloat Uzd = Ud[id + 2 * offset];
 
-                NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-                NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-                NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+                NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+                NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+                NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
 #else
                 dfloat invLMM = invLumpedMassMatrix[id];
-                NU[id + 0 * offset + NUoffset] = (rhsU)*invLMM;
-                NU[id + 1 * offset + NUoffset] = (rhsV)*invLMM;
-                NU[id + 2 * offset + NUoffset] = (rhsW)*invLMM;
+                NU[id + 0 * offset] = (rhsU)*invLMM;
+                NU[id + 1 * offset] = (rhsV)*invLMM;
+                NU[id + 2 * offset] = (rhsW)*invLMM;
 #endif
               }
             }
@@ -3176,7 +3176,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -3536,21 +3536,21 @@
               dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
-                bdivw += s_c[s] * BdivW[id + s * offset];
+                invLMM += s_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += s_c[s] * BdivW[id + s * meshOffset];
               }
               const dfloat Uxd = Ud[id + 0 * offset];
               const dfloat Uyd = Ud[id + 1 * offset];
               const dfloat Uzd = Ud[id + 2 * offset];
 
-              NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-              NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-              NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+              NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+              NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+              NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
 #else
               dfloat invLMM = invLumpedMassMatrix[id];
-              NU[id + 0 * offset + NUoffset] = (rhsU)*invLMM;
-              NU[id + 1 * offset + NUoffset] = (rhsV)*invLMM;
-              NU[id + 2 * offset + NUoffset] = (rhsW)*invLMM;
+              NU[id + 0 * offset] = (rhsU)*invLMM;
+              NU[id + 1 * offset] = (rhsV)*invLMM;
+              NU[id + 2 * offset] = (rhsW)*invLMM;
 #endif
             }
           }
@@ -3569,7 +3569,7 @@
                                                    @restrict const dfloat *cubInterpT,
                                                    const dlong offset,
                                                    const dlong cubatureOffset,
-                                                   const dlong NUoffset,
+                                                   const dlong meshOffset,
                                                    @restrict const dfloat *invLumpedMassMatrix,
                                                    @restrict const dfloat *BdivW,
                                                    const dfloat c0,
@@ -3915,14 +3915,14 @@
                 dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
                 for (int s = 0; s < p_nEXT; s++) {
-                  invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
-                  bdivw += s_c[s] * BdivW[id + s * offset];
+                  invLMM += s_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                  bdivw += s_c[s] * BdivW[id + s * meshOffset];
                 }
                 const dfloat Uxd = Ud[id + 0 * offset];
-                NU[id + d * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
+                NU[id + d * offset] = (rhsU - bdivw * Uxd) * invLMM;
 #else
                 dfloat invLMM = invLumpedMassMatrix[id];
-                NU[id + d * offset + NUoffset] = (rhsU)*invLMM;
+                NU[id + d * offset] = (rhsU)*invLMM;
 #endif
               }
             }
@@ -3943,7 +3943,7 @@
                                                    @restrict const dfloat *cubInterpT,
                                                    const dlong offset,
                                                    const dlong cubatureOffset,
-                                                   const dlong NUoffset,
+                                                   const dlong meshOffset,
                                                    @restrict const dfloat *invLumpedMassMatrix,
                                                    @restrict const dfloat *BdivW,
                                                    const dfloat c0,
@@ -4338,21 +4338,21 @@
               dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
-                bdivw += s_c[s] * BdivW[id + s * offset];
+                invLMM += s_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                bdivw += s_c[s] * BdivW[id + s * meshOffset];
               }
               const dfloat Uxd = Ud[id + 0 * offset];
               const dfloat Uyd = Ud[id + 1 * offset];
               const dfloat Uzd = Ud[id + 2 * offset];
 
-              NU[id + 0 * offset + NUoffset] = (r_Ud[c] - bdivw * Uxd) * invLMM;
-              NU[id + 1 * offset + NUoffset] = (r_Vd[c] - bdivw * Uyd) * invLMM;
-              NU[id + 2 * offset + NUoffset] = (r_Wd[c] - bdivw * Uzd) * invLMM;
+              NU[id + 0 * offset] = (r_Ud[c] - bdivw * Uxd) * invLMM;
+              NU[id + 1 * offset] = (r_Vd[c] - bdivw * Uyd) * invLMM;
+              NU[id + 2 * offset] = (r_Wd[c] - bdivw * Uzd) * invLMM;
 #else
               dfloat invLMM = invLumpedMassMatrix[id];
-              NU[id + 0 * offset + NUoffset] = (r_Ud[c]) * invLMM;
-              NU[id + 1 * offset + NUoffset] = (r_Vd[c]) * invLMM;
-              NU[id + 2 * offset + NUoffset] = (r_Wd[c]) * invLMM;
+              NU[id + 0 * offset] = (r_Ud[c]) * invLMM;
+              NU[id + 1 * offset] = (r_Vd[c]) * invLMM;
+              NU[id + 2 * offset] = (r_Wd[c]) * invLMM;
 #endif
             }
           }
@@ -4373,7 +4373,7 @@
                                                    @restrict const dfloat *cubInterpT,
                                                    const dlong offset,
                                                    const dlong cubatureOffset,
-                                                   const dlong NUoffset,
+                                                   const dlong meshOffset,
                                                    @restrict const dfloat *invLumpedMassMatrix,
                                                    @restrict const dfloat *BdivW,
                                                    const dfloat c0,
@@ -4720,14 +4720,14 @@
                 dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
                 for (int s = 0; s < p_nEXT; s++) {
-                  invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
-                  bdivw += s_c[s] * BdivW[id + s * offset];
+                  invLMM += s_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                  bdivw += s_c[s] * BdivW[id + s * meshOffset];
                 }
                 const dfloat Uxd = Ud[id + d * offset];
-                NU[id + d * offset + NUoffset] = (r_Ud[c] - bdivw * Uxd) * invLMM;
+                NU[id + d * offset] = (r_Ud[c] - bdivw * Uxd) * invLMM;
 #else
                 dfloat invLMM = invLumpedMassMatrix[id];
-                NU[id + d * offset + NUoffset] = (r_Ud[c]) * invLMM;
+                NU[id + d * offset] = (r_Ud[c]) * invLMM;
 #endif
               }
             }
@@ -4747,7 +4747,7 @@
                                                    @restrict const dfloat *cubInterpT,
                                                    const dlong offset,
                                                    const dlong cubatureOffset,
-                                                   const dlong NUoffset,
+                                                   const dlong meshOffset,
                                                    @restrict const dfloat *invLumpedMassMatrix,
                                                    @restrict const dfloat *BdivW,
                                                    const dfloat c0,
@@ -5094,14 +5094,14 @@
                 dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
                 for (int s = 0; s < p_nEXT; s++) {
-                  invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
-                  bdivw += s_c[s] * BdivW[id + s * offset];
+                  invLMM += s_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                  bdivw += s_c[s] * BdivW[id + s * meshOffset];
                 }
                 const dfloat Uxd = Ud[id + d * offset];
-                NU[id + d * offset + NUoffset] = (s_tmpU[es][c][b][a] - bdivw * Uxd) * invLMM;
+                NU[id + d * offset] = (s_tmpU[es][c][b][a] - bdivw * Uxd) * invLMM;
 #else
                 dfloat invLMM = invLumpedMassMatrix[id];
-                NU[id + d * offset + NUoffset] = (s_tmpU[es][c][b][a]) * invLMM;
+                NU[id + d * offset] = (s_tmpU[es][c][b][a]) * invLMM;
 #endif
               }
             }
@@ -5123,7 +5123,7 @@
                                                    @restrict const dfloat *cubInterpT,
                                                    const dlong offset,
                                                    const dlong cubatureOffset,
-                                                   const dlong NUoffset,
+                                                   const dlong meshOffset,
                                                    @restrict const dfloat *invLumpedMassMatrix,
                                                    @restrict const dfloat *BdivW,
                                                    const dfloat c0,
@@ -5449,20 +5449,20 @@
             dfloat invLMM = 0.0;
 #pragma unroll p_nEXT
             for (int s = 0; s < p_nEXT; s++) {
-              invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
-              bdivw += s_c[s] * BdivW[id + s * offset];
+              invLMM += s_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+              bdivw += s_c[s] * BdivW[id + s * meshOffset];
             }
             const dfloat Uxd = Ud[id + 0 * offset];
             const dfloat Uyd = Ud[id + 1 * offset];
             const dfloat Uzd = Ud[id + 2 * offset];
-            NU[id + 0 * offset + NUoffset] = (s_tmpU[0][c][b][a] - bdivw * Uxd) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (s_tmpU[1][c][b][a] - bdivw * Uyd) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (s_tmpU[2][c][b][a] - bdivw * Uzd) * invLMM;
+            NU[id + 0 * offset] = (s_tmpU[0][c][b][a] - bdivw * Uxd) * invLMM;
+            NU[id + 1 * offset] = (s_tmpU[1][c][b][a] - bdivw * Uyd) * invLMM;
+            NU[id + 2 * offset] = (s_tmpU[2][c][b][a] - bdivw * Uzd) * invLMM;
 #else
             dfloat invLMM = invLumpedMassMatrix[id];
-            NU[id + 0 * offset + NUoffset] = (s_tmpU[0][c][b][a]) * invLMM;
-            NU[id + 1 * offset + NUoffset] = (s_tmpU[1][c][b][a]) * invLMM;
-            NU[id + 2 * offset + NUoffset] = (s_tmpU[2][c][b][a]) * invLMM;                
+            NU[id + 0 * offset] = (s_tmpU[0][c][b][a]) * invLMM;
+            NU[id + 1 * offset] = (s_tmpU[1][c][b][a]) * invLMM;
+            NU[id + 2 * offset] = (s_tmpU[2][c][b][a]) * invLMM;                
 #endif
           }
         }
@@ -5481,7 +5481,7 @@
 //                                                    @restrict const dfloat *cubInterpT,
 //                                                    const dlong offset,
 //                                                    const dlong cubatureOffset,
-//                                                    const dlong NUoffset,
+//                                                    const dlong meshOffset,
 //                                                    @restrict const dfloat *invLumpedMassMatrix,
 //                                                    @restrict const dfloat *BdivW,
 //                                                    const dfloat c0,
@@ -5888,21 +5888,21 @@
 //               dfloat invLMM = 0.0;
 // #pragma unroll p_nEXT
 //               for (int s = 0; s < p_nEXT; s++) {
-//                 invLMM += s_c[s] * invLumpedMassMatrix[id + s * offset];
-//                 bdivw += s_c[s] * BdivW[id + s * offset];
+//                 invLMM += s_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+//                 bdivw += s_c[s] * BdivW[id + s * meshOffset];
 //               }
 //               const dfloat Uxd = Ud[id + 0 * offset];
 //               const dfloat Uyd = Ud[id + 1 * offset];
 //               const dfloat Uzd = Ud[id + 2 * offset];
 
-//               NU[id + 0 * offset + NUoffset] = (rhsU - bdivw * Uxd) * invLMM;
-//               NU[id + 1 * offset + NUoffset] = (rhsV - bdivw * Uyd) * invLMM;
-//               NU[id + 2 * offset + NUoffset] = (rhsW - bdivw * Uzd) * invLMM;
+//               NU[id + 0 * offset] = (rhsU - bdivw * Uxd) * invLMM;
+//               NU[id + 1 * offset] = (rhsV - bdivw * Uyd) * invLMM;
+//               NU[id + 2 * offset] = (rhsW - bdivw * Uzd) * invLMM;
 // #else
 //               dfloat invLMM = invLumpedMassMatrix[id];
-//               NU[id + 0 * offset + NUoffset] = (rhsU)*invLMM;
-//               NU[id + 1 * offset + NUoffset] = (rhsV)*invLMM;
-//               NU[id + 2 * offset + NUoffset] = (rhsW)*invLMM;
+//               NU[id + 0 * offset] = (rhsU)*invLMM;
+//               NU[id + 1 * offset] = (rhsV)*invLMM;
+//               NU[id + 2 * offset] = (rhsW)*invLMM;
 // #endif
 //             }
 //           }
@@ -5921,7 +5921,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -5987,8 +5987,8 @@
               r_bdivw[c] = 0.0;
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                r_invLMM[c] += r_c[s] * invLumpedMassMatrix[id + s * offset];
-                r_bdivw[c] += r_c[s] * BdivW[id + s * offset];
+                r_invLMM[c] += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                r_bdivw[c] += r_c[s] * BdivW[id + s * meshOffset];
               }
             }
           } else {
@@ -6254,9 +6254,9 @@
               const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
               if (p_MovingMesh) {
                 const dfloat Uxd = Ud[id + dim * offset];
-                NU[id + dim * offset + NUoffset] = (s_tmpU[c][b][a] - r_bdivw[c] * Uxd) * r_invLMM[c]; 
+                NU[id + dim * offset] = (s_tmpU[c][b][a] - r_bdivw[c] * Uxd) * r_invLMM[c]; 
               } else {
-                NU[id + dim * offset + NUoffset] = s_tmpU[c][b][a]*r_invLMM[c];
+                NU[id + dim * offset] = s_tmpU[c][b][a]*r_invLMM[c];
               }
             }
           }
@@ -6274,7 +6274,7 @@
                                                   @restrict const dfloat *cubInterpT,
                                                   const dlong offset,
                                                   const dlong cubatureOffset,
-                                                  const dlong NUoffset,
+                                                  const dlong meshOffset,
                                                   @restrict const dfloat *invLumpedMassMatrix,
                                                   @restrict const dfloat *BdivW,
                                                   const dfloat c0,
@@ -6346,8 +6346,8 @@
               r_bdivw[c] = 0.0;
 #pragma unroll p_nEXT
               for (int s = 0; s < p_nEXT; s++) {
-                r_invLMM[c] += r_c[s] * invLumpedMassMatrix[id + s * offset];
-                r_bdivw[c] += r_c[s] * BdivW[id + s * offset];
+                r_invLMM[c] += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+                r_bdivw[c] += r_c[s] * BdivW[id + s * meshOffset];
               }
             }
           } else {
@@ -6577,9 +6577,9 @@
               const dlong id = element * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
               if (p_MovingMesh) {
                 const dfloat Uxd = Ud[id + dim * offset];
-                NU[id + dim * offset + NUoffset] = (s_tmpU[c][b][a] - r_bdivw[c] * Uxd) * r_invLMM[c];
+                NU[id + dim * offset] = (s_tmpU[c][b][a] - r_bdivw[c] * Uxd) * r_invLMM[c];
               } else {
-                NU[id + dim * offset + NUoffset] = s_tmpU[c][b][a]*r_invLMM[c];
+                NU[id + dim * offset] = s_tmpU[c][b][a]*r_invLMM[c];
               }
             }
           }

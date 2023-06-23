@@ -31,7 +31,7 @@
 //#define DEBUG
 
 static dfloat update(elliptic_t* elliptic,
-                     occa::memory &o_p, occa::memory &o_Ap, const dfloat alpha,
+                     const occa::memory &o_p, const occa::memory &o_Ap, const dfloat alpha,
                      occa::memory &o_x, occa::memory &o_r)
 {
   mesh_t* mesh = elliptic->mesh;
@@ -56,7 +56,7 @@ static dfloat update(elliptic_t* elliptic,
     rdotr1 = *((dfloat *) elliptic->o_tmpNormr.ptr());
   } else {
     const dlong Nblock = (mesh->Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
-    elliptic->o_tmpNormr.copyTo(elliptic->tmpNormr, Nblock*sizeof(dfloat));
+    elliptic->o_tmpNormr.copyTo(elliptic->tmpNormr, Nblock);
     for(int n = 0; n < Nblock; ++n)
       rdotr1 += elliptic->tmpNormr[n];
   }
@@ -82,8 +82,8 @@ static dfloat update(elliptic_t* elliptic,
   return rdotr1;
 }
 
-int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
-        const dfloat tol, const int MAXIT, dfloat &rdotr)
+int pcg(elliptic_t* elliptic,const dfloat tol, const int MAXIT, dfloat &rdotr, 
+        occa::memory &o_r, occa::memory &o_x)
 {
   
   mesh_t* mesh = elliptic->mesh;
@@ -97,10 +97,10 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
   dfloat alpha;
 
   /*aux variables */
-  occa::memory &o_p  = elliptic->o_p;
-  occa::memory &o_z = (!options.compareArgs("PRECONDITIONER", "NONE")) ? elliptic->o_z : o_r;
-  occa::memory &o_Ap = elliptic->o_Ap;
-  occa::memory &o_weight = elliptic->o_invDegree;
+  auto &o_p  = elliptic->o_p;
+  auto &o_z = (!options.compareArgs("PRECONDITIONER", "NONE")) ? elliptic->o_z : o_r;
+  auto &o_Ap = elliptic->o_Ap;
+  auto &o_weight = elliptic->o_invDegree;
   platform->linAlg->fill(elliptic->Nfields * elliptic->fieldOffset, 0.0, o_p);
 
   if(platform->comm.mpiRank == 0 && verbose) {
@@ -176,7 +176,7 @@ int pcg(elliptic_t* elliptic, occa::memory &o_r, occa::memory &o_x,
       o_p,
       o_Ap,
       platform->comm.mpiComm);
-    alpha = rdotz1 / (pAp + 1e-300);
+    alpha = rdotz1 / (pAp + 10*std::numeric_limits<dfloat>::min());
 
 #ifdef DEBUG
     printf("alpha: %.15e\n", alpha);

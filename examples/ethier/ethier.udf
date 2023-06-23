@@ -27,7 +27,7 @@ occa::memory o_x0, o_y0, o_z0;
 
 #ifdef __okl__
 @kernel void dpdx(const dlong Ntotal,
-                  const dfloat time,
+                  const double time,
                   @ restrict const dfloat *x,
                   @ restrict const dfloat *y,
                   @ restrict const dfloat *z,
@@ -77,7 +77,7 @@ void exact(dfloat *u,
            const dfloat x,
            const dfloat y,
            const dfloat z,
-           const dfloat t,
+           const double t,
            const dfloat visc)
 {
   const dfloat a = p_A;
@@ -119,7 +119,7 @@ void grad_u(dfloat *grad_u_x,
             const dfloat x,
             const dfloat y,
             const dfloat z,
-            const dfloat t,
+            const double t,
             const dfloat visc)
 {
   const dfloat a = p_A;
@@ -153,7 +153,7 @@ void grad_u(dfloat *grad_u_x,
 }
 
 @kernel void exactUVWP(const dlong Ntotal,
-                       const dfloat time,
+                       const double time,
                        @ restrict const dfloat *X,
                        @ restrict const dfloat *Y,
                        @ restrict const dfloat *Z,
@@ -201,7 +201,7 @@ void scalarNeumannConditions(bcData *bc)
 
 @kernel void userMeshVelocity(const dlong Ntotal,
                               const dlong offset,
-                              const dfloat time,
+                              const double time,
                               @ restrict const dfloat *x,
                               @ restrict const dfloat *y,
                               @ restrict const dfloat *z,
@@ -260,7 +260,7 @@ void scalarNeumannConditions(bcData *bc)
 }
 #endif
 
-void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
+void userq(nrs_t *nrs, double time, occa::memory o_S, occa::memory o_FS)
 {
   mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
@@ -294,6 +294,7 @@ void UDF_LoadKernels(occa::properties &kernelInfo)
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
+
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) {
     ciSetup(comm, options);
@@ -318,7 +319,7 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   }
 }
 
-void particleRHS(nrs_t *nrs, lpm_t *lpm, dfloat time, occa::memory o_y, void *userdata, occa::memory o_ydot)
+void particleRHS(nrs_t *nrs, lpm_t *lpm, double time, occa::memory o_y, void *userdata, occa::memory o_ydot)
 {
   auto offset = lpm->fieldOffset();
 
@@ -389,7 +390,7 @@ void UDF_Setup(nrs_t *nrs)
     }
 
     auto np = xp0.size();
-    std::vector y0(particles->nDOFs() * np, 0.0);
+    std::vector<dfloat> y0(particles->nDOFs() * np, 0.0);
     for (int n = 0; n < np; ++n) {
       // set particle initial position
       y0[n + 0 * np] = xp0[n];
@@ -397,34 +398,35 @@ void UDF_Setup(nrs_t *nrs)
       y0[n + 2 * np] = zp0[n];
     }
 
-    dfloat t0;
+    double t0;
     platform->options.getArgs("START TIME", t0);
 
     particles->initialize(np, t0, y0);
 
-    auto o_pid = particles->getProp("gid");
-    if (particles->numParticles() > 0) {
-      o_pid.copyFrom(pid0.data(), particles->numParticles() * sizeof(dfloat)); // set global particle id
-    }
+    auto o_pid = platform->device.malloc<dfloat>(particles->numParticles(), pid0.data());
+    particles->setProp("gid", o_pid);
   }
 
   mesh_t *mesh = nrs->meshV;
   udf.sEqnSource = &userq;
   if (platform->options.compareArgs("MOVING MESH", std::string("TRUE"))) {
-    o_x0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_x);
-    o_y0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_y);
-    o_z0 = platform->device.malloc(mesh->Nlocal, sizeof(dfloat), mesh->o_z);
+    o_x0 = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->o_x);
+    o_y0 = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->o_y);
+    o_z0 = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->o_z);
   }
 }
 
-void setParticleSolution(nrs_t *nrs, dfloat time)
+void overwriteParticleSolution(nrs_t *nrs, double time)
 {
   // gid of particles currently on rank
   std::vector<int> gids(particles->numParticles());
   std::vector<dfloat> xp0_g(particles->numParticles()); // based on current rank
   std::vector<dfloat> yp0_g(particles->numParticles());
   std::vector<dfloat> zp0_g(particles->numParticles());
-  auto gidFloat = particles->getPropHost("gid");
+  auto o_gidFloat = particles->getProp("gid");
+  std::vector<dfloat> gidFloat(o_gidFloat.length());
+  o_gidFloat.copyTo(gidFloat.data());
+
   for (int i = 0; i < particles->numParticles(); ++i) {
     int gid = gidFloat[i];
     gids[i] = gid;
@@ -433,33 +435,35 @@ void setParticleSolution(nrs_t *nrs, dfloat time)
     zp0_g[i] = zpg0[gid];
   }
 
-  auto o_y0 = platform->device.malloc(nrs->dim * xp0_g.size() * sizeof(dfloat));
+  auto o_y0 = platform->device.malloc<dfloat>(nrs->dim * xp0_g.size());
 
   if (particles->numParticles() > 0) {
-    auto o_x0coord = o_y0 + 0 * xp0_g.size() * sizeof(dfloat);
-    auto o_y0coord = o_y0 + 1 * yp0_g.size() * sizeof(dfloat);
-    auto o_z0coord = o_y0 + 2 * zp0_g.size() * sizeof(dfloat);
-    o_x0coord.copyFrom(xp0_g.data(), xp0_g.size() * sizeof(dfloat));
-    o_y0coord.copyFrom(yp0_g.data(), yp0_g.size() * sizeof(dfloat));
-    o_z0coord.copyFrom(zp0_g.data(), zp0_g.size() * sizeof(dfloat));
+    auto o_x0coord = o_y0 + 0 * xp0_g.size();
+    auto o_y0coord = o_y0 + 1 * yp0_g.size();
+    auto o_z0coord = o_y0 + 2 * zp0_g.size();
+    o_x0coord.copyFrom(xp0_g.data(), xp0_g.size());
+    o_y0coord.copyFrom(yp0_g.data(), yp0_g.size());
+    o_z0coord.copyFrom(zp0_g.data(), zp0_g.size());
   }
 
   auto o_y = solveODE(nrs, 0.0, time, 1e-3 * nrs->dt[0], o_y0, exactUVWP, RK);
 
   if (particles->numParticles() > 0) {
-    auto o_xcoord = o_y + 0 * xp0_g.size() * sizeof(dfloat);
-    auto o_ycoord = o_y + 1 * xp0_g.size() * sizeof(dfloat);
-    auto o_zcoord = o_y + 2 * xp0_g.size() * sizeof(dfloat);
-    auto o_xp = particles->o_y + 0 * particles->fieldOffset() * sizeof(dfloat);
-    auto o_yp = particles->o_y + 1 * particles->fieldOffset() * sizeof(dfloat);
-    auto o_zp = particles->o_y + 2 * particles->fieldOffset() * sizeof(dfloat);
-    o_xp.copyFrom(o_xcoord, xp0_g.size() * sizeof(dfloat));
-    o_yp.copyFrom(o_ycoord, yp0_g.size() * sizeof(dfloat));
-    o_zp.copyFrom(o_zcoord, zp0_g.size() * sizeof(dfloat));
+    auto o_xcoord = o_y + 0 * xp0_g.size();
+    auto o_ycoord = o_y + 1 * xp0_g.size();
+    auto o_zcoord = o_y + 2 * xp0_g.size();
+
+    auto o_xp = particles->getDOF("x");
+    auto o_yp = static_cast<occa::memory>(particles->getDOF("y"));
+    auto o_zp = static_cast<occa::memory>(particles->getDOF("z"));
+
+    o_xp.copyFrom(o_xcoord, xp0_g.size());
+    o_yp.copyFrom(o_ycoord, yp0_g.size());
+    o_zp.copyFrom(o_zcoord, zp0_g.size());
   }
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
 
   mesh_t *mesh = nrs->meshV;
@@ -471,10 +475,10 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
       ellipticZeroMean(nrs->pSolver, nrs->o_P);
     }
     if (nrs->Nscalar > 0) {
-      cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal * sizeof(dfloat), 0 * cds->fieldOffset[0] * sizeof(dfloat));
+      cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal, 0 * cds->fieldOffset[0]);
     }
     if (nrs->Nscalar > 1) {
-      cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal * sizeof(dfloat), 1 * cds->fieldOffset[0] * sizeof(dfloat));
+      cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal, 1 * cds->fieldOffset[0]);
     }
   }
 
@@ -483,7 +487,7 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
     particles->integrate(time);
 
     if (tstep <= 5) {
-      setParticleSolution(nrs, time);
+      overwriteParticleSolution(nrs, time);
     }
   }
 

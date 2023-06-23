@@ -1,11 +1,16 @@
 #include "nrs.hpp"
 #include "mesh.h"
-void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
+
+occa::memory meshSolve(nrs_t* nrs, double time, int stage)
 {
   mesh_t *mesh = nrs->_mesh;
   linAlg_t* linAlg = platform->linAlg;
 
+  auto o_rhs = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0, o_rhs);
+
   platform->timer.tic("meshSolve", 1);
+
   nrs->setEllipticCoeffKernel(
     mesh->Nlocal,
     1.0,
@@ -17,19 +22,15 @@ void meshSolve(nrs_t* nrs, dfloat time, occa::memory o_U, int stage)
     o_NULL,
     nrs->o_ellipticCoeff);
 
-  occa::memory o_Unew = [&](nrs_t* nrs, dfloat time, int stage) {
-    mesh_t *meshT = nrs->_mesh;
+  auto o_U = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  if (platform->options.compareArgs("MESH INITIAL GUESS", "EXTRAPOLATION") && stage == 1)
+    o_U.copyFrom(mesh->o_Ue);
+  else
+    o_U.copyFrom(mesh->o_U);
 
-    platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0, platform->o_mempool.slice3);
+  ellipticSolve(nrs->meshSolver, o_rhs, o_U);
 
-    const occa::memory &o_U0 =
-        platform->options.compareArgs("MESH INITIAL GUESS", "EXTRAPOLATION") && stage == 1 ? mesh->o_Ue
-                                                                                           : mesh->o_U;
-    platform->o_mempool.slice0.copyFrom(o_U0, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-    ellipticSolve(nrs->meshSolver, platform->o_mempool.slice3, platform->o_mempool.slice0);
-    return platform->o_mempool.slice0;
-  }(nrs, time, stage);
-
-  o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
   platform->timer.toc("meshSolve");
+
+  return o_U;
 }

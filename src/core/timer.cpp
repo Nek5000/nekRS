@@ -120,10 +120,12 @@ void timer_t::disableSync() { enable_sync_ = 0; }
 void timer_t::reset(const std::string tag)
 {
   std::map<std::string, tagData>::iterator it = m_.find(tag);
-  it->second.startTime = 0;
-  it->second.hostElapsed = 0;
-  it->second.deviceElapsed = 0;
-  it->second.count = 0;
+  if(it != m_.end()) {
+    it->second.startTime = 0;
+    it->second.hostElapsed = 0;
+    it->second.deviceElapsed = 0;
+    it->second.count = 0;
+  }
 }
 
 void timer_t::finalize() { reset(); }

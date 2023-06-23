@@ -439,39 +439,36 @@ void dsygv_(int *ITYPE,
             double *WORK,
             int *LWORK,
             int *INFO);
-void ssygv_(int *ITYPE,
-            char *JOBZ,
-            char *UPLO,
-            int *N,
-            float *A,
-            int *LDA,
-            float *B,
-            int *LDB,
-            float *W,
-            float *WORK,
-            int *LWORK,
-            int *INFO);
 }
 void solve_generalized_ev(dfloat *a, dfloat *b, dfloat *lam, int n)
 {
   int info = 0;
   int worksize = n * n;
-  dfloat *work_arr = (dfloat *)calloc(worksize, sizeof(dfloat));
   int itype = 1;
   char JOBZ = 'V';
   char UPLO = 'U';
   // copy of A, B in case anything goes wrong
-  dfloat *a_copy = (dfloat *)calloc(n * n, sizeof(dfloat));
-  dfloat *b_copy = (dfloat *)calloc(n * n, sizeof(dfloat));
+  auto a_copy = (dfloat *)calloc(n * n, sizeof(dfloat));
+  auto b_copy = (dfloat *)calloc(n * n, sizeof(dfloat));
   for (unsigned i = 0; i < n * n; ++i) {
     a_copy[i] = a[i];
     b_copy[i] = b[i];
   }
-#ifdef DFLOAT_DOUBLE
-  dsygv_(&itype, &JOBZ, &UPLO, &n, a, &n, b, &n, lam, work_arr, &worksize, &info);
-#else
-  ssygv_(&itype, &JOBZ, &UPLO, &n, a, &n, b, &n, lam, work_arr, &worksize, &info);
-#endif
+
+  std::vector<double> a_double(worksize);
+  for(int i = 0; i < a_double.size(); i++) a_double[i] = a[i];
+  std::vector<double> b_double(worksize);
+  for(int i = 0; i < b_double.size(); i++) b_double[i] = b[i];
+  std::vector<double> work(worksize);
+  std::vector<double> lam_double(n);
+
+  dsygv_(&itype, &JOBZ, &UPLO, &n, a_double.data(), &n, b_double.data(), 
+         &n, lam_double.data(), work.data(), &worksize, &info);
+
+  for(int i = 0; i < a_double.size(); i++) a[i] = a_double[i];
+  for(int i = 0; i < b_double.size(); i++) b[i] = b_double[i];
+  for(int i = 0; i < lam_double.size(); i++) lam[i] = lam_double[i];
+
   if (info != 0) {
     std::ostringstream err_logger;
     err_logger << "Error encountered in solve_generalized_ev!\n";
@@ -506,7 +503,6 @@ void solve_generalized_ev(dfloat *a, dfloat *b, dfloat *lam, int n)
     }
     throw std::runtime_error(err_logger.str().c_str());
   }
-  free(work_arr);
   free(a_copy);
   free(b_copy);
 }
@@ -827,7 +823,7 @@ void pMGLevel::generate_weights()
   for (dlong i = 0; i < weightSize; ++i)
     wts[i] = 1.0 / wts[i];
 
-  o_wts.copyFrom(wts, weightSize * sizeof(pfloat));
+  o_wts.copyFrom(wts, weightSize);
 
   free(work1);
   free(work2);
@@ -889,18 +885,18 @@ void pMGLevel::build(elliptic_t *pSolver)
   free(lengths);
 
   const dlong weightSize = Np * Nelements;
-  o_wts = platform->device.malloc(weightSize * sizeof(pfloat));
-  o_Sx = platform->device.malloc(Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_Sy = platform->device.malloc(Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_Sz = platform->device.malloc(Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_invL = platform->device.malloc(Nlocal_e * sizeof(pfloat));
-  o_work1 = platform->device.malloc(Nlocal_e * sizeof(pfloat));
+  o_wts = platform->device.malloc<pfloat>(weightSize);
+  o_Sx = platform->device.malloc<pfloat>(Nq_e * Nq_e * Nelements);
+  o_Sy = platform->device.malloc<pfloat>(Nq_e * Nq_e * Nelements);
+  o_Sz = platform->device.malloc<pfloat>(Nq_e * Nq_e * Nelements);
+  o_invL = platform->device.malloc<pfloat>(Nlocal_e);
+  o_work1 = platform->device.malloc<pfloat>(Nlocal_e);
   if (!options.compareArgs("MULTIGRID SMOOTHER", "RAS"))
-    o_work2 = platform->device.malloc(Nlocal_e * sizeof(pfloat));
-  o_Sx.copyFrom(casted_Sx, Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_Sy.copyFrom(casted_Sy, Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_Sz.copyFrom(casted_Sz, Nq_e * Nq_e * Nelements * sizeof(pfloat));
-  o_invL.copyFrom(casted_D, Nlocal_e * sizeof(pfloat));
+    o_work2 = platform->device.malloc<pfloat>(Nlocal_e);
+  o_Sx.copyFrom(casted_Sx, Nq_e * Nq_e * Nelements);
+  o_Sy.copyFrom(casted_Sy, Nq_e * Nq_e * Nelements);
+  o_Sz.copyFrom(casted_Sz, Nq_e * Nq_e * Nelements);
+  o_invL.copyFrom(casted_D, Nlocal_e);
 
   {
     const std::string suffix = std::string("_") + std::to_string(Nq_e - 1) + std::string("pfloat");
@@ -936,8 +932,8 @@ void pMGLevel::build(elliptic_t *pSolver)
     };
 
     if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "TRUE")) {
-      occa::memory o_u = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
-      occa::memory o_Su = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
+      occa::memory o_u = platform->device.malloc<pfloat>(mesh->Nlocal);
+      occa::memory o_Su = platform->device.malloc<pfloat>(mesh->Nlocal);
       const dlong Nelements = elliptic->mesh->Nelements;
 
       auto nonOverlappedTime = timeOperator(o_u, o_Su);
@@ -1150,7 +1146,8 @@ void pMGLevel::smoothSchwarz(occa::memory &o_u, occa::memory &o_Su, bool xIsZero
   const auto Npe = Nqe * Nqe * Nqe;
   const double flopsPerElem = 12 * Nqe * Npe + Npe;
   const double flops = static_cast<double>(mesh->Nelements) * flopsPerElem;
-
-  const double factor = std::is_same<pfloat, float>::value ? 0.5 : 1.0;
+ 
+  const double factor = (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value)
+                        ? 0.5 : 1.0;
   platform->flopCounter->add(elliptic->name + " Schwarz, N=" + std::to_string(mesh->N), factor * flops);
 }

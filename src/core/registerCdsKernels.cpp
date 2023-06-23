@@ -166,17 +166,6 @@ void registerCdsKernels(occa::properties kernelInfoBC)
       kernelName = "subCycleStrongVolume" + suffix;
       fileName = oklpath + "/cds/" + kernelName + ".okl";
       platform->kernels.add(section + kernelName, fileName, prop);
-
-      kernelName = "subCycleRKUpdate";
-      fileName = oklpath + "/cds/" + kernelName + ".okl";
-      platform->kernels.add(section + kernelName, fileName, prop);
-      kernelName = "subCycleRK";
-      fileName = oklpath + "/cds/" + kernelName + ".okl";
-      platform->kernels.add(section + kernelName, fileName, prop);
-
-      kernelName = "subCycleInitU0";
-      fileName = oklpath + "/cds/" + kernelName + ".okl";
-      platform->kernels.add(section + kernelName, fileName, prop);
     }
   }
 }

@@ -129,7 +129,7 @@ void RANSktau::updateProperties()
   cds_t *cds = nrs->cds;
 
   occa::memory o_mue = nrs->o_mue;
-  occa::memory o_diff = cds->o_diff + cds->fieldOffsetScan[kFieldIndex] * sizeof(dfloat);
+  occa::memory o_diff = cds->o_diff + cds->fieldOffsetScan[kFieldIndex];
 
   limitKernel(mesh->Nelements * mesh->Np, o_k, o_tau);
   mueKernel(mesh->Nelements * mesh->Np, nrs->fieldOffset, rho, mueLam, o_k, o_tau, o_mut, o_mue, o_diff);
@@ -142,12 +142,12 @@ void RANSktau::updateSourceTerms()
   mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
-  occa::memory o_OiOjSk = platform->o_mempool.slice0;
-  occa::memory o_SijMag2 = platform->o_mempool.slice1;
-  occa::memory o_SijOij = platform->o_mempool.slice2;
+  occa::memory o_OiOjSk = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
+  occa::memory o_SijMag2 = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset); 
+  occa::memory o_SijOij = platform->o_memPool.reserve<dfloat>(3 * nrs->NVfields * nrs->fieldOffset); 
 
-  occa::memory o_FS = cds->o_FS + cds->fieldOffsetScan[kFieldIndex] * sizeof(dfloat);
-  occa::memory o_BFDiag = cds->o_BFDiag + cds->fieldOffsetScan[kFieldIndex] * sizeof(dfloat);
+  occa::memory o_FS = cds->o_FS + cds->fieldOffsetScan[kFieldIndex];
+  occa::memory o_BFDiag = cds->o_BFDiag + cds->fieldOffsetScan[kFieldIndex];
 
   postProcessing::strainRotationRate(nrs, true, true, o_SijOij);
 
@@ -180,13 +180,13 @@ void RANSktau::setup(nrs_t *nrsIn, dfloat mueIn, dfloat rhoIn, int ifld)
   cds_t *cds = nrs->cds;
   mesh_t *mesh = nrs->meshV;
 
-  o_k = cds->o_S + cds->fieldOffsetScan[kFieldIndex] * sizeof(dfloat);
-  o_tau = cds->o_S + cds->fieldOffsetScan[kFieldIndex + 1] * sizeof(dfloat);
+  o_k = cds->o_S + cds->fieldOffsetScan[kFieldIndex];
+  o_tau = cds->o_S + cds->fieldOffsetScan[kFieldIndex + 1];
 
-  o_mut = platform->device.malloc(cds->fieldOffset[kFieldIndex], sizeof(dfloat));
+  o_mut = platform->device.malloc<dfloat>(cds->fieldOffset[kFieldIndex]);
 
   if (!cds->o_BFDiag.ptr()) {
-    cds->o_BFDiag = platform->device.malloc(cds->fieldOffsetSum, sizeof(dfloat));
+    cds->o_BFDiag = platform->device.malloc<dfloat>(cds->fieldOffsetSum);
     platform->linAlg->fill(cds->fieldOffsetSum, 0.0, cds->o_BFDiag);
   }
 

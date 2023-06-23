@@ -12,12 +12,13 @@
 #include "bdry.hpp"
 #include "Urst.hpp"
 
+
 static void lagFields(nrs_t *nrs)
 {
   // lag velocity
   for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
-    const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
-    nrs->o_U.copyFrom(nrs->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+    const auto N = nrs->NVfields * nrs->fieldOffset;
+    nrs->o_U.copyFrom(nrs->o_U, N, (s - 1) * N, (s - 2) * N);
   }
 
   // lag scalars
@@ -25,8 +26,8 @@ static void lagFields(nrs_t *nrs)
     auto cds = nrs->cds;
     if(cds->anyEllipticSolver){
       for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
-        const auto Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
-        cds->o_S.copyFrom(cds->o_S, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+        const auto N = cds->fieldOffsetSum;
+        cds->o_S.copyFrom(cds->o_S, N, (s - 1) * N, (s - 2) * N);
       }
     }
   }
@@ -36,8 +37,8 @@ static void lagFields(nrs_t *nrs)
   if (movingMesh) {
     auto mesh = nrs->_mesh;
     for (int s = std::max(nrs->nEXT, mesh->nAB); s > 1; s--) {
-      const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
-      mesh->o_U.copyFrom(mesh->o_U, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+      const auto N = nrs->NVfields * nrs->fieldOffset;
+      mesh->o_U.copyFrom(mesh->o_U, N, (s - 1) * N, (s - 2) * N);
     }
   }
 }
@@ -93,33 +94,35 @@ static void extrapolate(nrs_t *nrs)
 static void computeDivUErr(nrs_t *nrs, dfloat &divUErrVolAvg, dfloat &divUErrL2)
 {
   mesh_t *mesh = nrs->meshV;
+
+  auto o_divErr = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
+
   nrs->divergenceVolumeKernel(mesh->Nelements,
                               mesh->o_vgeo,
                               mesh->o_D,
                               nrs->fieldOffset,
                               nrs->o_U,
-                              platform->o_mempool.slice0);
+                              o_divErr);
 
   double flops = 18 * (mesh->Np * mesh->Nq + mesh->Np);
   flops *= static_cast<double>(mesh->Nelements);
 
   platform->flopCounter->add("divergenceVolumeKernel", flops);
 
-  oogs::startFinish(platform->o_mempool.slice0, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
-  platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_invLMM, platform->o_mempool.slice0);
+  oogs::startFinish(o_divErr, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
+  platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_invLMM, o_divErr);
 
-  platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->o_div, -1.0, platform->o_mempool.slice0);
+  platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->o_div, -1.0, o_divErr);
   divUErrL2 = platform->linAlg->weightedNorm2(mesh->Nlocal,
-                                              mesh->o_LMM,
-                                              platform->o_mempool.slice0,
-                                              platform->comm.mpiComm) /
-              sqrt(mesh->volume);
+      mesh->o_LMM,
+      o_divErr,
+      platform->comm.mpiComm) / sqrt(mesh->volume);
 
   divUErrVolAvg = platform->linAlg->innerProd(mesh->Nlocal,
-                                              mesh->o_LMM,
-                                              platform->o_mempool.slice0,
-                                              platform->comm.mpiComm) /
-                  mesh->volume;
+      mesh->o_LMM,
+      o_divErr,
+      platform->comm.mpiComm) / mesh->volume;
+
   divUErrVolAvg = std::abs(divUErrVolAvg);
 }
 
@@ -152,19 +155,19 @@ void advectionFlops(mesh_t *mesh, int Nfields)
 void adjustDt(nrs_t* nrs, int tstep)
 {
   const double TOLToZero = 1e-12;
-  bool initialTimeStepProvided = true;
+  auto initialTimeStepProvided = true;
   if (nrs->dt[0] < TOLToZero && tstep == 1) {
     nrs->dt[0] = 1.0; // startup without any initial timestep guess
     initialTimeStepProvided = false;
   }
 
-  double targetCFL;
+  dfloat targetCFL;
   platform->options.getArgs("TARGET CFL", targetCFL);
 
-  const double CFLmax = 1.2 * targetCFL;
-  const double CFLmin = 0.8 * targetCFL;
+  const auto CFLmax = 1.2 * targetCFL;
+  const auto CFLmin = 0.8 * targetCFL;
 
-  const double CFL = computeCFL(nrs);
+  const auto CFL = computeCFL(nrs);
 
   if (!initialTimeStepProvided) {
     if (CFL > TOLToZero) {
@@ -181,24 +184,24 @@ void adjustDt(nrs_t* nrs, int tstep)
         udf.uEqnSource(nrs, startTime, nrs->o_U, nrs->o_FU);
         platform->timer.toc("udfUEqnSource");
 
-        occa::memory o_FUx = nrs->o_FU + (0 * sizeof(dfloat)) * nrs->fieldOffset;
-        occa::memory o_FUy = nrs->o_FU + (1 * sizeof(dfloat)) * nrs->fieldOffset;
-        occa::memory o_FUz = nrs->o_FU + (2 * sizeof(dfloat)) * nrs->fieldOffset;
+        occa::memory o_FUx = nrs->o_FU + 0 * nrs->fieldOffset;
+        occa::memory o_FUy = nrs->o_FU + 1 * nrs->fieldOffset;
+        occa::memory o_FUz = nrs->o_FU + 2 * nrs->fieldOffset;
 
         platform->linAlg->abs(3 * nrs->fieldOffset, nrs->o_FU);
 
-        const double maxFUx = platform->linAlg->max(nrs->meshV->Nlocal, o_FUx, platform->comm.mpiComm);
-        const double maxFUy = platform->linAlg->max(nrs->meshV->Nlocal, o_FUy, platform->comm.mpiComm);
-        const double maxFUz = platform->linAlg->max(nrs->meshV->Nlocal, o_FUz, platform->comm.mpiComm);
-        const double maxFU = std::max({maxFUx, maxFUy, maxFUz});
+        const auto maxFUx = platform->linAlg->max(nrs->meshV->Nlocal, o_FUx, platform->comm.mpiComm);
+        const auto maxFUy = platform->linAlg->max(nrs->meshV->Nlocal, o_FUy, platform->comm.mpiComm);
+        const auto maxFUz = platform->linAlg->max(nrs->meshV->Nlocal, o_FUz, platform->comm.mpiComm);
+        const auto maxFU = std::max({maxFUx, maxFUy, maxFUz});
 
-        const double minRho = platform->linAlg->min(nrs->meshV->Nlocal, nrs->o_rho, platform->comm.mpiComm);
-        const double maxU = maxFU / minRho;
-        const double *x = nrs->meshV->x;
-        const double *y = nrs->meshV->y;
-        const double *z = nrs->meshV->z;
+        const auto minRho = platform->linAlg->min(nrs->meshV->Nlocal, nrs->o_rho, platform->comm.mpiComm);
+        const auto maxU = maxFU / minRho;
+        const auto x = nrs->meshV->x;
+        const auto y = nrs->meshV->y;
+        const auto z = nrs->meshV->z;
         double lengthScale = sqrt((x[0] - x[1]) * (x[0] - x[1]) + (y[0] - y[1]) * (y[0] - y[1]) +
-                                  (z[0] - z[1]) * (z[0] - z[1]));
+                             (z[0] - z[1]) * (z[0] - z[1]));
 
         MPI_Allreduce(MPI_IN_PLACE, &lengthScale, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
         if (maxU > TOLToZero) {
@@ -216,16 +219,15 @@ void adjustDt(nrs_t* nrs, int tstep)
     return;
   }
 
-  const double unitTimeCFLold = (tstep == 1) ? CFL / nrs->dt[0] : nrs->unitTimeCFL;
-
-  const double CFLold = (tstep == 1) ? CFL : nrs->CFL;
+  const auto unitTimeCFLold = (tstep == 1) ? CFL / nrs->dt[0] : nrs->unitTimeCFL;
+  const auto CFLold = (tstep == 1) ? CFL : nrs->CFL;
 
   nrs->CFL = CFL;
   nrs->unitTimeCFL = CFL / nrs->dt[0];
 
-  const double CFLpred = 2.0 * nrs->CFL - CFLold;
+  const auto CFLpred = 2.0 * nrs->CFL - CFLold;
 
-  const double TOL = 0.001;
+  const dfloat TOL = 1e-3;
 
   if (nrs->CFL > CFLmax || CFLpred > CFLmax || nrs->CFL < CFLmin) {
     const double A = (nrs->unitTimeCFL - unitTimeCFLold) / nrs->dt[0];
@@ -263,11 +265,14 @@ void adjustDt(nrs_t* nrs, int tstep)
     if (tstep > 1)
       nrs->dt[0] = std::min(nrs->dt[0], maxAdjustDtRatio * nrs->dt[1]);
   }
+
+  nrs->dt[0] = setPrecision(nrs->dt[0], 4); // to avoid accumulation of roundoff errors
 }
 
-void initStep(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
+void initStep(nrs_t *nrs, double time, dfloat dt, int tstep)
 {
   nrs->timePrevious = time;
+
   nrs->tstep = tstep;
 
   cds_t *cds = nrs->cds;
@@ -282,18 +287,18 @@ void initStep(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
     mesh_t *mesh = nrs->meshV;
     if (nrs->cht)
       mesh = nrs->cds->mesh[0];
-    const auto NbyteCubature = (nrs->NVfields * sizeof(dfloat)) * nrs->cubatureOffset;
+    const auto NCubature = nrs->NVfields * nrs->cubatureOffset;
     for (int s = nrs->nEXT; s > 1; s--) {
-      const auto Nbyte = nrs->fieldOffset * sizeof(dfloat);
+      const auto N = nrs->fieldOffset;
       if (movingMesh) {
-        mesh->o_divU.copyFrom(mesh->o_divU, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+        mesh->o_divU.copyFrom(mesh->o_divU, N, (s - 1) * N, (s - 2) * N);
         nrs->o_relUrst.copyFrom(nrs->o_relUrst,
-                                NbyteCubature,
-                                (s - 1) * NbyteCubature,
-                                (s - 2) * NbyteCubature);
+                                NCubature,
+                                (s - 1) * NCubature,
+                                (s - 2) * NCubature);
       }
       else {
-        nrs->o_Urst.copyFrom(nrs->o_Urst, NbyteCubature, (s - 1) * NbyteCubature, (s - 2) * NbyteCubature);
+        nrs->o_Urst.copyFrom(nrs->o_Urst, NCubature, (s - 1) * NCubature, (s - 2) * NCubature);
       }
     }
     if (movingMesh) {
@@ -330,9 +335,9 @@ void initStep(nrs_t *nrs, dfloat time, dfloat dt, int tstep)
   if (movingMesh) {
     mesh_t *mesh = nrs->_mesh;
     for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
-      const auto NbyteScalar = nrs->fieldOffset * sizeof(dfloat);
-      mesh->o_LMM.copyFrom(mesh->o_LMM, NbyteScalar, (s - 1) * NbyteScalar, (s - 2) * NbyteScalar);
-      mesh->o_invLMM.copyFrom(mesh->o_invLMM, NbyteScalar, (s - 1) * NbyteScalar, (s - 2) * NbyteScalar);
+      const auto N = nrs->fieldOffset;
+      mesh->o_LMM.copyFrom(mesh->o_LMM, N, (s - 1) * N, (s - 2) * N);
+      mesh->o_invLMM.copyFrom(mesh->o_invLMM, N, (s - 1) * N, (s - 2) * N);
     }
 
     mesh->move();
@@ -382,13 +387,14 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
   cds_t *cds = nrs->cds;
 
   const auto tstep = nrs->tstep;
-  const auto timeNew = nrs->timePrevious + nrs->dt[0];
+  const double timeNew = nrs->timePrevious + 
+                         setPrecision(nrs->dt[0], std::numeric_limits<decltype(nrs->dt[0])>::digits10 + 1);
 
   const int isOutputStep = nrs->isOutputStep;
 
   if (nrs->neknek)
     nrs->neknek->updateBoundary(nrs, tstep, stage);
-  
+ 
   if (nrs->cvode)
     scalarSolveCvode(nrs, nrs->timePrevious, timeNew, cds->o_S, stage, tstep);
   
@@ -418,8 +424,10 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
   if (nrs->flow)
     fluidSolve(nrs, timeNew, nrs->o_P, nrs->o_U, stage, tstep);
 
-  if (!platform->options.compareArgs("MESH SOLVER", "NONE"))
-    meshSolve(nrs, timeNew, nrs->meshV->o_U, stage);
+  if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
+    occa::memory o_Unew= meshSolve(nrs, timeNew, stage);
+    nrs->meshV->o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset);
+  }
 
   nrs->timeStepConverged = convergenceCheck(stage);
 
@@ -440,7 +448,7 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
   return nrs->timeStepConverged;
 }
 
-void setDt(nrs_t *nrs, double dt, int tstep)
+void setDt(nrs_t *nrs, dfloat dt, int tstep)
 {
   nrs->dt[0] = dt;
   nrsCheck(std::isnan(nrs->dt[0]) || std::isinf(nrs->dt[0]),
@@ -472,7 +480,7 @@ void setDt(nrs_t *nrs, double dt, int tstep)
       mesh->coeffAB[i] *= nrs->dt[0];
     for (int i = mesh->nAB; i > meshOrder; i--)
       mesh->coeffAB[i - 1] = 0.0;
-    mesh->o_coeffAB.copyFrom(mesh->coeffAB, mesh->nAB * sizeof(dfloat));
+    mesh->o_coeffAB.copyFrom(mesh->coeffAB, mesh->nAB);
   }
 
   nrs->ig0 = 1.0 / nrs->g0;
@@ -486,7 +494,7 @@ void setDt(nrs_t *nrs, double dt, int tstep)
   }
 }
 
-void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o_BF)
+void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o_BF)
 {
   cds_t *cds = nrs->cds;
 
@@ -522,6 +530,8 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
       flops *= static_cast<double>(mesh->Nelements);
       platform->flopCounter->add("scalarFilterRT", flops);
     }
+
+
     const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
     if (movingMesh && !cds->Nsubsteps) {
       cds->advectMeshVelocityKernel(cds->meshV->Nelements,
@@ -538,14 +548,10 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
       platform->flopCounter->add("scalar advectMeshVelocity", flops);
     }
 
-    occa::memory o_Usubcycling = platform->o_mempool.slice0;
+    occa::memory o_Usubcycling;
     if (platform->options.compareArgs("ADVECTION", "TRUE")) {
       if (cds->Nsubsteps) {
-        if (movingMesh)
-          o_Usubcycling =
-              scalarSubCycleMovingMesh(cds, std::min(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S);
-        else
-          o_Usubcycling = scalarSubCycle(cds, std::min(tstep, cds->nEXT), time, is, cds->o_U, cds->o_S);
+          o_Usubcycling = scalarSubCycle(nrs, std::min(tstep, cds->nEXT), time, is);
       } else {
         if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
           cds->strongAdvectionCubatureVolumeKernel(cds->meshV->Nelements,
@@ -556,8 +562,8 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
                                                    mesh->o_cubDiffInterpT,
                                                    mesh->o_cubInterpT,
                                                    mesh->o_cubProjectT,
-                                                   cds->o_compute + is * sizeof(dlong),
-                                                   cds->o_fieldOffsetScan + is * sizeof(dlong),
+                                                   cds->o_compute + is,
+                                                   cds->o_fieldOffsetScan + is,
                                                    cds->vFieldOffset,
                                                    cds->vCubatureOffset,
                                                    cds->o_S,
@@ -572,8 +578,8 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
                                            mesh->o_LMM,
                                            mesh->o_vgeo,
                                            mesh->o_D,
-                                           cds->o_compute + is * sizeof(dlong),
-                                           cds->o_fieldOffsetScan + is * sizeof(dlong),
+                                           cds->o_compute + is,
+                                           cds->o_fieldOffsetScan + is,
                                            cds->vFieldOffset,
                                            cds->o_S,
                                            cds->o_Urst,
@@ -582,9 +588,6 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
         }
         advectionFlops(cds->mesh[0], 1);
       }
-    }
-    else {
-      platform->linAlg->fill(cds->fieldOffsetSum, 0.0, o_Usubcycling);
     }
 
     cds->sumMakefKernel(mesh->Nlocal,
@@ -607,12 +610,12 @@ void makeq(nrs_t *nrs, dfloat time, int tstep, occa::memory o_FS, occa::memory o
   }
 
   for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
-    const auto Nbyte = cds->fieldOffsetSum * sizeof(dfloat);
-    o_FS.copyFrom(o_FS, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+    const auto N = cds->fieldOffsetSum;
+    o_FS.copyFrom(o_FS, N, (s - 1) * N, (s - 2) * N);
   }
 }
 
-void scalarSolve(nrs_t *nrs, dfloat time, occa::memory o_S, int stage)
+void scalarSolve(nrs_t *nrs, double time, occa::memory o_S, int stage)
 {
   cds_t *cds = nrs->cds;
 
@@ -639,12 +642,12 @@ void scalarSolve(nrs_t *nrs, dfloat time, occa::memory o_S, int stage)
                                 cds->o_ellipticCoeff);
 
     occa::memory o_Snew = cdsSolve(is, cds, time, stage);
-    o_Snew.copyTo(o_S, cds->fieldOffset[is] * sizeof(dfloat), cds->fieldOffsetScan[is] * sizeof(dfloat));
+    o_Snew.copyTo(o_S, cds->fieldOffset[is], cds->fieldOffsetScan[is]);
   }
   platform->timer.toc("scalarSolve");
 }
 
-void scalarSolveCvode(nrs_t *nrs, dfloat tn, dfloat time, occa::memory o_S, int stage, int tstep)
+void scalarSolveCvode(nrs_t *nrs, double tn, double time, occa::memory o_S, int stage, int tstep)
 {
   // CVODE is not supported with sub-stepping
   if (!nrs->cvode || stage > 1)
@@ -653,8 +656,8 @@ void scalarSolveCvode(nrs_t *nrs, dfloat tn, dfloat time, occa::memory o_S, int 
   nrs->cvode->solve(tn, time, tstep);
 }
 
-void makef(
-    nrs_t *nrs, dfloat time, int tstep, occa::memory o_FU, occa::memory o_BF) {
+void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o_BF) 
+{
   mesh_t *mesh = nrs->meshV;
   const int verbose = platform->options.compareArgs("VERBOSE", "TRUE");
   const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
@@ -685,15 +688,13 @@ void makef(
     platform->flopCounter->add("velocity advectMeshVelocity", flops);
   }
 
-  occa::memory o_Usubcycling = platform->o_mempool.slice0;
+  occa::memory o_Usubcycling;
   if (platform->options.compareArgs("ADVECTION", "TRUE")) {
     if (nrs->Nsubsteps) {
-      if (movingMesh)
-        o_Usubcycling = velocitySubCycleMovingMesh(nrs, std::min(tstep, nrs->nEXT), time, nrs->o_U);
-      else
-        o_Usubcycling = velocitySubCycle(nrs, std::min(tstep, nrs->nEXT), time, nrs->o_U);
-    }
-    else {
+      o_Usubcycling = velocitySubCycle(nrs, std::min(tstep, nrs->nEXT), time);
+    } else {
+      auto o_adv = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+
       if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
         nrs->strongAdvectionCubatureVolumeKernel(mesh->Nelements,
                                                  mesh->o_vgeo,
@@ -704,7 +705,7 @@ void makef(
                                                  nrs->cubatureOffset,
                                                  nrs->o_U,
                                                  nrs->o_Urst,
-                                                 platform->o_mempool.slice0);
+                                                 o_adv);
       else
         nrs->strongAdvectionVolumeKernel(mesh->Nelements,
                                          mesh->o_vgeo,
@@ -712,16 +713,12 @@ void makef(
                                          nrs->fieldOffset,
                                          nrs->o_U,
                                          nrs->o_Urst,
-                                         platform->o_mempool.slice0);
+                                         o_adv);
 
-      platform->linAlg->axpby(nrs->NVfields * nrs->fieldOffset, -1.0, platform->o_mempool.slice0, 1.0, o_FU);
+      platform->linAlg->axpby(nrs->NVfields * nrs->fieldOffset, -1.0, o_adv, 1.0, o_FU);
 
       advectionFlops(nrs->meshV, nrs->NVfields);
     }
-  }
-  else {
-    if (nrs->Nsubsteps)
-      platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, o_Usubcycling);
   }
 
   nrs->sumMakefKernel(mesh->Nlocal,
@@ -757,35 +754,39 @@ void makef(
   }
 
   for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
-    const auto Nbyte = (nrs->NVfields * sizeof(dfloat)) * nrs->fieldOffset;
-    o_FU.copyFrom(o_FU, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+    const auto N = nrs->NVfields * nrs->fieldOffset;
+    o_FU.copyFrom(o_FU, N, (s - 1) * N, (s - 2) * N);
   }
 }
 
-void fluidSolve(nrs_t *nrs, dfloat time, occa::memory o_P, occa::memory o_U, int stage, int tstep)
+void fluidSolve(nrs_t *nrs, double time, occa::memory o_P, occa::memory o_U, int stage, int tstep)
 {
   mesh_t *mesh = nrs->meshV;
 
   platform->timer.tic("pressureSolve", 1);
-  nrs->setEllipticCoeffPressureKernel(mesh->Nlocal, nrs->fieldOffset, nrs->o_rho, nrs->o_ellipticCoeff);
-  occa::memory o_Pnew = tombo::pressureSolve(nrs, time, stage);
-  o_P.copyFrom(o_Pnew, nrs->fieldOffset * sizeof(dfloat));
+  {
+    platform->timer.tic("pressureSolve", 1);
+    nrs->setEllipticCoeffPressureKernel(mesh->Nlocal, nrs->fieldOffset, nrs->o_rho, nrs->o_ellipticCoeff);
+    occa::memory o_Pnew = tombo::pressureSolve(nrs, time, stage);
+    o_P.copyFrom(o_Pnew);
+  }
   platform->timer.toc("pressureSolve");
 
   platform->timer.tic("velocitySolve", 1);
-  nrs->setEllipticCoeffKernel(mesh->Nlocal,
-                              nrs->g0 * nrs->idt,
-                              0 * nrs->fieldOffset,
-                              nrs->fieldOffset,
-                              0,
-                              nrs->o_mue,
-                              nrs->o_rho,
-                              o_NULL,
-                              nrs->o_ellipticCoeff);
-
-  occa::memory o_Unew = tombo::velocitySolve(nrs, time, stage);
-  o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-
+  {
+    nrs->setEllipticCoeffKernel(mesh->Nlocal,
+                                nrs->g0 * nrs->idt,
+                                0 * nrs->fieldOffset,
+                                nrs->fieldOffset,
+                                0,
+                                nrs->o_mue,
+                                nrs->o_rho,
+                                o_NULL,
+                                nrs->o_ellipticCoeff);
+ 
+    occa::memory o_Unew = tombo::velocitySolve(nrs, time, stage);
+    o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset);
+  }
   platform->timer.toc("velocitySolve");
 
   if (platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")) {
@@ -793,14 +794,14 @@ void fluidSolve(nrs_t *nrs, dfloat time, occa::memory o_P, occa::memory o_U, int
   }
 }
 
-void printInfo(nrs_t *nrs, dfloat time, int tstep, bool printStepInfo, bool printVerboseInfo)
+void printInfo(nrs_t *nrs, double time, int tstep, bool printStepInfo, bool printVerboseInfo)
 {
   cds_t *cds = nrs->cds;
 
   const double elapsedStep = platform->timer.query("elapsedStep", "DEVICE:MAX");
   const double elapsedStepSum = platform->timer.query("elapsedStepSum", "DEVICE:MAX");
   bool verboseInfo = platform->options.compareArgs("VERBOSE SOLVER INFO", "TRUE");
-  const dfloat cfl = computeCFL(nrs);
+  const auto cfl = computeCFL(nrs);
   dfloat divUErrVolAvg, divUErrL2;
 
   if (verboseInfo) {

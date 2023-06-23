@@ -5,12 +5,14 @@ set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 
 set (CMAKE_CXX_STANDARD 17)
 
+set(NEKRS_USE_DFLOAT_FLOAT OFF CACHE BOOL "use dfloat = float")
+
 set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 
 #set(CMAKE_VERBOSE_MAKEFILE on)
 
 set(OGSDIR ${NEKRS_INSTALL_DIR}/gatherScatter)
-set(FINDPTSDIR ${NEKRS_INSTALL_DIR}/findpts)
+set(FINDPTSDIR ${NEKRS_INSTALL_DIR}/pointInterpolation/findpts)
 set(GSDIR ${NEKRS_INSTALL_DIR}/gslib)
 set(INCLUDE_DIRS
   ${CASE_DIR}
@@ -36,7 +38,7 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/linAlg
   ${NEKRS_INSTALL_DIR}/include/neknek
   ${NEKRS_INSTALL_DIR}/include/pointInterpolation
-  ${NEKRS_INSTALL_DIR}/include/findpts
+  ${NEKRS_INSTALL_DIR}/include/pointInterpolation/findpts
   ${NEKRS_INSTALL_DIR}/include/lpm
   ${NEKRS_INSTALL_DIR}/include/postProcessing
   ${NEKRS_INSTALL_DIR}/occa/include
@@ -50,9 +52,11 @@ target_compile_definitions(OKL PRIVATE -D__okl__)
 add_library(UDF SHARED udf.cpp)
 target_include_directories(UDF PRIVATE $ENV{NEKRS_UDF_INCLUDES} ${INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
 
+if(NEKRS_USE_DFLOAT_FLOAT)
+  target_compile_definitions(UDF PUBLIC -DNEKRS_USE_DFLOAT_FLOAT)
+endif()
+
 if(APPLE)
     target_link_libraries(UDF "-Wl,-undefined -Wl,dynamic_lookup")
 endif()
 target_link_libraries(UDF "$ENV{NEKRS_UDF_LDFLAGS}")
-
-

@@ -4,7 +4,7 @@
 #define BLOCKSIZE 256
 
 // float data type
-#if 0
+#ifdef OGS_USE_DFLOAT_FLOAT 
 typedef float dfloat;
 #define DFLOAT_SINGLE
 #define MPI_DFLOAT MPI_FLOAT

@@ -39,7 +39,7 @@ void coarsenV(MGSolver_t* M)
     auto levelC = M->levels[k + 1];
     auto o_rhsC = levelC->o_rhs;
 
-    o_res.copyFrom(o_rhs, level->Nrows * sizeof(pfloat));
+    o_res.copyFrom(o_rhs, level->Nrows);
     levelC->coarsen(o_res, o_rhsC);
   }
 
@@ -71,7 +71,7 @@ void schwarzSolve(MGSolver_t* M)
     // apply smoother to x and then compute res = rhs-Ax
     level->smooth(o_rhs, o_x, true);
 
-    o_res.copyFrom(o_rhs, level->Nrows * sizeof(pfloat));
+    o_res.copyFrom(o_rhs, level->Nrows);
 
     // rhsC = P^T res
     levelC->coarsen(o_res, o_rhsC);
@@ -214,7 +214,7 @@ void MGSolver_t::runAdditiveVcycle()
   // local T vector size
   const auto NlocalT = this->coarseLevel->N;
 
-  o_rhs.copyTo(Sx, Nlocal*sizeof(pfloat));
+  o_rhs.copyTo(Sx, Nlocal);
 
   o_x.getDevice().finish();
   #pragma omp parallel proc_bind(close) num_threads(nThreads)
@@ -243,7 +243,7 @@ void MGSolver_t::runAdditiveVcycle()
     }
   }
 
-  o_x.copyFrom(Sx, Nlocal*sizeof(pfloat));
+  o_x.copyFrom(Sx, Nlocal);
 
   {
     prolongateV(this);

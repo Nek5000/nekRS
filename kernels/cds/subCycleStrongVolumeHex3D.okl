@@ -28,7 +28,7 @@
                                        @ restrict const dlong *elementList,
                                        @ restrict const dfloat *D,
                                        const dlong offset,
-                                       const dlong NSOffset,
+                                       const dlong meshOffset,
                                        @ restrict const dfloat *invLumpedMassMatrix,
                                        @ restrict const dfloat *BdivW,
                                        const dfloat c0,
@@ -118,12 +118,12 @@
             Ve += r_c[s] * Vm;
             We += r_c[s] * Wm;
             if (p_MovingMesh) {
-              invLMM += r_c[s] * invLumpedMassMatrix[id + s * offset];
-              bdivw += r_c[s] * BdivW[id + s * offset];
+              invLMM += r_c[s] * invLumpedMassMatrix[id + s * meshOffset];
+              bdivw += r_c[s] * BdivW[id + s * meshOffset];
             }
           }
 
-          NU[id + NSOffset] = (Ue * duddr + Ve * dudds + We * duddt - bdivw * S[id]) * invLMM;
+          NU[id] = (Ue * duddr + Ve * dudds + We * duddt - bdivw * S[id]) * invLMM;
         }
       }
     }

@@ -8,8 +8,8 @@ void ellipticApplyMask(elliptic_t *solver, occa::memory &o_x, std::string precis
 void ellipticApplyMask(elliptic_t *solver,
                        dlong Nelements,
                        dlong Nmasked,
-                       occa::memory &o_elementList,
-                       occa::memory &o_maskIds,
+                       const occa::memory &o_elementList,
+                       const occa::memory &o_maskIds,
                        occa::memory &o_x,
                        std::string precision)
 {

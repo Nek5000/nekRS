@@ -26,5 +26,5 @@ void createEToBV(const mesh_t* mesh, const int* EToB, occa::memory& o_EToBV)
     }
   }
 
-  o_EToBV.copyFrom(EToBV.data(), EToBV.size() * sizeof(int));
+  o_EToBV.copyFrom(EToBV.data(), EToBV.size());
 }

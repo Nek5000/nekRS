@@ -3,13 +3,14 @@
 
 
 void writeFld(std::string suffix, dfloat t, int step, int outXYZ, int FP64,
-              void* o_s, int NSfields)
+              const occa::memory& o_s, int NSfields)
 {
-  nek::outfld(suffix.c_str(), t, step, outXYZ, FP64, nullptr, nullptr, o_s, NSfields); 
+  nek::outfld(suffix.c_str(), t, step, outXYZ, FP64, 
+              o_NULL, o_NULL, o_s, NSfields); 
 }
 
 void writeFld(std::string suffix, dfloat t, int step, int outXYZ, int FP64,
-              void* o_u, void* o_p, void* o_s,
+              const occa::memory& o_u, const occa::memory& o_p, const occa::memory& o_s,
               int NSfields)
 {
   nek::outfld(suffix.c_str(), t, step, outXYZ, FP64, o_u, o_p, o_s, NSfields); 
@@ -23,7 +24,7 @@ void writeFld(nrs_t *nrs, dfloat t, int step, int outXYZ, int FP64, std::string 
     o_s = nrs->cds->o_S;
     Nscalar = nrs->Nscalar;
   }
-  writeFld(suffix, t, step, outXYZ, FP64, &nrs->o_U, &nrs->o_P, &o_s, Nscalar); 
+  writeFld(suffix, t, step, outXYZ, FP64, nrs->o_U, nrs->o_P, o_s, Nscalar); 
 }
 
 void writeFld(nrs_t *nrs, dfloat t, int step, int outXYZ, int FP64) 

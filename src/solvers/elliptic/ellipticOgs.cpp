@@ -62,7 +62,7 @@ void ellipticOgs(mesh_t *mesh,
         maskIds[Nmasked++] = n + fld * offset;
     }
   }
-  if(Nmasked) o_maskIds = platform->device.malloc(Nmasked * sizeof(dlong), maskIds);
+  if(Nmasked) o_maskIds = platform->device.malloc<dlong>(Nmasked, maskIds);
 
   NmaskedLocal = 0;
   for (int fld = 0; fld < nFields; fld++) {
@@ -88,7 +88,7 @@ void ellipticOgs(mesh_t *mesh,
     }
   }
   if (NmaskedLocal)
-    o_maskIdsLocal = platform->device.malloc(NmaskedLocal * sizeof(dlong), localMaskIds);
+    o_maskIdsLocal = platform->device.malloc<dlong>(NmaskedLocal, localMaskIds);
   free(localMaskIds);
 
   NmaskedGlobal = 0;
@@ -115,7 +115,7 @@ void ellipticOgs(mesh_t *mesh,
     }
   }
   if (NmaskedGlobal)
-    o_maskIdsGlobal = platform->device.malloc(NmaskedGlobal * sizeof(dlong), globalMaskIds);
+    o_maskIdsGlobal = platform->device.malloc<dlong>(NmaskedGlobal, globalMaskIds);
   free(globalMaskIds);
 
   free(mapB);

@@ -31,35 +31,35 @@ occa::memory solveODE(nrs_t *nrs,
                       occa::kernel RKKernel)
 {
   auto rhs = [exactUVWPKernel](dfloat t, occa::memory o_y, occa::memory o_ydot) {
-    auto n = o_y.size() / sizeof(dfloat);
+    auto n = o_y.length();
     n /= 3;
 
     if (n == 0) {
       return;
     }
 
-    auto o_xcoord = o_y + 0 * n * sizeof(dfloat);
-    auto o_ycoord = o_y + 1 * n * sizeof(dfloat);
-    auto o_zcoord = o_y + 2 * n * sizeof(dfloat);
+    auto o_xcoord = o_y + 0 * n;
+    auto o_ycoord = o_y + 1 * n;
+    auto o_zcoord = o_y + 2 * n;
 
     static occa::memory o_Pscratch;
-    if (o_Pscratch.size() != n * sizeof(dfloat)) {
-      o_Pscratch = platform->device.malloc(n * sizeof(dfloat));
+    if (o_Pscratch.length() != n) {
+      o_Pscratch = platform->device.malloc<dfloat>(n);
     }
 
     exactUVWPKernel(n, t, o_xcoord, o_ycoord, o_zcoord, n, o_Pscratch, o_ydot);
   };
 
   std::array<dfloat, 4> rk = {1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0};
-  auto o_rk = platform->device.malloc(rk.size() * sizeof(dfloat), rk.data());
-  auto o_k1 = platform->device.malloc(o_y0.size());
-  auto o_k2 = platform->device.malloc(o_y0.size());
-  auto o_k3 = platform->device.malloc(o_y0.size());
-  auto o_k4 = platform->device.malloc(o_y0.size());
-  auto o_y = platform->device.malloc(o_y0.size());
-  auto o_tmp = platform->device.malloc(o_y0.size());
+  auto o_rk = platform->device.malloc<dfloat>(rk.size(), rk.data());
+  auto o_k1 = platform->device.malloc<dfloat>(o_y0.length());
+  auto o_k2 = platform->device.malloc<dfloat>(o_y0.length());
+  auto o_k3 = platform->device.malloc<dfloat>(o_y0.length());
+  auto o_k4 = platform->device.malloc<dfloat>(o_y0.length());
+  auto o_y = platform->device.malloc<dfloat>(o_y0.length());
+  auto o_tmp = platform->device.malloc<dfloat>(o_y0.length());
 
-  const auto n = o_y0.size() / sizeof(dfloat);
+  const auto n = o_y0.length();
 
   if (n == 0) {
     return o_y;
@@ -231,9 +231,6 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("CVODE EPS LIN", "0.05");
     options.setArgs("CVODE STOP TIME", "TRUE");
 
-    const auto hmaxRatio = 1;
-    options.setArgs("CVODE HMAX RATIO", to_string_f(hmaxRatio));
-
     const auto maxSteps = 10000;
     options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
 
@@ -253,9 +250,6 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("CVODE MAX TIMESTEPPER ORDER", "3");
     options.setArgs("CVODE EPS LIN", "0.05");
     options.setArgs("CVODE STOP TIME", "TRUE");
-
-    const auto hmaxRatio = 1;
-    options.setArgs("CVODE HMAX RATIO", to_string_f(hmaxRatio));
 
     const auto maxSteps = 10000;
     options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
@@ -286,9 +280,6 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("SCALAR00 HPFRT STRENGTH", "10.0");
     options.setArgs("SCALAR01 HPFRT STRENGTH", "10.0");
 
-    const auto hmaxRatio = 1;
-    options.setArgs("CVODE HMAX RATIO", to_string_f(hmaxRatio));
-
     const auto maxSteps = 10000;
     options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
 
@@ -303,7 +294,9 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 
   options.setArgs("BDF ORDER", "3");
   options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-12"));
-  options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-10"));
+  const auto pTol = (sizeof(dfloat) == sizeof(double)) 
+                    ? std::string("1e-10") : std::string("1e-05"); 
+  options.setArgs("PRESSURE SOLVER TOLERANCE", pTol);
   options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("SCALAR01 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("VARIABLEPROPERTIES", "FALSE");
@@ -354,7 +347,11 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
   std::vector<dfloat> xp0_g(particles->numParticles()); // based on current rank
   std::vector<dfloat> yp0_g(particles->numParticles());
   std::vector<dfloat> zp0_g(particles->numParticles());
-  auto gidFloat = particles->getPropHost("gid");
+  auto o_gidFloat = particles->getProp("gid");
+
+  std::vector<dfloat> gidFloat(o_gidFloat.length());
+  o_gidFloat.copyTo(gidFloat.data());
+
   for (int i = 0; i < particles->numParticles(); ++i) {
     int gid = gidFloat[i];
     gids[i] = gid;
@@ -368,25 +365,25 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
   std::vector<dfloat> yExpected(yp0_g.size(), 0.0);
   std::vector<dfloat> zExpected(zp0_g.size(), 0.0);
 
-  auto o_y0 = platform->device.malloc(nrs->dim * xp0_g.size() * sizeof(dfloat));
+  auto o_y0 = platform->device.malloc<dfloat>(nrs->dim * xp0_g.size());
   if (particles->numParticles() > 0) {
-    auto o_x0coord = o_y0 + 0 * xp0_g.size() * sizeof(dfloat);
-    auto o_y0coord = o_y0 + 1 * yp0_g.size() * sizeof(dfloat);
-    auto o_z0coord = o_y0 + 2 * zp0_g.size() * sizeof(dfloat);
-    o_x0coord.copyFrom(xp0_g.data(), xp0_g.size() * sizeof(dfloat));
-    o_y0coord.copyFrom(yp0_g.data(), yp0_g.size() * sizeof(dfloat));
-    o_z0coord.copyFrom(zp0_g.data(), zp0_g.size() * sizeof(dfloat));
+    auto o_x0coord = o_y0 + 0 * xp0_g.size();
+    auto o_y0coord = o_y0 + 1 * yp0_g.size();
+    auto o_z0coord = o_y0 + 2 * zp0_g.size();
+    o_x0coord.copyFrom(xp0_g.data(), xp0_g.size());
+    o_y0coord.copyFrom(yp0_g.data(), yp0_g.size());
+    o_z0coord.copyFrom(zp0_g.data(), zp0_g.size());
   }
 
   auto o_y = solveODE(nrs, 0.0, endTime, 5e-3 * nrs->dt[0], o_y0, exactUVWPKernel, RKKernel);
   if (particles->numParticles() > 0) {
-    auto o_xcoord = o_y + 0 * xp0_g.size() * sizeof(dfloat);
-    auto o_ycoord = o_y + 1 * xp0_g.size() * sizeof(dfloat);
-    auto o_zcoord = o_y + 2 * xp0_g.size() * sizeof(dfloat);
+    auto o_xcoord = o_y + 0 * xp0_g.size();
+    auto o_ycoord = o_y + 1 * xp0_g.size();
+    auto o_zcoord = o_y + 2 * xp0_g.size();
 
-    o_xcoord.copyTo(xExpected.data(), xExpected.size() * sizeof(dfloat));
-    o_ycoord.copyTo(yExpected.data(), yExpected.size() * sizeof(dfloat));
-    o_zcoord.copyTo(zExpected.data(), zExpected.size() * sizeof(dfloat));
+    o_xcoord.copyTo(xExpected.data(), xExpected.size());
+    o_ycoord.copyTo(yExpected.data(), yExpected.size());
+    o_zcoord.copyTo(zExpected.data(), zExpected.size());
   }
 
   if (xExpected.size() != particles->numParticles()) {
@@ -405,9 +402,16 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
   auto LinfErrY = 0.0;
   auto LinfErrZ = 0.0;
 
-  std::vector<dfloat> xP = particles->getDOFHost("x");
-  std::vector<dfloat> yP = particles->getDOFHost("y");
-  std::vector<dfloat> zP = particles->getDOFHost("z");
+  auto o_xP = particles->getDOF("x");
+  auto o_yP = particles->getDOF("y");
+  auto o_zP = particles->getDOF("z");
+  
+  std::vector<dfloat> xP(o_xP.length());
+  std::vector<dfloat> yP(o_yP.length());
+  std::vector<dfloat> zP(o_xP.length());
+  o_xP.copyTo(xP.data());
+  o_yP.copyTo(yP.data());
+  o_zP.copyTo(zP.data());
 
   bool passed = true;
   for (int pid = 0; pid < particles->numParticles(); ++pid) {
@@ -437,8 +441,8 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
     LinfErrZ = std::max(LinfErrZ, errZ);
   }
 
-  std::array<dfloat, 3> LinfErrs = {LinfErrX, LinfErrY, LinfErrZ};
-  MPI_Allreduce(MPI_IN_PLACE, LinfErrs.data(), 3, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+  std::array<double, 3> LinfErrs = {LinfErrX, LinfErrY, LinfErrZ};
+  MPI_Allreduce(MPI_IN_PLACE, LinfErrs.data(), 3, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
   LinfErrX = LinfErrs[0];
   LinfErrY = LinfErrs[1];
   LinfErrZ = LinfErrs[2];
@@ -449,9 +453,9 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
 
   if (platform->comm.mpiRank == 0) {
     std::cout << "Particle integration errors:\n";
-    std::cout << "\tLinfErrX: " << LinfErrX << "\n";
-    std::cout << "\tLinfErrY: " << LinfErrY << "\n";
-    std::cout << "\tLinfErrZ: " << LinfErrZ << "\n";
+    std::cout << "\trelLinfErrX: " << LinfErrX << "\n";
+    std::cout << "\trelLinfErrY: " << LinfErrY << "\n";
+    std::cout << "\trelLinfErrZ: " << LinfErrZ << "\n";
   }
 
   if (!passed) {
@@ -467,20 +471,20 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
 // Construct multiple distinct pointInterpolation_t objects corresponding to different interpolation points.
 // The call-order to the pointInterpolation_t objects should not matter,
 // however, pointInterpolation_t itself is not thread-safe, so the two objects cannot be used concurrently.
-void ciTestPointInterpolation(nrs_t *nrs, dfloat time, occa::kernel exactUVWPKernel)
+void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
 {
   constexpr int nRandomInterp = 3;
 
   const double R = 0.25; // max radius of points to distribute
 
   auto mesh = nrs->meshV;
-  mesh->o_x.copyTo(mesh->x, mesh->Nlocal * sizeof(dfloat));
-  mesh->o_y.copyTo(mesh->y, mesh->Nlocal * sizeof(dfloat));
-  mesh->o_z.copyTo(mesh->z, mesh->Nlocal * sizeof(dfloat));
+  mesh->o_x.copyTo(mesh->x, mesh->Nlocal);
+  mesh->o_y.copyTo(mesh->y, mesh->Nlocal);
+  mesh->o_z.copyTo(mesh->z, mesh->Nlocal);
 
   const int rank = platform->comm.mpiRank;
-  auto o_Ue = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
-  auto o_Pe = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  auto o_Ue = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  auto o_Pe = platform->device.malloc<dfloat>(nrs->fieldOffset);
   exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, o_Pe, o_Ue);
 
   const auto verbosity = pointInterpolation_t::VerbosityLevel::Basic;
@@ -499,8 +503,8 @@ void ciTestPointInterpolation(nrs_t *nrs, dfloat time, occa::kernel exactUVWPKer
   interpFluid.setPoints(mesh->Nlocal, mesh->x, mesh->y, mesh->z);
   interpFluid.find(verbosity);
 
-  auto o_PintFluid = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
-  auto o_UintFluid = platform->device.malloc(nrs->NVfields * nrs->fieldOffset * sizeof(dfloat));
+  auto o_PintFluid = platform->device.malloc<dfloat>(nrs->fieldOffset);
+  auto o_UintFluid = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
 
   // Interpolation 2:
   // Interpolate onto a random number of a random set of points inside the unit ball
@@ -529,7 +533,7 @@ void ciTestPointInterpolation(nrs_t *nrs, dfloat time, occa::kernel exactUVWPKer
   // Allocate memory for output of second interpolation object
   std::array<occa::memory, nRandomInterp> o_UintRand;
   for (int n = 0; n < nRandomInterp; ++n) {
-    o_UintRand[n] = platform->device.malloc(nrs->NVfields * pointsX[n].size() * sizeof(dfloat));
+    o_UintRand[n] = platform->device.malloc<dfloat>(nrs->NVfields * pointsX[n].size());
     interpRand[n]->eval(nrs->NVfields, nrs->fieldOffset, o_Ue, pointsX[n].size(), o_UintRand[n]);
   }
 
@@ -540,12 +544,12 @@ void ciTestPointInterpolation(nrs_t *nrs, dfloat time, occa::kernel exactUVWPKer
   std::array<occa::memory, nRandomInterp> o_yRand;
   std::array<occa::memory, nRandomInterp> o_zRand;
   for (int n = 0; n < nRandomInterp; ++n) {
-    o_UeRand[n] = platform->device.malloc(nrs->NVfields * pointsX[n].size() * sizeof(dfloat));
-    o_PeRand[n] = platform->device.malloc(pointsX[n].size() * sizeof(dfloat));
+    o_UeRand[n] = platform->device.malloc<dfloat>(nrs->NVfields * pointsX[n].size());
+    o_PeRand[n] = platform->device.malloc<dfloat>(pointsX[n].size());
 
-    o_xRand[n] = platform->device.malloc(pointsX[n].size() * sizeof(dfloat), pointsX[n].data());
-    o_yRand[n] = platform->device.malloc(pointsX[n].size() * sizeof(dfloat), pointsY[n].data());
-    o_zRand[n] = platform->device.malloc(pointsX[n].size() * sizeof(dfloat), pointsZ[n].data());
+    o_xRand[n] = platform->device.malloc<dfloat>(pointsX[n].size(), pointsX[n].data());
+    o_yRand[n] = platform->device.malloc<dfloat>(pointsX[n].size(), pointsY[n].data());
+    o_zRand[n] = platform->device.malloc<dfloat>(pointsX[n].size(), pointsZ[n].data());
 
     const dlong nPoints = pointsX[n].size();
     exactUVWPKernel(nPoints, time, o_xRand[n], o_yRand[n], o_zRand[n], nPoints, o_PeRand[n], o_UeRand[n]);
@@ -553,9 +557,11 @@ void ciTestPointInterpolation(nrs_t *nrs, dfloat time, occa::kernel exactUVWPKer
 
   auto computeErrors = [&](dlong n, dlong offset, occa::memory o_Uexact, occa::memory o_Uinterp) {
     platform->linAlg->axpbyMany(n, nrs->NVfields, offset, 1.0, o_Uexact, -1.0, o_Uinterp);
-    auto o_UerrX = o_Uinterp + 0 * offset * sizeof(dfloat);
-    auto o_UerrY = o_Uinterp + 1 * offset * sizeof(dfloat);
-    auto o_UerrZ = o_Uinterp + 2 * offset * sizeof(dfloat);
+    platform->linAlg->aydxMany(n, nrs->NVfields, offset, 1, 1.0, o_Uexact, o_Uinterp);
+
+    auto o_UerrX = o_Uinterp + 0 * offset;
+    auto o_UerrY = o_Uinterp + 1 * offset;
+    auto o_UerrZ = o_Uinterp + 2 * offset;
 
     platform->linAlg->abs(n, o_UerrX);
     platform->linAlg->abs(n, o_UerrY);
@@ -569,10 +575,11 @@ void ciTestPointInterpolation(nrs_t *nrs, dfloat time, occa::kernel exactUVWPKer
 
   auto [linfErrUx, linfErrUy, linfErrUz] = computeErrors(mesh->Nlocal, nrs->fieldOffset, o_Ue, o_UintFluid);
   if (platform->comm.mpiRank == 0) {
-    printf("Linf x/y/z point interp (fluid): %g/%g/%g\n", linfErrUx, linfErrUy, linfErrUz);
+    printf("relLinf x/y/z point interp (fluid): %g/%g/%g\n", linfErrUx, linfErrUy, linfErrUz);
   }
 
-  const auto threshold = 5e5 * std::numeric_limits<dfloat>::epsilon();
+  const auto threshold = (sizeof(dfloat) == sizeof(double))
+                         ? 5e-12 : 1e-5;
   for (auto &&err : {linfErrUx, linfErrUy, linfErrUz}) {
     if (err > threshold) {
       CIFAIL;
@@ -583,7 +590,7 @@ void ciTestPointInterpolation(nrs_t *nrs, dfloat time, occa::kernel exactUVWPKer
     auto [linfErrUxRand, linfErrUyRand, linfErrUzRand] =
         computeErrors(pointsX[n].size(), pointsX[n].size(), o_UeRand[n], o_UintRand[n]);
     if (platform->comm.mpiRank == 0) {
-      printf("Linf x/y/z point interp (rand %d): %g/%g/%g\n", n, linfErrUxRand, linfErrUyRand, linfErrUzRand);
+      printf("relLinf x/y/z point interp (rand %d): %g/%g/%g\n", n, linfErrUxRand, linfErrUyRand, linfErrUzRand);
     }
     for (auto &&err : {linfErrUxRand, linfErrUyRand, linfErrUzRand}) {
       if (err > threshold) {
@@ -620,14 +627,14 @@ void ciTestSurfaceIntegral(nrs_t *nrs)
   const auto testTol = 1e-2;
 
   constexpr int N = 5;
-  occa::memory o_fld = platform->device.malloc((N * sizeof(dfloat)) * nrs->fieldOffset);
+  occa::memory o_fld = platform->device.malloc<dfloat>(N * nrs->fieldOffset);
   platform->linAlg->fill(N * nrs->fieldOffset, 1.0, o_fld);
 
   auto bID = (int *)std::malloc(nbID * sizeof(int));
   bID[0] = 1;
-  occa::memory o_bID = platform->device.malloc(nbID * sizeof(int), bID);
+  occa::memory o_bID = platform->device.malloc<int>(nbID, bID);
 
-  std::vector<dfloat> results = mesh->surfaceIntegral(N, nrs->fieldOffset, nbID, o_bID, o_fld);
+  std::vector<dfloat> results = mesh->surfaceIntegralMany(N, nrs->fieldOffset, nbID, o_bID, o_fld);
 
   // surface area of unit sphere
   const auto SAref = 4. * M_PI;
@@ -732,7 +739,7 @@ void ciTestLinAlg(nrs_t *nrs, const int N)
   MPI_Comm comm = platform->comm.mpiComm;
   int rank = platform->comm.mpiRank;
   auto x = randomVector<dfloat>(N);
-  occa::memory o_x = platform->device.malloc(N * sizeof(dfloat), x.data());
+  occa::memory o_x = platform->device.malloc<dfloat>(N, x.data());
 
   const dfloat testTol = 50. * std::numeric_limits<dfloat>::epsilon();
   auto evaluateMethod = [&](auto linAlgMethod, auto referenceMethod, std::string id) {
@@ -765,8 +772,8 @@ void ciTestLinAlg(nrs_t *nrs, const int N)
   for (int Nfields = 1; Nfields <= maxFields; ++Nfields) {
     auto x = randomVector<dfloat>(Nfields * fieldOffset);
     auto wt = randomVector<dfloat>(N);
-    occa::memory o_x = platform->device.malloc(x.size() * sizeof(dfloat), x.data());
-    occa::memory o_wt = platform->device.malloc(wt.size() * sizeof(dfloat), wt.data());
+    occa::memory o_x = platform->device.malloc<dfloat>(x.size(), x.data());
+    occa::memory o_wt = platform->device.malloc<dfloat>(wt.size(), wt.data());
 
     const auto reference = weightedNorm2Many(x.data(), wt.data(), N, Nfields, fieldOffset, comm);
     const auto value = linAlg->weightedNorm2Many(N, Nfields, fieldOffset, o_wt, o_x, comm);
@@ -789,7 +796,7 @@ void ciTestLinAlg(nrs_t *nrs, const int N)
 }
 
 void ciTestErrors(nrs_t *nrs,
-                  dfloat time,
+                  double time,
                   int tstep,
                   lpm_t *particles,
                   occa::kernel exactUVWPKernel,
@@ -817,8 +824,10 @@ void ciTestErrors(nrs_t *nrs,
         printf("Expected %d P iteration in first step, but got %d!\n", expectedNiterP, NiterP);
       }
       CIFAIL;
+#if 0
       nrsFinalize(nrs);
       exit(platform->exitValue);
+#endif
     }
   }
 
@@ -1003,10 +1012,10 @@ void ciTestErrors(nrs_t *nrs,
     break;
   case 14:
     velIterErr = abs(NiterU - 10);
-    s1Err = abs((err[2] - 6.67E-012) / err[2]);
-    s2Err = abs((err[3] - 7.50E-012) / err[3]);
+    s1Err = abs((err[2] - 6.67E-12) / err[2]);
+    s2Err = abs((err[3] - 7.50E-12) / err[3]);
     pIterErr = abs(NiterP - 7);
-    vxErr = abs((err[0] - 2.78E-010) / err[0]);
+    vxErr = abs((err[0] - 2.78E-10) / err[0]);
     prErr = abs((err[1] - 7E-010) / err[1]);
     s01IterErr = abs(NiterS01 - 2);
     s02IterErr = abs(NiterS02 - 2);

@@ -14,7 +14,7 @@ dfloat postProcessing::viscousDrag(nrs_t *nrs, int nbID, const occa::memory& o_b
 
   if(o_drag.size() == 0) { 
     drag = (dfloat *) calloc(mesh->Nelements, sizeof(dfloat));
-    o_drag = platform->device.malloc(mesh->Nelements * sizeof(dfloat), drag);
+    o_drag = platform->device.malloc<dfloat>(mesh->Nelements, drag);
   } 
 
   auto dragKernel = platform->kernels.get("drag");

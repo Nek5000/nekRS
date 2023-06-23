@@ -79,7 +79,7 @@ namespace occa {
                                     const udim_t bytes) {
 
     //quick return if we're not really slicing
-    if ((offset_ == 0) && (bytes == size)) return this;
+    //if ((offset_ == 0) && (bytes == size)) return this;
 
     OCCA_ERROR("ModeMemory not initialized or has been freed",
                modeBuffer != NULL);

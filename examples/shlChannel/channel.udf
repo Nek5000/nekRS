@@ -15,7 +15,7 @@ static dfloat visc;
 
 #endif
 
-void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
+void userf(nrs_t *nrs, double time, occa::memory o_U, occa::memory o_FU)
 {
   mesh_t *mesh = nrs->meshV;
   const dfloat DP = 3.0 * visc;
@@ -49,7 +49,7 @@ void UDF_Setup(nrs_t *nrs)
   udf.uEqnSource = &userf;
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   if (nrs->isOutputStep) {
     nek::ocopyToNek(time, tstep);

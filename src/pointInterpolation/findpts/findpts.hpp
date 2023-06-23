@@ -50,7 +50,7 @@ struct data_t {
     dist2_base = dist2.data();
 
     for (dlong i = 0; i < npt; ++i) {
-      dist2_base[i] = std::numeric_limits<dfloat>::max();
+      dist2_base[i] = 1e30;
       code_base[i] = CODE_NOT_FOUND;
     }
   }
@@ -72,14 +72,14 @@ public:
             const dlong Nelements,
             const dlong m,
             const dfloat bbox_tol,
-            const hlong local_hash_size,
-            const hlong global_hash_size,
+            const dlong local_hash_size,
+            const dlong global_hash_size,
             const dlong npt_max,
             const dfloat newt_tol);
 
   ~findpts_t();
 
-  void find(data_t *findPtsData, occa::memory o_x, occa::memory o_y, occa::memory o_z, const dlong npt);
+  void find(data_t *findPtsData, const occa::memory& o_x, const occa::memory& o_y, const occa::memory& o_z, const dlong npt);
 
   void find(data_t *findPtsData,
             const dfloat *const x,
@@ -88,15 +88,15 @@ public:
             const dlong npt);
 
   // Device versions
-  void eval(const dlong npt, occa::memory o_in, data_t *findPtsData, occa::memory o_out);
+  void eval(const dlong npt, const occa::memory& o_in, data_t *findPtsData, occa::memory& o_out);
 
   void eval(const dlong npt,
             const dlong nFields,
             const dlong inputOffset,
             const dlong outputOffset,
-            occa::memory o_in,
+            const occa::memory& o_in,
             data_t *findPtsData,
-            occa::memory o_out);
+            occa::memory& o_out);
 
   // Host versions (copies to device when needed)
   void eval(const dlong npt, dfloat *in, data_t *findPtsData, dfloat *out);
@@ -122,7 +122,7 @@ public:
   // For use in, e.g., nek-nek
   // If altering code, proc, el, r, or dist2 after a find call,
   // update device arrays with this function
-  void update(data_t &data);
+  void o_update(data_t &data);
 
 private:
   static constexpr int maxFields = 30;
@@ -214,7 +214,7 @@ private:
                        const int nFields,
                        const int inputOffset,
                        const int outputOffset,
-                       occa::memory &o_in,
+                       const occa::memory &o_in,
                        hashData_t &hash,
                        crystal &cr);
 
@@ -225,7 +225,7 @@ private:
                                 const int nFields,
                                 const int inputOffset,
                                 const int outputOffset,
-                                occa::memory &o_in);
+                                const occa::memory &o_in);
 };
 
 } // namespace findpts

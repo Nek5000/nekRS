@@ -114,7 +114,7 @@ void ogsGatherStart(occa::memory o_gv,
 }
 
 
-void ogsGatherFinish(occa::memory o_gv, 
+void ogsGatherFinish(occa::memory o_gvIn, 
                      occa::memory o_v, 
                      const char *type, 
                      const char *op, 
@@ -128,6 +128,8 @@ void ogsGatherFinish(occa::memory o_gv,
     Nbytes = sizeof(int);
   else if (!strcmp(type, "long long int")) 
     Nbytes = sizeof(long long int);
+
+  auto o_gv = o_gvIn.cast(occa::dtype::byte);
 
   if(ogs->NlocalGather) {
     occaGather(ogs->NlocalGather, ogs->o_localGatherOffsets, ogs->o_localGatherIds, type, op, o_v, o_gv);

@@ -304,7 +304,7 @@ occa::memory device_t::malloc(size_t Nbytes, const void *src, const occa::proper
   return o_returnValue;
 }
 
-occa::memory device_t::malloc(size_t Nword, size_t wordSize, occa::memory src)
+occa::memory device_t::malloc(size_t Nword, size_t wordSize, const occa::memory& src)
 {
   return _device.malloc(Nword * wordSize, src);
 }

@@ -68,7 +68,7 @@ void meshVelocityDirichletConditions(bcData *bc)
                               const dlong offset,
                               const dfloat hmin,
                               const dfloat hmax,
-                              const dfloat time,
+                              const double time,
                               @ restrict const dfloat *h,
                               @ restrict dfloat *W)
 {
@@ -93,18 +93,18 @@ void meshVelocityDirichletConditions(bcData *bc)
 
 #endif
 
-void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
+void userq(nrs_t *nrs, double time, occa::memory o_S, occa::memory o_SU)
 {
   lowMach::dpdt(o_SU);
 }
 
-void qtl(nrs_t *nrs, dfloat time, occa::memory o_div)
+void qtl(nrs_t *nrs, double time, occa::memory o_div)
 {
   lowMach::qThermalSingleComponent(time, o_div);
 }
 
 void uservp(nrs_t *nrs,
-            dfloat time,
+            double time,
             occa::memory o_U,
             occa::memory o_S,
             occa::memory o_UProp,
@@ -125,7 +125,7 @@ void uservp(nrs_t *nrs,
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
     // moving mesh parameters
     const dfloat nu = 1.0;
-    auto o_mesh_diff = o_UProp + 2 * nrs->fieldOffset * sizeof(dfloat);
+    auto o_mesh_diff = o_UProp + 2 * nrs->fieldOffset;
     platform->linAlg->fill(nrs->meshV->Nlocal, nu, o_mesh_diff);
   }
 }
@@ -176,8 +176,8 @@ void UDF_Setup(nrs_t *nrs)
   udf.properties = &uservp;
   udf.sEqnSource = &userq;
 
-  o_beta = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
-  o_kappa = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  o_beta = platform->device.malloc<dfloat>(nrs->fieldOffset);
+  o_kappa = platform->device.malloc<dfloat>(nrs->fieldOffset);
 
   // alphaRef := p0thRef/(rhoRef * cpRef * TRef)
   // translates to (gammaRef - 1)/gammaRef in case of an ideal gas
@@ -187,7 +187,7 @@ void UDF_Setup(nrs_t *nrs)
   udf.div = &qtl;
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
@@ -195,21 +195,22 @@ void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
   if (platform->options.compareArgs("MESH SOLVER", "NONE")) {
 
     // rotate back into reference frame
+    auto o_height = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);    
     platform->linAlg->axpbyz(mesh->Nlocal,
                              -1.0 * std::sin(P_ROT),
                              mesh->o_x,
                              std::cos(P_ROT),
                              mesh->o_y,
-                             platform->o_mempool.slice0);
+                             o_height);
 
-    const dfloat hmin = linAlg->min(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
-    const dfloat hmax = linAlg->max(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
+    const dfloat hmin = linAlg->min(mesh->Nlocal, o_height, platform->comm.mpiComm);
+    const dfloat hmax = linAlg->max(mesh->Nlocal, o_height, platform->comm.mpiComm);
     userMeshVelocity(mesh->Nelements,
                      nrs->fieldOffset,
                      hmin,
                      hmax,
                      time,
-                     platform->o_mempool.slice0,
+                     o_height,
                      mesh->o_U);
   }
 

@@ -15,7 +15,7 @@ void UDF_Setup(nrs_t *nrs)
   tavg::setup(nrs);
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   tavg::run(time);
 

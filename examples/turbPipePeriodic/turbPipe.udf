@@ -15,7 +15,7 @@ static dfloat dt0;
 
 #endif
 
-void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
+void userf(nrs_t *nrs, double time, occa::memory o_U, occa::memory o_FU)
 {
   mesh_t *mesh = nrs->meshV;
   dfloat mue, rho;
@@ -24,7 +24,7 @@ void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
   const dfloat RE_B = rho / mue;
   const dfloat DPDZ = 4 * (2 * Re_tau / RE_B) * (2 * Re_tau / RE_B);
 
-  occa::memory o_FUz = o_FU + 2 * nrs->fieldOffset * sizeof(dfloat);
+  occa::memory o_FUz = o_FU + 2 * nrs->fieldOffset;
   platform->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
 }
 
@@ -54,7 +54,7 @@ void UDF_Setup(nrs_t *nrs)
   }
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   if (tstep < 5) {
     nrs->dt[0] = 0.25 * dt0;

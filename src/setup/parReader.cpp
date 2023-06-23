@@ -645,8 +645,8 @@ void parseSolverTolerance(const int rank, setupAide &options, inipp::Ini *par, s
     std::vector<std::string> entries = serializeString(residualTol, '+');
     for (std::string entry : entries) {
       double tolerance = std::strtod(entry.c_str(), nullptr);
-      if (tolerance > 0.0) {
-        options.setArgs(parSectionName + "SOLVER TOLERANCE", to_string_f(tolerance));
+      if (tolerance > 0) {
+        options.setArgs(parSectionName + "SOLVER TOLERANCE", entry);
       }
       else {
         checkValidity(rank, validValues, entry);

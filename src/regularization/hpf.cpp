@@ -140,15 +140,24 @@ occa::memory hpfSetup(mesh_t *mesh, const dlong filterNc)
   int LDB = Nmodes;
 
   double *C = (double *)calloc(Nmodes * Nmodes, sizeof(double));
+
   int LDC = Nmodes;
-  dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, A, &LDA, iV, &LDB, &BETA, C, &LDC);
+  auto _A = (double *)calloc(Nmodes * Nmodes, sizeof(double));
+  for(int i = 0; i < Nmodes * Nmodes; i++) _A[i] = A[i];
+
+  dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, _A, &LDA, iV, &LDB, &BETA, C, &LDC);
 
   TRANSA = 'T';
   TRANSB = 'N';
-  dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, V, &LDA, C, &LDB, &BETA, A, &LDC);
+  auto _V = (double *)calloc(Nmodes * Nmodes, sizeof(double));
+  for(int i = 0; i < Nmodes * Nmodes; i++) _V[i] = V[i];
 
-  auto o_A = platform->device.malloc(Nmodes * Nmodes * sizeof(dfloat));
-  o_A.copyFrom(A, o_A.size());
+  dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, _V, &LDA, C, &LDB, &BETA, _A, &LDC);
+  free(_A);
+  free(_V);
+
+  auto o_A = platform->device.malloc<dfloat>(Nmodes * Nmodes);
+  o_A.copyFrom(A, o_A.length());
 
   free(A);
   free(C);

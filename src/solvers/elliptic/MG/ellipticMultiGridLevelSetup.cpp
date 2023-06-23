@@ -124,7 +124,7 @@ void pMGLevel::setupSmoother(elliptic_t* ellipticBase)
     nrsCheck(!useJacobi, platform->comm.mpiComm, EXIT_FAILURE,
              "%s\n", "Invalid pMGLevel smoother!");
     smootherType = SmootherType::JACOBI;
-    o_invDiagA = platform->device.malloc(mesh->Nlocal * sizeof(pfloat));
+    o_invDiagA = platform->device.malloc<pfloat>(mesh->Nlocal);
     ellipticUpdateJacobi(elliptic, o_invDiagA); // required to compute eigenvalues 
   }
 
@@ -251,7 +251,7 @@ void pMGLevel::buildCoarsenerQuadHex(mesh_t** meshLevels, int Nf, int Nc)
     }
   }
 
-  o_R = platform->device.malloc(Nfq * Ncq * sizeof(pfloat), R);
+  o_R = platform->device.malloc<pfloat>(Nfq * Ncq, R);
 
   free(R);
   free(cToFInterp);
@@ -266,9 +266,9 @@ static void eigenValue(const int Nrows, double* A, double* WR, double* WI)
   int LDA = Nrows;
   int LWORK  = (NB + 2) * N;
 
-  double* WORK  = new double[LWORK];
-  double* VL  = new double[Nrows * Nrows];
-  double* VR  = new double[Nrows * Nrows];
+  auto WORK = new double[LWORK];
+  auto VL = new double[Nrows * Nrows];
+  auto VR = new double[Nrows * Nrows];
 
   auto invalid = 0;
   for(int i = 0; i < Nrows * Nrows; i++) {
@@ -301,56 +301,35 @@ dfloat pMGLevel::maxEigSmoothAx()
   hlong Nglobal = 0;
   MPI_Allreduce(&Nlocal, &Nglobal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
-  occa::memory o_invDegree = platform->device.malloc(Nlocal*sizeof(dfloat), elliptic->ogs->invDegree);
+  occa::memory o_invDegree = platform->device.malloc<dfloat>(Nlocal, elliptic->ogs->invDegree);
   const auto k = (unsigned int) std::min(pMGLevel::Narnoldi, Nglobal);
 
   std::vector<double> H(k*k, 0.0);
-  std::vector<occa::memory> o_V(k+1);
   auto Vx = randomVector<dfloat>(M);
 
-  size_t offset = 0;
-  const size_t vectorSize = ((M * sizeof(dfloat))/ALIGN_SIZE + 1) * ALIGN_SIZE ;
-
+  std::vector<occa::memory> o_V(k+1);
   for(int i = 0; i <= k; i++) {
-    if(offset + vectorSize < platform->o_mempool.o_ptr.size()) {
-      o_V[i] = platform->o_mempool.o_ptr.slice(offset, vectorSize);
-      offset += vectorSize;
-    } else {
-      o_V[i]  = platform->device.malloc(vectorSize);
-    }
+    o_V[i] = platform->device.malloc<dfloat>(M);
   }
 
-  occa::memory o_Vx;
-  if(offset + vectorSize < platform->o_mempool.o_ptr.size()) {
-    o_Vx = platform->o_mempool.o_ptr.slice(offset, vectorSize);
-    offset += vectorSize;
-  } else {
-    o_Vx  = platform->device.malloc(vectorSize);
-  }
+  occa::memory o_Vx = platform->device.malloc<dfloat>(M); 
+  occa::memory o_VxPfloat = platform->device.malloc<pfloat>(M); 
 
-  occa::memory o_AVx;
-  if(offset + vectorSize < platform->o_mempool.o_ptr.size()) {
-    o_AVx = platform->o_mempool.o_ptr.slice(offset, vectorSize);
-    offset += vectorSize;
-  } else {
-    o_AVx  = platform->device.malloc(vectorSize);
-  }
-
-  occa::memory o_AVxPfloat = platform->device.malloc(M, sizeof(pfloat));
-  occa::memory o_VxPfloat = platform->device.malloc(M, sizeof(pfloat));
+  occa::memory o_AVx = platform->device.malloc<dfloat>(M);
+  occa::memory o_AVxPfloat = platform->device.malloc<pfloat>(M); 
 
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
     ogsGatherScatter(Vx.data(), ogsDfloat, ogsAdd, mesh->ogs);
 
     if(elliptic->Nmasked > 0){
       dlong* maskIds = (dlong*) calloc(elliptic->Nmasked, sizeof(dlong));
-      elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked * sizeof(dlong));
+      elliptic->o_maskIds.copyTo(maskIds, elliptic->Nmasked);
       for (dlong i = 0; i < elliptic->Nmasked; i++) Vx[maskIds[i]] = 0.;
       free(maskIds);
     }
   }
 
-  o_Vx.copyFrom(Vx.data(), M*sizeof(dfloat));
+  o_Vx.copyFrom(Vx.data(), M);
   platform->linAlg->fill(Nlocal, 0.0, o_V[0]);
 
   dfloat norm_vo = platform->linAlg->weightedInnerProdMany(
@@ -378,6 +357,7 @@ dfloat pMGLevel::maxEigSmoothAx()
     // v[j+1] = invD*(A*v[j])
     platform->copyDfloatToPfloatKernel(M, o_V[j], o_VxPfloat);
     ellipticOperator(elliptic, o_VxPfloat, o_AVxPfloat, pfloatString);
+
     this->smoother(o_AVxPfloat, o_VxPfloat, true);
     platform->copyPfloatToDfloatKernel(M, o_VxPfloat, o_V[j + 1]);
 
@@ -407,6 +387,7 @@ dfloat pMGLevel::maxEigSmoothAx()
 
       H[i + j * k] = (double) hij;
     }
+
 
     if(j + 1 < k) {
       // v[j+1] = v[j+1]/||v[j+1]||

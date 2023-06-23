@@ -39,11 +39,24 @@ if (t < bs) {                                                                   
 
                   const dlong idM = vmapM[sid];
                   const dfloat sWJ = sgeo[sid * p_Nsgeo + p_WSJID];
+#if p_vector
+                  const dfloat nx = sgeo[sid * p_Nsgeo + p_NXID];
+                  const dfloat ny = sgeo[sid * p_Nsgeo + p_NYID];
+                  const dfloat nz = sgeo[sid * p_Nsgeo + p_NZID];
+#endif
 
 #pragma unroll p_fieldBlockSize
                   for (int fld = 0; fld < p_fieldBlockSize; fld++) {
-                    if (fldStart + fld < Nfields)   
-                      s_sum[fld][t] += U[idM + (fldStart + fld) * fieldOffset] * sWJ;
+                    if (fldStart + fld < Nfields) { 
+#if p_vector
+                      const dfloat _U = U[idM + 0 * fieldOffset] * nx + 
+                                        U[idM + 1 * fieldOffset] * ny +
+                                        U[idM + 2 * fieldOffset] * nz;
+#else
+                      const dfloat _U = U[idM + (fldStart + fld) * fieldOffset];
+#endif
+                      s_sum[fld][t] += _U * sWJ;
+                    }
                   }
                 }
               }

@@ -14,18 +14,6 @@
 
 #include <inttypes.h>
 
-namespace {
-
-int computeFieldOffset(int n)
-{
-  auto offset = n;
-  const int pageW = ALIGN_SIZE / sizeof(dfloat);
-  if (offset % pageW)
-    offset = (offset / pageW + 1) * pageW;
-  return offset;
-}
-} // namespace
-
 lpm_t::lpm_t(nrs_t *nrs_, dfloat bb_tol_, dfloat newton_tol_)
     : nrs(nrs_), solverOrder(nrs->nEXT), bb_tol(bb_tol_), newton_tol(newton_tol_),
       interp(std::make_unique<pointInterpolation_t>(nrs, bb_tol, newton_tol))
@@ -47,14 +35,14 @@ lpm_t::lpm_t(nrs_t *nrs_, dfloat bb_tol_, dfloat newton_tol_)
 
   dtEXT.resize(nEXT + 1);
   coeffEXT.resize(nEXT);
-  o_coeffEXT = platform->device.malloc(nEXT * sizeof(dfloat));
+  o_coeffEXT = platform->device.malloc<dfloat>(nEXT);
 
   coeffRK.resize(std::max(solverOrder, bootstrapRKOrder));
-  o_coeffRK = platform->device.malloc(coeffRK.size() * sizeof(dfloat));
+  o_coeffRK = platform->device.malloc<dfloat>(coeffRK.size());
 
   coeffAB.resize(solverOrder);
   dt.resize(solverOrder + 1);
-  o_coeffAB = platform->device.malloc(solverOrder * sizeof(dfloat));
+  o_coeffAB = platform->device.malloc<dfloat>(solverOrder);
 
   // coordinates are registered by default
   registerDOF("x");
@@ -70,10 +58,10 @@ lpm_t::lpm_t(nrs_t *nrs_, dfloat bb_tol_, dfloat newton_tol_)
 
 void lpm_t::abOrder(int order)
 {
-  nrsCheck(order <= 0,
+  nrsCheck(order <= 0 && order <= 3,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "Integration order (%d) must be positive!\n",
+           "Invalid integration order (%d)!\n",
            order);
   nrsCheck(initialized_, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "lpm_t already initialized!");
   solverOrder = order;
@@ -85,7 +73,7 @@ void lpm_t::abOrder(int order)
     o_coeffAB.free();
   }
 
-  o_coeffAB = platform->device.malloc(solverOrder * sizeof(dfloat));
+  o_coeffAB = platform->device.malloc<dfloat>(solverOrder);
 }
 
 void lpm_t::rkOrder(int order)
@@ -117,11 +105,12 @@ void lpm_t::rkOrder(int order)
     o_coeffRK.free();
   }
 
-  o_coeffRK = platform->device.malloc(solverOrder * sizeof(dfloat));
+  o_coeffRK = platform->device.malloc<dfloat>(solverOrder);
 }
 
-lpm_t::SolverType lpm_t::stringToSolverType(std::string solverType)
+lpm_t::SolverType lpm_t::stringToSolverType(const std::string& _solverType)
 {
+  std::string solverType = _solverType;
   lowerCase(solverType);
   if (solverType == "ab")
     return SolverType::AB;
@@ -132,8 +121,9 @@ lpm_t::SolverType lpm_t::stringToSolverType(std::string solverType)
   return SolverType::INVALID;
 }
 
-void lpm_t::setSolver(std::string solver)
+void lpm_t::setSolver(const std::string& _solver)
 {
+  std::string solver = _solver;
   lowerCase(solver);
   this->solverType = stringToSolverType(solver);
   nrsCheck(this->solverType == SolverType::INVALID,
@@ -143,12 +133,13 @@ void lpm_t::setSolver(std::string solver)
            solver.c_str());
 }
 
-void lpm_t::registerDOF(std::string dofName, bool output) { registerDOF(1, dofName, output); }
+void lpm_t::registerDOF(const std::string& dofName, bool output) { registerDOF(1, dofName, output); }
 
-void lpm_t::registerDOF(dlong Nfields, std::string dofName, bool output)
+void lpm_t::registerDOF(dlong Nfields, const std::string& _dofName, bool output)
 {
+  std::string dofName = _dofName;
   nrsCheck(this->initialized(),
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "cannot register DOF %s after calling initialize!\n",
            dofName.c_str());
@@ -156,6 +147,7 @@ void lpm_t::registerDOF(dlong Nfields, std::string dofName, bool output)
   lowerCase(dofName);
   const auto nDOFs = dofIds.size();
   if (dofIds.count(dofName) == 0) {
+    dofNames.push_back(dofName);
     dofIds[dofName] = nDOFs;
     outputDofs[dofName] = output;
     dofCounts[dofName] = Nfields;
@@ -164,35 +156,38 @@ void lpm_t::registerDOF(dlong Nfields, std::string dofName, bool output)
   }
 }
 
-int lpm_t::dofId(std::string dofName) const
+int lpm_t::dofId(const std::string& _dofName) const
 {
+  std::string dofName = _dofName;
   lowerCase(dofName);
   nrsCheck(dofIds.count(dofName) == 0,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "DOF %s not registered!\n",
            dofName.c_str());
   return dofIds.at(dofName);
 }
 
-int lpm_t::numDOFs(std::string dofName) const
+int lpm_t::numDOFs(const std::string& _dofName) const
 {
+  std::string dofName = _dofName;
   lowerCase(dofName);
   nrsCheck(dofIds.count(dofName) == 0,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "DOF %s not registered!\n",
            dofName.c_str());
   return dofCounts.at(dofName);
 }
 
-void lpm_t::registerProp(std::string propName, bool output) { registerProp(1, propName, output); }
+void lpm_t::registerProp(const std::string& propName, bool output) { registerProp(1, propName, output); }
 
-void lpm_t::registerProp(dlong Nfields, std::string propName, bool output)
+void lpm_t::registerProp(dlong Nfields, const std::string& _propName, bool output)
 {
+  std::string propName = _propName;
   lowerCase(propName);
   nrsCheck(this->initialized(),
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "cannot register prop %s after calling initialize!\n",
            propName.c_str());
@@ -206,33 +201,36 @@ void lpm_t::registerProp(dlong Nfields, std::string propName, bool output)
   }
 }
 
-int lpm_t::propId(std::string propName) const
+int lpm_t::propId(const std::string& _propName) const
 {
+  std::string propName = _propName;
   lowerCase(propName);
   nrsCheck(propIds.count(propName) == 0,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "prop %s not registered!\n",
            propName.c_str());
   return propIds.at(propName);
 }
 
-int lpm_t::numProps(std::string propName) const
+int lpm_t::numProps(const std::string& _propName) const
 {
+  std::string propName = _propName;
   lowerCase(propName);
   nrsCheck(propIds.count(propName) == 0,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "prop %s not registered!\n",
            propName.c_str());
   return propCounts.at(propName);
 }
 
-void lpm_t::registerInterpField(std::string interpFieldName, int Nfields, occa::memory o_fld, bool output)
+void lpm_t::registerInterpField(const std::string& _interpFieldName, int Nfields, const occa::memory& o_fld, bool output)
 {
+  std::string interpFieldName = _interpFieldName;
   lowerCase(interpFieldName);
   nrsCheck(this->initialized(),
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "cannot register interpField %s after calling initialize!\n",
            interpFieldName.c_str());
@@ -248,27 +246,29 @@ void lpm_t::registerInterpField(std::string interpFieldName, int Nfields, occa::
   }
 }
 
-void lpm_t::registerInterpField(std::string interpFieldName, occa::memory o_fld, bool output)
+void lpm_t::registerInterpField(const std::string& interpFieldName, const occa::memory& o_fld, bool output)
 {
   registerInterpField(interpFieldName, 1, o_fld, output);
 }
 
-int lpm_t::interpFieldId(std::string interpFieldName) const
+int lpm_t::interpFieldId(const std::string& _interpFieldName) const
 {
+  std::string interpFieldName = _interpFieldName;
   lowerCase(interpFieldName);
   nrsCheck(interpFieldIds.count(interpFieldName) == 0,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "interpField %s not registered!\n",
            interpFieldName.c_str());
   return interpFieldIds.at(interpFieldName);
 }
 
-int lpm_t::numFieldsInterp(std::string interpFieldName) const
+int lpm_t::numFieldsInterp(const std::string& _interpFieldName) const
 {
+  std::string interpFieldName = _interpFieldName;
   lowerCase(interpFieldName);
   nrsCheck(interpFieldIds.count(interpFieldName) == 0,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "interpField %s not registered!\n",
            interpFieldName.c_str());
@@ -279,85 +279,84 @@ void lpm_t::setUserRHS(lpm_t::rhsFunc_t userRHS) { userRHS_ = userRHS; }
 
 void lpm_t::addUserData(void *userdata) { userdata_ = userdata; }
 
-occa::memory lpm_t::getDOF(int dofId)
-{
-  if (fieldOffset_ == 0)
-    return o_y;
-  return o_y + dofId * fieldOffset_ * sizeof(dfloat);
-}
-occa::memory lpm_t::getDOF(std::string dofName) { return getDOF(dofId(dofName)); }
+const occa::memory lpm_t::getDOF(const std::string& dofName) 
+{ 
+  const auto id = dofId(dofName);
+  auto Nfields = numDOFs(dofName);
 
-std::vector<dfloat> lpm_t::getDOFHost(std::string dofName)
+  return o_y.slice(id * fieldOffset_, Nfields * fieldOffset_);
+}
+
+const std::vector<dfloat> lpm_t::getDOFHost(const std::string& dofName)
 {
   auto o_dof = getDOF(dofName);
   auto Nfields = numDOFs(dofName);
 
   std::vector<dfloat> h_dof(Nfields * fieldOffset_);
-  if (fieldOffset_ == 0)
-    return h_dof;
-  o_dof.copyTo(h_dof.data(), Nfields * fieldOffset_ * sizeof(dfloat));
+  o_dof.copyTo(h_dof.data(), Nfields * fieldOffset_);
   return h_dof;
 }
 
-occa::memory lpm_t::getProp(int propId)
-{
-  if (fieldOffset_ == 0)
-    return o_prop;
-  return o_prop + propId * fieldOffset_ * sizeof(dfloat);
+const occa::memory lpm_t::getProp(const std::string& propName) 
+{ 
+ const auto id = propId(propName);
+ auto Nfields = numProps(propName);
+ return o_prop.slice(id * fieldOffset_, Nfields * fieldOffset_);
 }
-occa::memory lpm_t::getProp(std::string propName) { return getProp(propId(propName)); }
 
-std::vector<dfloat> lpm_t::getPropHost(std::string propName)
+const std::vector<dfloat> lpm_t::getPropHost(const std::string& propName)
 {
   auto o_propEntry = getProp(propName);
   auto Nfields = numProps(propName);
 
   std::vector<dfloat> h_prop(Nfields * fieldOffset_);
-  if (fieldOffset_ == 0)
-    return h_prop;
-  o_propEntry.copyTo(h_prop.data(), Nfields * fieldOffset_ * sizeof(dfloat));
+  o_propEntry.copyTo(h_prop.data(), Nfields * fieldOffset_);
   return h_prop;
 }
 
-occa::memory lpm_t::getInterpField(int interpFieldId)
+void lpm_t::setProp(const std::string& propName, const occa::memory& o_fld, dlong fldOffset)
 {
-  if (fieldOffset_ == 0)
-    return o_interpFld;
-  return o_interpFld + interpFieldId * fieldOffset_ * sizeof(dfloat);
-}
-occa::memory lpm_t::getInterpField(std::string interpFieldName)
-{
-  return getInterpField(interpFieldId(interpFieldName));
+  auto o_propEntry = getProp(propName);
+  auto Nfields = numProps(propName);
+  const auto offset = (fldOffset > 0) ? fldOffset :  numParticles();
+
+  if (o_fld.size())
+    o_propEntry.copyFrom(o_fld, Nfields * offset);  
 }
 
-std::vector<dfloat> lpm_t::getInterpFieldHost(std::string interpFieldName)
+const occa::memory lpm_t::getInterpField(const std::string& interpFieldName)
+{
+  const auto id = interpFieldId(interpFieldName);
+  auto Nfields = numFieldsInterp(interpFieldName);
+  return o_interpFld.slice(id * fieldOffset_, Nfields * fieldOffset_);
+}
+
+const std::vector<dfloat> lpm_t::getInterpFieldHost(const std::string& interpFieldName)
 {
   auto o_interpFldEntry = getInterpField(interpFieldName);
   auto Nfields = numFieldsInterp(interpFieldName);
 
   std::vector<dfloat> h_interpField(Nfields * fieldOffset_);
-  if (fieldOffset_ == 0)
-    return h_interpField;
-  o_interpFldEntry.copyTo(h_interpField.data(), Nfields * fieldOffset_ * sizeof(dfloat));
+  o_interpFldEntry.copyTo(h_interpField.data(), Nfields * fieldOffset_);
   return h_interpField;
 }
 
-void lpm_t::handleAllocation(int offset)
+void lpm_t::handleAllocation(size_t offset)
 {
-  o_y = platform->device.malloc(offset * nDOFs_ * sizeof(dfloat));
-  o_ytmp = platform->device.malloc(offset * nDOFs_ * sizeof(dfloat));
-  o_ydot = platform->device.malloc(solverOrder * offset * nDOFs_ * sizeof(dfloat));
-  o_k = platform->device.malloc(std::max(solverOrder, bootstrapRKOrder) * offset * nDOFs_ * sizeof(dfloat));
+  o_y = platform->device.malloc<dfloat>(nDOFs_ * offset);
+  o_ytmp = platform->device.malloc<dfloat>(nDOFs_ * offset);
+  o_ydot = platform->device.malloc<dfloat>((solverOrder * nDOFs_) * offset);
+  o_k = platform->device.malloc<dfloat>((std::max(solverOrder, bootstrapRKOrder) * nDOFs_) * offset);
 
   if (nProps_) {
-    o_prop = platform->device.malloc(offset * nProps_ * sizeof(dfloat));
+    o_prop = platform->device.malloc<dfloat>(nProps_ * offset);
   }
   if (nInterpFields_) {
-    o_interpFld = platform->device.malloc(offset * nInterpFields_ * sizeof(dfloat));
+    o_interpFld = platform->device.malloc<dfloat>(nInterpFields_ * offset);
   }
 }
 
-void lpm_t::initialize(int nParticles, dfloat t0, std::vector<dfloat> &y0)
+void lpm_t::initialize(int nParticles, double t0, const std::vector<dfloat> &y0)
 {
   nrsCheck(initialized_, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "lpm_t already initialized!");
   nrsCheck(y0.size() != nParticles * nDOFs_,
@@ -367,40 +366,41 @@ void lpm_t::initialize(int nParticles, dfloat t0, std::vector<dfloat> &y0)
            y0.size(),
            nParticles * nDOFs_);
 
-  auto o_y0 = platform->device.malloc(y0.size() * sizeof(dfloat), y0.data());
+  auto o_y0 = platform->device.malloc<dfloat>(y0.size(), y0.data());
   this->initialize(nParticles, t0, o_y0);
 }
 
-void lpm_t::initialize(int nParticles, dfloat t0, occa::memory o_y0)
+void lpm_t::initialize(int nParticles, double t0, const occa::memory& o_y0)
 {
   nrsCheck(initialized_, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "lpm_t already initialized!");
-  nrsCheck(o_y0.size() != nParticles * nDOFs_ * sizeof(dfloat),
+  nrsCheck(o_y0.length() != nParticles * nDOFs_,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "o_y0.size() = %" PRId64 ", while expecting %ld bytes!\n",
-           o_y0.size(),
-           nParticles * nDOFs_ * sizeof(dfloat));
+           "o_y0.length() = %ld , while expecting %ld words!\n",
+           o_y0.length(),
+           nParticles * nDOFs_);
 
   time = t0;
 
   nParticles_ = nParticles;
-  fieldOffset_ = computeFieldOffset(nParticles);
+  fieldOffset_ = alignStride<dfloat>(nParticles);
 
   handleAllocation(fieldOffset_);
 
   for (auto [fieldName, nFields] : interpFieldCounts) {
     laggedInterpFields[fieldName] =
-        platform->device.malloc(nEXT * nFields * nrs->fieldOffset * sizeof(dfloat));
+        platform->device.malloc<dfloat>(nEXT * nFields * nrs->fieldOffset);
     extrapolatedInterpFields[fieldName] =
-        platform->device.malloc(nFields * nrs->fieldOffset * sizeof(dfloat));
+        platform->device.malloc<dfloat>(nFields * nrs->fieldOffset);
   }
 
   // set initial condition based on user-input
   if (nParticles_ > 0) {
-    for (int dofId = 0; dofId < this->nDOFs(); ++dofId) {
-      auto o_y_dof = getDOF(dofId);
-      auto o_y0_dof = o_y0 + dofId * nParticles_ * sizeof(dfloat);
-      o_y_dof.copyFrom(o_y0_dof, nParticles_ * sizeof(dfloat));
+    for (auto& dof : dofNames) {
+      const auto id = dofId(dof);
+      auto o_y_dof = getDOF(dof);
+      auto o_y0_dof = o_y0 + id * nParticles_;
+      o_y_dof.copyFrom(o_y0_dof, nParticles_);
     }
   }
 
@@ -418,7 +418,7 @@ void lpm_t::abCoeff(dfloat *dt, int tstep)
     coeffAB[i] *= dt[0];
   for (int i = order; i > order; i--)
     coeffAB[i - 1] = 0.0;
-  o_coeffAB.copyFrom(coeffAB.data(), solverOrder * sizeof(dfloat));
+  o_coeffAB.copyFrom(coeffAB.data(), solverOrder);
 }
 
 void lpm_t::interpolate()
@@ -428,7 +428,7 @@ void lpm_t::interpolate()
   }
 }
 
-void lpm_t::interpolate(std::string interpFieldName)
+void lpm_t::interpolate(const std::string& interpFieldName)
 {
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic(timerName + "integrate::userRHS::interpolate", 1);
@@ -444,7 +444,7 @@ void lpm_t::interpolate(std::string interpFieldName)
   }
 }
 
-void lpm_t::integrate(dfloat tf)
+void lpm_t::integrate(double tf)
 {
   nrsCheck(!initialized_,
            platform->comm.mpiComm,
@@ -468,7 +468,7 @@ void lpm_t::integrate(dfloat tf)
     for (auto [fieldName, o_field] : laggedInterpFields) {
       const auto Nfields = numFieldsInterp(fieldName);
       auto o_currentField = interpFieldInputs.at(fieldName);
-      o_field.copyFrom(o_currentField, Nfields * nrs->fieldOffset * sizeof(dfloat));
+      o_field.copyFrom(o_currentField, Nfields * nrs->fieldOffset);
     }
 
     if (timerLevel != TimerLevel::None) {
@@ -490,9 +490,8 @@ void lpm_t::integrate(dfloat tf)
   // set extrapolated state to t^n (copy from laggedInterpFields)
   for (auto [fieldName, o_field] : laggedInterpFields) {
     const auto Nfields = numFieldsInterp(fieldName);
-    const auto Nbyte = (Nfields * sizeof(dfloat)) * nrs->fieldOffset;
     auto o_extField = extrapolatedInterpFields.at(fieldName);
-    o_extField.copyFrom(o_field, Nfields * nrs->fieldOffset * sizeof(dfloat));
+    o_extField.copyFrom(o_field, Nfields * nrs->fieldOffset);
   }
 
   // set EXT dt's
@@ -526,15 +525,15 @@ void lpm_t::integrate(dfloat tf)
   // lag previous time states in laggedInterpFields
   for (auto [fieldName, o_field] : laggedInterpFields) {
     const auto Nfields = numFieldsInterp(fieldName);
-    const auto Nbyte = (Nfields * sizeof(dfloat)) * nrs->fieldOffset;
+    const auto N = Nfields * nrs->fieldOffset;
     for (int s = nEXT; s > 1; s--) {
-      o_field.copyFrom(o_field, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+      o_field.copyFrom(o_field, N, (s - 1) * N, (s - 2) * N);
     }
 
     auto o_currentField = interpFieldInputs.at(fieldName);
 
     // update most recent time state
-    o_field.copyFrom(o_currentField, Nfields * nrs->fieldOffset * sizeof(dfloat));
+    o_field.copyFrom(o_currentField, N);
   }
 
   // always provide (t^n,y^n) for next step
@@ -546,13 +545,13 @@ void lpm_t::integrate(dfloat tf)
 }
 
 // setup new particle coordinates
-void lpm_t::find(occa::memory o_yNew)
+void lpm_t::find(const occa::memory& o_yNew)
 {
   occa::memory o_xCoord, o_yCoord, o_zCoord;
   if (fieldOffset_) {
-    o_xCoord = o_yNew + 0 * fieldOffset_ * sizeof(dfloat);
-    o_yCoord = o_yNew + 1 * fieldOffset_ * sizeof(dfloat);
-    o_zCoord = o_yNew + 2 * fieldOffset_ * sizeof(dfloat);
+    o_xCoord = o_yNew + 0 * fieldOffset_;
+    o_yCoord = o_yNew + 1 * fieldOffset_;
+    o_zCoord = o_yNew + 2 * fieldOffset_;
   }
   interp->setPoints(numParticles(), o_xCoord, o_yCoord, o_zCoord);
   platform->timer.tic(timerName + "integrate::find", 1);
@@ -576,7 +575,7 @@ void lpm_t::extrapolateFluidState(dfloat tEXT)
   for (int i = nEXT; i > extOrder; i--) {
     coeffEXT[i - 1] = 0.0;
   }
-  o_coeffEXT.copyFrom(coeffEXT.data(), nEXT * sizeof(dfloat));
+  o_coeffEXT.copyFrom(coeffEXT.data(), nEXT);
 
   for (auto [fieldName, o_field] : laggedInterpFields) {
     const auto Nfields = numFieldsInterp(fieldName);
@@ -592,8 +591,8 @@ void lpm_t::integrateAB()
   // lag derivatives
   if (nParticles_ > 0) {
     for (int s = solverOrder; s > 1; s--) {
-      const auto Nbyte = (nDOFs_ * sizeof(dfloat)) * fieldOffset_;
-      o_ydot.copyFrom(o_ydot, Nbyte, (s - 1) * Nbyte, (s - 2) * Nbyte);
+      const auto N = nDOFs_ * fieldOffset_;
+      o_ydot.copyFrom(o_ydot, N, (s - 1) * N, (s - 2) * N);
     }
   }
 
@@ -604,7 +603,7 @@ void lpm_t::integrateAB()
     integrateRK4();
     this->solverOrder = saveSolverOrder;
     if (fieldOffset_ > 0) {
-      o_ydot.copyFrom(o_k, nDOFs_ * fieldOffset_ * sizeof(dfloat)); // for later lagging
+      o_ydot.copyFrom(o_k, nDOFs_ * fieldOffset_); // for later lagging
     }
   }
   else {
@@ -664,8 +663,8 @@ void lpm_t::integrateRK2()
 {
   occa::memory o_k1, o_k2;
   if(fieldOffset_ > 0){
-    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_;
+    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_;
   }
 
   platform->timer.tic(timerName + "integrate::userRHS", 1);
@@ -687,7 +686,7 @@ void lpm_t::integrateRK2()
 
   // o_y = o_y + 0.5 * dt[0] * (o_k1 + o_k2)
   coeffRK[0] = 0.5 * dt[0], coeffRK[1] = 0.5 * dt[0];
-  o_coeffRK.copyFrom(coeffRK.data(), coeffRK.size() * sizeof(dfloat));
+  o_coeffRK.copyFrom(coeffRK.data(), coeffRK.size());
 
   if (nParticles_)
     this->nStagesSumManyKernel(nParticles_, fieldOffset_, solverOrder, nDOFs_, o_coeffRK, o_k, o_y);
@@ -697,9 +696,9 @@ void lpm_t::integrateRK3()
 {
   occa::memory o_k1, o_k2, o_k3;
   if(fieldOffset_ > 0){
-    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-    o_k3 = o_k + 2 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_;
+    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_;
+    o_k3 = o_k + 2 * nDOFs_ * fieldOffset_;
   }
 
   platform->timer.tic(timerName + "integrate::userRHS", 1);
@@ -736,7 +735,7 @@ void lpm_t::integrateRK3()
 
   // o_y = o_y + dt[0] * (1/6 * o_k1 + 2/3 * o_k2 + 1/6 * o_k3)
   coeffRK[0] = 1.0 / 6.0 * dt[0], coeffRK[1] = 2.0 / 3.0 * dt[0], coeffRK[2] = 1.0 / 6.0 * dt[0];
-  o_coeffRK.copyFrom(coeffRK.data(), coeffRK.size() * sizeof(dfloat));
+  o_coeffRK.copyFrom(coeffRK.data(), coeffRK.size());
 
   if (nParticles_)
     this->nStagesSumManyKernel(nParticles_, fieldOffset_, solverOrder, nDOFs_, o_coeffRK, o_k, o_y);
@@ -746,10 +745,10 @@ void lpm_t::integrateRK4()
 {
   occa::memory o_k1, o_k2, o_k3, o_k4;
   if(fieldOffset_ > 0){
-    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-    o_k3 = o_k + 2 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
-    o_k4 = o_k + 3 * nDOFs_ * fieldOffset_ * sizeof(dfloat);
+    o_k1 = o_k + 0 * nDOFs_ * fieldOffset_;
+    o_k2 = o_k + 1 * nDOFs_ * fieldOffset_;
+    o_k3 = o_k + 2 * nDOFs_ * fieldOffset_;
+    o_k4 = o_k + 3 * nDOFs_ * fieldOffset_;
   }
 
   platform->timer.tic(timerName + "integrate::userRHS", 1);
@@ -797,7 +796,7 @@ void lpm_t::integrateRK4()
   coeffRK[1] = 1.0 / 3.0 * dt[0];
   coeffRK[2] = 1.0 / 3.0 * dt[0];
   coeffRK[3] = 1.0 / 6.0 * dt[0];
-  o_coeffRK.copyFrom(coeffRK.data(), coeffRK.size() * sizeof(dfloat));
+  o_coeffRK.copyFrom(coeffRK.data(), coeffRK.size());
 
   if (nParticles_)
     this->nStagesSumManyKernel(nParticles_, fieldOffset_, solverOrder, nDOFs_, o_coeffRK, o_k, o_y);
@@ -818,8 +817,6 @@ std::set<std::string> lpm_t::nonCoordinateOutputDOFs() const
 
   return outputDofFields;
 }
-
-int lpm_t::fieldOffset(int n) { return computeFieldOffset(n); }
 
 long long int lpm_t::numGlobalParticles() const
 {
@@ -1025,15 +1022,15 @@ void lpm_t::migrate()
   }
   if (nNonLocal) {
     // pack buffers for sending to other procs
-    auto o_ySend = platform->device.malloc(nNonLocal * nDOFs_ * sizeof(dfloat));
-    auto o_ydotSend = platform->device.malloc(solverOrder * nNonLocal * nDOFs_ * sizeof(dfloat));
+    auto o_ySend = platform->device.malloc<dfloat>(nNonLocal * nDOFs_);
+    auto o_ydotSend = platform->device.malloc<dfloat>(solverOrder * nNonLocal * nDOFs_);
 
     occa::memory o_propSend, o_interpFldSend;
     if (nProps_) {
-      o_propSend = platform->device.malloc(nNonLocal * nProps_ * sizeof(dfloat));
+      o_propSend = platform->device.malloc<dfloat>(nNonLocal * nProps_);
     }
     if (nInterpFields_) {
-      o_interpFldSend = platform->device.malloc(nNonLocal * nInterpFields_ * sizeof(dfloat));
+      o_interpFldSend = platform->device.malloc<dfloat>(nNonLocal * nInterpFields_);
     }
 
     std::vector<dlong> sendRankMap(this->numParticles(), -1);
@@ -1051,13 +1048,13 @@ void lpm_t::migrate()
       }
     }
 
-    if (o_sendRankMap.size() < sendRankMap.size() * sizeof(dlong)) {
-      if (o_sendRankMap.size())
+    if (o_sendRankMap.length() < sendRankMap.size()) {
+      if (o_sendRankMap.length())
         o_sendRankMap.free();
-      o_sendRankMap = platform->device.malloc(sendRankMap.size() * sizeof(dlong));
+      o_sendRankMap = platform->device.malloc<dlong>(sendRankMap.size());
     }
 
-    o_sendRankMap.copyFrom(sendRankMap.data(), sendRankMap.size() * sizeof(dlong));
+    o_sendRankMap.copyFrom(sendRankMap.data(), sendRankMap.size());
 
     remapParticlesKernel(this->numParticles(),
                          fieldOffset_,
@@ -1077,13 +1074,13 @@ void lpm_t::migrate()
                          o_interpFldSend);
 
     // copy to host
-    o_ySend.copyTo(ySend.data(), nNonLocal * nDOFs_ * sizeof(dfloat));
-    o_ydotSend.copyTo(ydotSend.data(), solverOrder * nNonLocal * nDOFs_ * sizeof(dfloat));
+    o_ySend.copyTo(ySend.data(), nNonLocal * nDOFs_);
+    o_ydotSend.copyTo(ydotSend.data(), solverOrder * nNonLocal * nDOFs_);
     if (nProps_) {
-      o_propSend.copyTo(propSend.data(), nNonLocal * nProps_ * sizeof(dfloat));
+      o_propSend.copyTo(propSend.data(), nNonLocal * nProps_);
     }
     if (nInterpFields_) {
-      o_interpFldSend.copyTo(interpFldSend.data(), nNonLocal * nInterpFields_ * sizeof(dfloat));
+      o_interpFldSend.copyTo(interpFldSend.data(), nNonLocal * nInterpFields_);
     }
   }
 
@@ -1144,8 +1141,8 @@ void lpm_t::migrate()
   }
 
   // start by deleting unfound particles -- local particles are stacked first
-  dlong newNParticles = this->numParticles() - nUnfound - nNonLocal + nReceived;
-  dlong newFieldOffset = computeFieldOffset(newNParticles);
+  const dlong newNParticles = this->numParticles() - nUnfound - nNonLocal + nReceived;
+  const dlong newFieldOffset = alignStride<dfloat>(newNParticles);
 
   // allocate new fields
   auto o_propOld = this->o_prop;
@@ -1168,13 +1165,13 @@ void lpm_t::migrate()
         }
       }
 
-      if (o_migrateMap.size() < migrateMap.size() * sizeof(dlong)) {
-        if (o_migrateMap.size())
+      if (o_migrateMap.length() < migrateMap.size()) {
+        if (o_migrateMap.length())
           o_migrateMap.free();
-        o_migrateMap = platform->device.malloc(migrateMap.size() * sizeof(dlong));
+        o_migrateMap = platform->device.malloc<dlong>(migrateMap.size());
       }
       if (this->numParticles() > 0) {
-        o_migrateMap.copyFrom(migrateMap.data(), migrateMap.size() * sizeof(dlong));
+        o_migrateMap.copyFrom(migrateMap.data(), migrateMap.size());
       }
 
       remapParticlesKernel(this->numParticles(),
@@ -1199,17 +1196,17 @@ void lpm_t::migrate()
   // Unpack received data into device arrays
   if (nReceived) {
     // pack buffers for sending to other procs
-    auto o_yRecv = platform->device.malloc(nReceived * nDOFs_ * sizeof(dfloat), yRecv.data());
+    auto o_yRecv = platform->device.malloc<dfloat>(nReceived * nDOFs_, yRecv.data());
     auto o_ydotRecv =
-        platform->device.malloc(solverOrder * nReceived * nDOFs_ * sizeof(dfloat), ydotRecv.data());
+        platform->device.malloc<dfloat>(solverOrder * nReceived * nDOFs_, ydotRecv.data());
 
     occa::memory o_propRecv, o_interpFldRecv;
     if (nProps_) {
-      o_propRecv = platform->device.malloc(nReceived * nProps_ * sizeof(dfloat), propRecv.data());
+      o_propRecv = platform->device.malloc<dfloat>(nReceived * nProps_, propRecv.data());
     }
     if (nInterpFields_) {
       o_interpFldRecv =
-          platform->device.malloc(nReceived * nInterpFields_ * sizeof(dfloat), interpFldRecv.data());
+          platform->device.malloc<dfloat>(nReceived * nInterpFields_, interpFldRecv.data());
     }
 
     std::vector<dlong> recvRankMap(nReceived, -1);
@@ -1218,13 +1215,13 @@ void lpm_t::migrate()
       ctr++;
     }
 
-    if (o_recvRankMap.size() < recvRankMap.size() * sizeof(dlong)) {
-      if (o_recvRankMap.size())
+    if (o_recvRankMap.length() < recvRankMap.size()) {
+      if (o_recvRankMap.length())
         o_recvRankMap.free();
-      o_recvRankMap = platform->device.malloc(recvRankMap.size() * sizeof(dlong));
+      o_recvRankMap = platform->device.malloc<dlong>(recvRankMap.size());
     }
 
-    o_recvRankMap.copyFrom(recvRankMap.data(), recvRankMap.size() * sizeof(dlong));
+    o_recvRankMap.copyFrom(recvRankMap.data(), recvRankMap.size());
 
     remapParticlesKernel(nReceived,
                          nReceived,
@@ -1304,27 +1301,27 @@ void lpm_t::addParticles(int newNParticles,
   const auto expectedPropSize = newNParticles * nProps_;
   const auto expectedYdotSize = solverOrder * newNParticles * nDOFs_;
   nrsCheck(yNewPart.size() < expectedYSize,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "yNewPart size is %ld but expected %d words!\n",
            yNewPart.size(),
            expectedYSize);
   nrsCheck(propNewPart.size() < expectedPropSize,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "propNewPart size is %ld but expected %d words!\n",
            propNewPart.size(),
            expectedPropSize);
   nrsCheck(ydotNewPart.size() < expectedYdotSize,
-           platform->comm.mpiComm,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
            "ydotNewPart size is %ld but expected %d words!\n",
            ydotNewPart.size(),
            expectedYdotSize);
 
-  auto o_yNewPart = platform->device.malloc(expectedYSize * sizeof(dfloat), yNewPart.data());
-  auto o_propNewPart = platform->device.malloc(expectedPropSize * sizeof(dfloat), propNewPart.data());
-  auto o_ydotNewPart = platform->device.malloc(expectedYdotSize * sizeof(dfloat));
+  auto o_yNewPart = platform->device.malloc<dfloat>(expectedYSize, yNewPart.data());
+  auto o_propNewPart = platform->device.malloc<dfloat>(expectedPropSize, propNewPart.data());
+  auto o_ydotNewPart = platform->device.malloc<dfloat>(expectedYdotSize);
 
   addParticles(newNParticles, o_yNewPart, o_propNewPart, o_ydotNewPart);
 
@@ -1333,17 +1330,17 @@ void lpm_t::addParticles(int newNParticles,
   o_ydotNewPart.free();
 }
 
-void lpm_t::addParticles(int newNParticles, occa::memory o_yNewPart, occa::memory o_propNewPart)
+void lpm_t::addParticles(int newNParticles, const occa::memory& o_yNewPart, const occa::memory& o_propNewPart)
 {
   const auto expectedYdotSize = solverOrder * newNParticles * nDOFs_;
-  auto o_ydotNewPart = platform->device.malloc(expectedYdotSize * sizeof(dfloat));
+  auto o_ydotNewPart = platform->device.malloc<dfloat>(expectedYdotSize);
   addParticles(newNParticles, o_yNewPart, o_propNewPart, o_ydotNewPart);
 }
 
 void lpm_t::addParticles(int newNParticles,
-                         occa::memory o_yNewPart,
-                         occa::memory o_propNewPart,
-                         occa::memory o_ydotNewPart)
+                         const occa::memory& o_yNewPart,
+                         const occa::memory& o_propNewPart,
+                         const occa::memory& o_ydotNewPart)
 {
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic(timerName + "addParticles", 1);
@@ -1357,29 +1354,29 @@ void lpm_t::addParticles(int newNParticles,
   }
 
   int incomingOffset = newNParticles;
-  int newOffset = computeFieldOffset(this->nParticles_ + newNParticles);
+  int newOffset = alignStride<dfloat>(this->nParticles_ + newNParticles);
 
   // check that the sizes of o_yNewPart, o_propNewPart are correct
-  auto expectedYSize = incomingOffset * nDOFs_ * sizeof(dfloat);
-  auto expectedPropSize = incomingOffset * nProps_ * sizeof(dfloat);
-  auto expectedYdotSize = solverOrder * incomingOffset * nDOFs_ * sizeof(dfloat);
-  nrsCheck(o_yNewPart.size() < expectedYSize,
-           platform->comm.mpiComm,
+  auto expectedYSize = incomingOffset * nDOFs_;
+  auto expectedPropSize = incomingOffset * nProps_;
+  auto expectedYdotSize = solverOrder * incomingOffset * nDOFs_;
+  nrsCheck(o_yNewPart.length() < expectedYSize,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
-           "o_yNewPart size is %" PRId64 " but expected %ld bytes!\n",
-           o_yNewPart.size(),
+           "o_yNewPart length is %ld but expected %ld words!\n",
+           o_yNewPart.length(),
            expectedYSize);
-  nrsCheck(o_propNewPart.size() < expectedPropSize,
-           platform->comm.mpiComm,
+  nrsCheck(o_propNewPart.length() < expectedPropSize,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
-           "o_propNewPart size is %" PRId64 " but expected %ld bytes!\n",
-           o_propNewPart.size(),
+           "o_propNewPart length is %ld but expected %ld words!\n",
+           o_propNewPart.length(),
            expectedPropSize);
-  nrsCheck(o_ydotNewPart.size() < expectedYdotSize,
-           platform->comm.mpiComm,
+  nrsCheck(o_ydotNewPart.length() < expectedYdotSize,
+           MPI_COMM_SELF,
            EXIT_FAILURE,
-           "o_ydotNewPart size is %" PRId64 " but expected %ld bytes!\n",
-           o_ydotNewPart.size(),
+           "o_ydotNewPart length is %ld but expected %ld words!\n",
+           o_ydotNewPart.length(),
            expectedYdotSize);
 
   std::vector<dlong> remainingMap(this->nParticles_, 0);
@@ -1388,23 +1385,23 @@ void lpm_t::addParticles(int newNParticles,
   // remainingMap[id] = id for existing particles
   if (this->nParticles_) {
     std::iota(remainingMap.begin(), remainingMap.end(), 0);
-    if (o_remainingMap.size() < this->nParticles_ * sizeof(dlong)) {
-      if (o_remainingMap.size())
+    if (o_remainingMap.length() < this->nParticles_) {
+      if (o_remainingMap.length())
         o_remainingMap.free();
-      o_remainingMap = platform->device.malloc(this->nParticles_ * sizeof(dlong));
+      o_remainingMap = platform->device.malloc<dlong>(this->nParticles_);
     }
-    o_remainingMap.copyFrom(remainingMap.data(), this->nParticles_ * sizeof(dlong));
+    o_remainingMap.copyFrom(remainingMap.data(), this->nParticles_);
   }
 
   // insertMap[id] = id + nParticles_ for incoming particles
   if (newNParticles) {
     std::iota(insertMap.begin(), insertMap.end(), this->nParticles_);
-    if (o_insertMap.size() < newNParticles * sizeof(dlong)) {
-      if (o_insertMap.size())
+    if (o_insertMap.length() < newNParticles) {
+      if (o_insertMap.length())
         o_insertMap.free();
-      o_insertMap = platform->device.malloc(newNParticles * sizeof(dlong));
+      o_insertMap = platform->device.malloc<dlong>(newNParticles);
     }
-    o_insertMap.copyFrom(insertMap.data(), newNParticles * sizeof(dlong));
+    o_insertMap.copyFrom(insertMap.data(), newNParticles);
   }
 
   auto o_propOld = this->o_prop;
@@ -1418,7 +1415,7 @@ void lpm_t::addParticles(int newNParticles,
     // dummy arrays for remapParticlesKernel for new particles
     occa::memory o_interpFldDummy;
     if (nInterpFields_) {
-      o_interpFldDummy = platform->device.malloc(incomingOffset * nInterpFields_ * sizeof(dfloat));
+      o_interpFldDummy = platform->device.malloc<dfloat>(incomingOffset * nInterpFields_);
     }
 
     if (this->numParticles()) {
@@ -1538,14 +1535,14 @@ void lpm_t::deleteParticles()
     }
   }
 
-  const auto Nbytes = this->numParticles() * sizeof(dlong);
-  if (Nbytes > 0) {
-    if (o_remainingMap.size() < Nbytes) {
-      if (o_remainingMap.size())
+  const auto Nwords = this->numParticles();
+  if (Nwords > 0) {
+    if (o_remainingMap.length() < Nwords) {
+      if (o_remainingMap.length())
         o_remainingMap.free();
-      o_remainingMap = platform->device.malloc(Nbytes);
+      o_remainingMap = platform->device.malloc<dlong>(Nwords);
     }
-    o_remainingMap.copyFrom(remainingMap.data(), Nbytes);
+    o_remainingMap.copyFrom(remainingMap.data(), Nwords);
   }
 
   auto o_propOld = this->o_prop;
@@ -1554,7 +1551,7 @@ void lpm_t::deleteParticles()
   auto o_ydotOld = this->o_ydot;
 
   const auto newNParticles = this->numParticles() - nDelete;
-  const auto newOffset = computeFieldOffset(newNParticles);
+  const auto newOffset = alignStride<dfloat>(newNParticles);
 
   if (newOffset) {
     handleAllocation(newOffset);
@@ -1616,7 +1613,7 @@ void lpm_t::deleteParticles()
 }
 
 namespace {
-std::string lpm_vtu_data(std::string fieldName, long long int nComponent, long long int distance)
+std::string lpm_vtu_data(const std::string& fieldName, long long int nComponent, long long int distance)
 {
   return "<DataArray type=\"Float32\" Name=\"" + fieldName + "\" NumberOfComponents=\"" +
          std::to_string(nComponent) + "\" format=\"append\" offset=\"" + std::to_string(distance) + "\"/>\n";
@@ -1890,14 +1887,14 @@ void lpm_t::setTimerLevel(TimerLevel level)
 
 TimerLevel lpm_t::getTimerLevel() const { return timerLevel; }
 
-void lpm_t::setTimerName(std::string name)
+void lpm_t::setTimerName(const std::string& name)
 {
   timerName = name;
   interp->setTimerName(name);
 }
 
 namespace {
-long long int parseNumParticles(std::string restartfile, const std::string &header)
+long long int parseNumParticles(const std::string& restartfile, const std::string &header)
 {
   std::smatch npartmatch;
   bool found = std::regex_search(header, npartmatch, std::regex(R"(<Piece NumberOfPoints=\"(\d+)\")"));
@@ -1924,13 +1921,13 @@ long long int parseNumParticles(std::string restartfile, const std::string &head
   nrsCheck(errorLength > 0,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "Error in parseNumParticles:\n%s",
+           "%s",
            errorString.c_str());
 
   return nparticles;
 }
 
-auto parsePointData(std::string restartfile, std::string pointData)
+auto parsePointData(const std::string& restartfile, const std::string& pointData)
 {
   std::ostringstream errorLogger;
   std::string fieldName = "";
@@ -1977,13 +1974,13 @@ auto parsePointData(std::string restartfile, std::string pointData)
   nrsCheck(errorLength > 0,
            platform->comm.mpiComm,
            EXIT_FAILURE,
-           "Error in parsePointData:\n%s",
+           "%s",
            errorString.c_str());
 
   return std::make_tuple(fieldName, numComponents, offset);
 }
 
-auto readHeader(std::string restartFile)
+auto readHeader(const std::string& restartFile)
 {
   // read header of VTK UnstructuredGrid file format until reading after the <AppendedData encoding=\"raw\">
   // line
@@ -2025,7 +2022,7 @@ auto readHeader(std::string restartFile)
 
 } // namespace
 
-void lpm_t::restart(std::string restartFile)
+void lpm_t::restart(const std::string& restartFile)
 {
   bool fileExists = std::filesystem::exists(restartFile);
   nrsCheck(!fileExists, platform->comm.mpiComm, EXIT_FAILURE, "Restart file %s does not exist!\n", restartFile.c_str());
@@ -2046,7 +2043,7 @@ void lpm_t::restart(std::string restartFile)
   // pass in zeros at the moment -- these will be overwritten
   {
     std::vector<dfloat> dummy_y0(nPartLocal * this->nDOFs(), 0.0);
-    dfloat t0;
+    double t0;
     platform->options.getArgs("START TIME", t0);
     this->initialize(nPartLocal, t0, dummy_y0);
   }
@@ -2101,9 +2098,9 @@ void lpm_t::restart(std::string restartFile)
   auto o_yCoord = getDOF("y");
   auto o_zCoord = getDOF("z");
 
-  o_xCoord.copyFrom(xCoord.data(), nPartLocal * sizeof(dfloat));
-  o_yCoord.copyFrom(yCoord.data(), nPartLocal * sizeof(dfloat));
-  o_zCoord.copyFrom(zCoord.data(), nPartLocal * sizeof(dfloat));
+  o_xCoord.copyFrom(xCoord.data(), nPartLocal);
+  o_yCoord.copyFrom(yCoord.data(), nPartLocal);
+  o_zCoord.copyFrom(zCoord.data(), nPartLocal);
 
   auto readField = [&, &header = header](std::string fieldName, long long int expectedNumComponents, long long int offset) {
     nrsCheck(fieldType.count(fieldName) == 0,
@@ -2177,7 +2174,7 @@ void lpm_t::restart(std::string restartFile)
       }
     }
 
-    o_fld.copyFrom(fldHost.data(), this->fieldOffset() * nComponents * sizeof(dfloat));
+    o_fld.copyFrom(fldHost.data(), this->fieldOffset() * nComponents);
   };
 
   for (auto &&[fieldName, info] : fieldToInfo) {

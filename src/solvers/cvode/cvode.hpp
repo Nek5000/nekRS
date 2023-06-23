@@ -25,9 +25,9 @@ public:
   static constexpr bool enabled = false;
 #endif
   using userRHS_t = std::function<
-      void(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)>;
+      void(nrs_t *nrs, double time, double t0, occa::memory o_y, occa::memory o_ydot)>;
   using userJacobian_t = std::function<
-      void(nrs_t *nrs, dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot)>;
+      void(nrs_t *nrs, double time, double t0, occa::memory o_y, occa::memory o_ydot)>;
   using userLocalPointSource_t =
       std::function<void(nrs_t *nrs, dlong LFieldOffset, occa::memory o_y, occa::memory o_ydot)>;
   using userPostNrsToCv_t = std::function<void(nrs_t *nrs, occa::memory o_LField)>;
@@ -37,7 +37,7 @@ public:
   ~cvode_t();
 
   void initialize();
-  void solve(dfloat t0, dfloat t1, int tstep);
+  void solve(double t0, double t1, int tstep);
 
   void setRHS(userRHS_t _userRHS) { userRHS = _userRHS; }
   void setJacobian(userJacobian_t _userJacobian) { userJacobian = _userJacobian; }
@@ -59,10 +59,10 @@ public:
 
   int timeStep() const { return externalTStep; }
   void setTimeStep(int tstep) { externalTStep = tstep; }
-  double time() const { return tnekRS; }
+  double time() const { return tExternal; }
 
-  void rhs(dfloat time, occa::memory o_y, occa::memory o_ydot);
-  void jtvRHS(dfloat time, occa::memory o_y, occa::memory o_ydot);
+  void rhs(double time, occa::memory o_y, occa::memory o_ydot);
+  void jtvRHS(double time, occa::memory o_y, occa::memory o_ydot);
   dlong numEquations() const { return nEq; }
 
   // getters needed for CVLsJacTimesVecFn
@@ -96,7 +96,7 @@ public:
   // unpack CVODE L-vector into nekRS-style E-vector
   void cvToNrs(occa::memory o_LField, occa::memory o_EField);
 
-  void defaultRHS(dfloat time, dfloat t0, occa::memory o_y, occa::memory o_ydot);
+  void defaultRHS(double time, double t0, occa::memory o_y, occa::memory o_ydot);
 
   void printTimers();
   void resetTimers();
@@ -132,7 +132,7 @@ private:
   dlong LFieldOffset;
 
   // most recent time from nekRS -- used to compute dt in CVODE integration call
-  mutable double tnekRS;
+  mutable double tExternal;
   mutable int externalTStep;
   mutable bool localPointSourceEval = false;
   mutable bool jacEval = false;
@@ -158,14 +158,14 @@ private:
 
   bool isInitialized = false;
 
-  dfloat tprev = std::numeric_limits<dfloat>::max();
+  double tprev = std::numeric_limits<double>::max();
   occa::memory o_U;     // CVODE is responsible for correctly handling the fluid velocity state
   occa::memory o_meshU; // CVODE is responsible for correctly handling the mesh velocity state
   occa::memory o_xyz0;
 
   void setupEToLMapping();
   void setupDirichletMask();
-  void applyDirichlet(dfloat time);
+  void applyDirichlet(double time);
 
   userRHS_t userRHS;
   userJacobian_t userJacobian;
@@ -174,7 +174,7 @@ private:
   userPostCvToNrs_t userPostCvToNrs;
   userPostNrsToCv_t userPostNrsToCv;
 
-  void makeq(dfloat time);
+  void makeq(double time);
 
   static constexpr int maxTimestepperOrder = 3;
   std::array<dfloat, maxTimestepperOrder> _coeffBDF;

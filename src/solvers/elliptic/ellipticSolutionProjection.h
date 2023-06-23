@@ -51,7 +51,7 @@ private:
   void computePreProjection(occa::memory& o_r);
   void computePostProjection(occa::memory& o_x);
   void updateProjectionSpace();
-  void matvec(occa::memory& o_Ax, const dlong Ax_offset, occa::memory& o_x, const dlong x_offset);
+  void matvec(occa::memory& o_Ax, const dlong Ax_offset, const occa::memory& o_x, const dlong x_offset);
   const dlong maxNumVecsProjection;
   const dlong numTimeSteps;
   const ProjectionType type;
@@ -81,7 +81,7 @@ private:
   const dlong fieldOffset; // offset
   const dlong Nfields;
 
-  std::function<void(occa::memory&,occa::memory&)> matvecOperator;
+  std::function<void(const occa::memory&, occa::memory&)> matvecOperator;
   std::function<void(occa::memory&)> maskOperator;
 };
 #endif

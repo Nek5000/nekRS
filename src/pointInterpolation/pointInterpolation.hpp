@@ -13,13 +13,13 @@ using findpts::TimerLevel;
 class pointInterpolation_t {
 public:
   enum class VerbosityLevel { None, Basic, Detailed };
-  pointInterpolation_t(nrs_t *nrs_, dfloat bb_tol = 0.01, dfloat newton_tol_ = 0, bool mySession_ = true);
+  pointInterpolation_t(nrs_t *nrs_, double bb_tol = 0.01, double newton_tol_ = 0, bool mySession_ = true);
   pointInterpolation_t(nrs_t *nrs_,
                        MPI_Comm comm,
                        dlong localHashSize,
                        dlong globalHashSize,
-                       dfloat bb_tol = 0.01,
-                       dfloat newton_tol_ = 0,
+                       double bb_tol = 0.01,
+                       double newton_tol_ = 0,
                        bool mySession_ = true);
   ~pointInterpolation_t() = default;
 
@@ -27,7 +27,7 @@ public:
   void find(VerbosityLevel verbosity = VerbosityLevel::Basic);
 
   void
-  eval(dlong nFields, dlong inputFieldOffset, occa::memory o_in, dlong outputFieldOffset, occa::memory o_out);
+  eval(dlong nFields, dlong inputFieldOffset, const occa::memory& o_in, dlong outputFieldOffset, occa::memory& o_out);
 
   void eval(dlong nFields, dlong inputFieldOffset, dfloat *in, dlong outputFieldOffset, dfloat *out);
 
@@ -37,10 +37,10 @@ public:
   int numPoints() const { return nPoints; }
 
   // calls underlying findpts_t::update
-  void update();
+  void o_update();
 
   // add points on device
-  void setPoints(int n, occa::memory o_x, occa::memory o_y, occa::memory o_z);
+  void setPoints(int n, const occa::memory& o_x, const occa::memory& o_y, const occa::memory& o_z);
 
   // add points on host
   void setPoints(int n, dfloat *x, dfloat *y, dfloat *z);
@@ -61,6 +61,8 @@ private:
   std::unique_ptr<findpts::findpts_t> findpts_;
   findpts::data_t data_;
   bool mySession;
+
+  bool findCalled = false;
 
   bool pointsAdded = false;
 

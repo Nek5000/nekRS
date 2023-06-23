@@ -90,15 +90,8 @@ struct cds_t
   occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF, o_BFDiag;
 
   occa::kernel sumMakefKernel;
-  occa::kernel subCycleVolumeKernel,  subCycleCubatureVolumeKernel;
-  occa::kernel subCycleSurfaceKernel, subCycleCubatureSurfaceKernel;
-  occa::kernel subCycleRKUpdateKernel;
   occa::kernel subCycleStrongCubatureVolumeKernel;
   occa::kernel subCycleStrongVolumeKernel;
-  occa::kernel subCycleRKKernel;
-  occa::kernel subCycleInitU0Kernel;
-
-  occa::kernel nStagesSum3Kernel;
 
   occa::kernel filterRTKernel;
 
@@ -125,6 +118,6 @@ struct cds_t
   occa::properties* kernelInfo;
 };
 
-occa::memory cdsSolve(int i, cds_t* cds, dfloat time, int stage);
+occa::memory cdsSolve(int i, cds_t* cds, double time, int stage);
 
 #endif

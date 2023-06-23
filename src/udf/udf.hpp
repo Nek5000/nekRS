@@ -30,7 +30,7 @@ void UDF_Setup(nrs_t *nrs);
 void UDF_LoadKernels(occa::properties &kernelInfo);
 void UDF_AutoLoadKernels(occa::properties &kernelInfo);
 void UDF_AutoLoadPlugins(occa::properties &kernelInfo);
-void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep);
+void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep);
 }
 
 using udfsetup0 = void (*)(MPI_Comm, setupAide &);
@@ -38,16 +38,16 @@ using udfsetup = void (*)(nrs_t *);
 using udfloadKernels = void (*)(occa::properties &);
 using udfautoloadKernels = void (*)(occa::properties &);
 using udfautoloadPlugins = void (*)(occa::properties &);
-using udfexecuteStep = void (*)(nrs_t *, dfloat, int);
+using udfexecuteStep = void (*)(nrs_t *, double, int);
 
-using udfuEqnSource = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory)>;
-using udfsEqnSource = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory)>;
+using udfuEqnSource = std::function<void(nrs_t *, double, occa::memory, occa::memory)>;
+using udfsEqnSource = std::function<void(nrs_t *, double, occa::memory, occa::memory)>;
 using udfproperties =
-    std::function<void(nrs_t *, dfloat, occa::memory, occa::memory, occa::memory, occa::memory)>;
+    std::function<void(nrs_t *, double, occa::memory, occa::memory, occa::memory, occa::memory)>;
 using udfdiv = std::function<void(nrs_t *, dfloat, occa::memory)>;
 using udfconv = std::function<int(nrs_t *, int)>;
-using udfPreFluid = std::function<void(nrs_t*, dfloat, int)>;
-using udfPostScalar = std::function<void(nrs_t*, dfloat, int)>;
+using udfPreFluid = std::function<void(nrs_t*, double, int)>;
+using udfPostScalar = std::function<void(nrs_t*, double, int)>;
 
 struct UDF {
   udfsetup0 setup0;
