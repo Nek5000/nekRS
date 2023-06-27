@@ -22,7 +22,7 @@ void runBenchmarks(nrs_t *nrs)
   }
   auto o_rhs = platform->device.malloc<dfloat>(nrs->fieldOffset, rhs.data());
 
-  platform->linAlg->fillKernel(2 * nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
+  platform->linAlg->fill(2 * nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
 
   std::vector<std::string> benchmarks;
   if (runBPS5) {
@@ -63,7 +63,7 @@ void runBenchmarks(nrs_t *nrs)
     std::vector<double> crsTime;
 
     for (int i = 0; i < Nrep; i++) {
-      platform->linAlg->fillKernel(nrs->fieldOffset, 0.0, nrs->o_P);
+      platform->linAlg->fill(nrs->fieldOffset, 0.0, nrs->o_P);
 
       // warm-up
       ellipticSolve(nrs->pSolver, o_rhs, nrs->o_P);
