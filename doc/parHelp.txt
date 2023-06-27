@@ -104,11 +104,11 @@ coarseGridDiscretization    FEM [D]                                    linear fi
                             SEMFEM                                     linear FEM approx on high-order nodes
 
 coarseSolver/semfemSolver   smoother                                     
+                            AMGX                                       NVIDIA's AMG solver
                             boomerAMG [D]                              HYPRE's AMG solver
-                            AmgX                                       NVIDIA's AMG solver
-                            +device [D for SEMFEM] 
-                              +overlap                                 overlap coarse grid solve in additive MG cycle
-                            +cpu [D for multigrid]
+                              +cpu [D for multigrid]
+                              +device [D for SEMFEM] 
+                                +overlap                                 overlap coarse grid solve in additive MG cycle
 
 pMGSchedule                 p=<int>, degree=<int>, ...                 custom polynomial order and Chebyshev order for each pMG level
 

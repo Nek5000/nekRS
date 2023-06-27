@@ -39,7 +39,7 @@ Requirements:
 Download the latest release available under
 
 ```sh
-https://github.com/Nek5000/nekRS/archive/refs/tags/v23.0.tar.gz 
+https://github.com/Nek5000/nekRS/archive/refs/tags/v23.1.tar.gz 
 ```
 
 or clone our GitHub repository:

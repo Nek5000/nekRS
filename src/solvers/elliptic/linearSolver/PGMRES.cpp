@@ -28,6 +28,8 @@
 #include "timer.hpp"
 #include "linAlg.hpp"
 
+static dfloat tiny;
+
 GmresData::GmresData(elliptic_t *elliptic)
     : nRestartVectors([&]() {
         int _nRestartVectors = 15;
@@ -48,6 +50,8 @@ GmresData::GmresData(elliptic_t *elliptic)
       cs((dfloat *)calloc(nRestartVectors, sizeof(dfloat))),
       s((dfloat *)calloc(nRestartVectors + 1, sizeof(dfloat)))
 {
+  tiny = 10*std::numeric_limits<dfloat>::min();
+
   int Nblock = (elliptic->mesh->Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
   const size_t N = nRestartVectors * Nblock;
   // pinned scratch buffer
@@ -84,10 +88,11 @@ void gmresUpdate(elliptic_t *elliptic, occa::memory o_x, int gmresUpdateSize)
   for (int k = gmresUpdateSize - 1; k >= 0; --k) {
     y[k] = s[k];
 
-    for (int m = k + 1; m < gmresUpdateSize; ++m)
+    for (int m = k + 1; m < gmresUpdateSize; ++m) {
       y[k] -= H[k + m * (nRestartVectors + 1)] * y[m];
+     }
 
-    y[k] /= H[k + k * (nRestartVectors + 1)];
+    y[k] /= (H[k + k * (nRestartVectors + 1)] + tiny);
   }
 
   o_y.copyFrom(y, gmresUpdateSize);
@@ -153,6 +158,7 @@ int pgmres(elliptic_t *elliptic,
   dfloat error = rdotr;
   const dfloat TOL = tol;
 
+
   if (verbose && (platform->comm.mpiRank == 0)) {
     if (flexible)
       printf("PFGMRES ");
@@ -168,7 +174,13 @@ int pgmres(elliptic_t *elliptic,
     s[0] = nr;
 
     // V(:,0) = r/nr
-    linAlg.axpbyMany(mesh->Nlocal, elliptic->Nfields, elliptic->fieldOffset, 1.0 / nr, o_r, 0.0, o_V);
+    linAlg.axpbyMany(mesh->Nlocal, 
+                     elliptic->Nfields, 
+                     elliptic->fieldOffset, 
+                     1. / (nr + tiny), 
+                     o_r, 
+                     0.0, 
+                     o_V);
 
     // Construct orthonormal basis via Gram-Schmidt
     for (int i = 0; i < nRestartVectors; ++i) {
@@ -240,7 +252,7 @@ int pgmres(elliptic_t *elliptic,
         linAlg.axpbyMany(mesh->Nlocal,
                          elliptic->Nfields,
                          elliptic->fieldOffset,
-                         (1. / nw),
+                         1. / (nw + tiny),
                          o_w,
                          0,
                          o_Vi);
@@ -261,7 +273,7 @@ int pgmres(elliptic_t *elliptic,
       // form i-th rotation matrix
       const dfloat h1 = H[i + i * (nRestartVectors + 1)];
       const dfloat h2 = H[i + 1 + i * (nRestartVectors + 1)];
-      const dfloat hr = sqrt(h1 * h1 + h2 * h2);
+      const dfloat hr = sqrt(h1 * h1 + h2 * h2) + tiny;
       cs[i] = h1 / hr;
       sn[i] = h2 / hr;
 

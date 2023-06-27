@@ -503,7 +503,7 @@ void parseConstFlowRate(const int rank, setupAide &options, inipp::Ini *par)
 void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
 {
 #ifndef ENABLE_CVODE
-  append_error("ERROR: CVODE not enabled! Recompile with CVODE support!\n");
+  append_error("ERROR: CVODE not enabled! Recompile with -DENABLE_CVODE=ON\n");
   return;
 #endif
 

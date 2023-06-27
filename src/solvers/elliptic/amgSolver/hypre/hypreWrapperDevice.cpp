@@ -316,7 +316,7 @@ boomerAMG_t::boomerAMG_t(int nrows,
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0)
-    printf("ERROR: Recompile with HYPRE GPU support!\n");
+    printf("ERROR: HYPRE+DEVICE not enabled! Recompile with -DENABLE_HYPRE_GPU=ON\n");
   MPI_Abort(MPI_COMM_WORLD, 1);
 }
 
@@ -326,7 +326,7 @@ boomerAMG_t::solve(const occa::memory &o_b, const occa::memory &o_x)
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   if (rank == 0)
-    printf("ERROR: Recompile with HYPRE GPU support!\n");
+    printf("ERROR: HYPRE+DEVICE not enabled! Recompile with -DENABLE_HYPRE_GPU=ON\n");
   MPI_Abort(MPI_COMM_WORLD, 1);
 }
 

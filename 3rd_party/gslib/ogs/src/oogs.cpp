@@ -517,15 +517,25 @@ oogs_t *oogs::setup(ogs_t *ogs,
           fflush(stdout);
 
           if (gs->mode == OOGS_LOCAL) {
-            double localGsBw = 0;
+            double rowSizeSum = 0;
             for (dlong i=0;i<ogs->NlocalGather;i++) {
-              const dlong rowSize = ogs->localGatherOffsets[i+1]-ogs->localGatherOffsets[i];
-              localGsBw += rowSize; 
+              rowSizeSum += ogs->localGatherOffsets[i+1]-ogs->localGatherOffsets[i];
             }
-            localGsBw *= (2 * nVec * Nbytes) / elapsedTest; 
+            double localGsBw = (2 * nVec * Nbytes) * rowSizeSum;
+            localGsBw += 2 * rowSizeSum * sizeof(int); // index
             MPI_Allreduce(MPI_IN_PLACE, &localGsBw, 1, MPI_DOUBLE, MPI_MIN, gs->comm);
+            localGsBw /= elapsedTest;     
 
-            if (gs->rank == 0) printf("(%.1fGB/s) - ", localGsBw/1e9);
+            int commSize;
+            MPI_Comm_size(gs->comm, &commSize);
+            if (gs->rank == 0) {
+              printf("(%.1fGB/s)", localGsBw/1e9);
+              if (commSize > 1) {
+                printf(" - ");
+              } else {
+                printf("\n");
+              }
+            }
           }
 
           if (elapsedTest < elapsedMin) {

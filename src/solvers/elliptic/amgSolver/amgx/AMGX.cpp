@@ -178,14 +178,14 @@ AMGX_t::AMGX_t(const int nLocalRows, const int nnz,
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);  
-  if(rank == 0) printf("ERROR: Recompile with AMGX support!\n");
+  if(rank == 0) printf("ERROR: AMGX not enabled! Recompile with -DENABLE_AMGX=ON\n");
 }
 
 int AMGX_t::solve(void *x, void *rhs)
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);  
-  if(rank == 0) printf("ERROR: Recompile with AMGX support!\n");
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank); 
+  if(rank == 0) printf("ERROR: AMGX not enabled! Recompile with -DENABLE_AMGX=ON\n");
   return 1;
 }
 

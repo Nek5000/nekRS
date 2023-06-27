@@ -3,6 +3,7 @@
 ## What is new? 
 
 * Various bug fixes
+* Interpolation based velocity recycling
 
 ## Good to know
 * [reproducibility] time step controller restricts dt to 5 significant digits

@@ -3,7 +3,7 @@
 
 namespace
 {
-dfloat filterFactorial(int n)
+double filterFactorial(int n)
 {
   if (n == 0) {
     return 1;
@@ -13,7 +13,7 @@ dfloat filterFactorial(int n)
 }
 
 // low Pass
-void filterFunctionRelaxation1D(int Nmodes, int Nc, dfloat *A)
+void filterFunctionRelaxation1D(int Nmodes, int Nc, double *A)
 {
   // Set all diagonal to 1
   for (int n = 0; n < Nmodes; n++) {
@@ -22,22 +22,22 @@ void filterFunctionRelaxation1D(int Nmodes, int Nc, dfloat *A)
 
   int k0 = Nmodes - Nc;
   for (int k = k0; k < Nmodes; k++) {
-    dfloat amp = ((k + 1.0 - k0) * (k + 1.0 - k0)) / (Nc * Nc);
+    double amp = ((k + 1.0 - k0) * (k + 1.0 - k0)) / (Nc * Nc);
     A[k + Nmodes * k] = 1.0 - amp;
   }
 }
 
 // jacobi polynomials at [-1,1] for GLL
-dfloat filterJacobiP(dfloat a, dfloat alpha, dfloat beta, int N)
+double filterJacobiP(double a, double alpha, double beta, int N)
 {
-  dfloat ax = a;
+  double ax = a;
 
-  dfloat *P = (dfloat *)calloc((N + 1), sizeof(dfloat));
+  auto P = (double *)calloc((N + 1), sizeof(double));
 
   // Zero order
-  dfloat gamma0 = pow(2, (alpha + beta + 1)) / (alpha + beta + 1) * filterFactorial(alpha) *
+  double gamma0 = pow(2, (alpha + beta + 1)) / (alpha + beta + 1) * filterFactorial(alpha) *
                   filterFactorial(beta) / filterFactorial(alpha + beta);
-  dfloat p0 = 1.0 / sqrt(gamma0);
+  double p0 = 1.0 / sqrt(gamma0);
 
   if (N == 0) {
     free(P);
@@ -46,8 +46,8 @@ dfloat filterJacobiP(dfloat a, dfloat alpha, dfloat beta, int N)
   P[0] = p0;
 
   // first order
-  dfloat gamma1 = (alpha + 1) * (beta + 1) / (alpha + beta + 3) * gamma0;
-  dfloat p1 = ((alpha + beta + 2) * ax / 2 + (alpha - beta) / 2) / sqrt(gamma1);
+  double gamma1 = (alpha + 1) * (beta + 1) / (alpha + beta + 3) * gamma0;
+  double p1 = ((alpha + beta + 2) * ax / 2 + (alpha - beta) / 2) / sqrt(gamma1);
   if (N == 1) {
     free(P);
     return p1;
@@ -56,24 +56,24 @@ dfloat filterJacobiP(dfloat a, dfloat alpha, dfloat beta, int N)
   P[1] = p1;
 
   /// Repeat value in recurrence.
-  dfloat aold = 2 / (2 + alpha + beta) * sqrt((alpha + 1.) * (beta + 1.) / (alpha + beta + 3.));
+  double aold = 2 / (2 + alpha + beta) * sqrt((alpha + 1.) * (beta + 1.) / (alpha + beta + 3.));
   /// Forward recurrence using the symmetry of the recurrence.
   for (int i = 1; i <= N - 1; ++i) {
-    dfloat h1 = 2. * i + alpha + beta;
-    dfloat anew =
+    double h1 = 2. * i + alpha + beta;
+    double anew =
         2. / (h1 + 2.) *
         sqrt((i + 1.) * (i + 1. + alpha + beta) * (i + 1 + alpha) * (i + 1 + beta) / (h1 + 1) / (h1 + 3));
-    dfloat bnew = -(alpha * alpha - beta * beta) / h1 / (h1 + 2);
+    double bnew = -(alpha * alpha - beta * beta) / h1 / (h1 + 2);
     P[i + 1] = 1. / anew * (-aold * P[i - 1] + (ax - bnew) * P[i]);
     aold = anew;
   }
 
-  dfloat pN = P[N];
+  double pN = P[N];
   free(P);
   return pN;
 }
 
-void filterVandermonde1D(int N, int Np, dfloat *r, dfloat *V)
+void filterVandermonde1D(int N, int Np, double *r, double *V)
 {
   int sk = 0;
   for (int i = 0; i <= N; i++) {
@@ -97,16 +97,19 @@ occa::memory hpfSetup(mesh_t *mesh, const dlong filterNc)
   // Construct Filter Function
   int Nmodes = mesh->N + 1; // N+1, 1D GLL points
 
-  // Vandermonde matrix
-  dfloat *V = (dfloat *)calloc(Nmodes * Nmodes, sizeof(dfloat));
-  // Filter matrix, diagonal
-  dfloat *A = (dfloat *)calloc(Nmodes * Nmodes, sizeof(dfloat));
+  auto V = (double *)calloc(Nmodes * Nmodes, sizeof(double));
+  auto A = (double *)calloc(Nmodes * Nmodes, sizeof(double));
 
   // Construct Filter Function
   filterFunctionRelaxation1D(Nmodes, filterNc, A);
 
   // Construct Vandermonde Matrix
-  filterVandermonde1D(mesh->N, Nmodes, mesh->r, V);
+  {
+    auto r = (double*) malloc(mesh->Np * sizeof(double));
+    for(int i = 0; i < mesh->Np; i++) r[i] = mesh->r[i];
+    filterVandermonde1D(mesh->N, Nmodes, r, V);
+    free(r);
+  }
 
   // Invert the Vandermonde
   int INFO;
@@ -142,26 +145,27 @@ occa::memory hpfSetup(mesh_t *mesh, const dlong filterNc)
   double *C = (double *)calloc(Nmodes * Nmodes, sizeof(double));
 
   int LDC = Nmodes;
-  auto _A = (double *)calloc(Nmodes * Nmodes, sizeof(double));
-  for(int i = 0; i < Nmodes * Nmodes; i++) _A[i] = A[i];
 
-  dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, _A, &LDA, iV, &LDB, &BETA, C, &LDC);
+  dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, A, &LDA, iV, &LDB, &BETA, C, &LDC);
 
   TRANSA = 'T';
   TRANSB = 'N';
-  auto _V = (double *)calloc(Nmodes * Nmodes, sizeof(double));
-  for(int i = 0; i < Nmodes * Nmodes; i++) _V[i] = V[i];
 
-  dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, _V, &LDA, C, &LDB, &BETA, _A, &LDC);
-  free(_A);
-  free(_V);
+  dgemm_(&TRANSA, &TRANSB, &MD, &ND, &KD, &ALPHA, V, &LDA, C, &LDB, &BETA, A, &LDC);
 
   auto o_A = platform->device.malloc<dfloat>(Nmodes * Nmodes);
-  o_A.copyFrom(A, o_A.length());
+  {
+    auto tmp = (dfloat *)calloc(Nmodes * Nmodes, sizeof(dfloat));
+    for(int i = 0; i < Nmodes * Nmodes; i++) {
+      tmp[i] = A[i];
+    }
+    o_A.copyFrom(tmp, o_A.length());
+    free(tmp);
+  }
 
   free(A);
-  free(C);
   free(V);
+  free(C);
   free(iV);
   free(IPIV);
   free(WORK);

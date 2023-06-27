@@ -188,7 +188,7 @@ void adjustDt(nrs_t* nrs, int tstep)
         occa::memory o_FUy = nrs->o_FU + 1 * nrs->fieldOffset;
         occa::memory o_FUz = nrs->o_FU + 2 * nrs->fieldOffset;
 
-        platform->linAlg->abs(3 * nrs->fieldOffset, nrs->o_FU);
+        platform->linAlg->abs(nrs->NVfields * nrs->fieldOffset, nrs->o_FU);
 
         const auto maxFUx = platform->linAlg->max(nrs->meshV->Nlocal, o_FUx, platform->comm.mpiComm);
         const auto maxFUy = platform->linAlg->max(nrs->meshV->Nlocal, o_FUy, platform->comm.mpiComm);

@@ -78,7 +78,7 @@ occa::memory pressureSolve(nrs_t* nrs, double time, int stage)
   const auto viscContribution = (nrs->nBDF > 1) ? 1 : 0; 
   occa::memory o_irho = nrs->o_ellipticCoeff;
   nrs->pressureRhsKernel(
-    mesh->Nelements * mesh->Np,
+    mesh->Nlocal,
     nrs->fieldOffset,
     viscContribution,
     nrs->o_mue,

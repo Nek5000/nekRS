@@ -707,10 +707,10 @@ void fem_assembly_device(hypreWrapper::IJ_t &hypreIJ)
   occa::memory o_rowOffsets= platform->device.malloc<long long>((nrows+1));
   o_rowOffsets.copyFrom(rowOffsets);
 
-  occa::memory o_cols = platform->device.malloc<long long>((nnz+1));
+  occa::memory o_cols = platform->device.malloc<long long>(nnz);
   o_cols.copyFrom(cols); 
 
-  occa::memory o_vals = platform->device.malloc<dfloat>(nnz);
+  occa::memory o_vals = platform->device.malloc<float>(nnz);
   o_vals.copyFrom(vals);
 
   computeStiffnessMatrixKernel(n_elem,
