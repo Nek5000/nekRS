@@ -61,10 +61,6 @@ cvode_t::~cvode_t()
 {
 }
 
-void cvode_t::initialize()
-{
-}
-
 void cvode_t::setupEToLMapping()
 {
 }
