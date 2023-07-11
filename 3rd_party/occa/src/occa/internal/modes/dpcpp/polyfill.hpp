@@ -7,6 +7,7 @@
 #include <sycl.hpp>
 #else
 #include <vector>
+#include <cstdint>
 namespace sycl {
 
 class device;
