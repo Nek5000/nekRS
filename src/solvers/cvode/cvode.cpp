@@ -145,6 +145,7 @@ void cvode_t::resetTimers()
 
 std::string cvode_t::rhsTagName() const
 {
+  return std::string();
 }
 
 

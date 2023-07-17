@@ -8,7 +8,7 @@ if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/nekrs" CACHE PATH "installation directory" FORCE) 
+  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/nekrs" CACHE PATH "installation directory" FORCE)
 endif()
 
 if(${CMAKE_INSTALL_PREFIX} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
@@ -32,7 +32,7 @@ set(CMAKE_ENABLE_EXPORTS TRUE)
 set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_PREFIX}/lib)
 set(BUILD_SHARED_LIBS OFF)
 
-if (NOT CMAKE_CONFIGURATION_TYPES AND 
+if (NOT CMAKE_CONFIGURATION_TYPES AND
     NOT CMAKE_NO_BUILD_TYPE AND
     NOT CMAKE_BUILD_TYPE AND
     CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
@@ -74,9 +74,9 @@ endif()
 ###############################################################################
 # Configure Options
 ###############################################################################
-set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING 
+set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING
   "Preprocessor macros for Nek5000")
-set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH 
+set(NEKINTERFACEDIR "${CMAKE_CURRENT_SOURCE_DIR}/src/nekInterface/" CACHE PATH
 "Directory for Nek5000 inteface source files")
 
 string(COMPARE EQUAL "${CMAKE_CXX_COMPILER_ID}" "GNU" USING_GNU)
@@ -166,7 +166,7 @@ function(set_external_flags lang)
   get_directory_property(compile_defs
           DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" COMPILE_DEFINITIONS )
   foreach(def "${compile_defs}")
-  
+
     if ("${def}" STREQUAL "")
       set(ext_flags "${ext_flags}")
     else ()
@@ -227,7 +227,7 @@ endforeach()
 
 # cvode
 if (ENABLE_CVODE)
-  # workaround to resolve name conflict (used be OCCA and CVODE) 
+  # workaround to resolve name conflict (used be OCCA and CVODE)
   set(ENABLE_CUDA ${OCCA_CUDA_ENABLED})
   set(ENABLE_HIP ${OCCA_HIP_ENABLED})
   set(ENABLE_OPENCL ${OCCA_OPENCL_ENABLED})
@@ -250,16 +250,16 @@ if (ENABLE_CVODE)
   set(BUILD_IDAS OFF)
   set(BUILD_KINSOL OFF)
   set(EXAMPLES_ENABLE_C OFF)
-  set(EXAMPLES_ENABLE_CXX OFF) 
-  if(OCCA_CUDA_ENABLED) 
+  set(EXAMPLES_ENABLE_CXX OFF)
+  if(OCCA_CUDA_ENABLED)
     set(EXAMPLES_ENABLE_CUDA OFF)
-  endif() 
+  endif()
   set(EXAMPLES_ENABLE_F2003 OFF)
   set(BUILD_TESTING OFF)
   set(BUILD_SHARED_LIBS ON)
 
   add_subdirectory(3rd_party/cvode)
- 
+
   # restore default
   set(BUILD_SHARED_LIBS OFF)
 endif()
@@ -273,7 +273,7 @@ include(config/nek5000.cmake)
 # nrs
 include(config/nrs.cmake)
 
-# Link dependencies 
+# Link dependencies
 target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE nekrs-hypre nekrs-hypre-device gs ${GSLIB} blas lapack ${CMAKE_DL_LIBS})
 if(OpenMP_FOUND)
 target_link_libraries(nekrs-lib PUBLIC OpenMP::OpenMP_CXX)
@@ -315,7 +315,7 @@ elseif(OCCA_OPENCL_ENABLED)
 else()
   set(BACKEND_DEFAULT "SERIAL" CACHE STRING "Default occa mode")
   set(NEKRS_GPU_MPI OFF CACHE BOOL "Enable GPU aware MPI" FORCE)
-endif() 
+endif()
 
 if(NEKRS_GPU_MPI)
   set(GPU_MPI "1")
@@ -355,22 +355,22 @@ install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake)
 
 message(NOTICE "")
 message(NOTICE "----------------- Summary -----------------")
-message(NOTICE "Installation directory: ${CMAKE_INSTALL_PREFIX}") 
+message(NOTICE "Installation directory: ${CMAKE_INSTALL_PREFIX}")
 message(NOTICE "C compiler: ${CMAKE_C_COMPILER}")
 message(NOTICE "C++ compiler: ${CMAKE_CXX_COMPILER}")
 message(NOTICE "Fortran compiler: ${CMAKE_Fortran_COMPILER}")
 message(NOTICE "Default backend : ${BACKEND_DEFAULT}")
 message(NOTICE "CPU backend compiler: ${OCCA_CXX} (flags: ${OCCA_CXXFLAGS})")
-if(OCCA_CUDA_ENABLED) 
+if(OCCA_CUDA_ENABLED)
   message(NOTICE "NVIDIA CUDA backend enabled (flags: ${OCCA_CUDA_COMPILER_FLAGS})")
 endif()
-if(OCCA_HIP_ENABLED) 
+if(OCCA_HIP_ENABLED)
   message(NOTICE "AMD HIP backend enabled (flags: ${OCCA_HIP_COMPILER_FLAGS})")
 endif()
 if(OCCA_DPCPP_ENABLED)
   message(NOTICE "DPCPP backend enabled (flags: ${OCCA_DPCPP_COMPILER_FLAGS})")
 endif()
-if(OCCA_OPENCL_ENABLED) 
+if(OCCA_OPENCL_ENABLED)
   message(NOTICE "OPENCL backend enabled (flags: ${OCCA_OPENCL_COMPILER_FLAGS})")
 endif()
 message(NOTICE "GPU aware MPI support: ${NEKRS_GPU_MPI}")
@@ -383,11 +383,11 @@ set(DEST_DIR "nekRS-v${PROJECT_VERSION}")
 set(TAR_NAME "nekRS-v${PROJECT_VERSION}.tar.gz")
 
 add_custom_target(tar
-  COMMAND ${CMAKE_COMMAND} 
-      -DDEST_DIR=${DEST_DIR} 
+  COMMAND ${CMAKE_COMMAND}
+      -DDEST_DIR=${DEST_DIR}
       -DOCCA_SOURCE_DIR=${OCCA_SOURCE_DIR}
-      -DHYPRE_SOURCE_DIR=${HYPRE_SOURCE_DIR} 
-      -DNEK5000_SOURCE_DIR=${NEK5000_SOURCE_DIR} 
+      -DHYPRE_SOURCE_DIR=${HYPRE_SOURCE_DIR}
+      -DNEK5000_SOURCE_DIR=${NEK5000_SOURCE_DIR}
       -P ${CMAKE_CURRENT_SOURCE_DIR}/config/maketar.cmake
   COMMAND tar -czf ${TAR_NAME} ${DEST_DIR}
   COMMAND rm -rf ${DEST_DIR}

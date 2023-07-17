@@ -8,16 +8,16 @@ if [ -z ${CC} ] || [ -z ${CXX}  ] || [ -z ${FC}  ]; then
   export CC=mpicc
   export CXX=mpic++
   export FC=mpif77
-  read -p         "Press ENTER to continue with CC=$CC CXX=$CXX FC=$FC or ctrl-c to cancel" 
+  read -p         "Press ENTER to continue with CC=$CC CXX=$CXX FC=$FC or ctrl-c to cancel"
 fi
 
-cmd="cmake -S . -B build -Wfatal-errors $@" 
+cmd="cmake -S . -B build -Wfatal-errors $@"
 echo $cmd
-eval $cmd 
+eval $cmd
 if [ $? -eq 0 ] && [ ${NRSCONFIG_NOBUILD} -eq 0 ]; then
-  cmd="cmake --build ./build --target install -j8" 
-  echo ""    
-  echo $cmd   
+  cmd="cmake --build ./build --target install -j8"
+  echo ""
+  echo $cmd
   read -p "Press ENTER to continue or ctrl-c to cancel"
 
   eval $cmd
