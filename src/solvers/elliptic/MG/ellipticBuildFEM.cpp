@@ -83,10 +83,8 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
   mesh->o_ggeo.copyTo(ggeo.data());
 
   // here we assume lambda0 is constant (in space and time) 
-  // use first entry of o_lambda as representative value 
-  pfloat lambda0;
-  elliptic->o_lambda0.copyTo(&lambda0, 1);
-  const dfloat lambda1 = 0.0;  // Poisson
+  const pfloat lambda0 = elliptic->lambda0Avg;
+  const pfloat lambda1 = 0.0;  // Poisson
 
   int rank = platform->comm.mpiRank;
 

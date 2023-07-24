@@ -25,7 +25,6 @@ residualTol = 1e-04
 #initialGuess = projectionAconj+nVector=10
 
 [VELOCITY]
-#solver = pfcg+block
 boundaryTypeMap = inlet, outlet, wall
 density = 1.0
 viscosity = 1/19000

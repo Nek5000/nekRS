@@ -9,7 +9,10 @@ void computeUrst(nrs_t *nrs, bool cvode)
   auto mesh = nrs->meshV;
   double flopCount = 0.0;
 
-  if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
+  const auto cubature = (cvode) ? platform->options.compareArgs("CVODE ADVECTION TYPE", "CUBATURE") :
+                        platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"); 
+
+  if (cubature) {
     nrs->UrstCubatureKernel(mesh->Nelements,
                             mesh->o_cubvgeo,
                             mesh->o_cubInterpT,

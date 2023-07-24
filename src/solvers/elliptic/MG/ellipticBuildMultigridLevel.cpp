@@ -44,15 +44,15 @@ std::string gen_suffix(const elliptic_t * elliptic, const char * floatString)
 
 }
 
-elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf)
+elliptic_t* ellipticBuildMultigridLevel(elliptic_t* fineElliptic, int Nc, int Nf)
 {
   
   elliptic_t* elliptic = new elliptic_t();
-  memcpy(elliptic,baseElliptic,sizeof(elliptic_t));
+  memcpy(elliptic,fineElliptic,sizeof(elliptic_t));
 
   elliptic->mgLevel = true;
 
-  mesh_t* mesh = createMeshMG(baseElliptic->mesh, Nc);
+  mesh_t* mesh = createMeshMG(fineElliptic->mesh, Nc);
   elliptic->mesh = mesh;
 
   elliptic->fieldOffset = mesh->Nlocal; // assumes elliptic->Nfields == 1
@@ -113,38 +113,39 @@ elliptic_t* ellipticBuildMultigridLevel(elliptic_t* baseElliptic, int Nc, int Nf
 
   elliptic->precon = new precon_t();
   precon_t *precon = elliptic->precon;
-
+ 
   {
     const std::string kernelSuffix =
         std::string("_Nf_") + std::to_string(Nf) + std::string("_Nc_") + std::to_string(Nc);
 
-    kernelName = "ellipticPreconCoarsen" + suffix;
-    precon->coarsenKernel = platform->kernels.get(kernelName + kernelSuffix);
-    kernelName = "ellipticPreconProlongate" + suffix;
-    precon->prolongateKernel = platform->kernels.get(kernelName + kernelSuffix);
+    kernelName = "ellipticPreconCoarsen" + suffix + kernelSuffix;
+    precon->coarsenKernel = platform->kernels.get(kernelName);
+
+    kernelName = "ellipticPreconProlongate" + suffix + kernelSuffix;
+    precon->prolongateKernel = platform->kernels.get(kernelName);
 
   }
 
   elliptic->o_lambda0 = platform->device.malloc<pfloat>(mesh->Nlocal);
-  if(baseElliptic->poisson)
+  if(fineElliptic->poisson)
     elliptic->o_lambda1 = nullptr;
   else
     elliptic->o_lambda1 = platform->device.malloc<pfloat>(mesh->Nlocal);
 
   const int Nfq = Nf+1;
   const int Ncq = Nc+1;
-  dfloat* fToCInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
-  InterpolationMatrix1D(Nf, Nfq, baseElliptic->mesh->r, Ncq, mesh->r, fToCInterp);
+  auto fToCInterp = (dfloat*) calloc(Nfq * Ncq, sizeof(dfloat));
+  InterpolationMatrix1D(Nf, Nfq, fineElliptic->mesh->r, Ncq, mesh->r, fToCInterp);
 
   occa::memory o_interp = platform->device.malloc<dfloat>(Nfq * Ncq, fToCInterp);
   elliptic->o_interp = platform->device.malloc<pfloat>(Nfq * Ncq);
   platform->copyDfloatToPfloatKernel(Nfq * Ncq, o_interp, elliptic->o_interp);
 
   precon->coarsenKernel(mesh->Nelements, elliptic->o_interp, 
-                        baseElliptic->o_lambda0, elliptic->o_lambda0);
-  if(!baseElliptic->poisson)
+                        fineElliptic->o_lambda0, elliptic->o_lambda0);
+  if(!fineElliptic->poisson)
     precon->coarsenKernel(mesh->Nelements, elliptic->o_interp, 
-                          baseElliptic->o_lambda1, elliptic->o_lambda1);
+                          fineElliptic->o_lambda1, elliptic->o_lambda1);
 
   free(fToCInterp);
 

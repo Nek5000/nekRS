@@ -12,7 +12,6 @@
 #include "bdry.hpp"
 #include "Urst.hpp"
 
-
 static void lagFields(nrs_t *nrs)
 {
   // lag velocity
@@ -24,7 +23,7 @@ static void lagFields(nrs_t *nrs)
   // lag scalars
   if (nrs->Nscalar) {
     auto cds = nrs->cds;
-    if(cds->anyEllipticSolver){
+    if (cds->anyEllipticSolver) {
       for (int s = std::max(cds->nBDF, cds->nEXT); s > 1; s--) {
         const auto N = cds->fieldOffsetSum;
         cds->o_S.copyFrom(cds->o_S, N, (s - 1) * N, (s - 2) * N);
@@ -67,8 +66,9 @@ static void extrapolate(nrs_t *nrs)
   }
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    if (nrs->cht)
+    if (nrs->cht) {
       mesh = nrs->_mesh;
+    }
     nrs->extrapolateKernel(mesh->Nlocal,
                            nrs->NVfields,
                            nrs->nEXT,
@@ -78,9 +78,11 @@ static void extrapolate(nrs_t *nrs)
                            mesh->o_Ue);
   }
 
-  if(nrs->Nscalar > 0) {
+  if (nrs->Nscalar > 0) {
     auto cds = nrs->cds;
-    if(!cds->o_Se.isInitialized()) return;
+    if (!cds->o_Se.isInitialized()) {
+      return;
+    }
     nrs->extrapolateKernel(cds->mesh[0]->Nlocal,
                            cds->NSfields,
                            cds->nEXT,
@@ -97,12 +99,7 @@ static void computeDivUErr(nrs_t *nrs, dfloat &divUErrVolAvg, dfloat &divUErrL2)
 
   auto o_divErr = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
 
-  nrs->divergenceVolumeKernel(mesh->Nelements,
-                              mesh->o_vgeo,
-                              mesh->o_D,
-                              nrs->fieldOffset,
-                              nrs->o_U,
-                              o_divErr);
+  nrs->divergenceVolumeKernel(mesh->Nelements, mesh->o_vgeo, mesh->o_D, nrs->fieldOffset, nrs->o_U, o_divErr);
 
   double flops = 18 * (mesh->Np * mesh->Nq + mesh->Np);
   flops *= static_cast<double>(mesh->Nelements);
@@ -113,20 +110,17 @@ static void computeDivUErr(nrs_t *nrs, dfloat &divUErrVolAvg, dfloat &divUErrL2)
   platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_invLMM, o_divErr);
 
   platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->o_div, -1.0, o_divErr);
-  divUErrL2 = platform->linAlg->weightedNorm2(mesh->Nlocal,
-      mesh->o_LMM,
-      o_divErr,
-      platform->comm.mpiComm) / sqrt(mesh->volume);
+  divUErrL2 = platform->linAlg->weightedNorm2(mesh->Nlocal, mesh->o_LMM, o_divErr, platform->comm.mpiComm) /
+              sqrt(mesh->volume);
 
-  divUErrVolAvg = platform->linAlg->innerProd(mesh->Nlocal,
-      mesh->o_LMM,
-      o_divErr,
-      platform->comm.mpiComm) / mesh->volume;
+  divUErrVolAvg =
+      platform->linAlg->innerProd(mesh->Nlocal, mesh->o_LMM, o_divErr, platform->comm.mpiComm) / mesh->volume;
 
   divUErrVolAvg = std::abs(divUErrVolAvg);
 }
 
-namespace timeStepper {
+namespace timeStepper
+{
 
 void advectionFlops(mesh_t *mesh, int Nfields)
 {
@@ -141,8 +135,7 @@ void advectionFlops(mesh_t *mesh, int Nfields)
     flopCount += 6. * cubNp * cubNq;                                       // apply Dcub
     flopCount += 5 * cubNp; // compute advection term on cubature mesh
     flopCount += mesh->Np;  // weight by inv. mass matrix
-  }
-  else {
+  } else {
     flopCount += 8 * (Np * Nq + Np);
   }
 
@@ -152,7 +145,7 @@ void advectionFlops(mesh_t *mesh, int Nfields)
   platform->flopCounter->add("advection", flopCount);
 }
 
-void adjustDt(nrs_t* nrs, int tstep)
+void adjustDt(nrs_t *nrs, int tstep)
 {
   const double TOLToZero = (sizeof(dfloat) == sizeof(double)) ? 1e-8 : 1e-5;
   auto initialTimeStepProvided = true;
@@ -173,8 +166,7 @@ void adjustDt(nrs_t* nrs, int tstep)
     if (CFL > TOLToZero) {
       nrs->dt[0] = targetCFL / CFL * nrs->dt[0];
       nrs->unitTimeCFL = CFL / nrs->dt[0];
-    }
-    else {
+    } else {
       // estimate from userf
       if (udf.uEqnSource) {
         platform->linAlg->fill(nrs->fieldOffset * nrs->NVfields, 0.0, nrs->o_FU);
@@ -200,9 +192,9 @@ void adjustDt(nrs_t* nrs, int tstep)
         const auto x = nrs->meshV->x;
         const auto y = nrs->meshV->y;
         const auto z = nrs->meshV->z;
- 
-        auto minLengthScale = 10*std::numeric_limits<double>::max();
-        for(int i = 0; nrs->meshV->Nlocal; i++) {
+
+        auto minLengthScale = 10 * std::numeric_limits<double>::max();
+        for (int i = 0; nrs->meshV->Nlocal; i++) {
           const double lengthScale = sqrt((x[0] - x[1]) * (x[0] - x[1]) + (y[0] - y[1]) * (y[0] - y[1]) +
                                           (z[0] - z[1]) * (z[0] - z[1]));
           minLengthScale = std::min(lengthScale, minLengthScale);
@@ -211,8 +203,7 @@ void adjustDt(nrs_t* nrs, int tstep)
         MPI_Allreduce(MPI_IN_PLACE, &minLengthScale, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
         if (maxU > TOLToZero) {
           nrs->dt[0] = sqrt(targetCFL * minLengthScale / maxU);
-        }
-        else {
+        } else {
           nrsAbort(platform->comm.mpiComm,
                    EXIT_FAILURE,
                    "%s\n",
@@ -242,20 +233,16 @@ void adjustDt(nrs_t* nrs, int tstep)
     nrs->dt[1] = nrs->dt[0];
     if (descriminant <= 0.0) {
       nrs->dt[0] = nrs->dt[0] * (targetCFL / nrs->CFL);
-    }
-    else if (std::abs((nrs->unitTimeCFL - unitTimeCFLold) / nrs->unitTimeCFL) < TOL) {
+    } else if (std::abs((nrs->unitTimeCFL - unitTimeCFLold) / nrs->unitTimeCFL) < TOL) {
       nrs->dt[0] = nrs->dt[0] * (targetCFL / nrs->CFL);
-    }
-    else {
+    } else {
       const double dtLow = (-B + sqrt(descriminant)) / (2.0 * A);
       const double dtHigh = (-B - sqrt(descriminant)) / (2.0 * A);
       if (dtHigh > 0.0 && dtLow > 0.0) {
         nrs->dt[0] = std::min(dtLow, dtHigh);
-      }
-      else if (dtHigh <= 0.0 && dtLow <= 0.0) {
+      } else if (dtHigh <= 0.0 && dtLow <= 0.0) {
         nrs->dt[0] = nrs->dt[0] * targetCFL / nrs->CFL;
-      }
-      else {
+      } else {
         nrs->dt[0] = std::max(dtHigh, dtLow);
       }
     }
@@ -265,10 +252,12 @@ void adjustDt(nrs_t* nrs, int tstep)
     dfloat minAdjustDtRatio = 1;
     platform->options.getArgs("MAX ADJUST DT RATIO", maxAdjustDtRatio);
     platform->options.getArgs("MIN ADJUST DT RATIO", minAdjustDtRatio);
-    if (tstep > 1)
+    if (tstep > 1) {
       nrs->dt[0] = std::max(nrs->dt[0], minAdjustDtRatio * nrs->dt[1]);
-    if (tstep > 1)
+    }
+    if (tstep > 1) {
       nrs->dt[0] = std::min(nrs->dt[0], maxAdjustDtRatio * nrs->dt[1]);
+    }
   }
 
   nrs->dt[0] = setPrecision(nrs->dt[0], 4); // to avoid accumulation of roundoff errors
@@ -290,19 +279,16 @@ void initStep(nrs_t *nrs, double time, dfloat dt, int tstep)
 
   if (nrs->Nsubsteps) {
     mesh_t *mesh = nrs->meshV;
-    if (nrs->cht)
+    if (nrs->cht) {
       mesh = nrs->cds->mesh[0];
+    }
     const auto NCubature = nrs->NVfields * nrs->cubatureOffset;
     for (int s = nrs->nEXT; s > 1; s--) {
       const auto N = nrs->fieldOffset;
       if (movingMesh) {
         mesh->o_divU.copyFrom(mesh->o_divU, N, (s - 1) * N, (s - 2) * N);
-        nrs->o_relUrst.copyFrom(nrs->o_relUrst,
-                                NCubature,
-                                (s - 1) * NCubature,
-                                (s - 2) * NCubature);
-      }
-      else {
+        nrs->o_relUrst.copyFrom(nrs->o_relUrst, NCubature, (s - 1) * NCubature, (s - 2) * NCubature);
+      } else {
         nrs->o_Urst.copyFrom(nrs->o_Urst, NCubature, (s - 1) * NCubature, (s - 2) * NCubature);
       }
     }
@@ -322,7 +308,7 @@ void initStep(nrs_t *nrs, double time, dfloat dt, int tstep)
   computeUrst(nrs);
 
   if (nrs->Nscalar) {
-    if(cds->anyEllipticSolver) {
+    if (cds->anyEllipticSolver) {
       platform->timer.tic("makeq", 1);
       platform->linAlg->fill(cds->fieldOffsetSum, 0.0, cds->o_FS);
       makeq(nrs, time, tstep, cds->o_FS, cds->o_BF);
@@ -367,10 +353,10 @@ void initStep(nrs_t *nrs, double time, dfloat dt, int tstep)
       }
     }
 
-    if (nrs->cht)
+    if (nrs->cht) {
       nrs->meshV->computeInvLMM();
+    }
   }
-
 }
 
 void finishStep(nrs_t *nrs)
@@ -379,8 +365,9 @@ void finishStep(nrs_t *nrs)
   nrs->dt[1] = nrs->dt[0];
 
   if (nrs->flow) {
-    if (nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE"))
+    if (nrs->pSolver->allNeumann && platform->options.compareArgs("LOWMACH", "TRUE")) {
       nrs->p0the = nrs->p0th[0];
+    }
   }
 
   platform->device.finish();
@@ -392,27 +379,32 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
   cds_t *cds = nrs->cds;
 
   const auto tstep = nrs->tstep;
-  const double timeNew = nrs->timePrevious + 
-                         setPrecision(nrs->dt[0], std::numeric_limits<decltype(nrs->dt[0])>::digits10 + 1);
+  const double timeNew =
+      nrs->timePrevious + setPrecision(nrs->dt[0], std::numeric_limits<decltype(nrs->dt[0])>::digits10 + 1);
 
   const int isOutputStep = nrs->isOutputStep;
 
-  if (nrs->neknek)
+  if (nrs->neknek) {
     nrs->neknek->updateBoundary(nrs, tstep, stage);
- 
-  if (nrs->cvode)
+  }
+
+  if (nrs->cvode) {
     scalarSolveCvode(nrs, nrs->timePrevious, timeNew, cds->o_S, stage, tstep);
-  
-  if (stage == 1)
+  }
+
+  if (stage == 1) {
     lagFields(nrs);
+  }
 
   applyDirichlet(nrs, timeNew);
 
-  if (nrs->Nscalar)
+  if (nrs->Nscalar) {
     scalarSolve(nrs, timeNew, cds->o_S, stage);
-  
-  if(udf.postScalar)
+  }
+
+  if (udf.postScalar) {
     udf.postScalar(nrs, timeNew, tstep);
+  }
 
   evaluateProperties(nrs, timeNew);
 
@@ -422,15 +414,17 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
     udf.div(nrs, timeNew, nrs->o_div);
     platform->timer.toc("udfDiv");
   }
-  
-  if(udf.preFluid)
-    udf.preFluid(nrs, timeNew, tstep);
 
-  if (nrs->flow)
+  if (udf.preFluid) {
+    udf.preFluid(nrs, timeNew, tstep);
+  }
+
+  if (nrs->flow) {
     fluidSolve(nrs, timeNew, nrs->o_P, nrs->o_U, stage, tstep);
+  }
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
-    occa::memory o_Unew= meshSolve(nrs, timeNew, stage);
+    occa::memory o_Unew = meshSolve(nrs, timeNew, stage);
     nrs->meshV->o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset);
   }
 
@@ -443,12 +437,14 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
     nek::ifoutfld(1);
     nrs->isOutputStep = 1;
   }
-  if (udf.executeStep)
+  if (udf.executeStep) {
     udf.executeStep(nrs, timeNew, tstep);
+  }
   platform->timer.toc("udfExecuteStep");
 
-  if (!nrs->timeStepConverged)
+  if (!nrs->timeStepConverged) {
     printInfo(nrs, timeNew, tstep, false, true);
+  }
 
   return nrs->timeStepConverged;
 }
@@ -470,21 +466,26 @@ void setDt(nrs_t *nrs, dfloat dt, int tstep)
   nek::bdfCoeff(&nrs->g0, nrs->coeffBDF, nrs->dt, bdfOrder);
   nek::extCoeff(nrs->coeffEXT, nrs->dt, extOrder, bdfOrder);
 
-  for (int i = nrs->nEXT; i > extOrder; i--)
+  for (int i = nrs->nEXT; i > extOrder; i--) {
     nrs->coeffEXT[i - 1] = 0.0;
-  for (int i = nrs->nBDF; i > bdfOrder; i--)
+  }
+  for (int i = nrs->nBDF; i > bdfOrder; i--) {
     nrs->coeffBDF[i - 1] = 0.0;
+  }
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     mesh_t *mesh = nrs->meshV;
-    if (nrs->cht)
+    if (nrs->cht) {
       mesh = nrs->cds->mesh[0];
+    }
     const int meshOrder = std::min(tstep, mesh->nAB);
     nek::coeffAB(mesh->coeffAB, nrs->dt, meshOrder);
-    for (int i = 0; i < meshOrder; ++i)
+    for (int i = 0; i < meshOrder; ++i) {
       mesh->coeffAB[i] *= nrs->dt[0];
-    for (int i = mesh->nAB; i > meshOrder; i--)
+    }
+    for (int i = mesh->nAB; i > meshOrder; i--) {
       mesh->coeffAB[i - 1] = 0.0;
+    }
     mesh->o_coeffAB.copyFrom(mesh->coeffAB, mesh->nAB);
   }
 
@@ -510,8 +511,9 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
   }
 
   for (int is = 0; is < cds->NSfields; is++) {
-    if (!cds->compute[is] || cds->cvodeSolve[is])
+    if (!cds->compute[is] || cds->cvodeSolve[is]) {
       continue;
+    }
 
     std::string sid = scalarDigitStr(is);
 
@@ -525,7 +527,7 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
                           1,
                           nrs->fieldOffset,
                           cds->o_applyFilterRT,
-                          cds->o_filterMT,
+                          cds->o_filterRT,
                           cds->o_filterS,
                           cds->o_rho,
                           cds->o_S,
@@ -535,7 +537,6 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
       flops *= static_cast<double>(mesh->Nelements);
       platform->flopCounter->add("scalarFilterRT", flops);
     }
-
 
     const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
     if (movingMesh && !cds->Nsubsteps) {
@@ -556,7 +557,7 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
     occa::memory o_Usubcycling;
     if (platform->options.compareArgs("ADVECTION", "TRUE")) {
       if (cds->Nsubsteps) {
-          o_Usubcycling = scalarSubCycle(nrs, std::min(tstep, cds->nEXT), time, is);
+        o_Usubcycling = scalarSubCycle(nrs, std::min(tstep, cds->nEXT), time, is);
       } else {
         if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
           cds->strongAdvectionCubatureVolumeKernel(cds->meshV->Nelements,
@@ -575,8 +576,7 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
                                                    cds->o_Urst,
                                                    cds->o_rho,
                                                    o_FS);
-        }
-        else {
+        } else {
           cds->strongAdvectionVolumeKernel(cds->meshV->Nelements,
                                            1,
                                            0,
@@ -625,13 +625,15 @@ void scalarSolve(nrs_t *nrs, double time, occa::memory o_S, int stage)
   cds_t *cds = nrs->cds;
 
   // avoid invoking the scalarSolve tic in the case there are no elliptic scalars
-  if (!cds->anyEllipticSolver)
+  if (!cds->anyEllipticSolver) {
     return;
+  }
 
   platform->timer.tic("scalarSolve", 1);
   for (int is = 0; is < cds->NSfields; is++) {
-    if (!cds->compute[is] || cds->cvodeSolve[is])
+    if (!cds->compute[is] || cds->cvodeSolve[is]) {
       continue;
+    }
 
     mesh_t *mesh;
     (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
@@ -655,13 +657,14 @@ void scalarSolve(nrs_t *nrs, double time, occa::memory o_S, int stage)
 void scalarSolveCvode(nrs_t *nrs, double tn, double time, occa::memory o_S, int stage, int tstep)
 {
   // CVODE is not supported with sub-stepping
-  if (!nrs->cvode || stage > 1)
+  if (!nrs->cvode || stage > 1) {
     return;
+  }
 
   nrs->cvode->solve(tn, time, tstep);
 }
 
-void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o_BF) 
+void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o_BF)
 {
   mesh_t *mesh = nrs->meshV;
   const int verbose = platform->options.compareArgs("VERBOSE", "TRUE");
@@ -674,11 +677,12 @@ void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o
   }
 
   if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "HPFRT")) {
-    nrs->filterRTKernel(mesh->Nelements, nrs->o_filterMT, nrs->filterS, nrs->fieldOffset, nrs->o_U, o_FU);
+    nrs->filterRTKernel(mesh->Nelements, nrs->o_filterRT, nrs->filterS, nrs->fieldOffset, nrs->o_U, o_FU);
     double flops = 24 * mesh->Np * mesh->Nq + 3 * mesh->Np;
     flops *= static_cast<double>(mesh->Nelements);
     platform->flopCounter->add("velocityFilterRT", flops);
   }
+
 
   if (movingMesh && !nrs->Nsubsteps) {
     nrs->advectMeshVelocityKernel(mesh->Nelements,
@@ -700,7 +704,7 @@ void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o
     } else {
       auto o_adv = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
 
-      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
+      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
         nrs->strongAdvectionCubatureVolumeKernel(mesh->Nelements,
                                                  mesh->o_vgeo,
                                                  mesh->o_cubDiffInterpT,
@@ -711,7 +715,7 @@ void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o
                                                  nrs->o_U,
                                                  nrs->o_Urst,
                                                  o_adv);
-      else
+      } else {
         nrs->strongAdvectionVolumeKernel(mesh->Nelements,
                                          mesh->o_vgeo,
                                          mesh->o_D,
@@ -719,6 +723,7 @@ void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o
                                          nrs->o_U,
                                          nrs->o_Urst,
                                          o_adv);
+      }
 
       platform->linAlg->axpby(nrs->NVfields * nrs->fieldOffset, -1.0, o_adv, 1.0, o_FU);
 
@@ -737,11 +742,11 @@ void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o
                       o_FU,
                       o_BF);
 
+
   dfloat sumMakefFlops = 0.0;
   if (nrs->Nsubsteps) {
     sumMakefFlops += (6 + 6 * nrs->nEXT) * static_cast<double>(mesh->Nlocal);
-  }
-  else {
+  } else {
     sumMakefFlops += (6 * nrs->nEXT + 12 * nrs->nBDF) * static_cast<double>(mesh->Nlocal);
   }
 
@@ -754,8 +759,9 @@ void makef(nrs_t *nrs, double time, int tstep, occa::memory o_FU, occa::memory o
                                                                  mesh->ogs->o_invDegree,
                                                                  o_BF,
                                                                  platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("BF norm: %.15e\n", debugNorm);
+    }
   }
 
   for (int s = std::max(nrs->nBDF, nrs->nEXT); s > 1; s--) {
@@ -788,7 +794,7 @@ void fluidSolve(nrs_t *nrs, double time, occa::memory o_P, occa::memory o_U, int
                                 nrs->o_rho,
                                 o_NULL,
                                 nrs->o_ellipticCoeff);
- 
+
     occa::memory o_Unew = tombo::velocitySolve(nrs, time, stage);
     o_U.copyFrom(o_Unew, nrs->NVfields * nrs->fieldOffset);
   }
@@ -884,8 +890,7 @@ void printInfo(nrs_t *nrs, double time, int tstep, bool printStepInfo, bool prin
                  solver->resNorm,
                  divUErrVolAvg,
                  divUErrL2);
-        }
-        else {
+        } else {
           solver = nrs->uSolver;
           if (solver->solutionProjection) {
             const int prevVecs = solver->solutionProjection->getPrevNumVecsProjection();
@@ -966,32 +971,37 @@ void printInfo(nrs_t *nrs, double time, int tstep, bool printStepInfo, bool prin
       ConstantFlowRate::printInfo(nrs->meshV, verboseInfo && printVerboseInfo);
     }
 
-    if (printStepInfo)
+    if (printStepInfo) {
       printf("step= %d  t= %.8e  dt=%.1e  C= %.2f", tstep, time, nrs->dt[0], cfl);
+    }
 
     if (!verboseInfo) {
       bool cvodePrinted = false;
-      for (int is = 0; is < nrs->Nscalar; is++)
-        if (cds->compute[is] && !cds->cvodeSolve[is]){
+      for (int is = 0; is < nrs->Nscalar; is++) {
+        if (cds->compute[is] && !cds->cvodeSolve[is]) {
           printf("  S: %d", cds->solver[is]->Niter);
-        } else if (cds->cvodeSolve[is] && !cvodePrinted){
+        } else if (cds->cvodeSolve[is] && !cvodePrinted) {
           nrs->cvode->printInfo(false);
           cvodePrinted = true;
         }
+      }
 
       if (nrs->flow) {
         printf("  P: %d", nrs->pSolver->Niter);
-        if (nrs->uvwSolver)
+        if (nrs->uvwSolver) {
           printf("  UVW: %d", nrs->uvwSolver->Niter);
-        else
+        } else {
           printf("  U: %d  V: %d  W: %d", nrs->uSolver->Niter, nrs->vSolver->Niter, nrs->wSolver->Niter);
+        }
       }
-      if (nrs->meshSolver)
+      if (nrs->meshSolver) {
         printf("  MSH: %d", nrs->meshSolver->Niter);
+      }
     }
 
-    if (nrs->timeStepConverged && printStepInfo)
+    if (nrs->timeStepConverged && printStepInfo) {
       printf("  elapsedStep= %.2es  elapsedStepSum= %.5es\n", elapsedStep, elapsedStepSum);
+    }
   }
 
   bool largeCFLCheck = (cfl > 30) && numberActiveFields(nrs);
@@ -1002,6 +1012,5 @@ void printInfo(nrs_t *nrs, double time, int tstep, bool printStepInfo, bool prin
            "%s\n",
            "Unreasonable CFL!");
 }
-
 
 } // namespace timeStepper

@@ -162,6 +162,7 @@ struct elliptic_t
   occa::kernel ellipticBlockBuildDiagonalPfloatKernel;
 
   occa::memory o_lambda0;
+  dfloat lambda0Avg;
   occa::memory o_lambda1;
 
   int nLevels;

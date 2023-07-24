@@ -201,13 +201,13 @@ static std::vector<std::string> scalarKeys = {
 static std::vector<std::string> cvodeKeys = {
     {"relativetol"},
     {"absolutetol"},
-    {"hmaxratio"},
     {"epslin"},
+    {"gstype"},
     {"sigscale"},
     {"jtvrecycleproperties"},
     {"sharedrho"},
+    {"dealiasing"},
     {"jtvmixedprecision"},
-    {"cvodeendtimeratio"},
     {"solver"},
 };
 
@@ -221,6 +221,7 @@ static std::vector<std::string> boomeramgKeys = {
     {"nonGalerkinTol"},
     {"aggressiveCoarseningLevels"},
     {"chebyshevRelaxOrder"},
+    {"chebyshevFraction"},
 };
 
 static std::vector<std::string> amgxKeys = {
@@ -508,15 +509,14 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
 #endif
 
   // default values
-  double relativeTol = 1e-4;
-  double absoluteTol = 1e-6;
+  double relativeTol;
+  double absoluteTol;
+  double hmax;
   int maxSteps = 500;
-  double hmax = 3;
-  double epsLin = 0.1;
-  int maxOrder = 3;
-  double sigScale = 1.0;
-  bool recycleProps = false;
-  bool mixedPrecisionJtv = false;
+  double epsLin;
+  double sigScale;
+  bool recycleProps;
+  bool mixedPrecisionJtv;
 
   std::string integrator = "bdf";
 
@@ -565,6 +565,10 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
     }
   }();
 
+ 
+  if (options.compareArgs("VERBOSE", "TRUE"))
+    options.setArgs("CVODE VERBOSE", "TRUE");
+
   options.setArgs("CVODE STOP TIME", "TRUE");
 
   if (par->extract(parScope, "hmaxratio", hmax)) {
@@ -572,12 +576,30 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
     options.setArgs("CVODE STOP TIME", "FALSE");
   }
 
-  par->extract(parScope, "epslin", epsLin);
-  options.setArgs("CVODE EPS LIN", std::to_string(epsLin));
+  if (par->extract(parScope, "epslin", epsLin)) {
+    options.setArgs("CVODE EPS LIN", std::to_string(epsLin));
+  }
 
-  options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
+  if (par->extract(parScope, "maxSteps", maxSteps)) {
+    options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
+  }
 
-  options.setArgs("CVODE MAX TIMESTEPPER ORDER", std::to_string(maxOrder));
+  int maxOrder;
+  if (par->extract(parScope, "maxOrder", maxOrder)) {
+    options.setArgs("CVODE MAX TIMESTEPPER ORDER", std::to_string(maxOrder));
+  }
+
+  options.setArgs("CVODE GS TYPE", "CLASSICAL");
+  std::string gstype;
+  if (par->extract(parScope, "gstype", gstype)) {
+    if (gstype.find("classical") != std::string::npos) {
+      options.setArgs("CVODE GS TYPE", "CLASSICAL");
+    } else if (gstype.find("classical") != std::string::npos) {
+      options.setArgs("CVODE GS TYPE", "MODIFIED");
+    } else {
+      append_error("Invalid gsType for " + parScope);
+    }
+  }
 
   upperCase(integrator);
   options.setArgs("CVODE INTEGRATOR", integrator);
@@ -585,6 +607,13 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
   if (par->extract(parScope, "sigscale", sigScale)) {
     options.setArgs("CVODE SIGMA SCALE", to_string_f(sigScale));
   }
+
+  bool dealiasing = options.compareArgs("ADVECTION TYPE", "CUBATURE") ? true : false;
+  par->extract(parScope, "dealiasing", dealiasing);
+  if (dealiasing)
+    options.setArgs("CVODE ADVECTION TYPE", "CUBATURE+CONVECTIVE");
+  else
+    options.setArgs("CVODE ADVECTION TYPE", "CONVECTIVE");
 
   std::string recyclePropsStr;
   if (par->extract(parScope, "jtvrecycleproperties", recyclePropsStr)) {
@@ -652,6 +681,16 @@ void parseSolverTolerance(const int rank, setupAide &options, inipp::Ini *par, s
         checkValidity(rank, validValues, entry);
       }
     }
+  }
+
+  std::string absoluteTol;
+  if (par->extract(parScope, "absolutetol", absoluteTol)) {
+    std::string solver;
+    par->extract(parScope, "solver", solver);
+    if (solver != "cvode" && solver != "none") {
+      append_error("absoluteTol is only supported for solver=cvode");
+    }
+    options.setArgs(parSectionName + "CVODE ABSOLUTE TOLERANCE", absoluteTol);
   }
 }
 
@@ -1544,6 +1583,9 @@ void parseBoomerAmgSection(const int rank, setupAide &options, inipp::Ini *par)
     int chebyRelaxOrder;
     if (par->extract("boomeramg", "chebyshevrelaxorder", chebyRelaxOrder))
       options.setArgs("BOOMERAMG CHEBYSHEV RELAX ORDER", std::to_string(chebyRelaxOrder));
+    double chebyFraction;
+    if (par->extract("boomeramg", "chebyshevfraction", chebyFraction))
+      options.setArgs("BOOMERAMG CHEBYSHEV FRACTION", std::to_string(chebyFraction));
   }
 }
 
@@ -2131,14 +2173,6 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
       options.setArgs("SCALAR" + sid + " DENSITY", to_string_f(rhoCp));
     }
 
-    dfloat cvodeAbsoluteTol = -1.0;
-    if (par->extract("temperature", "absolutetol", cvodeAbsoluteTol)) {
-      options.setArgs("SCALAR" + sid + " CVODE ABSOLUTE TOLERANCE", to_string_f(cvodeAbsoluteTol));
-      if (solver != "cvode") {
-        append_error("absoluteTol is only supported with solver=cvode");
-      }
-    }
-
     std::string s_bcMap;
     if (par->extract("temperature", "boundarytypemap", s_bcMap)) {
       options.setArgs("SCALAR" + sid + " BOUNDARY TYPE MAP", s_bcMap);
@@ -2242,13 +2276,6 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *par)
 
     parseSolverTolerance(rank, options, par, parScope);
 
-    dfloat cvodeAbsoluteTol = -1.0;
-    if (par->extract(parScope, "absolutetol", cvodeAbsoluteTol)) {
-      options.setArgs("SCALAR" + sid + " CVODE ABSOLUTE TOLERANCE", to_string_f(cvodeAbsoluteTol));
-      if (solver != "cvode") {
-        append_error("absoluteTol is only supported with solver=cvode");
-      }
-    }
 
     std::string sbuf;
     if (par->extract(parScope, "diffusivity", sbuf)) {
@@ -2354,19 +2381,7 @@ void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
   for (int i = 0; i < nscal; i++)
     sections.push_back("SCALAR" + scalarDigitStr(i));
 
-  const std::vector<std::string> staleKeys = {"RESIDUAL PROJECTION",
-                                              "INITIAL GUESS",
-                                              "REGULARIZATION",
-                                              "BOUNDARY TYPE MAP",
-                                              "MAXIMUM ITERATIONS",
-                                              "BLOCK SOLVER",
-                                              "PRECONDITIONER",
-                                              "ELLIPTIC",
-                                              "TOLERANCE",
-                                              "MULTIGRID",
-                                              "MGSOLVER"};
-
-  auto cleanSection = [&](const std::string &section) {
+  auto cleanSection = [&](const std::string& section, const std::vector<std::string>& staleKeys) {
     std::vector<std::string> staleOptions;
     for (auto const &option : options) {
       if (option.first.find(section) == 0) {
@@ -2382,9 +2397,34 @@ void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
     }
   };
 
+  const std::vector<std::string> staleKeys = {"RESIDUAL PROJECTION",
+                                              "INITIAL GUESS",
+                                              "REGULARIZATION",
+                                              "BOUNDARY TYPE MAP",
+                                              "MAXIMUM ITERATIONS",
+                                              "BLOCK SOLVER",
+                                              "PRECONDITIONER",
+                                              "ELLIPTIC",
+                                              "CVODE",
+                                              "TOLERANCE",
+                                              "MULTIGRID",
+                                              "MGSOLVER"};
+
+  const std::vector<std::string> invalidKeysCvode = {"RESIDUAL PROJECTION",
+                                                    "INITIAL GUESS",
+                                                    "MAXIMUM ITERATIONS",
+                                                    "PRECONDITIONER",
+                                                    "ELLIPTIC",
+                                                    "MULTIGRID",
+                                                    "MGSOLVER"};
+
   for (const auto &section : sections) {
     if (options.compareArgs(section + " SOLVER", "NONE")) {
-      cleanSection(section);
+      cleanSection(section, staleKeys);
+    }
+
+    if (options.compareArgs(section + " SOLVER", "CVODE")) {
+      cleanSection(section, invalidKeysCvode);
     }
   }
 

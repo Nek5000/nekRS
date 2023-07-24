@@ -10,6 +10,7 @@
 #include <vector>
 #include <tuple>
 #include <memory>
+#include "LVector.hpp"
 
 #ifdef ENABLE_CVODE
 #include <cvode/cvode.h>
@@ -19,19 +20,22 @@ class nrs_t;
 
 class cvode_t {
 public:
+  
+  using LVec = LVector_t<dfloat>;
+
 #ifdef ENABLE_CVODE
   static constexpr bool enabled = true;
 #else
   static constexpr bool enabled = false;
 #endif
   using userRHS_t = std::function<
-      void(nrs_t *nrs, double time, double t0, occa::memory o_y, occa::memory o_ydot)>;
+      void(nrs_t *nrs, double time, double t0, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)>;
   using userJacobian_t = std::function<
-      void(nrs_t *nrs, double time, double t0, occa::memory o_y, occa::memory o_ydot)>;
+      void(nrs_t *nrs, double time, double t0, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)>;
   using userLocalPointSource_t =
-      std::function<void(nrs_t *nrs, dlong LFieldOffset, occa::memory o_y, occa::memory o_ydot)>;
-  using userPostNrsToCv_t = std::function<void(nrs_t *nrs, occa::memory o_LField)>;
-  using userPostCvToNrs_t = std::function<void(nrs_t *nrs, occa::memory o_EField)>;
+      std::function<void(nrs_t *nrs, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)>;
+  using userPostNrsToCv_t = std::function<void(nrs_t *nrs,  LVector_t<dfloat> & o_LField, bool isYdot)>;
+  using userPostCvToNrs_t = std::function<void(nrs_t *nrs, occa::memory o_EField, bool isYdot)>;
 
   cvode_t(nrs_t *nrs);
   ~cvode_t();
@@ -44,7 +48,7 @@ public:
   void setLocalPointSource(userLocalPointSource_t _userLocalPointSource);
 
   void setUserPostCvToNrs(userPostCvToNrs_t _userPostCvToNrs) { userPostCvToNrs = _userPostCvToNrs; }
-  void setUserPostNrsToCv(userPostCvToNrs_t _userPostNrsToCv) { userPostNrsToCv = _userPostNrsToCv; }
+  void setUserPostNrsToCv(userPostNrsToCv_t _userPostNrsToCv) { userPostNrsToCv = _userPostNrsToCv; }
 
   void printInfo(bool printVerboseInfo) const;
 
@@ -61,42 +65,22 @@ public:
   void setTimeStep(int tstep) { externalTStep = tstep; }
   double time() const { return tExternal; }
 
-  void rhs(double time, occa::memory o_y, occa::memory o_ydot);
-  void jtvRHS(double time, occa::memory o_y, occa::memory o_ydot);
+  void rhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
+  void jtvRHS(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
   dlong numEquations() const { return nEq; }
 
-  // getters needed for CVLsJacTimesVecFn
-  void *getCvodeMem() { return cvodeMem; }
-  double sigmaScale() const { return sigScale; }
-
   bool mixedPrecisionJtv() const { return mixedPrecisionJtvEnabled; }
-
-  // returns array in E-vector layout that maps E-vector points
-  // to the corresponding L-vector point (if unique),
-  // else contains -1
-  occa::memory &Lpoints() { return o_EToLUnique; }
 
   dfloat &g0() { return _g0; }
   dfloat &dt() { return dtCvode[0]; }
   dfloat *coeffBDF() { return _coeffBDF.data(); }
   dfloat *coeffEXT() { return _coeffEXT.data(); }
 
-  // compute error weights for CVODE
-  void computeErrorWeight(occa::memory o_y, occa::memory o_ewt);
-
   // CVODE solver statistics
   long numSteps() const;
   long numRHSEvals() const;
   long numNonlinSolveIters() const;
   long numLinIters() const;
-
-  // hand nekRS-style E-vector to CVODE, which uses an L-vector
-  void nrsToCv(occa::memory o_EFeild, occa::memory o_LField);
-
-  // unpack CVODE L-vector into nekRS-style E-vector
-  void cvToNrs(occa::memory o_LField, occa::memory o_EField);
-
-  void defaultRHS(double time, double t0, occa::memory o_y, occa::memory o_ydot);
 
   void printTimers();
   void resetTimers();
@@ -107,29 +91,37 @@ public:
   occa::memory o_pointSource; // scratch field for point source
   occa::memory o_vgeoPfloat;
 
+  // L-vector specific accessors
+  const auto & meshes() const { return YLVec->meshes(); }
+  const auto & offsets() const { return YLVec->offsets(); }
+  auto getLocalPointSource() { return userLocalPointSource; }
+
 private:
+  
+  std::shared_ptr<LVec> YLVec;
+  std::shared_ptr<LVec> YdotLVec;
+
+#ifdef ENABLE_CVODE
+  // CVODE function pointers (required to access private data members)
+  int cvodeRHS(double time, N_Vector Y, N_Vector Ydot);
+  int cvodeJtvRHS(double time, N_Vector Y, N_Vector Ydot);
+  int cvodeJtv(N_Vector v, N_Vector Jv, realtype t, N_Vector y, N_Vector fy, N_Vector work);
+  int cvodeErrorWt(N_Vector y, N_Vector ewt);
+#endif
+  
+  void defaultRHS(double time, double t0, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
+  
+  // hand nekRS-style E-vector to CVODE, which uses an L-vector
+  void nrsToCv(occa::memory o_EFeild,  LVector_t<dfloat> & o_LField, bool isYdot);
+
+  // unpack CVODE L-vector into nekRS-style E-vector
+  void cvToNrs(const  LVector_t<dfloat> & o_LField, occa::memory o_EField, bool isYdot);
 
   nrs_t* nrs;
 
   std::string timerName = "cvode_t::";
   std::string timerScope;
   std::string rhsTagName() const;
-
-  // package data to pass in as user data to cvode
-  struct userData_t {
-
-    userData_t(platform_t *_platform, nrs_t *_nrs, cvode_t *_cvode)
-        : platform(_platform), nrs(_nrs), cvode(_cvode)
-    {
-    }
-
-    platform_t *platform;
-    nrs_t *nrs;
-    cvode_t *cvode;
-  };
-  std::shared_ptr<userData_t> userdata;
-
-  dlong LFieldOffset;
 
   // most recent time from nekRS -- used to compute dt in CVODE integration call
   mutable double tExternal;
@@ -163,7 +155,6 @@ private:
   occa::memory o_meshU; // CVODE is responsible for correctly handling the mesh velocity state
   occa::memory o_xyz0;
 
-  void setupEToLMapping();
   void setupDirichletMask();
   void applyDirichlet(double time);
 
@@ -188,9 +179,9 @@ private:
 
   dlong Nscalar;
 
+  occa::memory o_rhoCpAvg;
+
   occa::memory o_coeffExt;
-  occa::memory o_EToLUnique;
-  occa::memory o_EToL;
 
   occa::memory o_cvodeScalarIds;
   occa::memory o_scalarIds;
@@ -207,8 +198,6 @@ private:
   dlong maskOffset;           // page-aligned offset for indexing into o_maskValues
 
   occa::kernel weakLaplacianKernel;
-  occa::kernel nrsToCvKernel;
-  occa::kernel cvToNrsKernel;
   occa::kernel mapToMaskedPointKernel;
   occa::kernel extrapolateDirichletKernel;
   occa::kernel errorWeightKernel;
@@ -227,7 +216,7 @@ private:
   N_Vector cvodeY;
 #endif
   occa::memory o_cvodeY;
-  occa::memory o_invDegree; // in L-vector format
+
 };
 
 #endif

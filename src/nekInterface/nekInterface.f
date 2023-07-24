@@ -248,8 +248,10 @@ c-----------------------------------------------------------------------
       endif
 
       call bcastParam
-
       call chkParam
+
+      call usrdat0
+
       call mapelpr 
       call read_re2_data(ifbswap, .true., .true., .true.)
 
@@ -761,16 +763,18 @@ c-----------------------------------------------------------------------
 c-----------------------------------------------------------------------
       subroutine nekf_gen_bcmap()
 c
-c     generate cbc_bmap mapping: 
-c     * assign for each BC a boundaryID (index-1 and contiguous)
-c     * map each boundaryID to its corresponding bcType 
+c     map: BC type to a consecutive boundaryID (index-1)
+c     cbc_bmap: map^T  
 c
       include 'SIZE'
       include 'TOTAL'
 
       integer bID, bcID
       integer map(max(p_velNBcType, p_scalNBcType))
+      integer cnt(max(p_velNBcType, p_scalNBcType))
       integer ibc_bmap(lbid, ldimt1) 
+
+      integer bIDcnt, bIDcntV
 
       logical ifalg,ifnorx,ifnory,ifnorz
       character*3 cb 
@@ -782,12 +786,11 @@ c
 
       if(.not.ifflow .and. .not.ifheat) return 
 
-      ifld = 1
       if(ifflow) then
 
         do iel = 1,nelv
         do ifc = 1,2*ndim
-           cb = cbc(ifc,iel,ifld) 
+           cb = cbc(ifc,iel,1) 
            call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel)
 
            if(cb.eq.'W  ') then 
@@ -838,22 +841,61 @@ c
 
       endif
 
-      ! assign each bcType a bID
-      bID = 0
+      ! assign each bcType to a consecutive bID
+      bIDcntV = 0
       do i = 1,size(map)
         map(i) = iglmax(map(i),1)
         if(map(i).gt.0) then
-          bID = bID + 1
-          map(i) = bID
+          bIDcntV = bIDcntV + 1
+          map(i) = bIDcntV
         endif 
       enddo
 
+      ! check if boundaryIDs match between all fields
+      do ifld = 2,nfield
+        if(idpss(ifld-1).lt.0 .or. iftmsh(ifld)) goto 199
+        call izero(cnt, size(cnt))
+
+        do iel = 1,nelv
+        do ifc = 1,2*ndim
+           cb = cbc(ifc,iel,ifld)
+           if(cb.eq.'int') then 
+             cnt(p_bcTypeINTS) = 1
+           else if(cb.eq.'t  ') then 
+             cnt(p_bcTypeS) = 1
+           else if(cb.eq.'I  ' .or. cb.eq.'O  ') then 
+             cnt(p_bcTypeF0) = 1
+           else if(cb.eq.'f  ') then 
+             cnt(p_bcTypeF) = 1
+           endif
+        enddo
+        enddo
+
+        bIDcnt = 0
+        do i = 1,size(cnt)
+          cnt(i) = iglmax(cnt(i),1)
+          if(cnt(i).gt.0) then
+            bIDcnt = bIDcnt + 1
+          endif 
+        enddo
+
+        if(bIDcnt .gt. bIDcntV) then
+           if(nid.eq.0)  write(6,*) 'Number of boundary types ',
+     $       'for field ', ifld, ' needs to be <= ', bIDcntV, 
+     $       '(field 1)'
+           call exitt
+        endif
+
+ 50     continue
+      enddo
+
       ierr = 0
+
       if(ifflow) then
 
       do iel = 1,nelv
       do ifc = 1,2*ndim
-         cb = cbc(ifc,iel,ifld)
+         cb = cbc(ifc,iel,1)
          call chknord(ifalg,ifnorx,ifnory,ifnorz,ifc,iel)
  
          if(cb.eq.'W  ') then
@@ -893,39 +935,39 @@ c
  99   call err_chk(ierr, 'Invalid velocity boundary condition type!$')
 
       if(map(p_bcTypeW).gt.0)
-     $  cbc_bmap(map(p_bcTypeW), ifld) = 'W  '
+     $  cbc_bmap(map(p_bcTypeW), 1) = 'W  '
       if(map(p_bcTypeINT).gt.0)
-     $  cbc_bmap(map(p_bcTypeINT), ifld) = 'int'
+     $  cbc_bmap(map(p_bcTypeINT), 1) = 'int'
       if(map(p_bcTypeV).gt.0)
-     $  cbc_bmap(map(p_bcTypeV), ifld) = 'v  '
+     $  cbc_bmap(map(p_bcTypeV), 1) = 'v  '
       if(map(p_bcTypeMV).gt.0)
-     $   cbc_bmap(map(p_bcTypeMV), ifld) = 'mv '
+     $   cbc_bmap(map(p_bcTypeMV), 1) = 'mv '
       if(map(p_bcTypeO).gt.0)
-     $   cbc_bmap(map(p_bcTypeO), ifld) = 'o  '
+     $   cbc_bmap(map(p_bcTypeO), 1) = 'o  '
       if(map(p_bcTypeON).gt.0)
-     $   cbc_bmap(map(p_bcTypeON), ifld) = 'on '
+     $   cbc_bmap(map(p_bcTypeON), 1) = 'on '
       if(map(p_bcTypeONX).gt.0)
-     $   cbc_bmap(map(p_bcTypeONX), ifld) = 'onx'
+     $   cbc_bmap(map(p_bcTypeONX), 1) = 'onx'
       if(map(p_bcTypeONY).gt.0)
-     $   cbc_bmap(map(p_bcTypeONY), ifld) = 'ony'
+     $   cbc_bmap(map(p_bcTypeONY), 1) = 'ony'
       if(map(p_bcTypeONZ).gt.0)
-     $   cbc_bmap(map(p_bcTypeONZ), ifld) = 'onz'
+     $   cbc_bmap(map(p_bcTypeONZ), 1) = 'onz'
       if(map(p_bcTypeSYMX).gt.0)
-     $   cbc_bmap(map(p_bcTypeSYMX), ifld) = 'SYX'
+     $   cbc_bmap(map(p_bcTypeSYMX), 1) = 'SYX'
       if(map(p_bcTypeSYMY).gt.0)
-     $   cbc_bmap(map(p_bcTypeSYMY), ifld) = 'SYY'
+     $   cbc_bmap(map(p_bcTypeSYMY), 1) = 'SYY'
       if(map(p_bcTypeSYMZ).gt.0)
-     $   cbc_bmap(map(p_bcTypeSYMZ), ifld) = 'SYZ'
+     $   cbc_bmap(map(p_bcTypeSYMZ), 1) = 'SYZ'
       if(map(p_bcTypeSYM).gt.0)
-     $   cbc_bmap(map(p_bcTypeSYM), ifld) = 'SYM'
+     $   cbc_bmap(map(p_bcTypeSYM), 1) = 'SYM'
       if(map(p_bcTypeSHLX).gt.0)
-     $   cbc_bmap(map(p_bcTypeSHLX), ifld) = 'shx'
+     $   cbc_bmap(map(p_bcTypeSHLX), 1) = 'shx'
       if(map(p_bcTypeSHLY).gt.0)
-     $   cbc_bmap(map(p_bcTypeSHLY), ifld) = 'shy'
+     $   cbc_bmap(map(p_bcTypeSHLY), 1) = 'shy'
       if(map(p_bcTypeSHLZ).gt.0)
-     $   cbc_bmap(map(p_bcTypeSHLZ), ifld) = 'shz'
+     $   cbc_bmap(map(p_bcTypeSHLZ), 1) = 'shz'
       if(map(p_bcTypeSHL).gt.0)
-     $   cbc_bmap(map(p_bcTypeSHL), ifld) = 'shl'
+     $   cbc_bmap(map(p_bcTypeSHL), 1) = 'shl'
 
       else
 
@@ -951,7 +993,7 @@ c
         if(idpss(ifld-1).lt.0 .or. iftmsh(ifld)) goto 199
         call izero(ibc_bmap, size(ibc_bmap))
 
-        if(bID .gt. 0) then
+        if(bIDcntV .gt. 0) then
         do iel = 1,nelv
         do ifc = 1,2*ndim
           bID = boundaryID(ifc,iel)

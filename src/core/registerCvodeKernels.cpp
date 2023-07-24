@@ -40,22 +40,6 @@ void registerCvodeKernels(occa::properties kernelInfoBC)
   fileName = oklpath + kernelName + ".okl";
   platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
 
-  kernelName = "cvToNrs";
-  fileName = oklpath + kernelName + ".okl";
-  platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
-
-  kernelName = "nrsToCv";
-  fileName = oklpath + kernelName + ".okl";
-  platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
-
-  kernelName = "nrsToCv";
-  fileName = oklpath + kernelName + ".okl";
-  platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
-
-  kernelName = "cvToNrs";
-  fileName = oklpath + kernelName + ".okl";
-  platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
-
   {
     auto prop = platform->kernelInfo;
     kernelName = "fusedAddRhoDiv";

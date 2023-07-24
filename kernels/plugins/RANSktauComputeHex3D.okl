@@ -129,7 +129,7 @@
 	  
           // compute source term for k
           const dfloat Y_k = rho * p_betainf_str * f_beta_str * itau;
-          const dfloat kSrc = fmin(mu_t * 2*stMag2, 10.0 * Y_k * kk);
+          const dfloat kSrc = fmin(mu_t * 2*stMag2, 10.0f * Y_k * kk);
           const dfloat kDiag = Y_k;
 
           // compute source term for tau
@@ -139,7 +139,8 @@
           const dfloat S_w0 = -rho * sigd *xk;
           const dfloat G_wp = rho * p_alp_inf * tau * 2*stMag2;
 
-          const dfloat S_tau = fmin(8.0 * mue * xtq, 8.0 * p_beta0 / 3.0);
+          const dfloat tau_max = 8.0 * p_beta0 / 3.0;
+          const dfloat S_tau = fmin(8.0f * mue * xtq, tau_max);
           const dfloat S_taup = 8.0 * rho * p_alpinf_str * kk * xtq * p_sigma_tau;	  
 
           dfloat tauSrc = 0.0;

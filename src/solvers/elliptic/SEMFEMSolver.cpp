@@ -34,8 +34,7 @@ SEMFEMSolver_t::SEMFEMSolver_t(elliptic_t* elliptic_)
 
   // here we assume lambda0 is constant (in space and time)
   // use first entry of o_lambda as representative value
-  pfloat lambda0;
-  elliptic->o_lambda0.copyTo(&lambda0, 1);
+  const dfloat lambda0 = elliptic->lambda0Avg;
 
   auto hypreIJ = new hypreWrapper::IJ_t();
   matrix_t* matrix = build(
@@ -79,6 +78,7 @@ SEMFEMSolver_t::SEMFEMSolver_t(elliptic_t* elliptic_)
       settings[9]  = 0.05; /* non galerkin tol             */
       settings[10] = 0;    /* aggressive coarsening levels */
       settings[11] = 1;    /* chebyRelaxOrder */
+      settings[12] = 0.3;  /* chebyRelaxOrder */
 
       if(elliptic->options.compareArgs("MULTIGRID SEMFEM", "TRUE")) {
         settings[4]  = 16;
@@ -95,6 +95,7 @@ SEMFEMSolver_t::SEMFEMSolver_t(elliptic_t* elliptic_)
       platform->options.getArgs("BOOMERAMG NONGALERKIN TOLERANCE" , settings[9]);
       platform->options.getArgs("BOOMERAMG AGGRESSIVE COARSENING LEVELS" , settings[10]);
       platform->options.getArgs("BOOMERAMG CHEBYSHEV RELAX ORDER" , settings[11]);
+      platform->options.getArgs("BOOMERAMG CHEBYSHEV FRACTION" , settings[12]);
 
       if(platform->device.mode() != "Serial" && useDevice) {
         boomerAMG = new hypreWrapperDevice::boomerAMG_t(

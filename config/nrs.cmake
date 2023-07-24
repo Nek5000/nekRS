@@ -7,6 +7,7 @@ set(SRC
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
     src/io/fileUtils.cpp
+    src/utils/sha1.cpp
     src/utils/inipp.cpp
     src/utils/unifdef.c
     src/utils/mysort.cpp
@@ -16,7 +17,7 @@ set(SRC
     src/core/numberActiveFields.cpp
     src/core/printHeader.cpp
     src/navierStokes/cfl.cpp
-    src/regularization/hpf.cpp
+    src/regularization/lowPassFilter.cpp
     src/regularization/avm.cpp
     src/bdry/bcMap.cpp
     src/core/compileKernels.cpp
@@ -30,6 +31,7 @@ set(SRC
     src/core/registerCdsKernels.cpp
     src/core/registerLinAlgKernels.cpp
     src/core/registerMeshKernels.cpp
+    src/core/LVector.cpp
     src/bdry/createEToBV.cpp
     src/navierStokes/applyDirichlet.cpp
     src/navierStokes/timeStepper.cpp

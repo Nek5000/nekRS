@@ -10,7 +10,8 @@
 
 static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames = 63)
 {
-    fprintf(out, "stack trace:\n");
+    std::stringstream msg;
+    msg << "stack trace:\n";
 
     // storage array for stack trace address data
     void* addrlist[max_frames+1];
@@ -18,8 +19,10 @@ static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames 
     // retrieve current stack addresses
     int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
 
+    char str[4096];
+
     if (addrlen == 0) {
-    fprintf(out, "  <empty, possibly corrupt>\n");
+    msg << "  <empty, possibly corrupt>\n";
     return;
     }
 
@@ -65,24 +68,29 @@ static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames 
         int status;
         char* ret = abi::__cxa_demangle(begin_name,
                         funcname, &funcnamesize, &status);
+
         if (status == 0) {
         funcname = ret; // use possibly realloc()-ed string
-        fprintf(out, "  %s : %s+%s\n",
+        sprintf(str, "  %s : %s+%s\n",
             symbollist[i], funcname, begin_offset);
         }
         else {
         // demangling failed. Output function name as a C function with
         // no arguments.
-        fprintf(out, "  %s : %s()+%s\n",
+        sprintf(str, "  %s : %s()+%s\n",
             symbollist[i], begin_name, begin_offset);
         }
+        msg << str;
     }
     else
     {
         // couldn't parse the line? print the whole line.
-        fprintf(out, "  %s\n", symbollist[i]);
+        sprintf(str, "  %s\n", symbollist[i]);
+        msg << str;
     }
     }
+
+    fprintf(out, msg.str().c_str());
 
     free(funcname);
     free(symbollist);

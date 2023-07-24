@@ -1,0 +1,20 @@
+// pre: EField is C0 continuous
+@kernel void EToL(const dlong Nlocal,
+                     const dlong nFields,
+                     const dlong EFieldOffset,
+                     @ restrict const dlong *fields,
+                     @ restrict const dlong *LFieldOffsets,
+                     @ restrict const dlong *EToLUnique,
+                     @ restrict const dfloat *EField,
+                     @ restrict dfloat *LField)
+{
+  for (dlong n = 0; n < Nlocal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dlong lid = EToLUnique[n];
+    if (lid > p_UNMAPPED) {
+      for (dlong fldId = 0; fldId < nFields; ++fldId) {
+        const dlong field = fields[fldId];
+        LField[lid + LFieldOffsets[field]] = EField[n + EFieldOffset * field];
+      }
+    }
+  }
+}

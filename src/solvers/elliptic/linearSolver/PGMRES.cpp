@@ -192,6 +192,7 @@ int pgmres(elliptic_t *elliptic,
       // w := A z
       ellipticOperator(elliptic, static_cast<const occa::memory>(o_Mv), o_w, dfloatString);
 
+      // classical Gram-Schmidt
 #if USE_WEIGHTED_INNER_PROD_MULTI_DEVICE
       linAlg.weightedInnerProdMulti(mesh->Nlocal,
                                     (i + 1),
@@ -243,6 +244,7 @@ int pgmres(elliptic_t *elliptic,
         platform->flopCounter->add("gramSchmidt", flopCount);
       }
 
+      //apply Givens rotations to new column
       // H(i+1,i) = ||w||_2
       H[i + 1 + i * (nRestartVectors + 1)] = nw;
 

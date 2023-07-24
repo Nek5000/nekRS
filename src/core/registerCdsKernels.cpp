@@ -74,9 +74,11 @@ void registerCdsKernels(occa::properties kernelInfoBC)
       fileName = oklpath + "/cds/" + kernelName + ".okl";
       platform->kernels.add(section + kernelName, fileName, prop);
 
-      kernelName = "strongAdvectionCubatureVolume" + suffix;
-      fileName = oklpath + "/cds/" + kernelName + ".okl";
-      platform->kernels.add(section + kernelName, fileName, prop);
+      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
+        kernelName = "strongAdvectionCubatureVolume" + suffix;
+        fileName = oklpath + "/cds/" + kernelName + ".okl";
+        platform->kernels.add(section + kernelName, fileName, prop);
+      }
     }
 
     kernelName = "advectMeshVelocityHex3D";

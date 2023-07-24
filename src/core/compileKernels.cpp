@@ -1,3 +1,4 @@
+#include "LVector.hpp"
 #include "nrssys.hpp"
 #include "compileKernels.hpp"
 #include "bcMap.hpp"
@@ -10,6 +11,7 @@
 #include <tuple>
 #include "findpts.hpp"
 #include "fileUtils.hpp"
+#include "LVector.hpp"
 
 
 std::string createOptionsPrefix(std::string section) {
@@ -49,6 +51,9 @@ void compileKernels() {
   registerMeshKernels(kernelInfoBC);
 
   registerNrsKernels(kernelInfoBC);
+
+  LVector_t<dfloat>::registerKernels();
+  LVector_t<pfloat>::registerKernels();
 
   int Nscalars;
   platform->options.getArgs("NUMBER OF SCALARS", Nscalars);

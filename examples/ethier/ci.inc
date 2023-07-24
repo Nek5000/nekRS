@@ -9,6 +9,7 @@
 
 #include "pointInterpolation.hpp"
 #include "randomVector.hpp"
+#include "LVector.hpp"
 
 std::vector<dfloat> xp0;
 std::vector<dfloat> yp0;
@@ -619,6 +620,131 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
   o_UintFluid.free();
 }
 
+void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
+{
+  auto mesh = nrs->meshV;
+  exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
+  
+  auto o_Usave = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  nrs->o_U.copyTo(o_Usave, nrs->NVfields * nrs->fieldOffset);
+
+  std::vector<mesh_t*> meshes = {nrs->meshV, nrs->meshV, nrs->meshV};
+  LVector_t<dfloat> UL(meshes, true);
+  LVector_t<dfloat> VL(meshes, false); // create secondary vector, not managed
+
+  UL.copyFromE(nrs->fieldOffset, nrs->o_U);
+  platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0.0, nrs->o_U);
+  UL.copyToE(nrs->fieldOffset, nrs->o_U);
+
+  bool failed = false;
+
+  // sanity check: is o_U the same as before?
+  auto checkErr = [&](bool subtract = true){
+    auto o_Uerr = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+    if(subtract){
+      platform->linAlg->axpbyzMany(nrs->meshV->Nlocal,
+                                  nrs->NVfields,
+                                  nrs->fieldOffset,
+                                  1.0,
+                                  o_Usave,
+                                  -1.0,
+                                  nrs->o_U,
+                                  o_Uerr);
+    }
+    platform->linAlg->aydxMany(nrs->meshV->Nlocal,
+                              nrs->NVfields,
+                              nrs->fieldOffset,
+                              1,
+                              1.0,
+                              o_Usave,
+                              o_Uerr);
+  
+    auto o_Uxerr = o_Uerr + 0 * nrs->fieldOffset;
+    auto o_Uyerr = o_Uerr + 1 * nrs->fieldOffset;
+    auto o_Uzerr = o_Uerr + 2 * nrs->fieldOffset;
+    
+    platform->linAlg->abs(nrs->meshV->Nlocal, o_Uxerr);
+    platform->linAlg->abs(nrs->meshV->Nlocal, o_Uyerr);
+    platform->linAlg->abs(nrs->meshV->Nlocal, o_Uzerr);
+
+    auto LinfUx = platform->linAlg->max(nrs->meshV->Nlocal, o_Uxerr, platform->comm.mpiComm);
+    auto LinfUy = platform->linAlg->max(nrs->meshV->Nlocal, o_Uyerr, platform->comm.mpiComm);
+    auto LinfUz = platform->linAlg->max(nrs->meshV->Nlocal, o_Uzerr, platform->comm.mpiComm);
+    if (platform->comm.mpiRank == 0) {
+      printf("relLinf Ux/y/z error: %g/%g/%g\n", LinfUx, LinfUy, LinfUz);
+    }
+
+    const auto tol = 1e2 * std::numeric_limits<dfloat>::epsilon();
+    if (LinfUx > tol || LinfUy > tol || LinfUz > tol) {
+      failed = true;
+    }
+  };
+  
+  checkErr();
+
+  // restore o_U
+  nrs->o_U.copyFrom(o_Usave, nrs->NVfields * nrs->fieldOffset);
+  
+  // test packing compactly, as in CVODE
+  std::vector<dlong> offsets(UL.nFields());
+  offsets[0] = 0;
+  dlong nEq = UL.Nlocal(0);
+  for(int fld = 1; fld < UL.nFields(); ++fld) {
+    offsets[fld] = offsets[fld-1] + UL.Nlocal(fld-1);
+    nEq += UL.Nlocal(fld);
+  }
+  auto o_UL = platform->o_memPool.reserve<dfloat>(nEq);
+  UL.optr(offsets, o_UL);
+  
+  UL.copyFromE(nrs->fieldOffset, nrs->o_U);
+  platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0.0, nrs->o_U);
+  UL.copyToE(nrs->fieldOffset, nrs->o_U);
+  
+  checkErr();
+  
+  // restore o_U
+  nrs->o_U.copyFrom(o_Usave, nrs->NVfields * nrs->fieldOffset);
+
+  // test same packing, but with un-allocated version
+  VL.optr(offsets, o_UL);
+  VL.copyFromE(nrs->fieldOffset, nrs->o_U);
+  platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0.0, nrs->o_U);
+  VL.copyToE(nrs->fieldOffset, nrs->o_U);
+  
+  checkErr();
+
+  // restore o_U
+  nrs->o_U.copyFrom(o_Usave, nrs->NVfields * nrs->fieldOffset);
+
+  // different test: fill VL with a constant
+  const auto val = 2.8;
+  platform->linAlg->fill(nEq, val, VL.optr());
+
+  platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0.0, nrs->o_U);
+  VL.copyToE(nrs->fieldOffset, nrs->o_U);
+
+  // subtract val
+  auto o_Ux = nrs->o_U + 0 * nrs->fieldOffset;
+  auto o_Uy = nrs->o_U + 1 * nrs->fieldOffset;
+  auto o_Uz = nrs->o_U + 2 * nrs->fieldOffset;
+  platform->linAlg->add(nrs->meshV->Nlocal, -val, o_Ux);
+  platform->linAlg->add(nrs->meshV->Nlocal, -val, o_Uy);
+  platform->linAlg->add(nrs->meshV->Nlocal, -val, o_Uz);
+  
+  checkErr(false);
+
+
+  if(failed)
+    CIFAIL;
+  
+  // Test failed -- exit
+  if (platform->exitValue) {
+    nrsFinalize(nrs);
+    exit(platform->exitValue);
+  }
+
+}
+
 void ciTestSurfaceIntegral(nrs_t *nrs)
 {
   const int rank = platform->comm.mpiRank;
@@ -844,6 +970,8 @@ void ciTestErrors(nrs_t *nrs,
   }
 
   if (ciMode == 15) {
+    ciTestLVector(nrs, time, exactUVWPKernel);
+
     ciTestPointInterpolation(nrs, time, exactUVWPKernel);
 
     ciTestSurfaceIntegral(nrs);

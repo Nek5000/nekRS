@@ -12,11 +12,11 @@
 #include "cvode.hpp"
 #include "fldFile.hpp"
 
-std::vector<std::string> fieldsToSolve(setupAide& options);
+std::vector<std::string> fieldsToSolve(setupAide &options);
 
 struct nrs_t {
 
-  static constexpr double targetTimeBenchmark {0.2};
+  static constexpr double targetTimeBenchmark{0.2};
 
   bool multiSession;
 
@@ -117,7 +117,7 @@ struct nrs_t {
 
   int filterNc;
   dfloat filterS;
-  occa::memory o_filterMT;
+  occa::memory o_filterRT;
 
   occa::kernel filterRTKernel;
   occa::kernel advectMeshVelocityKernel;

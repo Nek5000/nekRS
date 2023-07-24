@@ -60,7 +60,8 @@ boomerAMG_t::boomerAMG_t(int _nRows,
     params[7] = 0.25; /* threshold */
     params[8] = 0.0;  /* non galerkin tolerance */
     params[9] = 0;    /* agressive coarsening */
-    params[10] = 2;    /* chebyRelaxOrder */
+    params[10] = 2;   /* chebyRelaxOrder */
+    params[11] = 0.3; /* chebyFraction */
   }
 
   long long rowStart = nRows;
@@ -172,7 +173,7 @@ boomerAMG_t::boomerAMG_t(int _nRows,
   HYPRE_BoomerAMGSetKeepTranspose(*solver, 1);
 
   HYPRE_BoomerAMGSetChebyOrder(*solver, params[10]);
-  // HYPRE_BoomerAMGSetChebyFraction(*solver, 0.2);
+  HYPRE_BoomerAMGSetChebyFraction(*solver, params[11]);
 
   if (params[5] > 0) {
     HYPRE_BoomerAMGSetCycleRelaxType(*solver, params[5], 1);

@@ -4,15 +4,16 @@
 
 * Various bug fixes
 * Interpolation based velocity recycling
+* Build time option to run solver using FP32
 
 ## Good to know
-* [reproducibility] time step controller restricts dt to 5 significant digits
+* [reproducibility] variable time step controller restricts dt to 5 significant digits
 
 ## Breaking Changes
-* mempool API has changed (o_mempool.slice0 etc. was removed)
-* [udf] API argument `time` is `double` instead of `dfloat` 
-* occa::memory objects are typed (use words instead of bytes for malloc, slice, copyFrom/To)  
+* new mempool (o_mempool.slice0 etc. was removed)
+* occa::memory objects are typed now (allocate with malloc<T> and use words instead of bytes for malloc, slice, copyFrom/To)  
 * writeFld takes `const occa::memory&` instead of `const void*`
+* [udf] API argument `time` is `double` instead of `dfloat` 
 
 ## Known Bugs / Restrictions
 

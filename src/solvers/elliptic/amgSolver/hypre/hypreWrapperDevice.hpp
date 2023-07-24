@@ -9,7 +9,7 @@ namespace hypreWrapperDevice {
 int enabled();
 void finalize();
 
-constexpr int NPARAM = 11;
+constexpr int NPARAM = 12;
 
 #ifndef HYPRE_HEADER
 // has to match HYPRE config

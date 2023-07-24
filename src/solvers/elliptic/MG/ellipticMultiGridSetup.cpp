@@ -138,7 +138,7 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_, precon_t *precon_)
         elliptic->oogsAx = elliptic->oogs;
 
       if (platform->comm.mpiRank == 0) {
-        printf("autotuning overlap in ellipticOperator: %.2es %.2es ", nonOverlappedTime, overlappedTime);
+        printf("testing overlap in ellipticOperator: %.2es %.2es ", nonOverlappedTime, overlappedTime);
         if (elliptic->oogsAx != elliptic->oogs)
           printf("(overlap enabled)");
 
@@ -191,13 +191,13 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_, precon_t *precon_)
   if (Nmax > Nmin) {
     int Nc = levelDegree[numMGLevels - 1];
     int Nf = levelDegree[numMGLevels - 2];
+    elliptic_t *ellipticFine = ((pMGLevel *)levels[numMGLevels - 2])->elliptic;
 
-    ellipticCoarse = ellipticBuildMultigridLevel(elliptic, Nc, Nf);
+    ellipticCoarse = ellipticBuildMultigridLevel(ellipticFine, Nc, Nf);
 
     ellipticCoarse->oogs = oogs::setup(ellipticCoarse->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
     ellipticCoarse->oogsAx = ellipticCoarse->oogs;
 
-    elliptic_t *ellipticFine = ((pMGLevel *)levels[numMGLevels - 2])->elliptic;
     levels[numMGLevels - 1] = new pMGLevel(elliptic,
                                            meshLevels,
                                            ellipticFine,

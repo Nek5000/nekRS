@@ -6,7 +6,7 @@
 #include "cds.hpp"
 #include "avm.hpp"
 #include "udf.hpp"
-#include "hpf.hpp"
+#include "lowPassFilter.hpp"
 
 /**
  * Persson's artificial viscosity method (http://persson.berkeley.edu/pub/persson06shock.pdf) with P1
@@ -24,7 +24,7 @@ static occa::memory o_r;
 static occa::memory o_s;
 static occa::memory o_t;
 static std::vector<occa::memory> o_diff0;
-static std::vector<occa::memory> o_filterMT;
+static std::vector<occa::memory> o_filterRT;
 
 static double cachedDt = -1.0;
 static bool recomputeUrst = false;
@@ -52,17 +52,14 @@ void setup(cds_t *cds)
 
       if (udf.properties == nullptr) {
         o_diff0.push_back(platform->device.malloc<dfloat>(cds->fieldOffset[is]));
-        o_diff0[is].copyFrom(cds->o_diff,
-                             cds->fieldOffset[is],
-                             0,
-                             cds->fieldOffsetScan[is]);
+        o_diff0[is].copyFrom(cds->o_diff, cds->fieldOffset[is], 0, cds->fieldOffsetScan[is]);
       }
 
       int filterNc = -1;
       platform->options.getArgs("SCALAR" + sid + " REGULARIZATION HPF MODES", filterNc);
-      o_filterMT.push_back(hpfSetup(cds->mesh[is], filterNc));
+      o_filterRT.push_back(lowPassFilter(cds->mesh[is], filterNc));
     } else {
-      o_filterMT.push_back(o_NULL);
+      o_filterRT.push_back(o_NULL);
       if (udf.properties == nullptr) {
         o_diff0.push_back(o_NULL);
       }
@@ -90,7 +87,7 @@ occa::memory computeEps(nrs_t *nrs, const double time, const dlong scalarIndex, 
 {
   cds_t *cds = nrs->cds;
 
-  if (std::abs(time - cachedDt)/time > 10*std::numeric_limits<dfloat>::epsilon()) {
+  if (std::abs(time - cachedDt) / time > 10 * std::numeric_limits<dfloat>::epsilon()) {
     recomputeUrst = true;
   }
 
@@ -98,7 +95,8 @@ occa::memory computeEps(nrs_t *nrs, const double time, const dlong scalarIndex, 
 
   mesh_t *mesh = cds->mesh[scalarIndex];
 
-  occa::memory o_logRelativeMassHighestMode = platform->o_memPool.reserve<dfloat>(cds->fieldOffset[scalarIndex]);
+  occa::memory o_logRelativeMassHighestMode =
+      platform->o_memPool.reserve<dfloat>(cds->fieldOffset[scalarIndex]);
   occa::memory o_filteredField = platform->o_memPool.reserve<dfloat>(cds->fieldOffset[scalarIndex]);
   occa::memory o_hpfResidual = platform->o_memPool.reserve<dfloat>(cds->fieldOffset[scalarIndex]);
   occa::memory o_epsilon = platform->o_memPool.reserve<dfloat>(cds->fieldOffset[scalarIndex]);
@@ -109,7 +107,7 @@ occa::memory computeEps(nrs_t *nrs, const double time, const dlong scalarIndex, 
   relativeMassHighestModeKernel(mesh->Nelements,
                                 scalarIndex,
                                 cds->fieldOffsetScan[scalarIndex],
-                                o_filterMT[scalarIndex],
+                                o_filterRT[scalarIndex],
                                 mesh->o_LMM,
                                 o_S,
                                 o_filteredField,
@@ -122,7 +120,7 @@ occa::memory computeEps(nrs_t *nrs, const double time, const dlong scalarIndex, 
 
   dfloat Uinf = 1.0;
   if (useHPFResidual) {
-    occa::memory o_aliasedUrst = platform->o_memPool.reserve<dfloat>(cds->NVfields * cds->vFieldOffset); 
+    occa::memory o_aliasedUrst = platform->o_memPool.reserve<dfloat>(cds->NVfields * cds->vFieldOffset);
     if (recomputeUrst) {
       nrs->UrstKernel(cds->meshV->Nelements,
                       cds->meshV->o_vgeo,

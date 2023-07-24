@@ -3,7 +3,7 @@
 #include "bcMap.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "udf.hpp"
-#include "hpf.hpp"
+#include "lowPassFilter.hpp"
 #include "avm.hpp"
 #include "re2Reader.hpp"
 
@@ -346,17 +346,18 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     const dlong Nstates = nrs->Nsubsteps ? std::max(nrs->nBDF, nrs->nEXT) : 1;
     bool useCVODE = platform->options.compareArgs("CVODE", "TRUE");
     if ((useCVODE || nrs->Nsubsteps) && platform->options.compareArgs("MOVING MESH", "TRUE")) {
-      nrs->o_relUrst =
-          platform->device.malloc<dfloat>(Nstates * nrs->NVfields * nrs->cubatureOffset);
+      nrs->o_relUrst = platform->device.malloc<dfloat>(Nstates * nrs->NVfields * nrs->cubatureOffset);
     }
     if (!nrs->Nsubsteps || platform->options.compareArgs("MOVING MESH", "FALSE")) {
       nrs->o_Urst = platform->device.malloc<dfloat>(Nstates * nrs->NVfields * nrs->cubatureOffset);
     }
   }
 
-  nrs->U = (dfloat *)calloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset, sizeof(dfloat));
-  nrs->o_U = platform->device.malloc<dfloat>(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset,
-                                     nrs->U);
+  nrs->U =
+      (dfloat *)calloc(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset, sizeof(dfloat));
+  nrs->o_U =
+      platform->device.malloc<dfloat>(nrs->NVfields * std::max(nrs->nBDF, nrs->nEXT) * nrs->fieldOffset,
+                                      nrs->U);
 
   nrs->o_Ue = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
 
@@ -431,8 +432,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
         cnt++;
       }
     }
-    nrs->o_EToBMeshVelocity =
-        device.malloc<int>(mesh->Nelements * mesh->Nfaces, nrs->EToBMeshVelocity);
+    nrs->o_EToBMeshVelocity = device.malloc<int>(mesh->Nelements * mesh->Nfaces, nrs->EToBMeshVelocity);
   }
 
   if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "HPFRT")) {
@@ -444,7 +444,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     filterS = -1.0 * fabs(filterS);
     nrs->filterS = filterS;
 
-    nrs->o_filterMT = hpfSetup(nrs->meshV, nrs->filterNc);
+    nrs->o_filterRT = lowPassFilter(nrs->meshV, nrs->filterNc);
   }
 
   // build kernels
@@ -464,8 +464,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     {
       kernelName = "strongAdvectionVolume" + suffix;
       nrs->strongAdvectionVolumeKernel = platform->kernels.get(section + kernelName);
-      kernelName = "strongAdvectionCubatureVolume" + suffix;
-      nrs->strongAdvectionCubatureVolumeKernel = platform->kernels.get(section + kernelName);
+
+      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
+        kernelName = "strongAdvectionCubatureVolume" + suffix;
+        nrs->strongAdvectionCubatureVolumeKernel = platform->kernels.get(section + kernelName);
+      }
     }
 
     kernelName = "curl" + suffix;
@@ -589,7 +592,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
 
   // udf setup
   if (platform->comm.mpiRank == 0) {
-    printf("calling udf_setup ... ");
+    printf("calling UDF_Setup ... ");
   }
   fflush(stdout);
 
@@ -783,9 +786,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
             platform->device.malloc<dfloat>(nrs->uvwSolver->Nfields * nrs->uvwSolver->fieldOffset);
         nrs->o_EToBVVelocity = platform->device.malloc<int>(nrs->meshV->Nlocal);
         createEToBV(nrs->meshV, nrs->uvwSolver->EToB, nrs->o_EToBVVelocity);
-        auto o_EToB =
-            platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields,
-                                    nrs->uvwSolver->EToB);
+        auto o_EToB = platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields,
+                                                   nrs->uvwSolver->EToB);
         createZeroNormalMask(nrs, mesh, o_EToB, nrs->o_EToBVVelocity, nrs->o_zeroNormalMaskVelocity);
 
         nrs->uvwSolver->applyZeroNormalMask =
@@ -874,6 +876,11 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     nrs->setEllipticCoeffPressureKernel(mesh->Nlocal, nrs->fieldOffset, nrs->o_rho, nrs->o_ellipticCoeff);
 
     nrs->pSolver->o_lambda0 = nrs->o_ellipticCoeff.slice(0 * nrs->fieldOffset);
+    nrs->pSolver->lambda0Avg = platform->linAlg->innerProd(mesh->Nlocal,
+                                                           mesh->o_LMM,
+                                                           nrs->pSolver->o_lambda0,
+                                                           platform->comm.mpiComm) /
+                               mesh->volume;
     nrs->pSolver->o_lambda1 = nrs->o_ellipticCoeff.slice(1 * nrs->fieldOffset);
 
     nrs->pSolver->EToB = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
@@ -953,9 +960,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrs->o_zeroNormalMaskMeshVelocity =
           platform->device.malloc<dfloat>(nrs->meshSolver->Nfields * nrs->meshSolver->fieldOffset);
       nrs->o_EToBVMeshVelocity = platform->device.malloc<int>(mesh->Nlocal);
-      auto o_EToB =
-          platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields,
-                                  nrs->meshSolver->EToB);
+      auto o_EToB = platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces * nrs->meshSolver->Nfields,
+                                                 nrs->meshSolver->EToB);
       createEToBV(mesh, nrs->meshSolver->EToB, nrs->o_EToBVMeshVelocity);
       createZeroNormalMask(nrs, mesh, o_EToB, nrs->o_EToBVMeshVelocity, nrs->o_zeroNormalMaskMeshVelocity);
       nrs->meshSolver->applyZeroNormalMask =

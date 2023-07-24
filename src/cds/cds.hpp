@@ -11,27 +11,27 @@
 #include "elliptic.h"
 #include "neknek.hpp"
 #include "cvode.hpp"
+#include <vector>
 
-struct cds_t
-{
-  static constexpr double targetTimeBenchmark {0.2};
+struct cds_t {
+  static constexpr double targetTimeBenchmark{0.2};
   int dim, elementType;
 
-  mesh_t* mesh[NSCALAR_MAX];
-  dlong fieldOffset[NSCALAR_MAX];
-  dlong fieldOffsetScan[NSCALAR_MAX];
+  std::vector<mesh_t*> mesh;
+  std::vector<dlong> fieldOffset;
+  std::vector<dlong> fieldOffsetScan;
   occa::memory o_fieldOffsetScan;
   dlong fieldOffsetSum;
   mesh_t* meshV;
-  elliptic_t* solver[NSCALAR_MAX];
+  std::vector<elliptic_t*> solver;
   neknek_t* neknek;
   cvode_t* cvode;
 
   bool anyCvodeSolver = false;
   bool anyEllipticSolver = false;
 
-  int NVfields;            // Number of velocity fields
-  int NSfields;            // Number of scalar fields
+  int NVfields; // Number of velocity fields
+  int NSfields; // Number of scalar fields
 
   oogs_t *gsh, *gshT;
 
@@ -46,8 +46,8 @@ struct cds_t
   int nBDF;
   int dtAdaptStep;
 
-  int compute[NSCALAR_MAX];
-  int cvodeSolve[NSCALAR_MAX];
+  std::vector<int> compute;
+  std::vector<int> cvodeSolve;
   occa::memory o_compute;
   occa::memory o_cvodeSolve;
 
@@ -55,29 +55,29 @@ struct cds_t
 
   // filter
   int filterNc;
-  dfloat filterS[NSCALAR_MAX];
+  std::vector<dfloat> filterS;
   dfloat* filterM;
   occa::memory o_applyFilterRT;
   occa::memory o_filterS;
-  occa::memory o_filterMT;
+  occa::memory o_filterRT;
   int applyFilter;
 
-  //RK Subcycle Data
+  // RK Subcycle Data
   int nRK;
-  dfloat* coeffsfRK, * weightsRK, * nodesRK;
+  dfloat *coeffsfRK, *weightsRK, *nodesRK;
   occa::memory o_coeffsfRK, o_weightsRK;
 
   occa::memory o_relUrst;
   occa::memory o_Urst;
 
-  //EXTBDF data
-  dfloat* coeffEXT, * coeffBDF;
+  // EXTBDF data
+  dfloat *coeffEXT, *coeffBDF;
 
-  int* EToB;
+  int *EToB;
   occa::memory o_EToB;
   dlong EToBOffset;
 
-  occa::memory* o_usrwrk;
+  occa::memory *o_usrwrk;
 
   int Nsubsteps;
 
@@ -86,7 +86,7 @@ struct cds_t
   occa::memory o_prop, o_ellipticCoeff;
   occa::memory o_rho, o_diff;
 
-  dfloat* cU, * cSd, * cS;
+  dfloat *cU, *cSd, *cS;
   occa::memory o_cU, o_cSd, o_cS, o_FS, o_BF, o_BFDiag;
 
   occa::kernel sumMakefKernel;
@@ -115,9 +115,9 @@ struct cds_t
   occa::kernel maskCopyKernel;
   occa::kernel maskCopy2Kernel;
 
-  occa::properties* kernelInfo;
+  occa::properties *kernelInfo;
 };
 
-occa::memory cdsSolve(int i, cds_t* cds, double time, int stage);
+occa::memory cdsSolve(int i, cds_t *cds, double time, int stage);
 
 #endif

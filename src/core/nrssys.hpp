@@ -84,6 +84,7 @@ using dlong = long long int;
 #include "ogs.hpp"
 #include "setupAide.hpp"
 #include "timer.hpp"
+#include "stacktrace.hpp" 
 
 #define nrsCheck(_nrsCheckCond, _nrsCheckComm, _nrsCheckExitCode, _nrsCheckMessage, ...) \
   do { \
@@ -96,6 +97,7 @@ using dlong = long long int;
       if(rank == 0) { \
         fprintf(stderr, "Error in %s: ", __func__);\
         fprintf(stderr, _nrsCheckMessage, __VA_ARGS__); \
+        print_stacktrace(); \
       } \
       fflush(stderr); \
       fflush(stdout); \
@@ -194,7 +196,7 @@ double setPrecision(double val, int n)
 }
 
 template<typename T = dfloat>
-void print(const occa::memory& o_u, const std::string& txt = "")
+void o_print(const occa::memory& o_u, const std::string& txt = "")
 {
   std::vector<T> u(o_u.size()/sizeof(T));
   o_u.copyTo(u.data());

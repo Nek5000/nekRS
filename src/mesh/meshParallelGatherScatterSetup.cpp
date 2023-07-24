@@ -135,31 +135,28 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
 
   { // sanity check
     int err = 0;
-    dlong gNelements = mesh->Nelements;
-    MPI_Allreduce(MPI_IN_PLACE, &gNelements, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm);
-    const dfloat sum2 = (dfloat)gNelements * mesh->Np;
+    hlong NpGlobal = static_cast<hlong>(mesh->Nelements) * mesh->Np;
+    MPI_Allreduce(MPI_IN_PLACE, &NpGlobal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
     occa::memory o_tmp = platform->device.malloc<dfloat>(mesh->Nlocal);
     platform->linAlg->fill(mesh->Nlocal, 1.0, o_tmp);
-
     ogsGatherScatter(o_tmp, ogsDfloat, ogsAdd, mesh->ogs);
-    platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->ogs->o_invDegree, o_tmp);
 
-    auto tmp = (dfloat *)calloc(mesh->Nlocal, sizeof(dfloat));
-    o_tmp.copyTo(tmp);
-    dfloat sum1 = 0;
+    std::vector<dfloat> tmp(o_tmp.length());
+    o_tmp.copyTo(tmp.data());
+
+    hlong sum = 0;
+    const dfloat eps = 0.1;
     for (int i = 0; i < mesh->Nlocal; i++) {
-      sum1 += tmp[i];
+      dfloat val = tmp[i]*mesh->ogs->invDegree[i];
+      hlong valInt = val/(abs(val)) * (abs(val)+0.5); // rounded to nearest integer
+      sum += valInt;
     }
-    MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
-    const auto errVal = abs(sum1 - sum2) / sum2;
-    if (errVal > 10.0 * std::numeric_limits<dfloat>::epsilon()) {
+    if (sum - NpGlobal != 0) {
       err++;
     }
-    o_tmp.free();
-
-    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "invDegree check failed");
-    free(tmp);
+    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "invDegree sanity check failed");
   }
 }

@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
-template <typename T> std::vector<T> randomVector(int N)
+template <typename T> std::vector<T> randomVector(int N, T min = 0, T max = 1)
 {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -21,7 +21,7 @@ template <typename T> std::vector<T> randomVector(int N)
   }
 
   std::default_random_engine dev(seed);
-  std::uniform_real_distribution<T> dist{0.0, 1.0};
+  std::uniform_real_distribution<T> dist{min, max};
 
   auto gen = [&dist, &dev]() { return dist(dev); };
 

@@ -201,6 +201,7 @@ strongThreshold             <float>
 nonGalerkinTol              <float>                                    set 0 to classical Galerkin sparsification
 aggressiveCoarseningLevels  <int>
 chebyshevRelaxOrder         <int>
+chebyshevFraction           <float>
 ----------------------------------------------------------------------------------------------------------------------
 [AMGX]
 
@@ -209,15 +210,16 @@ configFile                  <string>                                   AmgX JSON
 [CVODE]
 solver                      GMRES                                      linear solver
                               +nVector=<int>                           dimension of Krylov space
+gsType                      classical [D], modified
 relativeTol                 <float>                                    relative tolerance
                             1e-4 [D]
 absoluteTol                 <float>                                    absolute tolerance
                             1e-6 [D]
-hmaxRatio                   <float>                                    max CVODE stepsize ratio relative to outer dt
-                            3 [D]
-epslin                      <float>                                    ratio between linear and nonlinear tolerances
-                            0.1 [D]
-sigScale                    <float>                                    multiplier for Jv difference quotient 
+epsLin                      <float>                                    ratio between linear and nonlinear tolerances
+                            0.5 [D]
+sigScale                    <float>                                    scaling coeff for Jv difference quotient 
                             1.0 [D]
-sharedRho                   true, false [D]                            use same density for all but the first scalar
+maxSteps                    <int>
+sharedRho                   true, false [D]                            use same "density" field for all but the first scalar
 jtvRecycleProperties        true [D], false                            recycle property (freeze) evaluation for Jv
+dealiasing                  true, false

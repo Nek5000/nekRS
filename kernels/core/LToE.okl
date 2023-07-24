@@ -1,0 +1,17 @@
+@kernel void LToE(const dlong Nlocal,
+                     const dlong nFields,
+                     const dlong EFieldOffset,
+                     @ restrict const dlong *fields,
+                     @ restrict const dlong *LFieldOffsets,
+                     @ restrict const dlong *EToL,
+                     @ restrict const dfloat *LField,
+                     @ restrict dfloat *EField)
+{
+  for (dlong n = 0; n < Nlocal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dlong lid = EToL[n];
+    for (dlong fldId = 0; fldId < nFields; ++fldId) {
+      const dlong field = fields[fldId];
+      EField[n + EFieldOffset * field] = LField[lid + LFieldOffsets[field]];
+    }
+  }
+}

@@ -77,15 +77,18 @@ void registerNrsKernels(occa::properties kernelInfoBC)
 
     {
       occa::properties prop = meshProps;
-      prop["defines/p_cubNq"] = cubNq;
-      prop["defines/p_cubNp"] = cubNp;
 
       kernelName = "strongAdvectionVolume" + suffix;
       fileName = oklpath + "/nrs/" + kernelName + ".okl";
       platform->kernels.add(section + kernelName, fileName, prop);
-      kernelName = "strongAdvectionCubatureVolume" + suffix;
-      fileName = oklpath + "/nrs/" + kernelName + ".okl";
-      platform->kernels.add(section + kernelName, fileName, prop);
+
+      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
+        prop["defines/p_cubNq"] = cubNq;
+        prop["defines/p_cubNp"] = cubNp;
+        kernelName = "strongAdvectionCubatureVolume" + suffix;
+        fileName = oklpath + "/nrs/" + kernelName + ".okl";
+        platform->kernels.add(section + kernelName, fileName, prop);
+      }
     }
 
     kernelName = "curl" + suffix;

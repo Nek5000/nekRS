@@ -1016,7 +1016,7 @@ void pMGLevel::build(elliptic_t *pSolver)
       o_Su.free();
 
       if (platform->comm.mpiRank == 0) {
-        printf("autotuning overlap in smoothSchwarz: %.2es %.2es ", nonOverlappedTime, overlappedTime);
+        printf("testing overlap in smoothSchwarz: %.2es %.2es ", nonOverlappedTime, overlappedTime);
         if (overlapEnabled) {
           printf("(overlap enabled)");
         }

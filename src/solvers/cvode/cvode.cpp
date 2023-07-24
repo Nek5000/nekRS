@@ -19,21 +19,22 @@
 
 #ifdef ENABLE_CVODE
 // cvode includes
-#include <sunlinsol/sunlinsol_spgmr.h>
-#include <sundials/sundials_types.h>
-#include <sundials/sundials_math.h>
-#include <cvode/cvode.h>
-#include <nvector/nvector_serial.h>
-#include <nvector/nvector_mpiplusx.h>
+#include "sunlinsol/sunlinsol_spgmr.h"
+#include "sundials/sundials_types.h"
+#include "sundials/sundials_math.h"
+#include "cvode/cvode.h"
+#include "nvector/nvector_serial.h"
+#include "nvector/nvector_mpiplusx.h"
+
 #ifdef ENABLE_CUDA
-#include <nvector/nvector_cuda.h>
+#include "nvector/nvector_cuda.h"
 #endif
 #ifdef ENABLE_HIP
-#include <nvector/nvector_hip.h>
+#include "nvector/nvector_hip.h"
 #endif
 #endif
 
-//#define USE_E_VECTOR_LAYOUT 1
+#define getN_VectorMemory(T,S) (  platform->device.occaDevice().wrapMemory<T>( __N_VGetDeviceArrayPointer(N_VGetLocalVector_MPIPlusX(S)), N_VGetLocalLength(S)) )
 
 namespace {
 
@@ -53,19 +54,28 @@ cvode_t::cvode_t(nrs_t *_nrs)
 {
 }
 
-void cvode_t::initialize()
+#ifdef ENABLE_CVODE
+int cvode_t::cvodeRHS(double time, N_Vector Y, N_Vector Ydot) {
+}
+  
+int cvode_t::cvodeJtvRHS(double time, N_Vector Y, N_Vector Ydot) 
 {
 }
+  
+int cvode_t::cvodeJtv(N_Vector v, N_Vector Jv, realtype t, N_Vector y, N_Vector fy, N_Vector work) 
+{
+}
+
+int cvode_t::cvodeErrorWt(N_Vector y, N_Vector ewt)
+{
+}
+#endif
 
 cvode_t::~cvode_t()
 {
 }
 
 void cvode_t::initialize()
-{
-}
-
-void cvode_t::setupEToLMapping()
 {
 }
 
@@ -77,19 +87,15 @@ void cvode_t::applyDirichlet(double time)
 {
 }
 
-void cvode_t::computeErrorWeight(occa::memory o_y, occa::memory o_ewt)
+void cvode_t::rhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)
 {
 }
 
-void cvode_t::rhs(double time, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::jtvRHS(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)
 {
 }
 
-void cvode_t::jtvRHS(double time, occa::memory o_y, occa::memory o_ydot)
-{
-}
-
-void cvode_t::defaultRHS(double time, double t0, occa::memory o_y, occa::memory o_ydot)
+void cvode_t::defaultRHS(double time, double t0, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)
 {
 }
 
@@ -97,11 +103,7 @@ void cvode_t::makeq(double time)
 {
 }
 
-void cvode_t::nrsToCv(occa::memory o_EField, occa::memory o_LField)
-{
-}
-
-void cvode_t::cvToNrs(occa::memory o_LField, occa::memory o_EField)
+void cvode_t::nrsToCv(occa::memory o_EField,  LVector_t<dfloat> & o_LField, bool isYdot)
 {
 }
 
@@ -126,13 +128,25 @@ long cvode_t::numLinIters() const
 {
 }
 #else
-long cvode_t::numSteps() const { return 0; }
+long cvode_t::numSteps() const
+{
+  return 0;
+}
 
-long cvode_t::numRHSEvals() const { return 0; }
+long cvode_t::numRHSEvals() const
+{
+  return 0;
+}
 
-long cvode_t::numNonlinSolveIters() const { return 0; }
+long cvode_t::numNonlinSolveIters() const
+{
+  return 0;
+}
 
-long cvode_t::numLinIters() const { return 0; }
+long cvode_t::numLinIters() const
+{
+  return 0;
+}
 #endif
 
 void cvode_t::printInfo(bool printVerboseInfo) const
@@ -149,8 +163,8 @@ void cvode_t::resetTimers()
 
 std::string cvode_t::rhsTagName() const
 {
+  return 0;
 }
-
 
 void cvode_t::setLocalPointSource(userLocalPointSource_t _userLocalPointSource)
 {

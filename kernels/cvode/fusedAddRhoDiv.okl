@@ -11,7 +11,7 @@
     for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
       for (int fld = 0; fld < Nfields; ++fld) {
         const dlong id = n + fld*fieldOffset;
-        const dfloat invRho = RHO[id];
+        const dfloat invRho = 1/RHO[id];
         dfloat value = FS[id];
 #if p_addPointSource
           value += ptSource[id];

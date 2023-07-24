@@ -10,6 +10,7 @@
 #include "platform.hpp"
 #include "bcMap.hpp"
 #include "bcType.h"
+#include "sha1.hpp"
 
 UDF udf = {NULL, NULL, NULL, NULL};
 
@@ -21,18 +22,6 @@ static int scalarDirichletConditions = 0;
 static int scalarNeumannConditions = 0;
 
 static std::string udfFile;
-
-static unsigned long chkSum(const std::string& str)
-{
-  unsigned int hash = 1315423911;
-
-  for(std::size_t i = 0; i < str.length(); i++)
-  {
-      hash ^= ((hash << 5) + str[i] + (hash >> 2));
-  }
-
-  return (hash & 0x7FFFFFFF);
-}
 
 static void verifyOudf()
 {
@@ -59,17 +48,6 @@ static void verifyOudf()
     if (field.compare(0, 6, "scalar") == 0 && bcID == bcMap::bcTypeF)
       oudfFindNeumann(field);
   }
-}
-
-static unsigned long fchkSum(const std::string& fname)
-{
-  std::ifstream f;
-  f.open(fname);
-  std::stringstream buffer;
-  buffer << f.rdbuf();
-  f.close();  
-
-  return chkSum(buffer.str());
 }
 
 void oudfFindDirichlet(std::string &field)
@@ -234,6 +212,9 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
   const std::string cmakeBuildDir = cache_dir + "/udf";
   const std::string postOklSource = cmakeBuildDir + "/CMakeFiles/OKL.dir/okl.cpp.i";
 
+  const std::string libnekrsFile = installDir + "/lib/libnekrs.so"; 
+  const std::string libnekrsHashFile = cache_dir + "/udf/libnekrs.hash";
+
   std::string oudfFile;
   options.getArgs("UDF OKL FILE", oudfFile);
   oudfFile = fs::absolute(oudfFile);
@@ -246,17 +227,15 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
   int buildRequired = 0;
   if(platform->comm.mpiRank == 0) {
 
-    auto udfFileHash = [&]()
+    auto getHash = [&](const std::string& fname)
     { 
-      std::ifstream f(udfHashFile);
-      if(!f.is_open()) return (unsigned long) 0;
+      std::ifstream f(fname);
+      if(!f.is_open()) return std::string("");
       std::stringstream buffer;
       buffer << f.rdbuf();
       f.close();
-      unsigned long hash;
-      buffer >> hash;
 
-      return hash;
+      return buffer.str();
     };
 
     // changes in udf include files + env-vars are currently not detected  
@@ -265,7 +244,9 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
       buildRequired = 1;
     } else if (!fs::exists(udfLib) || !fs::exists(oudfFileCache)) {
       buildRequired = 1;
-    } else if (fchkSum(udfFile) != udfFileHash()) { 
+    } else if (SHA1::from_file(udfFile) != getHash(udfHashFile)) { 
+      buildRequired = 1; 
+    } else if (SHA1::from_file(libnekrsFile) != getHash(libnekrsHashFile)) { 
       buildRequired = 1; 
     } 
 
@@ -284,7 +265,6 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
       if (isFileNewer(std::string(case_dir + "/" + casename + ".okl").c_str(), oudfFileCache.c_str())) 
         buildRequired = 1;
     }
-
   }
   MPI_Bcast(&buildRequired, 1, MPI_INT, 0, comm);
 
@@ -325,9 +305,16 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
 
         {
           std::ofstream f(udfHashFile, std::ios::trunc);
-          f << fchkSum(udfFile);
+          f << SHA1::from_file(udfFile);
           f.close();
         }
+
+        {
+          std::ofstream f(libnekrsHashFile, std::ios::trunc);
+          f << SHA1::from_file(libnekrsFile);
+          f.close();
+        }
+
 
         // generate udfFileCache
         {
@@ -339,11 +326,12 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
           // autoload plugins
           std::map<std::string, std::string> pluginTable =
           {
-            {"nekrs_tavg_hpp_"        , "tavg::buildKernel"},
-            {"nekrs_RANSktau_hpp_"    , "RANSktau::buildKernel"},
-            {"nekrs_lowMach_hpp_"     , "lowMach::buildKernel"},
-            {"nekrs_velRecycling_hpp_", "velRecycling::buildKernel"},
-            {"nekrs_lpm_hpp_"         , "lpm_t::registerKernels"}
+            {"nekrs_tavg_hpp_"         , "tavg::buildKernel"},
+            {"nekrs_RANSktau_hpp_"     , "RANSktau::buildKernel"},
+            {"nekrs_lowMach_hpp_"      , "lowMach::buildKernel"},
+            {"nekrs_velRecycling_hpp_" , "velRecycling::buildKernel"},
+            {"nekrs_lpm_hpp_"          , "lpm_t::registerKernels"},
+            {"nekrs_plugin_nekCRF_hpp_", "nekCRF::buildKernel"}
           };
 
           f << "void UDF_AutoLoadPlugins(occa::properties& kernelInfo)" << std::endl

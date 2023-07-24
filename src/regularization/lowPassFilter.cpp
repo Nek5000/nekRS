@@ -1,5 +1,5 @@
 #include "nrs.hpp"
-#include "hpf.hpp"
+#include "lowPassFilter.hpp"
 
 namespace
 {
@@ -86,7 +86,7 @@ void filterVandermonde1D(int N, int Np, double *r, double *V)
 
 } // namespace
 
-occa::memory hpfSetup(mesh_t *mesh, const dlong filterNc)
+occa::memory lowPassFilter(mesh_t *mesh, const dlong filterNc)
 {
   nrsCheck(filterNc < 1,
            platform->comm.mpiComm,
