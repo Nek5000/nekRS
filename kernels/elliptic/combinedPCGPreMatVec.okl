@@ -1,0 +1,33 @@
+// "pre" region from Algorithm 5, https://arxiv.org/pdf/2205.08909.pdf
+@kernel void combinedPCGPreMatVec(const dlong N,
+                                  const dlong updateX,
+                                  const dlong preco,
+                                  const dlong fieldOffset,
+                                  const dfloat alphakm1,
+                                  const dfloat alphakm2,
+                                  const dfloat betakm1,
+                                  const dfloat betakm2,
+                                  const dfloat alphaDivBetakm2, // avoid division in x-update
+                                  @ restrict const dfloat *Minv,
+                                  @ restrict const dfloat *v,
+                                  @ restrict dfloat *p,
+                                  @ restrict dfloat *x,
+                                  @ restrict dfloat *r)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+#pragma unroll
+    for (int fld = 0; fld < p_Nfields; fld++) {
+      const dlong id = n + fld * fieldOffset;
+      const dfloat M = preco ? Minv[id] : 1.0;
+      const dfloat pkm1 = p[id];
+      const dfloat rkm1 = r[id];
+      const dfloat vkm1 = v[id];
+      if(updateX){
+        x[id] = x[id] + alphakm1 * pkm1 + alphaDivBetakm2 * (pkm1 - M * rkm1);
+      }
+      const dfloat rk = rkm1 - alphakm1 * vkm1;
+      r[id] = rk;
+      p[id] = M*rk + betakm1 * pkm1;
+    }
+  }
+}

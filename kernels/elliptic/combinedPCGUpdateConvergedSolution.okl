@@ -1,0 +1,29 @@
+// converged solution update from Algorithm 5, https://arxiv.org/pdf/2205.08909.pdf
+@kernel void combinedPCGUpdateConvergedSolution(const dlong N,
+                                  const dlong singleVectorUpdate,
+                                  const dlong preco,
+                                  const dlong fieldOffset,
+                                  const dfloat alphak,
+                                  const dfloat alphakm1,
+                                  const dfloat betakm1,
+                                  const dfloat alphaDivBetakm1, // avoid division in x-update
+                                  @ restrict const dfloat *Minv,
+                                  @ restrict const dfloat *p,
+                                  @ restrict const dfloat *r,
+                                  @ restrict dfloat *x)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+#pragma unroll
+    for (int fld = 0; fld < p_Nfields; fld++) {
+      const dlong id = n + fld * fieldOffset;
+      const dfloat pk = p[id];
+      if(singleVectorUpdate){
+        x[id] = x[id] + alphak * pk;
+      } else {
+        const dfloat rk = r[id];
+        const dfloat M = preco ? Minv[id] : 1.0;
+        x[id] = x[id] + alphak * pk + alphaDivBetakm1 * (pk - M*rk);
+      }
+    }
+  }
+}

@@ -1,0 +1,192 @@
+// "post" region from Algorithm 5, https://arxiv.org/pdf/2205.08909.pdf
+@kernel void combinedPCGPostMatVec(const dlong N,
+                                  const dlong fieldOffset,
+                                  const dlong preco,
+                                  @ restrict const dfloat *weights,
+                                  @ restrict const dfloat *Minv,
+                                  @ restrict const dfloat *v,
+                                  @ restrict const dfloat *p,
+                                  @ restrict const dfloat *r,
+                                  @ restrict dfloat *reduction)
+{
+  for (dlong b = 0; b < (N + p_blockSize - 1) / p_blockSize; ++b; @outer(0)) {
+
+    @shared dfloat s_gamma[p_blockSize];
+    @shared dfloat s_a[p_blockSize];
+    @shared dfloat s_b[p_blockSize];
+    @shared dfloat s_c[p_blockSize];
+    @shared dfloat s_d[p_blockSize];
+    @shared dfloat s_e[p_blockSize];
+    @shared dfloat s_f[p_blockSize];
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      dlong id = t + b * p_blockSize;
+      s_gamma[t] = 0.0;
+      s_a[t] = 0.0;
+      s_b[t] = 0.0;
+      s_c[t] = 0.0;
+      s_d[t] = 0.0;
+      s_e[t] = 0.0;
+      s_f[t] = 0.0;
+
+      if (id < N) {
+        dfloat gamma = 0.0;
+        dfloat a = 0.0;
+        dfloat b = 0.0;
+        dfloat c = 0.0;
+        dfloat d = 0.0;
+        dfloat e = 0.0;
+        dfloat f = 0.0;
+
+#pragma unroll
+        for (int fld = 0; fld < p_Nfields; ++fld) {
+          const dlong n = id + fld * fieldOffset;
+          const dfloat M = preco ? Minv[n] : 1.0;
+          const dfloat pk = p[n];
+          const dfloat rk = r[n];
+          const dfloat vk = v[n];
+          const dfloat Mvk = M * vk;
+          const dfloat Mrk = M * rk;
+
+          gamma += rk*rk;
+          a += pk*vk;
+          b += rk*vk;
+          c += vk*vk;
+          d += rk*Mrk;
+          e += rk*Mvk;
+          f += vk*Mvk;
+        }
+
+        const dfloat wt = weights[id];
+        s_gamma[t] = wt * gamma;
+        s_a[t] = wt * a;
+        s_b[t] = wt * b;
+        s_c[t] = wt * c;
+        s_d[t] = wt * d;
+        s_e[t] = wt * e;
+        s_f[t] = wt * f;
+
+      }
+    }
+
+    @barrier();
+#if p_blockSize > 512
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 512){
+        s_gamma[t] += s_gamma[t + 512];
+        s_a[t] += s_a[t + 512];
+        s_b[t] += s_b[t + 512];
+        s_c[t] += s_c[t + 512];
+        s_d[t] += s_d[t + 512];
+        s_e[t] += s_e[t + 512];
+        s_f[t] += s_f[t + 512];
+      }
+    @barrier();
+#endif
+#if p_blockSize > 256
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 256){
+        s_gamma[t] += s_gamma[t + 256];
+        s_a[t] += s_a[t + 256];
+        s_b[t] += s_b[t + 256];
+        s_c[t] += s_c[t + 256];
+        s_d[t] += s_d[t + 256];
+        s_e[t] += s_e[t + 256];
+        s_f[t] += s_f[t + 256];
+      }
+    @barrier();
+#endif
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 128){
+        s_gamma[t] += s_gamma[t + 128];
+        s_a[t] += s_a[t + 128];
+        s_b[t] += s_b[t + 128];
+        s_c[t] += s_c[t + 128];
+        s_d[t] += s_d[t + 128];
+        s_e[t] += s_e[t + 128];
+        s_f[t] += s_f[t + 128];
+      }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 64){
+        s_gamma[t] += s_gamma[t + 64];
+        s_a[t] += s_a[t + 64];
+        s_b[t] += s_b[t + 64];
+        s_c[t] += s_c[t + 64];
+        s_d[t] += s_d[t + 64];
+        s_e[t] += s_e[t + 64];
+        s_f[t] += s_f[t + 64];
+      }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 32){
+        s_gamma[t] += s_gamma[t + 32];
+        s_a[t] += s_a[t + 32];
+        s_b[t] += s_b[t + 32];
+        s_c[t] += s_c[t + 32];
+        s_d[t] += s_d[t + 32];
+        s_e[t] += s_e[t + 32];
+        s_f[t] += s_f[t + 32];
+      }
+    @barrier();
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 16){
+        s_gamma[t] += s_gamma[t + 16];
+        s_a[t] += s_a[t + 16];
+        s_b[t] += s_b[t + 16];
+        s_c[t] += s_c[t + 16];
+        s_d[t] += s_d[t + 16];
+        s_e[t] += s_e[t + 16];
+        s_f[t] += s_f[t + 16];
+      }
+    @barrier();
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 8){
+        s_gamma[t] += s_gamma[t + 8];
+        s_a[t] += s_a[t + 8];
+        s_b[t] += s_b[t + 8];
+        s_c[t] += s_c[t + 8];
+        s_d[t] += s_d[t + 8];
+        s_e[t] += s_e[t + 8];
+        s_f[t] += s_f[t + 8];
+      }
+    @barrier();
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 4){
+        s_gamma[t] += s_gamma[t + 4];
+        s_a[t] += s_a[t + 4];
+        s_b[t] += s_b[t + 4];
+        s_c[t] += s_c[t + 4];
+        s_d[t] += s_d[t + 4];
+        s_e[t] += s_e[t + 4];
+        s_f[t] += s_f[t + 4];
+      }
+    @barrier();
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 2){
+        s_gamma[t] += s_gamma[t + 2];
+        s_a[t] += s_a[t + 2];
+        s_b[t] += s_b[t + 2];
+        s_c[t] += s_c[t + 2];
+        s_d[t] += s_d[t + 2];
+        s_e[t] += s_e[t + 2];
+        s_f[t] += s_f[t + 2];
+      }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0))
+      if (t < 1){
+        const dlong Nblocks = (N + p_blockSize - 1) / p_blockSize;
+        reduction[b + Nblocks * p_gamma] = s_gamma[0] + s_gamma[1];
+        reduction[b + Nblocks * p_a] = s_a[0] + s_a[1];
+        reduction[b + Nblocks * p_b] = s_b[0] + s_b[1];
+        reduction[b + Nblocks * p_c] = s_c[0] + s_c[1];
+        reduction[b + Nblocks * p_d] = s_d[0] + s_d[1];
+        reduction[b + Nblocks * p_e] = s_e[0] + s_e[1];
+        reduction[b + Nblocks * p_f] = s_f[0] + s_f[1];
+      }
+  }
+}

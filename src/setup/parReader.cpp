@@ -332,6 +332,7 @@ void validateKeys(const inipp::Ini::Sections &sections)
     if (isScalar) {
       const auto scalarNumber = parseScalarIntegerFromString(sec.first);
       if (scalarNumber) {
+        std::cout << sec.first << "," << scalarNumber.value() << std::endl;
         if (scalarNumber.value() >= NSCALAR_MAX) {
           std::ostringstream error;
           error << "specified " << scalarNumber.value() << " scalars, while the maximum allowed is "
@@ -530,8 +531,8 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
     options.setArgs("CVODE ABSOLUTE TOLERANCE", to_string_f(absoluteTol));
   }
 
-  options.setArgs("CVODE GMRES RESTART", "10");
-  options.setArgs("CVODE SOLVER", "GMRES");
+  options.setArgs("CVODE GMRES BASIS VECTORS", "10");
+  options.setArgs("CVODE SOLVER", "CBGMRES");
 
   // parse cvode linear solver
   [&]() {
@@ -542,6 +543,7 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
 
     const std::vector<std::string> validValues = {
         {"gmres"},
+        {"cbgmres"},
         {"nvector"},
     };
 
@@ -553,15 +555,22 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
     if (p_solver.find("gmres") != std::string::npos) {
       std::vector<std::string> list;
       list = serializeString(p_solver, '+');
+
       std::string n = "10";
+
       for (std::string s : list) {
         const auto nvectorStr = parseValueForKey(s, "nvector");
         if (!nvectorStr.empty()) {
           n = nvectorStr;
         }
       }
-      options.setArgs("CVODE GMRES RESTART", n);
-      options.setArgs("CVODE SOLVER", "GMRES");
+      options.setArgs("CVODE GMRES BASIS VECTORS", n);
+
+      if (p_solver.find("cb") != std::string::npos) { 
+        options.setArgs("CVODE SOLVER", "CBGMRES");
+      } else {
+        options.setArgs("CVODE SOLVER", "GMRES");
+      }
     }
   }();
 
@@ -594,7 +603,7 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
   if (par->extract(parScope, "gstype", gstype)) {
     if (gstype.find("classical") != std::string::npos) {
       options.setArgs("CVODE GS TYPE", "CLASSICAL");
-    } else if (gstype.find("classical") != std::string::npos) {
+    } else if (gstype.find("modified") != std::string::npos) {
       options.setArgs("CVODE GS TYPE", "MODIFIED");
     } else {
       append_error("Invalid gsType for " + parScope);
@@ -1131,9 +1140,16 @@ void parseLinearSolver(const int rank, setupAide &options, inipp::Ini *par, std:
   std::string parSectionName = parPrefixFromParSection(parScope);
   upperCase(parSectionName);
 
-  options.setArgs(parSectionName + "MAXIMUM ITERATIONS", "500");
+  int maxIter = 500;
+  par->extract(parScope, "maxiterations", maxIter);
+
+  options.setArgs(parSectionName + "MAXIMUM ITERATIONS", std::to_string(maxIter));
 
   options.setArgs(parSectionName + "SOLVER", "PCG");
+  if (options.compareArgs(parSectionName + "PRECONDITIONER", "JACOBI")) {
+    options.setArgs(parSectionName + "SOLVER", "PCG+COMBINED");
+  }
+
   if (parScope == "pressure") {
     options.setArgs(parSectionName + "SOLVER", "PGMRES+FLEXIBLE");
   }
@@ -1157,6 +1173,7 @@ void parseLinearSolver(const int rank, setupAide &options, inipp::Ini *par, std:
       {"flexible"},
       {"pgmres"},
       {"pcg"},
+      {"combined"},
       {"block"},
   };
   std::vector<std::string> list = serializeString(p_solver, '+');
@@ -1192,9 +1209,22 @@ void parseLinearSolver(const int rank, setupAide &options, inipp::Ini *par, std:
 
     if (p_solver.find("fcg") != std::string::npos || p_solver.find("flexible") != std::string::npos) {
       p_solver = "PCG+FLEXIBLE";
-    }
-    else {
-      p_solver = "PCG";
+      if (p_solver.find("combined") != std::string::npos) {
+        std::ostringstream ss;
+        ss << "combined PCG solver not supported with flexible preconditioner!\n";
+        append_value_error(ss.str());
+      }
+    } else {
+      if (p_solver.find("combined") != std::string::npos) {
+        if (!options.compareArgs(parSectionName + "PRECONDITIONER", "JACOBI")) {
+          std::ostringstream ss;
+          ss << "combined PCG solver only supported with Jacobi preconditioner!\n";
+          append_value_error(ss.str());
+        }
+        p_solver = "PCG+COMBINED";
+      } else {
+        p_solver = "PCG";
+      }
     }
   }
   else if (p_solver.find("user") != std::string::npos) {

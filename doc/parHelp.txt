@@ -208,7 +208,7 @@ chebyshevFraction           <float>
 configFile                  <string>                                   AmgX JSON configuration file
 ----------------------------------------------------------------------------------------------------------------------
 [CVODE]
-solver                      GMRES                                      linear solver
+solver                      cbGMRES [D], GMRES                         linear solver
                               +nVector=<int>                           dimension of Krylov space
 gsType                      classical [D], modified
 relativeTol                 <float>                                    relative tolerance

@@ -24,37 +24,30 @@ SOFTWARE.
 
 */
 
-@kernel void weightedInnerProdMultiDevice(const dlong Nblock,
-                                          const dlong N,
-                                          const dlong Nfields,
-                                          const dlong fieldOffset,
-                                          const dlong NVec,
-                                          const dlong offset,
-                                          const int weight,
-                                          @ restrict const dfloat *w,
-                                          @ restrict const dfloat *x,
-                                          @ restrict const dfloat *y,
-                                          @ restrict dfloat *wxy)
+@kernel void innerProdMulti(const dlong Nblock,
+                            const dlong N,
+                            const dlong Nfields,
+                            const dlong fieldOffset,
+                            const dlong NVec,
+                            const dlong yOffset,
+                            @ restrict const pfloat *x,
+                            @ restrict const dfloat *y,
+                            @ restrict dfloat *wxy)
 {
   for (dlong b = 0; b < Nblock; ++b; @outer(0)) {
-    @shared dfloat s_wxy[p_blockSize];
-    @exclusive dfloat wght;
+    @shared volatile dfloat s_wxy[p_blockSize];
 
     for (int v = 0; v < NVec; ++v) {
       @barrier();
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
         const dlong id = t + p_blockSize * b;
-        if (b < 1 && t < 1)
-          wxy[v] = 0.0;
         s_wxy[t] = 0.0;
         if (id < N) {
           dfloat sum = 0.0;
           for (dlong fld = 0; fld < Nfields; ++fld)
-            sum += x[id + Nfields * fieldOffset * v + fld * fieldOffset] * y[id + offset + fld * fieldOffset];
-          if (v == 0 && weight)
-            wght = w[id];
+            sum += x[id + Nfields * fieldOffset * v + fld * fieldOffset] * y[id + yOffset + fld * fieldOffset];
 
-          s_wxy[t] = (weight) ? wght * sum : sum;
+          s_wxy[t] = sum;
         }
       }
       @barrier();
@@ -109,7 +102,7 @@ SOFTWARE.
 
       for (int t = 0; t < p_blockSize; ++t; @inner(0))
         if (t < 1)
-          @atomic wxy[v] += s_wxy[0] + s_wxy[1];
+          wxy[b + v * Nblock] = s_wxy[0] + s_wxy[1];
     }
   }
 }

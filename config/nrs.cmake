@@ -73,6 +73,7 @@ set(SRC
     src/postProcessing/Qcriterion.cpp
     src/core/registerCvodeKernels.cpp
     src/solvers/cvode/cvode.cpp
+    src/solvers/cvode/cbGMRES.cpp
     ${BENCH_SOURCES}
     ${MESH_SOURCES}
     ${ELLIPTIC_SOURCES}

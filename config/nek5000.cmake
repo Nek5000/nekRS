@@ -129,7 +129,7 @@ if(MCMODEL_FLAG STREQUAL "-mcmodel=medium" AND USING_GNU)
   endif()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   set(CRAYPTR_FLAG "-fcray-pointer")
 endif()
 

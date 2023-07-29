@@ -29,14 +29,15 @@ SOFTWARE.
                                     const dlong Nfields,
                                     const dlong fieldOffset,
                                     const dlong NVec,
-                                    const dlong offset,
+                                    const dlong yOffset,
+                                    const int weight,
                                     @ restrict const dfloat *w,
                                     @ restrict const dfloat *x,
                                     @ restrict const dfloat *y,
                                     @ restrict dfloat *wxy)
 {
   for (dlong b = 0; b < Nblock; ++b; @outer(0)) {
-    @shared volatile dfloat s_wxy[p_blockSize];
+    @shared dfloat s_wxy[p_blockSize];
     @exclusive dfloat wght;
 
     for (int v = 0; v < NVec; ++v) {
@@ -47,10 +48,11 @@ SOFTWARE.
         if (id < N) {
           dfloat sum = 0.0;
           for (dlong fld = 0; fld < Nfields; ++fld)
-            sum += x[id + Nfields * fieldOffset * v + fld * fieldOffset] * y[id + offset + fld * fieldOffset];
-          if (v == 0)
+            sum += x[id + Nfields * fieldOffset * v + fld * fieldOffset] * y[id + yOffset + fld * fieldOffset];
+          if (v == 0 && weight)
             wght = w[id];
-          s_wxy[t] = wght * sum;
+
+          s_wxy[t] = (weight) ? wght * sum : sum;
         }
       }
       @barrier();

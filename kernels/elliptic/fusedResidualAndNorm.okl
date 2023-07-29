@@ -37,7 +37,7 @@
 {
   for (dlong b = 0; b < Nblocks; ++b; @outer(0)) {
 
-    @shared volatile dfloat s_wxy[p_blockSize];
+    @shared dfloat s_wxy[p_blockSize];
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
       dlong id = t + b * p_blockSize;

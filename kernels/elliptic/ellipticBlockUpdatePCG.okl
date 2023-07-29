@@ -32,7 +32,7 @@
                                     @ restrict dfloat *redr)
 {
   for (dlong b = 0; b < (N + p_blockSize - 1) / p_blockSize; ++b; @outer(0)) {
-    @shared volatile dfloat s_sum[p_blockSize];
+    @shared dfloat s_sum[p_blockSize];
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
       int n = t + b * p_blockSize;

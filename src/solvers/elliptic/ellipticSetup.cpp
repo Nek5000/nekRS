@@ -70,6 +70,13 @@ void checkConfig(elliptic_t *elliptic)
     }
   }
 
+  if (options.compareArgs("SOLVER", "PCG+COMBINED") && 
+      options.compareArgs("PRECONDITIONER", "NONE")) {
+      if (platform->comm.mpiRank == 0)
+        printf("combinedPCG does not support no preconditioner!\n");
+      err++;
+  }
+
   if (elliptic->mesh->ogs == NULL) {
     if (platform->comm.mpiRank == 0)
       printf("mesh->ogs == NULL!");
@@ -174,13 +181,30 @@ void ellipticSolveSetup(elliptic_t *elliptic)
     elliptic->fusedResidualAndNormKernel = platform->kernels.get(sectionIdentifier + "fusedResidualAndNorm");
   }
 
+  if (options.compareArgs("SOLVER", "PCG+COMBINED")) {
+    const std::string sectionIdentifier = std::to_string(elliptic->Nfields) + "-";
+    elliptic->combinedPCGPreMatVecKernel = platform->kernels.get(sectionIdentifier + "combinedPCGPreMatVec");
+    elliptic->combinedPCGPostMatVecKernel =
+        platform->kernels.get(sectionIdentifier + "combinedPCGPostMatVec");
+    elliptic->combinedPCGUpdateConvergedSolutionKernel =
+        platform->kernels.get(sectionIdentifier + "combinedPCGUpdateConvergedSolution");
+  }
+
   mesh->maskKernel = platform->kernels.get("mask");
   mesh->maskPfloatKernel = platform->kernels.get("maskPfloat");
  
   ellipticAllocateWorkspace(elliptic);
 
-  elliptic->tmpNormr = (dfloat *)calloc(Nblocks, sizeof(dfloat));
-  elliptic->o_tmpNormr = platform->device.malloc<dfloat>(Nblocks, elliptic->tmpNormr);
+  int Nreductions = 1;
+  if (options.compareArgs("SOLVER", "PCG+COMBINED")) {
+    Nreductions = CombinedPCGId::nReduction;
+  }
+
+  elliptic->h_tmpHostScalars = platform->device.mallocHost<dfloat>(Nreductions * Nblocks);
+  elliptic->tmpHostScalars = elliptic->h_tmpHostScalars.ptr<dfloat>();
+  std::fill(elliptic->tmpHostScalars, elliptic->tmpHostScalars + Nreductions * Nblocks, 0.0);
+  elliptic->o_tmpHostScalars =
+      platform->device.malloc<dfloat>(Nreductions * Nblocks, elliptic->tmpHostScalars);
 
   elliptic->allNeumann = 0;
   if (elliptic->poisson) {
@@ -330,7 +354,11 @@ elliptic_t::~elliptic_t()
 {
   if (precon)
     delete this->precon;
-  free(this->tmpNormr);
-  this->o_tmpNormr.free();
+  if (this->o_tmpHostScalars.size()) {
+    this->o_tmpHostScalars.free();
+    this->h_tmpHostScalars.free();
+  }
+  this->h_tmpHostScalars.free();
+  this->o_tmpHostScalars.free();
   this->o_EToB.free();
 }

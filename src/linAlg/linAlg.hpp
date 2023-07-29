@@ -183,6 +183,10 @@ public:
   void adyMany(const dlong N, const dlong Nfields, const dlong offset, const dfloat alpha, occa::memory &o_y);
   void
   padyMany(const dlong N, const dlong Nfields, const dlong offset, const pfloat alpha, occa::memory &o_y);
+
+  // o_z[n] = alpha/o_y[n]
+  void adyz(const dlong N, const dfloat alpha, const occa::memory &o_y, occa::memory &o_z);
+
   // o_y[n] = alpha*o_x[n]/o_y[n]
   void axdy(const dlong N, const dfloat alpha, const occa::memory &o_x, occa::memory &o_y);
 
@@ -261,12 +265,25 @@ public:
                            const occa::memory &o_a,
                            MPI_Comm _comm);
 
+  dfloat weightedSqrSum(const dlong N, const occa::memory &o_w, const occa::memory &o_a, MPI_Comm _comm);
+
   // o_w.o_x.o_y
   dfloat weightedInnerProd(const dlong N,
                            const occa::memory &o_w,
                            const occa::memory &o_x,
                            const occa::memory &o_y,
                            MPI_Comm _comm);
+
+  void innerProdMulti(const dlong N,
+                      const dlong NVec,
+                      const dlong Nfields,
+                      const dlong fieldOffset,
+                      const occa::memory &o_x,
+                      const occa::memory &o_y,
+                      MPI_Comm _comm,
+                      dfloat *result,
+                      const dlong offset = 0);
+
   void weightedInnerProdMulti(const dlong N,
                               const dlong NVec,
                               const dlong Nfields,
@@ -276,7 +293,9 @@ public:
                               const occa::memory &o_y,
                               MPI_Comm _comm,
                               dfloat *result,
-                              const dlong offset = 0);
+                              const dlong offset = 0,
+                              const dlong weight = 1);
+
   void weightedInnerProdMulti(const dlong N,
                               const dlong NVec,
                               const dlong Nfields,
@@ -286,7 +305,8 @@ public:
                               const occa::memory &o_y,
                               MPI_Comm _comm,
                               occa::memory &o_result,
-                              const dlong offset = 0);
+                              const dlong offset = 0,
+                              const dlong weight = 1);
 
   dfloat weightedInnerProdMany(const dlong N,
                                const dlong Nfields,
@@ -311,6 +331,24 @@ public:
                     const dlong fieldOffset,
                     const occa::memory &o_a,
                     occa::memory &o_b);
+
+  // o_y[n] = \sum_{i=0}^{Nfields-1} c_i * x_i 
+  void linearCombination(const dlong N,
+                         const dlong Nfields,
+                         const dlong fieldOffset,
+                         const occa::memory &o_c,
+                         const occa::memory &o_x,
+                         occa::memory &o_y);
+
+  // o_z[n] = y_{Nfields} * c_{Nfields} + \sum_{i=0}^{Nfields-1} c_i * x_i 
+  void linearCombination(const dlong N,
+                         const dlong Nfields,
+                         const dlong fieldOffset,
+                         const occa::memory &o_c,
+                         const occa::memory &o_x,
+                         const occa::memory &o_y,
+                         occa::memory &o_z);
+
 
   occa::kernel fillKernel;
   occa::kernel pfillKernel;
@@ -338,6 +376,7 @@ public:
   occa::kernel aydxKernel;
   occa::kernel aydxManyKernel;
   occa::kernel adyKernel;
+  occa::kernel adyzKernel;
   occa::kernel adyManyKernel;
   occa::kernel padyManyKernel;
   occa::kernel axdyzKernel;
@@ -356,6 +395,7 @@ public:
   occa::kernel weightedNorm1ManyKernel;
   occa::kernel weightedNorm2Kernel;
   occa::kernel weightedNorm2ManyKernel;
+  occa::kernel weightedSqrSumKernel;
   occa::kernel innerProdKernel;
   occa::kernel weightedInnerProdKernel;
   occa::kernel weightedInnerProdManyKernel;
@@ -364,6 +404,7 @@ public:
   occa::kernel crossProductKernel;
   occa::kernel unitVectorKernel;
   occa::kernel entrywiseMagKernel;
+  occa::kernel linearCombinationKernel;
 };
 
 #endif

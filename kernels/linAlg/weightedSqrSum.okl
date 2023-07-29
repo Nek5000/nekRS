@@ -24,80 +24,75 @@ SOFTWARE.
 
 */
 
-@kernel void sumMany(const dlong Nblocks,
-                     const dlong N,
-                     const dlong Nfields,
-                     const dlong offset,
-                     @ restrict const dfloat *x,
-                     @ restrict dfloat *sum)
+@kernel void weightedSqrSum(const dlong Nblocks,
+                            const dlong N,
+                            @ restrict const dfloat *w,
+                            @ restrict const dfloat *x,
+                            @ restrict dfloat *wx2)
 {
 
   for (dlong b = 0; b < Nblocks; ++b; @outer(0)) {
 
-    @shared dfloat s_sum[p_blockSize];
+    @shared volatile dfloat s_wx2[p_blockSize];
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
-      dlong id = t + b * p_blockSize;
-      s_sum[t] = 0.0;
-      if (id < N) {
-        for (int field = 0; field < Nfields; ++field)
-          s_sum[t] += x[id + field * offset];
-      }
+      const dlong id = t + b * p_blockSize;
+      s_wx2[t] = 0.0;
+      if (id < N)
+        s_wx2[t] += w[id] * w[id] * x[id] * x[id];
     }
-
     @barrier();
 
 #if p_blockSize > 512
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 512)
-        s_sum[t] += s_sum[t + 512];
+        s_wx2[t] += s_wx2[t + 512];
     @barrier();
 #endif
-
 #if p_blockSize > 256
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 256)
-        s_sum[t] += s_sum[t + 256];
+        s_wx2[t] += s_wx2[t + 256];
     @barrier();
 #endif
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 128)
-        s_sum[t] += s_sum[t + 128];
+        s_wx2[t] += s_wx2[t + 128];
     @barrier();
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 64)
-        s_sum[t] += s_sum[t + 64];
+        s_wx2[t] += s_wx2[t + 64];
     @barrier();
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 32)
-        s_sum[t] += s_sum[t + 32];
+        s_wx2[t] += s_wx2[t + 32];
     @barrier();
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 16)
-        s_sum[t] += s_sum[t + 16];
+        s_wx2[t] += s_wx2[t + 16];
     @barrier();
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 8)
-        s_sum[t] += s_sum[t + 8];
+        s_wx2[t] += s_wx2[t + 8];
     @barrier();
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 4)
-        s_sum[t] += s_sum[t + 4];
+        s_wx2[t] += s_wx2[t + 4];
     @barrier();
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 2)
-        s_sum[t] += s_sum[t + 2];
+        s_wx2[t] += s_wx2[t + 2];
     @barrier();
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0))
       if (t < 1)
-        sum[b] = s_sum[0] + s_sum[1];
+        wx2[b] = s_wx2[0] + s_wx2[1];
   }
 }

@@ -90,7 +90,7 @@ static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames 
     }
     }
 
-    fprintf(out, msg.str().c_str());
+    fprintf(out, "%s", msg.str().c_str());
 
     free(funcname);
     free(symbollist);

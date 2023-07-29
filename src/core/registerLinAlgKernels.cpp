@@ -32,6 +32,7 @@ void registerLinAlgKernels()
       {"axmyzMany", false},
       {"paxmyzMany", false},
       {"ady", false},
+      {"adyz", false},
       {"adyMany", false},
       {"padyMany", false},
       {"axdy", false},
@@ -52,6 +53,7 @@ void registerLinAlgKernels()
       {"weightedNorm1Many", true},
       {"weightedNorm2", true},
       {"weightedNorm2Many", true},
+      {"weightedSqrSum", true},
       {"innerProd", true},
       {"weightedInnerProd", true},
       {"weightedInnerProdMany", true},
@@ -60,6 +62,7 @@ void registerLinAlgKernels()
       {"crossProduct", false},
       {"unitVector", false},
       {"entrywiseMag", false},
+      {"linearCombination", false},
   };
 
   std::string kernelName;

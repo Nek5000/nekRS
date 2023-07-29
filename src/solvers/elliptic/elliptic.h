@@ -126,6 +126,7 @@ struct elliptic_t
   occa::memory o_z; // preconditioner solution
   occa::memory o_res;
   occa::memory o_Ap; // A*search direction
+  occa::memory o_v;  // work array for combined PCG iteration
   occa::memory o_invDegree;
   occa::memory o_interp;
 
@@ -152,14 +153,20 @@ struct elliptic_t
   dfloat resNormFactor;
 
   // combined PCG update step
-  dfloat* tmpNormr;
-  occa::memory o_tmpNormr;
+  dfloat *tmpHostScalars;
+  occa::memory h_tmpHostScalars;
+  occa::memory o_tmpHostScalars;
   occa::kernel updatePCGKernel;
 
   hlong NelementsGlobal;
 
   occa::kernel ellipticBlockBuildDiagonalKernel;
   occa::kernel ellipticBlockBuildDiagonalPfloatKernel;
+
+  // specialized kernels needed for combined PCG iteration
+  occa::kernel combinedPCGPreMatVecKernel;
+  occa::kernel combinedPCGPostMatVecKernel;
+  occa::kernel combinedPCGUpdateConvergedSolutionKernel;
 
   occa::memory o_lambda0;
   dfloat lambda0Avg;
@@ -188,6 +195,18 @@ void ellipticBuildPreconditionerKernels(elliptic_t* elliptic);
 void ellipticSolve(elliptic_t* elliptic, const occa::memory& o_r, occa::memory o_x);
 
 void ellipticSolveSetup(elliptic_t* elliptic);
+
+// indices used in combinedPCG routines
+struct CombinedPCGId {
+  static constexpr int nReduction = 7;
+  static constexpr int gamma = 0;
+  static constexpr int a = 1;
+  static constexpr int b = 2;
+  static constexpr int c = 3;
+  static constexpr int d = 4;
+  static constexpr int e = 5;
+  static constexpr int f = 6;
+};
 
 int pcg(elliptic_t* elliptic, const dfloat tol, const int MAXIT, dfloat &res, occa::memory &o_r, occa::memory &o_x);
 
@@ -239,7 +258,11 @@ static void ellipticAllocateWorkspace(elliptic_t* elliptic)
   elliptic->o_Ap = platform->o_memPool.reserve<dfloat>(elliptic->Nfields * elliptic->fieldOffset);
   elliptic->o_x0 = platform->o_memPool.reserve<dfloat>(elliptic->Nfields * elliptic->fieldOffset); 
   elliptic->o_rPfloat = platform->o_memPool.reserve<pfloat>(elliptic->Nfields * elliptic->fieldOffset); 
-  elliptic->o_zPfloat = platform->o_memPool.reserve<pfloat>(elliptic->Nfields * elliptic->fieldOffset); 
+  elliptic->o_zPfloat = platform->o_memPool.reserve<pfloat>(elliptic->Nfields * elliptic->fieldOffset);
+
+  if (elliptic->options.compareArgs("SOLVER", "PCG+COMBINED")) {
+    elliptic->o_v = platform->o_memPool.reserve<dfloat>(elliptic->Nfields * elliptic->fieldOffset);
+  }
 }
 
 static void ellipticFreeWorkspace(elliptic_t* elliptic)
@@ -250,6 +273,10 @@ static void ellipticFreeWorkspace(elliptic_t* elliptic)
   elliptic->o_x0.free(); 
   elliptic->o_rPfloat.free();
   elliptic->o_zPfloat.free();
+
+  if (elliptic->options.compareArgs("SOLVER", "PCG+COMBINED")) {
+    elliptic->o_v.free();
+  }
 }
 
  

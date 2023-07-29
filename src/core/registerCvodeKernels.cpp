@@ -40,6 +40,22 @@ void registerCvodeKernels(occa::properties kernelInfoBC)
   fileName = oklpath + kernelName + ".okl";
   platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
 
+  kernelName = "axpby";
+  fileName = oklpath + kernelName + ".okl";
+  platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
+
+  kernelName = "axmyz";
+  fileName = oklpath + kernelName + ".okl";
+  platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
+
+  kernelName = "linearCombination";
+  fileName = oklpath + kernelName + ".okl";
+  platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
+
+  kernelName = "innerProdMulti";
+  fileName = oklpath + kernelName + ".okl";
+  platform->kernels.add(prefix + kernelName, fileName, platform->kernelInfo);
+
   {
     auto prop = platform->kernelInfo;
     kernelName = "fusedAddRhoDiv";

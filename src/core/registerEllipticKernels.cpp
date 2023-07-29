@@ -1,6 +1,7 @@
 #include <compileKernels.hpp>
 #include "re2Reader.hpp"
 #include "benchmarkAx.hpp"
+#include "elliptic.h"
 
 namespace {
 
@@ -27,6 +28,40 @@ void registerGMRESKernels(const std::string &section, int Nfields)
   kernelName = "fusedResidualAndNorm";
   fileName = oklpath + kernelName + fileNameExtension;
   platform->kernels.add(sectionIdentifier + kernelName, fileName, gmresKernelInfo);
+}
+
+void registerCombinedPCGKernels(const std::string &section, int Nfields)
+{
+  const std::string oklpath = getenv("NEKRS_KERNEL_DIR") + std::string("/elliptic/");
+  std::string fileName;
+  const bool serial = platform->serial;
+
+  const std::string fileNameExtension = (serial) ? ".c" : ".okl";
+  const std::string sectionIdentifier = std::to_string(Nfields) + "-";
+
+  occa::properties combinedPCGInfo = platform->kernelInfo;
+  combinedPCGInfo["defines/p_Nfields"] = Nfields;
+
+  std::string kernelName = "combinedPCGPreMatVec";
+  fileName = oklpath + kernelName + fileNameExtension;
+  platform->kernels.add(sectionIdentifier + kernelName, fileName, combinedPCGInfo);
+
+  kernelName = "combinedPCGUpdateConvergedSolution";
+  fileName = oklpath + kernelName + fileNameExtension;
+  platform->kernels.add(sectionIdentifier + kernelName, fileName, combinedPCGInfo);
+
+  combinedPCGInfo["defines/p_nReduction"] = CombinedPCGId::nReduction;
+  combinedPCGInfo["defines/p_gamma"] = CombinedPCGId::gamma;
+  combinedPCGInfo["defines/p_a"] = CombinedPCGId::a;
+  combinedPCGInfo["defines/p_b"] = CombinedPCGId::b;
+  combinedPCGInfo["defines/p_c"] = CombinedPCGId::c;
+  combinedPCGInfo["defines/p_d"] = CombinedPCGId::d;
+  combinedPCGInfo["defines/p_e"] = CombinedPCGId::e;
+  combinedPCGInfo["defines/p_f"] = CombinedPCGId::f;
+
+  kernelName = "combinedPCGPostMatVec";
+  fileName = oklpath + kernelName + fileNameExtension;
+  platform->kernels.add(sectionIdentifier + kernelName, fileName, combinedPCGInfo);
 }
 
 } // namespace
@@ -77,6 +112,10 @@ void registerEllipticKernels(std::string section, int poissonEquation)
 
   if (platform->options.compareArgs(optionsPrefix + "SOLVER", "PGMRES")) {
     registerGMRESKernels(section, Nfields);
+  }
+
+  if (platform->options.compareArgs(optionsPrefix + "SOLVER", "PCG+COMBINED")) {
+    registerCombinedPCGKernels(section, Nfields);
   }
 
   {

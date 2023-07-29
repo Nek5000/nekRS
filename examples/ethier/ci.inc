@@ -122,6 +122,9 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("VELOCITY INITIAL GUESS", "PREVIOUS");
   options.setArgs("ADVECTION TYPE", "CONVECTIVE+CUBATURE");
 
+  options.setArgs("SCALAR00 SOLVER", "PCG+COMBINED");
+  options.setArgs("SCALAR01 SOLVER", "PCG");
+
   if (ciMode == 2) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));

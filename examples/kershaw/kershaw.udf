@@ -72,6 +72,9 @@ void runBenchmarks(nrs_t *nrs)
       platform->flopCounter->clear();
       platform->device.finish();
       MPI_Barrier(platform->comm.mpiComm);
+
+      platform->linAlg->fill(nrs->fieldOffset, 0.0, nrs->o_P);
+
       const auto tStart = MPI_Wtime();
 
       ellipticSolve(nrs->pSolver, o_rhs, nrs->o_P);

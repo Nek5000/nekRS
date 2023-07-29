@@ -18,11 +18,13 @@
 #include "tabularPrinter.hpp"
 
 #ifdef ENABLE_CVODE
+
 // cvode includes
 #include "sunlinsol/sunlinsol_spgmr.h"
 #include "sundials/sundials_types.h"
 #include "sundials/sundials_math.h"
 #include "cvode/cvode.h"
+
 #include "nvector/nvector_serial.h"
 #include "nvector/nvector_mpiplusx.h"
 
@@ -32,17 +34,13 @@
 #ifdef ENABLE_HIP
 #include "nvector/nvector_hip.h"
 #endif
-#endif
 
-#define getN_VectorMemory(T,S) (  platform->device.occaDevice().wrapMemory<T>( __N_VGetDeviceArrayPointer(N_VGetLocalVector_MPIPlusX(S)), N_VGetLocalLength(S)) )
+#include "getN_VectorMemory.hpp"
+#include "cbGMRES.hpp"
+
+#endif
 
 namespace {
-
-#ifdef ENABLE_CVODE
-sunrealtype *__N_VGetDeviceArrayPointer(N_Vector u)
-{
-}
-#endif
 
 void check_retval(void *returnvalue, const char *funcname, int opt)
 {
@@ -55,14 +53,18 @@ cvode_t::cvode_t(nrs_t *_nrs)
 }
 
 #ifdef ENABLE_CVODE
-int cvode_t::cvodeRHS(double time, N_Vector Y, N_Vector Ydot) {
+int cvode_t::cvodeRHS(realtype time, N_Vector Y, N_Vector Ydot) {
 }
-  
-int cvode_t::cvodeJtvRHS(double time, N_Vector Y, N_Vector Ydot) 
+
+// callback used by cvode to compute Jv
+// linear solver requires matVec: Mv = (I - gamma*J)v
+int cvode_t::cvodeJtv(N_Vector v, N_Vector Jv, realtype t, N_Vector y, N_Vector fy, N_Vector ytemp) 
 {
 }
-  
-int cvode_t::cvodeJtv(N_Vector v, N_Vector Jv, realtype t, N_Vector y, N_Vector fy, N_Vector work) 
+
+// Jv = [f(y + v*sig) - f(y)]/sig, where sig = sigScale / ||v||_WRMS, 
+int cvode_t::jtv(double t, const occa::memory& o_v, const occa::memory& o_y, const occa::memory& o_fy, 
+                 occa::memory& o_work, occa::memory& o_Jv) 
 {
 }
 
@@ -71,19 +73,7 @@ int cvode_t::cvodeErrorWt(N_Vector y, N_Vector ewt)
 }
 #endif
 
-cvode_t::~cvode_t()
-{
-}
-
 void cvode_t::initialize()
-{
-}
-
-void cvode_t::setupDirichletMask()
-{
-}
-
-void cvode_t::applyDirichlet(double time)
 {
 }
 
@@ -91,7 +81,12 @@ void cvode_t::rhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat
 {
 }
 
-void cvode_t::jtvRHS(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)
+int cvode_t::jtvRhs(double time, const occa::memory& o_y, occa::memory& o_ydot) 
+{
+  return 0;
+}
+
+void cvode_t::jtvRhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)
 {
 }
 
@@ -104,6 +99,10 @@ void cvode_t::makeq(double time)
 }
 
 void cvode_t::nrsToCv(occa::memory o_EField,  LVector_t<dfloat> & o_LField, bool isYdot)
+{
+}
+
+void cvode_t::cvToNrs(const  LVector_t<dfloat> & o_LField, occa::memory o_EField, bool isYdot)
 {
 }
 
@@ -167,5 +166,9 @@ std::string cvode_t::rhsTagName() const
 }
 
 void cvode_t::setLocalPointSource(userLocalPointSource_t _userLocalPointSource)
+{
+}
+
+cvode_t::~cvode_t()
 {
 }

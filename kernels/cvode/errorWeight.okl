@@ -10,7 +10,7 @@
 
   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
     if (n < N) {
-      const dfloat invMult = invDegree[n];
+      const dfloat invMult = sqrt(invDegree[n]);
       for (dlong fld = 0; fld < Nfields; ++fld) {
         const dfloat denom = relTol * abs(y[n + fld * N]) + absTol[fld];
         ewt[n + fld * N] = invMult / denom;

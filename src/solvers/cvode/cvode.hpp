@@ -66,7 +66,7 @@ public:
   double time() const { return tExternal; }
 
   void rhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
-  void jtvRHS(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
+  void jtvRhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
   dlong numEquations() const { return nEq; }
 
   bool mixedPrecisionJtv() const { return mixedPrecisionJtvEnabled; }
@@ -104,11 +104,14 @@ private:
 #ifdef ENABLE_CVODE
   // CVODE function pointers (required to access private data members)
   int cvodeRHS(double time, N_Vector Y, N_Vector Ydot);
-  int cvodeJtvRHS(double time, N_Vector Y, N_Vector Ydot);
   int cvodeJtv(N_Vector v, N_Vector Jv, realtype t, N_Vector y, N_Vector fy, N_Vector work);
   int cvodeErrorWt(N_Vector y, N_Vector ewt);
 #endif
-  
+
+  int jtvRhs(double time, const occa::memory& o_y, occa::memory& o_ydot);
+  int jtv(double t, const occa::memory& o_v, const occa::memory& o_y, const occa::memory& o_fy, 
+          occa::memory& o_work, occa::memory& o_Jv);
+ 
   void defaultRHS(double time, double t0, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
   
   // hand nekRS-style E-vector to CVODE, which uses an L-vector
@@ -122,6 +125,8 @@ private:
   std::string timerName = "cvode_t::";
   std::string timerScope;
   std::string rhsTagName() const;
+
+  std::string linearSolverType;
 
   // most recent time from nekRS -- used to compute dt in CVODE integration call
   mutable double tExternal;
@@ -188,6 +193,8 @@ private:
   // host shadows
   std::vector<dlong> scalarIds;
   std::vector<dlong> cvodeScalarIds;
+
+  occa::memory o_ewt;
 
   // time-lagged Dirichlet values
   occa::memory o_maskValues;

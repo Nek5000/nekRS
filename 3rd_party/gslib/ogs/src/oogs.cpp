@@ -621,7 +621,7 @@ oogs_t *oogs::setup(ogs_t *ogs,
         if (tavg/size > MPI_Wtick())
           printf("(MPI min/max/avg: %.2es %.2es %.2es / bi-bw: %.1fGB/s/rank)\n",
                  tmin, tmax, tmax/size,
-                 nBytesExchange / tavg / 1e9);
+                 nBytesExchange / tmax / 1e9);
         else
           printf("\n");
       }

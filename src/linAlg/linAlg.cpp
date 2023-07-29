@@ -192,6 +192,7 @@ void linAlg_t::setup()
     axmyzManyKernel = kernels.get("axmyzMany");
     paxmyzManyKernel = kernels.get("paxmyzMany");
     adyKernel = kernels.get("ady");
+    adyzKernel = kernels.get("adyz");
     adyManyKernel = kernels.get("adyMany");
     padyManyKernel = kernels.get("padyMany");
     axdyKernel = kernels.get("axdy");
@@ -212,6 +213,7 @@ void linAlg_t::setup()
     weightedNorm1ManyKernel = kernels.get("weightedNorm1Many");
     weightedNorm2Kernel = kernels.get("weightedNorm2");
     weightedNorm2ManyKernel = kernels.get("weightedNorm2Many");
+    weightedSqrSumKernel = kernels.get("weightedSqrSum");
     innerProdKernel = kernels.get("innerProd");
     weightedInnerProdKernel = kernels.get("weightedInnerProd");
     weightedInnerProdManyKernel = kernels.get("weightedInnerProdMany");
@@ -220,6 +222,7 @@ void linAlg_t::setup()
     crossProductKernel = kernels.get("crossProduct");
     unitVectorKernel = kernels.get("unitVector");
     entrywiseMagKernel = kernels.get("entrywiseMag");
+    linearCombinationKernel = kernels.get("linearCombination");
   }
 }
 
@@ -487,6 +490,13 @@ void linAlg_t::ady(const dlong N, const dfloat alpha, occa::memory &o_y)
 {
   adyKernel(N, alpha, o_y);
 }
+
+// o_z[n] = alpha/o_y[n]
+void linAlg_t::adyz(const dlong N, const dfloat alpha, const occa::memory &o_y, occa::memory &o_z)
+{
+  adyzKernel(N, alpha, o_y, o_z);
+}
+
 
 void linAlg_t::adyMany(const dlong N,
                        const dlong Nfields,
@@ -969,6 +979,19 @@ dfloat linAlg_t::weightedInnerProd(const dlong N,
   return dot;
 }
 
+void linAlg_t::innerProdMulti(const dlong N,
+                              const dlong NVec,
+                              const dlong Nfields,
+                              const dlong fieldOffset,
+                              const occa::memory &o_x,
+                              const occa::memory &o_y,
+                              MPI_Comm _comm,
+                              dfloat *result,
+                              const dlong yOffset)
+{
+  weightedInnerProdMulti(N, NVec, Nfields, fieldOffset, o_NULL, o_x, o_y, _comm, result, yOffset, 0);
+}
+
 void linAlg_t::weightedInnerProdMulti(const dlong N,
                                       const dlong NVec,
                                       const dlong Nfields,
@@ -978,7 +1001,8 @@ void linAlg_t::weightedInnerProdMulti(const dlong N,
                                       const occa::memory &o_y,
                                       MPI_Comm _comm,
                                       dfloat *result,
-                                      const dlong offset)
+                                      const dlong yOffset,
+                                      const int weight)
 {
   if (timer) {
     platform->timer.tic("dotpMulti", 1);
@@ -991,7 +1015,17 @@ void linAlg_t::weightedInnerProdMulti(const dlong N,
   }
 
   if (N > 1 || NVec > 1 || Nfields > 1) {
-    weightedInnerProdMultiKernel(Nblock, N, Nfields, fieldOffset, NVec, offset, o_w, o_x, o_y, o_scratch);
+    weightedInnerProdMultiKernel(Nblock, 
+                                 N,
+                                 Nfields,
+                                 fieldOffset,
+                                 NVec,
+                                 yOffset,
+                                 weight,
+                                 o_w,
+                                 o_x,
+                                 o_y,
+                                 o_scratch);
 
     o_scratch.copyTo(scratch, Nbytes);
 
@@ -1030,7 +1064,8 @@ void linAlg_t::weightedInnerProdMulti(const dlong N,
                                       const occa::memory &o_y,
                                       MPI_Comm _comm,
                                       occa::memory &o_result,
-                                      const dlong offset)
+                                      const dlong yOffset,
+                                      const int weight)
 {
   if (timer) {
     platform->timer.tic("dotpMulti", 1);
@@ -1044,7 +1079,8 @@ void linAlg_t::weightedInnerProdMulti(const dlong N,
                                        Nfields,
                                        fieldOffset,
                                        NVec,
-                                       offset,
+                                       yOffset,
+                                       weight,
                                        o_w,
                                        o_x,
                                        o_y,
@@ -1298,6 +1334,42 @@ dfloat linAlg_t::weightedNorm1Many(const dlong N,
   return norm;
 }
 
+dfloat
+linAlg_t::weightedSqrSum(const dlong N, const occa::memory &o_w, const occa::memory &o_a, MPI_Comm _comm)
+{
+  int Nblock = (N + blocksize - 1) / blocksize;
+  const size_t Nbytes = Nblock * sizeof(dfloat);
+  if (o_scratch.size() < Nbytes) {
+    reallocScratch(Nbytes);
+  }
+
+  dfloat sum = 0;
+  if (N > 1) {
+    weightedSqrSumKernel(Nblock, N, o_w, o_a, o_scratch);
+
+    if (serial) {
+      sum = *((dfloat *)o_scratch.ptr());
+    } else {
+      o_scratch.copyTo(scratch, Nbytes);
+      for (dlong n = 0; n < Nblock; ++n) {
+        sum += scratch[n];
+      }
+    }
+  } else {
+    dfloat w, a;
+    o_w.copyTo(&w, N);
+    o_a.copyTo(&a, N);
+    sum = (w * a) * (w * a) / N;
+  }
+
+  if (_comm != MPI_COMM_SELF) {
+    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_DFLOAT, MPI_SUM, _comm);
+  }
+
+  return sum;
+}
+
+
 void linAlg_t::crossProduct(const dlong N,
                             const dlong fieldOffset,
                             const occa::memory &o_x,
@@ -1319,4 +1391,15 @@ void linAlg_t::entrywiseMag(const dlong N,
                             occa::memory &o_b)
 {
   entrywiseMagKernel(N, Nfields, fieldOffset, o_a, o_b);
+}
+
+// o_y[n] = \sum_{i=0}^{Nfields-1} c_i * x_i 
+void linAlg_t::linearCombination(const dlong N,
+                                 const dlong Nfields,
+                                 const dlong fieldOffset,
+                                 const occa::memory &o_c,
+                                 const occa::memory &o_x,
+                                 occa::memory &o_y)
+{
+  linearCombinationKernel(N, Nfields, fieldOffset, o_c, o_x, o_y);
 }
