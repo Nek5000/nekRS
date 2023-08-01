@@ -94,6 +94,7 @@ echo "module load craype-accel-amd-gfx90a" >> $SFILE
 echo "module load cray-mpich" >> $SFILE
 echo "module load rocm" >> $SFILE
 echo "module unload cray-libsci" >> $SFILE
+echo "module unload darshan-runtime" $SFILE
 echo "module list" >> $SFILE
 
 echo "rocm-smi" >>$SFILE

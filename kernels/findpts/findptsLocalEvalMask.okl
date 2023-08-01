@@ -103,7 +103,7 @@
 {
   for (int field = 0; field < Nfields; field++; @outer(1)) {
     for (int pb = 0; pb < (npts + p_nptsBlock - 1) / p_nptsBlock; pb++; @outer(0)) {
-      @shared volatile dfloat s_L[p_nptsBlock][p_blockSize + 1];
+      @shared dfloat s_L[p_nptsBlock][p_blockSize + 1];
       @shared dfloat s_lj[p_nptsBlock][3][p_Nq];
       @shared dfloat s_rst[p_nptsBlock][3];
 
@@ -214,7 +214,7 @@
     const dfloat *fld_e = fld + iel*p_Np;
     dfloat *out = out_base + startPointIdx[e];
 
-    @shared volatile dfloat s_L[p_nptsElementMax][p_blockSize+1];
+    @shared dfloat s_L[p_nptsElementMax][p_blockSize+1];
     @shared dfloat s_lj[p_nptsElementMax][3][p_Nq];
     @shared dfloat s_rst[p_nptsElementMax][3];
 

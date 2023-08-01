@@ -87,7 +87,7 @@ solver                      none                                       linear so
                               +nVector=<int>                           dimension of Krylov space
 
 residualTol                 <float>                                    absolute residual tolerance  
-                            +relative                                  use relative residual
+                            +relative=<float>                          use absolute/relative residual (whatever is reached first) 
 
 initialGuess                previous
                             extrapolation [D] 

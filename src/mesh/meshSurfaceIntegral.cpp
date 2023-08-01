@@ -47,7 +47,7 @@ std::vector<dfloat> integral(mesh_t *mesh, int Nfields, int fieldOffset, bool ve
 
   o_sumFace.copyTo(sumFace, Nfields * mesh->Nelements);
 
-  for (int j = 0; j < Nfields + 1; ++j) {
+  for (int j = 0; j < Nfields; ++j) {
     sum[j] = 0;
     for (int i = 0; i < mesh->Nelements; ++i) {
       sum[j] += sumFace[i + j * mesh->Nelements];

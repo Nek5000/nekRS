@@ -20,7 +20,7 @@ if (t < bs) {                                                                   
 {
   for (dlong e = 0; e < Nelements; e++; @outer(0)) {
     for (int fldStart = 0; fldStart < Nfields; fldStart += p_fieldBlockSize) {
-      @shared volatile dfloat s_sum[p_fieldBlockSize][p_blockSize];
+      @shared dfloat s_sum[p_fieldBlockSize][p_blockSize];
 
       // reduce over all element faces
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {

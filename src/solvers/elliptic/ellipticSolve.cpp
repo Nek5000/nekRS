@@ -146,10 +146,20 @@ void ellipticSolve(elliptic_t* elliptic, const occa::memory& o_rhs, occa::memory
   nrsCheck(std::isnan(elliptic->res0Norm), MPI_COMM_SELF, EXIT_FAILURE,
            "%s unreasonable res00Norm!\n", name.c_str());
 
+  // absolute tol
   dfloat tol = 1e-6;
   options.getArgs("SOLVER TOLERANCE", tol);
-  if(options.compareArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE")) 
-    tol *= elliptic->res0Norm;
+
+  // absolute tol + relative
+  if(!options.getArgs("SOLVER RELATIVE TOLERANCE").empty()) {
+    dfloat relTol;
+    options.getArgs("SOLVER RELATIVE TOLERANCE", relTol);
+    tol = std::max(relTol * elliptic->res0Norm, tol);
+  } else { // relative and absolute tolerance are the same 
+    if(options.compareArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE")) { 
+      tol *= elliptic->res0Norm;
+    }
+  }
 
   if(!options.compareArgs("SOLVER", "NONBLOCKING")) {
     elliptic->resNorm = elliptic->res0Norm;

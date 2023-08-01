@@ -106,7 +106,6 @@ static void innerProdMulti(const dlong NVec,
   {
     innerProdMultiKernel(Nblock,
                          N,
-                         1, // Nfields
                          N, // fieldOffset
                          NVec,
                          yOffset,

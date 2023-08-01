@@ -16,7 +16,7 @@ s_sum[t] += s_sum[t + bs];                                                      
                   @ restrict dfloat *sum)
 {
   for (dlong e = 0; e < Nelements; e++; @outer(0)) {
-    @shared volatile dfloat s_sum[p_blockSize];
+    @shared dfloat s_sum[p_blockSize];
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
       s_sum[t] = 0.0;

@@ -71,9 +71,9 @@ void checkConfig(elliptic_t *elliptic)
   }
 
   if (options.compareArgs("SOLVER", "PCG+COMBINED") && 
-      options.compareArgs("PRECONDITIONER", "NONE")) {
+      !options.compareArgs("PRECONDITIONER", "JACO")) {
       if (platform->comm.mpiRank == 0)
-        printf("combinedPCG does not support no preconditioner!\n");
+        printf("combinedPCG requires Jacobi preconditioner!\n");
       err++;
   }
 

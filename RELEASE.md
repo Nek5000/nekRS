@@ -2,15 +2,16 @@
 
 ## What is new? 
 
-* Various bug fixes
 * Interpolation based velocity recycling
-* Build time option to run solver using FP32
+* Build time option (`-DNEKRS_USE_DFLOAT_FLOAT=ON`) to run solver using FP32
+* combinedPCG
+* Various bug fixes
 
 ## Good to know
 * [reproducibility] variable time step controller restricts dt to 5 significant digits
 
 ## Breaking Changes
-* new mempool (o_mempool.slice0 etc. was removed)
+* `o_mempool.slice0` etc. was removed (see examples how to use new memory pool)
 * occa::memory objects are typed now (allocate with malloc<T> and use words instead of bytes for malloc, slice, copyFrom/To)  
 * writeFld takes `const occa::memory&` instead of `const void*`
 * [udf] API argument `time` is `double` instead of `dfloat` 

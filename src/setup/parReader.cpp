@@ -332,7 +332,6 @@ void validateKeys(const inipp::Ini::Sections &sections)
     if (isScalar) {
       const auto scalarNumber = parseScalarIntegerFromString(sec.first);
       if (scalarNumber) {
-        std::cout << sec.first << "," << scalarNumber.value() << std::endl;
         if (scalarNumber.value() >= NSCALAR_MAX) {
           std::ostringstream error;
           error << "specified " << scalarNumber.value() << " scalars, while the maximum allowed is "
@@ -678,6 +677,14 @@ void parseSolverTolerance(const int rank, setupAide &options, inipp::Ini *par, s
       par->extract(parScope, "residualtolerance", residualTol)) {
     if (residualTol.find("relative") != std::string::npos) {
       options.setArgs(parSectionName + "LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
+
+      const auto subStr = residualTol.substr(residualTol.find("relative"));
+      if (subStr != "relative") {
+        auto relTolerance = std::strtod(parseValueForKey(subStr, "relative").c_str(), nullptr);
+        if (relTolerance > 0) {
+          options.setArgs(parSectionName + "SOLVER RELATIVE TOLERANCE", to_string_f(relTolerance));
+        }
+      }
     }
 
     std::vector<std::string> entries = serializeString(residualTol, '+');
