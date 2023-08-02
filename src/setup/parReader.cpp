@@ -123,7 +123,7 @@ static std::vector<std::string> generalKeys = {
     {"cubaturePolynomialOrder"},
     {"startFrom"},
     {"stopAt"},
-    {"elapsedtime"},
+    {"elapsedTime"},
     {"timestepper"},
     {"subCyclingSteps"},
     {"subCycling"},
