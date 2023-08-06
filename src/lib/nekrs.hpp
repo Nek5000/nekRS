@@ -47,6 +47,9 @@ bool runStep(std::function<bool(int)> convergenceCheck, int corrector);
 bool runStep(int corrector);
 double finishStep();
 bool stepConverged();
+#ifdef ENABLE_SENSEI
+void runSensei(double time, double dt, int tstep);
+#endif
 
 }
 

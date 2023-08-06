@@ -8,16 +8,16 @@ if(ENABLE_SENSEI)
  
   find_package(Python3 COMPONENTS Interpreter Development)
  
-  if(NOT Python_FOUND)
+  if(NOT Python3_FOUND)
     MESSAGE(FATAL_ERROR "Could not find Python.")
   endif()
 
-  message("Python_FOUND:${Python_FOUND}")
-  message("Python_VERSION:${Python_VERSION}")
-  message("Python_Development_FOUND:${Python_Development_FOUND}")
-  message("Python_LIBRARIES:${PYTHON_LIBRARIES}")
+  message("Python3_FOUND:${Python3_FOUND}")
+  message("Python3_VERSION:${Python3_VERSION}")
+  message("Python3_Development_FOUND:${Python3_Development_FOUND}")
+  message("Python3_LIBRARIES:${PYTHON3_LIBRARIES}")
 
-  set(SENSEI_LIBS sensei ${Python_LIBRARIES} Python3::Python)
+  set(SENSEI_LIBS sensei ${Python3_LIBRARIES} Python3::Python)
   set(SRC src/sensei/DataAdaptor.cxx src/sensei/Bridge.cxx)
 
   add_library(neksensei STATIC ${SRC})

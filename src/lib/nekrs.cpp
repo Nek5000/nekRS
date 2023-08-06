@@ -627,43 +627,6 @@ double finishStep()
 
 bool stepConverged() { return nrs->timeStepConverged; }
 
-} // namespace nekrs
-
-int nrsFinalize(nrs_t *nrs)
-{
-  auto exitValue = nekrs::exitValue();
-  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    if (nrs->uSolver)
-      delete nrs->uSolver;
-    if (nrs->vSolver)
-      delete nrs->vSolver;
-    if (nrs->wSolver)
-      delete nrs->wSolver;
-    if (nrs->uvwSolver)
-      delete nrs->uvwSolver;
-    if (nrs->pSolver)
-      delete nrs->pSolver;
-    for (int is; is < nrs->Nscalar; is++) {
-      if (nrs->cds->solver[is])
-        delete nrs->cds->solver[is];
-    }
-    if (nrs->cvode)
-      delete nrs->cvode;
-    if (nrs->meshSolver)
-      delete nrs->meshSolver;
-
-    hypreWrapper::finalize();
-    hypreWrapperDevice::finalize();
-    AMGXfinalize();
-    nek::finalize();
-  }
-
-  if (platform->comm.mpiRank == 0)
-    std::cout << "finished with exit code " << exitValue << std::endl;
-
-  return exitValue;
-}
-
 #ifdef ENABLE_SENSEI
 void runSensei(double time, double dt, int tstep) {
 	sensei::DataAdaptor *daOut = nullptr;
@@ -708,3 +671,41 @@ void runSensei(double time, double dt, int tstep) {
 	sensei_bridge_update(&tstep, &time, &daOut);
 }
 #endif
+} // namespace nekrs
+
+int nrsFinalize(nrs_t *nrs)
+{
+  auto exitValue = nekrs::exitValue();
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    if (nrs->uSolver)
+      delete nrs->uSolver;
+    if (nrs->vSolver)
+      delete nrs->vSolver;
+    if (nrs->wSolver)
+      delete nrs->wSolver;
+    if (nrs->uvwSolver)
+      delete nrs->uvwSolver;
+    if (nrs->pSolver)
+      delete nrs->pSolver;
+    for (int is; is < nrs->Nscalar; is++) {
+      if (nrs->cds->solver[is])
+        delete nrs->cds->solver[is];
+    }
+    if (nrs->cvode)
+      delete nrs->cvode;
+    if (nrs->meshSolver)
+      delete nrs->meshSolver;
+
+    hypreWrapper::finalize();
+    hypreWrapperDevice::finalize();
+    AMGXfinalize();
+    nek::finalize();
+  }
+
+  if (platform->comm.mpiRank == 0)
+    std::cout << "finished with exit code " << exitValue << std::endl;
+
+  return exitValue;
+}
+
+

@@ -277,15 +277,14 @@ include(config/nek5000.cmake)
 include(config/sensei.cmake)
 set(ENABLE_SENSEI OFF CACHE BOOL "Enable SENSEI support")
 
-if(ENABLE_SENSEI)
-  target_link_libraries(nekrs-lib PRIVATE neksensei)
-endif()
-
-
 # nrs
 include(config/nrs.cmake)
 
 # Link dependencies 
+if(ENABLE_SENSEI)
+  target_link_libraries(nekrs-lib PRIVATE neksensei)
+endif()
+
 target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE nekrs-hypre nekrs-hypre-device gs ${GSLIB} blas lapack ${CMAKE_DL_LIBS})
 if(OpenMP_FOUND)
 target_link_libraries(nekrs-lib PUBLIC OpenMP::OpenMP_CXX)

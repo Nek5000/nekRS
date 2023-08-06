@@ -566,7 +566,7 @@ int main(int argc, char** argv)
     if (outputStep) nekrs::outfld(time, tStep);
 
 #ifdef ENABLE_SENSEI
-    runSensei(time, dt, tStep);
+    nekrs::runSensei(time, dt, tStep);
 #endif
 
     MPI_Barrier(comm);
