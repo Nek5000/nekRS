@@ -1,0 +1,127 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+@kernel void qtlHex3D(const dlong Nelements,
+                      @ restrict const dfloat *vgeo,
+                      @ restrict const dfloat *D,
+                      const dlong offset,
+                      @ restrict const dfloat *gradQ,
+                      @ restrict const dfloat *BETA,
+                      @ restrict const dfloat *DIFF,
+                      @ restrict const dfloat *RHOCP,
+                      @ restrict const dfloat *SRC,
+                      @ restrict dfloat *QTL)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @shared dfloat s_U[p_Nq][p_Nq];
+    @shared dfloat s_V[p_Nq][p_Nq];
+    @shared dfloat s_W[p_Nq][p_Nq];
+    @exclusive dfloat r_U[p_Nq];
+    @exclusive dfloat r_V[p_Nq];
+    @exclusive dfloat r_W[p_Nq];
+
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+    for (int k = 0; k < p_Nq; ++k) {
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          dlong id = i + j * p_Nq;
+          if (k == 0)
+            s_D[j][i] = D[id];
+
+          id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          const dfloat Un = gradQ[id + 0 * offset];
+          const dfloat Vn = gradQ[id + 1 * offset];
+          const dfloat Wn = gradQ[id + 2 * offset];
+          const dfloat cond = DIFF[id];
+
+          s_U[j][i] = cond * Un;
+          s_V[j][i] = cond * Vn;
+          s_W[j][i] = cond * Wn;
+
+          if (k == 0) {
+#pragma unroll
+            for (int l = 0; l < p_Nq; ++l) {
+              const dlong iid = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              r_U[l] = cond * gradQ[iid + 0 * offset];
+              r_V[l] = cond * gradQ[iid + 1 * offset];
+              r_W[l] = cond * gradQ[iid + 2 * offset];
+            }
+          }
+        }
+      }
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          const dfloat JW = vgeo[gid + p_JWID * p_Np];
+
+          const dfloat qvol = SRC[id];
+
+          dfloat dudr = 0, duds = 0, dudt = 0;
+          dfloat dvdr = 0, dvds = 0, dvdt = 0;
+          dfloat dwdr = 0, dwds = 0, dwdt = 0;
+          dfloat div = 0;
+#pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; n++) {
+            const dfloat Dr = s_D[i][n];
+            const dfloat Ds = s_D[j][n];
+            const dfloat Dt = s_D[k][n];
+            dudr += Dr * s_U[j][n];
+            duds += Ds * s_U[n][i];
+            dudt += Dt * r_U[n];
+
+            dvdr += Dr * s_V[j][n];
+            dvds += Ds * s_V[n][i];
+            dvdt += Dt * r_V[n];
+
+            dwdr += Dr * s_W[j][n];
+            dwds += Ds * s_W[n][i];
+            dwdt += Dt * r_W[n];
+          }
+
+          div = (drdx * dudr + dsdx * duds + dtdx * dudt);
+          div += (drdy * dvdr + dsdy * dvds + dtdy * dvdt);
+          div += (drdz * dwdr + dsdz * dwds + dtdz * dwdt);
+
+          QTL[id] += JW * BETA[id] / RHOCP[id] * (div + qvol);
+        }
+      }
+    }
+  }
+}

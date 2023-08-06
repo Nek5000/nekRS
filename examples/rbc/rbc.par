@@ -8,7 +8,7 @@ dt = targetCFL=4.0+max=0.05
 timeStepper = tombo2 
 subCyclingSteps = 2
 
-writeControl = runTime
+writeControl = simulationTime 
 writeInterval = 5
 
 regularization = hpfrt + nModes = 1 + scalingCoeff = 15

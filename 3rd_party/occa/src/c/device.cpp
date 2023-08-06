@@ -70,6 +70,10 @@ void occaDeviceFinish(occaDevice device) {
   occa::c::device(device).finish();
 }
 
+void occaDeviceFinishAll(occaDevice device) {
+  occa::c::device(device).finishAll();
+}
+
 bool occaDeviceHasSeparateMemorySpace(occaDevice device) {
   return (int) occa::c::device(device).hasSeparateMemorySpace();
 }
@@ -219,34 +223,6 @@ occaMemory occaDeviceTypedMalloc(occaDevice device,
   return occa::c::newOccaType(memory);
 }
 
-void* occaDeviceUMalloc(occaDevice device,
-                        const occaUDim_t bytes,
-                        const void *src,
-                        occaJson props) {
-  return occaDeviceTypedUMalloc(device,
-                                bytes,
-                                occaDtypeByte,
-                                src,
-                                props);
-}
-
-void* occaDeviceTypedUMalloc(occaDevice device,
-                             const occaUDim_t entries,
-                             const occaDtype dtype,
-                             const void *src,
-                             occaJson props) {
-  occa::device device_ = occa::c::device(device);
-  const occa::dtype_t &dtype_ = occa::c::dtype(dtype);
-
-  if (occa::c::isDefault(props)) {
-    return device_.umalloc(entries, dtype_, src);
-  }
-  return device_.umalloc(entries,
-                         dtype_,
-                         src,
-                         occa::c::json(props));
-}
-
 occaMemory occaDeviceWrapMemory(occaDevice device,
                                 const void *ptr,
                                 const occaUDim_t bytes,
@@ -275,6 +251,23 @@ occaMemory occaDeviceTypedWrapMemory(occaDevice device,
   memory.dontUseRefs();
 
   return occa::c::newOccaType(memory);
+}
+//======================================
+
+//---[ MemoryPool ]---------------------
+occaMemoryPool occaDeviceCreateMemoryPool(occaDevice device,
+                                          occaJson props) {
+  occa::device device_ = occa::c::device(device);
+
+  occa::experimental::memoryPool memoryPool;
+  if (occa::c::isDefault(props)) {
+    memoryPool = device_.createMemoryPool();
+  } else {
+    memoryPool = device_.createMemoryPool(occa::c::json(props));
+  }
+  memoryPool.dontUseRefs();
+
+  return occa::c::newOccaType(memoryPool);
 }
 //======================================
 

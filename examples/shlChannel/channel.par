@@ -9,9 +9,6 @@ subcyclingSteps = 2
 writeControl = steps
 writeInterval = 100
 
-[PROBLEMTYPE]
-stressFormulation = true # required for variable viscosity/rotated shl/sym boundaries
-
 [PRESSURE]
 residualTol = 1e-08
 

@@ -1,0 +1,214 @@
+#include "udf.hpp"
+#include "plugins/lowMach.hpp"
+
+#include "ci.inc"
+
+static dfloat XLEN;
+static dfloat YLEN;
+static dfloat ZLEN;
+
+static dfloat alphaRef;
+
+static dfloat P_GAMMA;
+static dfloat P_DELTA;
+static dfloat P_OMEGA;
+static dfloat P_AMP;
+static dfloat P_ROT;
+
+occa::memory o_beta;
+occa::memory o_kappa;
+
+#ifdef __okl__
+
+void velocityDirichletConditions(bcData *bc)
+{
+  const dfloat vPiston = p_AMP * sin(p_OMEGA * bc->time);
+
+  bc->u = -vPiston * bc->nx;
+  bc->v = -vPiston * bc->ny;
+  bc->w = -vPiston * bc->nz;
+}
+
+@kernel void fillProp(const dlong Nelements,
+                      const dlong uOffset,
+                      const dlong sOffset,
+                      const dfloat p0th,
+                      @ restrict const dfloat *TEMP,
+                      @ restrict dfloat *UPROP,
+                      @ restrict dfloat *SPROP,
+                      @ restrict dfloat *BETA,
+                      @ restrict dfloat *KAPPA)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    for (int n = 0; n < p_Np; ++n; @inner(0)) {
+      const int id = e * p_Np + n;
+
+      const dfloat rcpTemp = 1 / TEMP[id];
+      UPROP[id + 0 * uOffset] = 1e-2;
+      SPROP[id + 0 * sOffset] = 1e-2;
+      UPROP[id + 1 * uOffset] = p0th * rcpTemp;
+      SPROP[id + 1 * sOffset] = p0th * rcpTemp;
+
+      BETA[id] = rcpTemp;
+      KAPPA[id] = 1 / p0th;
+    }
+  }
+}
+
+@kernel void userMeshVelocity(const dlong Nelements,
+                              const dlong offset,
+                              const dfloat hmin,
+                              const dfloat hmax,
+                              const dfloat time,
+                              @ restrict const dfloat *h,
+                              @ restrict dfloat *W)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    for (int n = 0; n < p_Np; ++n; @inner(0)) {
+      const dfloat v_piston = p_AMP * sin(p_OMEGA * time);
+      const dfloat hlen = hmin - hmax;
+
+      const int id = e * p_Np + n;
+      const dfloat hh = h[id];
+
+      const dfloat hsc = (hh - hmax) / hlen;
+      const dfloat wxt = 0.0;
+      const dfloat wyt = hsc * v_piston;
+
+      W[id + 0 * offset] = wxt * cos(p_ROT) - wyt * sin(p_ROT);
+      W[id + 1 * offset] = wxt * sin(p_ROT) + wyt * cos(p_ROT);
+      W[id + 2 * offset] = 0.0;
+    }
+  }
+}
+
+#endif
+
+void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_SU)
+{
+  lowMach::dpdt(o_SU);
+}
+
+void qtl(nrs_t *nrs, dfloat time, occa::memory o_div)
+{
+  lowMach::qThermalSingleComponent(time, o_div);
+}
+
+void uservp(nrs_t *nrs,
+            dfloat time,
+            occa::memory o_U,
+            occa::memory o_S,
+            occa::memory o_UProp,
+            occa::memory o_SProp)
+{
+  mesh_t *mesh = nrs->meshV;
+
+  fillProp(mesh->Nelements,
+           nrs->fieldOffset,
+           nrs->cds->fieldOffset[0],
+           nrs->p0th[0],
+           o_S,
+           o_UProp,
+           o_SProp,
+           o_beta,
+           o_kappa);
+
+  if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
+    // moving mesh parameters
+    const dfloat nu = 1.0;
+    auto o_mesh_diff = o_UProp + 2 * nrs->fieldOffset * sizeof(dfloat);
+    platform->linAlg->fill(nrs->meshV->Nlocal, nu, o_mesh_diff);
+  }
+}
+
+/* UDF Functions */
+
+void UDF_LoadKernels(occa::properties &kernelInfo)
+{
+  kernelInfo["defines/"
+             "p_PI"] = M_PI;
+  kernelInfo["defines/"
+             "p_OMEGA"] = P_OMEGA;
+  kernelInfo["defines/"
+             "p_AMP"] = P_AMP;
+  kernelInfo["defines/"
+             "p_ROT"] = P_ROT;
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) {
+    ciSetup(comm, options);
+  }
+  platform->par->extract("casedata", "xlen", XLEN);
+  platform->par->extract("casedata", "ylen", YLEN);
+  platform->par->extract("casedata", "zlen", ZLEN);
+  platform->par->extract("casedata", "p_gamma", P_GAMMA);
+  platform->par->extract("casedata", "p_delta", P_DELTA);
+  platform->par->extract("casedata", "p_omega", P_OMEGA);
+  platform->par->extract("casedata", "p_amp", P_AMP);
+  platform->par->extract("casedata", "p_rot", P_ROT);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = XLEN;
+    nek_cb_scnrs[1] = YLEN;
+    nek_cb_scnrs[2] = ZLEN;
+    nek_cb_scnrs[3] = P_GAMMA;
+    nek_cb_scnrs[4] = P_DELTA;
+    nek_cb_scnrs[5] = P_OMEGA;
+    nek_cb_scnrs[6] = P_AMP;
+    nek_cb_scnrs[7] = P_ROT;
+  }
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  udf.properties = &uservp;
+  udf.sEqnSource = &userq;
+
+  o_beta = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+  o_kappa = platform->device.malloc(nrs->fieldOffset * sizeof(dfloat));
+
+  // alphaRef := p0thRef/(rhoRef * cpRef * TRef)
+  // translates to (gammaRef - 1)/gammaRef in case of an ideal gas
+  alphaRef = (P_GAMMA - 1.0) / P_GAMMA;
+
+  lowMach::setup(nrs, alphaRef, o_beta, o_kappa);
+  udf.div = &qtl;
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+  mesh_t *mesh = nrs->meshV;
+  cds_t *cds = nrs->cds;
+  linAlg_t *linAlg = platform->linAlg;
+  if (platform->options.compareArgs("MESH SOLVER", "NONE")) {
+
+    // rotate back into reference frame
+    platform->linAlg->axpbyz(mesh->Nlocal,
+                             -1.0 * std::sin(P_ROT),
+                             mesh->o_x,
+                             std::cos(P_ROT),
+                             mesh->o_y,
+                             platform->o_mempool.slice0);
+
+    const dfloat hmin = linAlg->min(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
+    const dfloat hmax = linAlg->max(mesh->Nlocal, platform->o_mempool.slice0, platform->comm.mpiComm);
+    userMeshVelocity(mesh->Nelements,
+                     nrs->fieldOffset,
+                     hmin,
+                     hmax,
+                     time,
+                     platform->o_mempool.slice0,
+                     mesh->o_U);
+  }
+
+  if (nrs->isOutputStep) {
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
+  }
+  if (ciMode) {
+    ciTestErrors(nrs, time, tstep);
+  }
+}

@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -12,14 +12,13 @@
  *
  * Implementation and Notes: a full-length array is used to mark nonzeros
  * in the pattern.  Indices must not equal -1, which is the "empty" marker
- * used in the full length array.  It is expected that RowPatt will only be 
- * presented with local indices, otherwise the full length array may be very 
+ * used in the full length array.  It is expected that RowPatt will only be
+ * presented with local indices, otherwise the full length array may be very
  * large.
  *
  *****************************************************************************/
 
 #include <stdlib.h>
-#include <assert.h>
 #include "Common.h"
 #include "RowPatt.h"
 
@@ -76,10 +75,10 @@ RowPatt *RowPattCreate(HYPRE_Int maxlen)
 
 void RowPattDestroy(RowPatt *p)
 {
-    free(p->ind);
-    free(p->mark);
-    free(p->buffer);
-    free(p);
+    hypre_TFree(p->ind,HYPRE_MEMORY_HOST);
+    hypre_TFree(p->mark,HYPRE_MEMORY_HOST);
+    hypre_TFree(p->buffer,HYPRE_MEMORY_HOST);
+    hypre_TFree(p,HYPRE_MEMORY_HOST);
 }
 
 /*--------------------------------------------------------------------------
@@ -112,7 +111,7 @@ void RowPattMerge(RowPatt *p, HYPRE_Int len, HYPRE_Int *ind)
 
 	if (p->mark[ind[i]] == -1)
 	{
-	    assert(p->len < p->maxlen);
+	    hypre_assert(p->len < p->maxlen);
 
 	    p->mark[ind[i]] = p->len;
             p->ind[p->len] = ind[i];
@@ -122,7 +121,7 @@ void RowPattMerge(RowPatt *p, HYPRE_Int len, HYPRE_Int *ind)
 }
 
 /*--------------------------------------------------------------------------
- * RowPattMergeExt - Merge the external nonzeros in the array "ind" of 
+ * RowPattMergeExt - Merge the external nonzeros in the array "ind" of
  * length "len" with the pattern "p".  The external indices are those
  * that are less than "beg" or greater than "end".
  *--------------------------------------------------------------------------*/
@@ -141,7 +140,7 @@ void RowPattMergeExt(RowPatt *p, HYPRE_Int len, HYPRE_Int *ind, HYPRE_Int num_lo
 
 	if (p->mark[ind[i]] == -1)
 	{
-	    assert(p->len < p->maxlen);
+	    hypre_assert(p->len < p->maxlen);
 
 	    p->mark[ind[i]] = p->len;
             p->ind[p->len] = ind[i];
@@ -165,7 +164,7 @@ void RowPattGet(RowPatt *p, HYPRE_Int *lenp, HYPRE_Int **indp)
 
     if (len > p->buflen)
     {
-	free(p->buffer);
+	hypre_TFree(p->buffer,HYPRE_MEMORY_HOST);
 	p->buflen = len + 100;
 	p->buffer = hypre_TAlloc(HYPRE_Int, p->buflen , HYPRE_MEMORY_HOST);
     }
@@ -179,7 +178,7 @@ void RowPattGet(RowPatt *p, HYPRE_Int *lenp, HYPRE_Int **indp)
 /*--------------------------------------------------------------------------
  * RowPattPrevLevel - Return the new indices added to the pattern of "p"
  * since the last call to RowPattPrevLevel (or all the indices if never
- * called).  The length and pointer to the pattern indices are returned 
+ * called).  The length and pointer to the pattern indices are returned
  * through the parameters "lenp" and "indp".
  * A copy of the indices is returned; this copy is destroyed on the next
  * call to RowPattGet or RowPattPrevLevel.
@@ -193,7 +192,7 @@ void RowPattPrevLevel(RowPatt *p, HYPRE_Int *lenp, HYPRE_Int **indp)
 
     if (len > p->buflen)
     {
-	free(p->buffer);
+	hypre_TFree(p->buffer,HYPRE_MEMORY_HOST);
 	p->buflen = len + 100;
 	p->buffer = hypre_TAlloc(HYPRE_Int, p->buflen , HYPRE_MEMORY_HOST);
     }

@@ -93,6 +93,7 @@ struct comm {
 static void comm_init(struct comm *c, comm_ext ce);
 /* (macro) static void comm_init_check(struct comm *c, MPI_Fint ce, uint np); */
 /* (macro) static void comm_dup(struct comm *d, const struct comm *s); */
+/* (macro) static void comm_split(const struct comm *s, int bin, int key, struct comm *d); */
 static void comm_free(struct comm *c);
 static double comm_time(void);
 static void comm_barrier(const struct comm *c);
@@ -181,6 +182,19 @@ static void comm_dup_(struct comm *d, const struct comm *s,
 #endif
 }
 #define comm_dup(d,s) comm_dup_(d,s,__FILE__,__LINE__)
+
+static void comm_split_(const struct comm *s, int bin, int key, struct comm *d,
+                        const char *file, unsigned line) {
+#if defined(MPI)
+  MPI_Comm nc;
+  MPI_Comm_split(s->c, bin, key, &nc);
+  comm_init(d, nc);
+  MPI_Comm_free(&nc);
+#else
+  if(s->np!=1) fail(1,file,line,"%s not compiled with -DMPI\n",file);
+#endif
+}
+#define comm_split(s, bin, key, d) comm_split_(s, bin, key, d, __FILE__, __LINE__)
 
 static void comm_free(struct comm *c)
 {

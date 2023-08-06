@@ -1,0 +1,28 @@
+[GENERAL]
+polynomialOrder = 7
+cubaturePolynomialOrder = 9
+
+#startFrom = "r.fld+time=0"
+stopAt = endTime
+endTime = 200 
+
+timeStepper = tombo2
+dt = targetCFL=2.4 + max=1e-2
+subCyclingSteps = 1
+
+writeControl = simulationTime 
+writeInterval = 25 
+
+regularization = hpfrt + nModes=1 + scalingCoeff=5
+
+[PRESSURE]
+residualTol = 1e-04
+
+[VELOCITY]
+boundaryTypeMap = codedFixedValue, zeroValue, none, none
+viscosity = 1/2500.0 # Re = U0 * d / nu
+density = 1.0
+residualTol = 1e-06
+
+[SCALAR00] # Q-criterion
+solver = none

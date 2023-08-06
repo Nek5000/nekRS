@@ -38,6 +38,6 @@ turbPipe
 1    input gain (0=custom,1=uniform,other=geometric spacing):
 no   This is for CEM: yes or no:
 v    Enter Z(5) FLUID boundary condition (P,v,O,ect):
-o    Enter Z(6) FLUID boundary condition (P,v,O,ect):
+P    Enter Z(6) FLUID boundary condition (P,v,O,ect):
 v
-o
+O

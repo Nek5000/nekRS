@@ -34,22 +34,19 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include "nrssys.hpp"
 #include <map>
 
 class setupAide {
 private:
-  std::map<std::string, std::string> keyWordToDataMap;
-
 public:
   setupAide(){};
   ~setupAide() = default;
 
   setupAide(const setupAide&) = default;
   setupAide& operator=(const setupAide&) = default;
+
+  std::map<std::string, std::string> keyWordToDataMap;
 
   std::string getArgs(std::string) const;
 
@@ -66,6 +63,9 @@ public:
   int getArgs(std::string, std::vector<std::string>&, std::string) const;
 
   int compareArgs(std::string key, std::string token) const;
+
+  auto begin() const { return keyWordToDataMap.begin(); }
+  auto end() const { return keyWordToDataMap.end(); }
 
   friend std::ostream & operator << (std::ostream &out, const setupAide &aide);  
 };

@@ -1,6 +1,6 @@
 [GENERAL]
-polynomialOrder = 8 
-cubaturePolynomialOrder = 10 
+polynomialOrder = 7 
+cubaturePolynomialOrder = 9 
 
 #startFrom = "r.fld"
 
@@ -10,20 +10,19 @@ endTime = 2600
 dt = targetCFL=2 + max=2e-2
 timeStepper = tombo2
 
-writeControl = runTime
+writeControl = simulationTime 
 writeInterval = 100 
 
 regularization = hpfrt + nModes=3 + scalingCoeff=10
 
 [PROBLEMTYPE]
-stressFormulation = true
+equation = navierStokes+variableViscosity
 
 [PRESSURE]
 solver = pfcg
 residualTol = 1e-04
-preconditioner = multigrid+coarse
-smootherType = JAC+Chebyshev+degree=2
-pMultigridCoarsening = 8,4,1
+preconditioner = multigrid
+smootherType = JAC+Chebyshev
 
 [VELOCITY]
 boundaryTypeMap = v, shl

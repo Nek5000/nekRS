@@ -4,7 +4,6 @@
 #include <occa/core/device.hpp>
 #include <occa/types/json.hpp>
 #include <occa/internal/utils/gc.hpp>
-#include <occa/internal/utils/uva.hpp>
 #include <occa/internal/lang/kernelMetadata.hpp>
 
 namespace occa {
@@ -16,17 +15,15 @@ namespace occa {
 
     gc::ring_t<device> deviceRing;
     gc::ring_t<modeKernel_t> kernelRing;
-    gc::ring_t<modeMemory_t> memoryRing;
+    gc::ring_t<modeBuffer_t> memoryRing;
     gc::ring_t<modeStream_t> streamRing;
     gc::ring_t<modeStreamTag_t> streamTagRing;
-
-    ptrRangeMap uvaMap;
-    memoryVector uvaStaleMemory;
 
     stream currentStream;
     std::vector<modeStream_t*> streams;
 
     udim_t bytesAllocated;
+    udim_t maxBytesAllocated;
 
     cachedKernelMap cachedKernels;
 
@@ -52,8 +49,8 @@ namespace occa {
     void addKernelRef(modeKernel_t *kernel);
     void removeKernelRef(modeKernel_t *kernel);
 
-    void addMemoryRef(modeMemory_t *memory);
-    void removeMemoryRef(modeMemory_t *memory);
+    void addMemoryRef(modeBuffer_t *buffer);
+    void removeMemoryRef(modeBuffer_t *buffer);
 
     void addStreamRef(modeStream_t *stream);
     void removeStreamRef(modeStream_t *stream);
@@ -61,10 +58,11 @@ namespace occa {
     void addStreamTagRef(modeStreamTag_t *streamTag);
     void removeStreamTagRef(modeStreamTag_t *streamTag);
 
+    void finish() const;
+    void finishAll() const;
+
     //---[ Virtual Methods ]------------
     virtual ~modeDevice_t() = 0;
-
-    virtual void finish() const = 0;
 
     virtual bool hasSeparateMemorySpace() const = 0;
 
@@ -74,6 +72,7 @@ namespace occa {
 
     //  |---[ Stream ]------------------
     virtual modeStream_t* createStream(const occa::json &props) = 0;
+    virtual modeStream_t* wrapStream(void *ptr, const occa::json &props) = 0;
 
     virtual streamTag tagStream() = 0;
     virtual void waitFor(streamTag tag) = 0;
@@ -119,8 +118,12 @@ namespace occa {
                                      const udim_t bytes,
                                      const occa::json &props) = 0;
 
+    virtual modeMemoryPool_t* createMemoryPool(const occa::json &props)=0;
+
     virtual udim_t memorySize() const = 0;
     //  |===============================
+
+    virtual void* unwrap() = 0;
     //==================================
   };
 }

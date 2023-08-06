@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -108,7 +108,7 @@ void Numbering_dhSetup(Numbering_dh numb, Mat_dh mat)
          */
         /* RL : why ``m+num_ext'' instead of ``num_ext+1'' ??? */
         if (m+num_ext >= size) {
-          HYPRE_Int newSize = hypre_max(m+num_ext+1, size*1.5);  /* heuristic */
+          HYPRE_Int newSize = (HYPRE_Int)hypre_max(m+num_ext+1, size*1.5);  /* heuristic */
           HYPRE_Int *tmp = (HYPRE_Int*)MALLOC_DH(newSize*sizeof(HYPRE_Int)); CHECK_V_ERROR;
           hypre_TMemcpy(tmp,  idx_ext, size, size, HYPRE_MEMORY_HOST, HYPRE_MEMORY_HOST);
           FREE_DH(idx_ext); CHECK_V_ERROR;

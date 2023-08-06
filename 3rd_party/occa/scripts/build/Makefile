@@ -122,7 +122,7 @@ else
 endif
 
 ifeq ($(OCCA_COVERAGE),1)
-  coverageFlags = --coverage -fno-inline -fno-inline-small-functions -fno-default-inline
+  coverageFlags = --coverage
   compilerFlags += $(coverageFlags)
   cCompilerFlags += $(coverageFlags)
   fCompilerFlags += $(coverageFlags)
@@ -181,7 +181,6 @@ compilerPthreadFlag  = $(shell . $(OCCA_DIR)/scripts/build/shellTools.sh; compil
 fCompilerModuleDirFlag = $(shell . $(OCCA_DIR)/scripts/build/shellTools.sh; fCompilerModuleDirFlag "$(fCompiler)")
 fCompilerCppFlag       = $(shell . $(OCCA_DIR)/scripts/build/shellTools.sh; fCompilerCppFlag       "$(fCompiler)")
 
-compilerSupportsMPI    = $(shell . $(OCCA_DIR)/scripts/build/shellTools.sh; compilerSupportsMPI    "$(compiler)")
 compilerSupportsOpenMP = $(shell . $(OCCA_DIR)/scripts/build/shellTools.sh; compilerSupportsOpenMP "$(compiler)")
 compilerOpenMPFlag     = $(shell . $(OCCA_DIR)/scripts/build/shellTools.sh; compilerOpenMPFlag     "$(compiler)")
 #=================================================
@@ -260,6 +259,7 @@ cudaEnabled    = 0
 hipEnabled     = 0
 openclEnabled  = 0
 metalEnabled   = 0
+dpcppEnabled	 = 0
 
 
 #---[ Fortran ]-------------------------
@@ -267,15 +267,6 @@ ifdef OCCA_FORTRAN_ENABLED
   fortranEnabled = $(OCCA_FORTRAN_ENABLED)
 endif
 include $(OCCA_DIR)/scripts/build/Make.fortran
-
-
-#---[ MPI ]-----------------------------
-ifdef OCCA_MPI_ENABLED
-  mpiEnabled = $(OCCA_MPI_ENABLED)
-else
-  mpiEnabled = $(call compilerSupportsMPI)
-endif
-
 
 #---[ OpenMP ]--------------------------
 ifdef OCCA_OPENMP_ENABLED
@@ -403,6 +394,38 @@ else
   endif
 endif
 
+#---[ SYCL/DPC++ ]--------------------------
+ifdef OCCA_DPCPP_ENABLED
+  dpcppEnabled = $(OCCA_DPCPP_ENABLED)
+
+  ifeq ($(dpcppEnabled),1)
+    ifeq ($(usingLinux),1)
+      linkerFlags += -lsycl
+    else ifeq ($(usingMacOS),1)
+      linkerFlags += -framework sycl
+    endif
+  endif
+else
+  ifeq ($(usingLinux),1)
+    dpcppLibFlags = $(call libraryFlagsFor,sycl)
+    ifneq (,$(dpcppLibFlags))
+
+      dpcppIncFlags = $(call includeFlagsFor,CL/sycl.hpp)
+      ifneq (,$(dpcppIncFlags))
+        dpcppEnabled = 1
+        paths += $(dpcppIncFlags)
+        linkerFlags += $(dpcppLibFlags)
+      endif
+    endif
+  else ifeq ($(usingMacOS),1)
+    dpcppLibFlags = $(call libraryFlagsFor,sycl)
+
+    ifneq (,$(dpcppLibFlags))
+      dpcppEnabled = 1
+      linkerFlags += $(dpcppLibFlags)
+    endif
+  endif
+endif
 
 #---[ OpenCL ]--------------------------
 ifdef OCCA_OPENCL_ENABLED
@@ -437,7 +460,6 @@ else
     endif
   endif
 endif
-
 
 #---[ Metal ]---------------------------
 # Metal is only supported with
@@ -474,10 +496,10 @@ else
 endif
 
 OCCA_FORTRAN_ENABLED := $(fortranEnabled)
-OCCA_MPI_ENABLED     := $(mpiEnabled)
 OCCA_OPENMP_ENABLED  := $(openmpEnabled)
 OCCA_CUDA_ENABLED    := $(cudaEnabled)
 OCCA_HIP_ENABLED     := $(hipEnabled)
 OCCA_OPENCL_ENABLED  := $(openclEnabled)
 OCCA_METAL_ENABLED   := $(metalEnabled)
+OCCA_DPCPP_ENABLED   := $(dpcppEnabled)
 #=================================================

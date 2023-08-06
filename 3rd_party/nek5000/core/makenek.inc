@@ -215,6 +215,11 @@ fi
 case $FCcomp in
   *pgf*)       FCPP="-Mpreprocess"
                FR8="-r8"
+               FF77="-Mfixed"
+               ;;
+  *nvfortran*) FCPP="-Mpreprocess"
+               FR8="-r8"
+               FF77="-Mfixed"
                ;;
   *gfortran*)  FCPP="-cpp"
                FR8="-fdefault-real-8 -fdefault-double-8"
@@ -232,6 +237,9 @@ case $FCcomp in
                FF77="-std=legacy"
                ;;
   *ifort*)     FCPP="-fpp"
+               FR8="-r8 -fpconstant"
+               ;;
+  *ifx*)       FCPP="-fpp"
                FR8="-r8 -fpconstant"
                ;;
   *xlf*)       FCPP="-qsuffix=cpp=f"
@@ -313,7 +321,7 @@ do
    fi
    if [ "$i" == "PARRSB" ]; then
      PARRSB=1
-     PARRSB_OPT=" DESTDIR=.. UNDERSCORE=$UNDERSCORE MPI=$MPI BLAS=0"
+     PARRSB_OPT=" DESTDIR=${SOURCE_ROOT_PARRSB} UNDERSCORE=$UNDERSCORE MPI=$MPI BLAS=0"
      PARRSB_OPT+=" GSLIBPATH=${SOURCE_ROOT_GSLIB}"
      USR_LFLAGS+=" -L${SOURCE_ROOT_PARRSB}/lib -lparRSB"
      PARRSB_INC="${SOURCE_ROOT_PARRSB}/include"
@@ -350,7 +358,7 @@ if [ $VENDOR_BLAS -ne 1 ]; then
 fi
 
 # gslib build options
-GSLIB_OPT+=" DESTDIR=.."
+GSLIB_OPT+=" DESTDIR=${SOURCE_ROOT_GSLIB}"
 GSLIB_OPT+=" MPI=$MPI MPIIO=$MPIIO"
 GSLIB_OPT+=" ADDUS=$UNDERSCORE USREXIT=0 BLAS=2"
 GSLIB_IFLAGS=" -I$SOURCE_ROOT_GSLIB/include"

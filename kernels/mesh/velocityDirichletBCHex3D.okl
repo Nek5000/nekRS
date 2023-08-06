@@ -1,0 +1,141 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+@kernel void velocityDirichletBCHex3D(const dlong Nelements,
+                                      const dlong offset,
+                                      const dfloat time,
+                                      const int useDerivedBoundaryCondition,
+                                      @ restrict const dfloat *sgeo,
+                                      @ restrict const dfloat *mask,
+                                      @ restrict const dfloat *x,
+                                      @ restrict const dfloat *y,
+                                      @ restrict const dfloat *z,
+                                      @ restrict const dlong *vmapM,
+                                      @ restrict const int *EToBM,
+                                      @ restrict const int *EToB,
+                                      @ restrict const dfloat *meshRho,
+                                      @ restrict const dfloat *meshMue,
+                                      @ restrict const dfloat *work,
+                                      @ restrict const dfloat *U,
+                                      @ restrict dfloat *W)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+
+    for (int f = 0; f < p_Nfaces; f++) {
+      for (int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const int n = m + f * p_Nfp;
+        const int sk = e * p_Nfp * p_Nfaces + n;
+        const dlong idM = vmapM[sk];
+        const dlong bcType = EToB[f + p_Nfaces * e];
+
+        if (bcType == p_bcTypeSYM || bcType == p_bcTypeSHL) {
+          // handled elsewhere...
+        }
+        else if (bcType == p_bcTypeSYMX) {
+          W[idM + 0 * offset] = 0.0;
+        }
+        else if (bcType == p_bcTypeSYMY) {
+          W[idM + 1 * offset] = 0.0;
+        }
+        else if (bcType == p_bcTypeSYMZ) {
+          W[idM + 2 * offset] = 0.0;
+        }
+      }
+      @barrier();
+    }
+
+    for (int f = 0; f < p_Nfaces; f++) {
+      for (int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const dlong bcType = EToB[f + p_Nfaces * e];
+        const int sk = e * p_Nfp * p_Nfaces + f * p_Nfp + m;
+        const dlong idM = vmapM[sk];
+        if (bcType == p_bcTypeV) {
+          if (useDerivedBoundaryCondition) {
+            W[idM + 0 * offset] = U[idM + 0 * offset];
+            W[idM + 1 * offset] = U[idM + 1 * offset];
+            W[idM + 2 * offset] = U[idM + 2 * offset];
+          }
+          else {
+            struct bcData bc;
+            const int n = m + f * p_Nfp;
+            const int sk = e * p_Nfp * p_Nfaces + n;
+            const dlong sid = e * p_Nfaces * p_Nfp + n;
+            const dlong idM = vmapM[sk];
+
+            bc.id = EToBM[f + p_Nfaces * e];
+            bc.idM = idM;
+            bc.time = time;
+            bc.x = x[idM];
+            bc.y = y[idM];
+            bc.z = z[idM];
+
+            bc.nx = sgeo[sid * p_Nsgeo + p_NXID];
+            bc.ny = sgeo[sid * p_Nsgeo + p_NYID];
+            bc.nz = sgeo[sid * p_Nsgeo + p_NZID];
+
+            bc.t1x = sgeo[sid * p_Nsgeo + p_T1XID];
+            bc.t1y = sgeo[sid * p_Nsgeo + p_T1YID];
+            bc.t1z = sgeo[sid * p_Nsgeo + p_T1ZID];
+
+            bc.t2x = sgeo[sid * p_Nsgeo + p_T2XID];
+            bc.t2y = sgeo[sid * p_Nsgeo + p_T2YID];
+            bc.t2z = sgeo[sid * p_Nsgeo + p_T2ZID];
+
+            bc.u = U[idM + 0 * offset];
+            bc.v = U[idM + 1 * offset];
+            bc.w = U[idM + 2 * offset];
+
+            bc.trans = meshRho[idM];
+            bc.diff = meshMue[idM];
+
+            bc.usrwrk = work;
+            bc.fieldOffset = offset;
+
+            meshVelocityDirichletConditions(&bc);
+
+            W[idM + 0 * offset] = bc.meshu;
+            W[idM + 1 * offset] = bc.meshv;
+            W[idM + 2 * offset] = bc.meshw;
+          }
+        }
+      }
+      @barrier();
+    }
+
+    for (int f = 0; f < p_Nfaces; f++) {
+      for (int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const dlong bcType = EToB[f + p_Nfaces * e];
+        const int sk = e * p_Nfp * p_Nfaces + f * p_Nfp + m;
+        const dlong idM = vmapM[sk];
+        if (bcType == p_bcTypeW) {
+          W[idM + 0 * offset] = 0.0;
+          W[idM + 1 * offset] = 0.0;
+          W[idM + 2 * offset] = 0.0;
+        }
+      }
+      @barrier();
+    }
+  }
+}

@@ -36,11 +36,12 @@ void meshPhysicalNodesHex3D(mesh_t *mesh)
   mesh->y = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
   mesh->z = (dfloat*) calloc((mesh->Nelements+mesh->totalHaloPairs) * mesh->Np,sizeof(dfloat));
 
+  const int nx1 = nekData.nx1;
+
   dfloat* xm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
   dfloat* ym1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
   dfloat* zm1 = (dfloat*) calloc(mesh->Np, sizeof(dfloat));
  
-  int nx1 = nekData.nx1;
   dlong cnt = 0;
   for(dlong e = 0; e < mesh->Nelements; ++e) { /* for each element */
     hlong offset = e * nx1 * nx1 * nx1;

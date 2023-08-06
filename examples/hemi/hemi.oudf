@@ -1,11 +1,12 @@
 // Boundary conditions
 void velocityDirichletConditions(bcData *bc)
-{                                                                        
-  const dfloat arg = bc->z * M_PI * 0.5/0.6;
-  if (arg > 0.5*M_PI) 
+{
+  const dfloat arg = bc->z * M_PI * 0.5 / 0.6;
+  if (arg > 0.5 * M_PI) {
     bc->u = 1.0;
-  else
+  } else {
     bc->u = sin(arg);
+  }
 
   bc->v = 0.0;
   bc->w = 0.0;
@@ -15,7 +16,42 @@ void velocityDirichletConditions(bcData *bc)
 void pressureDirichletConditions(bcData *bc)
 {
   const dfloat iU0delta = 10.0;
-  const dfloat un = bc->u*bc->nx + bc->v*bc->ny + bc->w*bc->nz;
-  const dfloat s0 = 0.5 * (1.0 - tanh(un*iU0delta)); 
-  bc->p = -0.5 * (bc->u*bc->u + bc->v*bc->v + bc->w*bc->w) * s0;
+  const dfloat un = bc->u * bc->nx + bc->v * bc->ny + bc->w * bc->nz;
+  const dfloat s0 = 0.5 * (1.0 - tanh(un * iU0delta));
+  bc->p = -0.5 * (bc->u * bc->u + bc->v * bc->v + bc->w * bc->w) * s0;
+}
+
+@kernel void particleRHS(const dlong N,
+                         const dlong offset,
+                         @ restrict const dfloat *y,
+                         @ restrict const dfloat *prop,
+                         @ restrict const dfloat *U,
+                         @ restrict dfloat *ydot)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dfloat xx = y[n + 0 * offset];
+    const dfloat yy = y[n + 1 * offset];
+    const dfloat zz = y[n + 2 * offset];
+
+    const dfloat vx = y[n + 3 * offset];
+    const dfloat vy = y[n + 4 * offset];
+    const dfloat vz = y[n + 5 * offset];
+
+    const dfloat Ux = U[n + 0 * offset];
+    const dfloat Uy = U[n + 1 * offset];
+    const dfloat Uz = U[n + 2 * offset];
+
+    const dfloat Stk = prop[n];
+    const dfloat invStk = 1.0 / Stk;
+
+    // dx_i/dt = v_i
+    ydot[n + 0 * offset] = vx;
+    ydot[n + 1 * offset] = vy;
+    ydot[n + 2 * offset] = vz;
+
+    // dv_i/dt = 1/Stk * (U_i - v_i)
+    ydot[n + 3 * offset] = invStk * (Ux - vx);
+    ydot[n + 4 * offset] = invStk * (Uy - vy);
+    ydot[n + 5 * offset] = invStk * (Uz - vz);
+  }
 }

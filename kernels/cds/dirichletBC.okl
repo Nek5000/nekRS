@@ -1,0 +1,107 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+// RHS contributions for continuous solver
+
+@kernel void dirichletBC(const dlong Nelements,
+                         const dlong offset,
+                         const dlong scalarId,
+                         const dfloat time,
+                         @ restrict const dfloat *sgeo,
+                         @ restrict const dfloat *x,
+                         @ restrict const dfloat *y,
+                         @ restrict const dfloat *z,
+                         @ restrict const dlong *vmapM,
+                         @ restrict const int *EToBM,
+                         @ restrict const int *EToB,
+                         @ restrict const dfloat *U,
+                         @ restrict const dfloat *diff,
+                         @ restrict const dfloat *rho,
+                         @ restrict const dlong*  neknekPoints,
+                         @ restrict const dfloat* neknekU,
+                         @ restrict const dfloat* neknekS,
+                         @ restrict const dfloat *W,
+                         @ restrict dfloat *S)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0))
+    for (int f = 0; f < p_Nfaces; f++) {
+      @barrier();
+      for (int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        struct bcData bc;
+        const int n = m + f * p_Nfp;
+        const dlong sk = e * p_Nfp * p_Nfaces + n;
+        const dlong idM = vmapM[sk];
+        const dlong bcType = EToB[f + p_Nfaces * e];
+
+        if (bcType == p_bcTypeS || bcType == p_bcTypeINTS) {
+          bc.id = EToBM[f + p_Nfaces * e];
+          bc.idM = idM;
+          bc.time = time;
+          bc.x = x[idM];
+          bc.y = y[idM];
+          bc.z = z[idM];
+          bc.s = S[idM];
+          bc.u = U[idM + 0 * offset];
+          bc.v = U[idM + 1 * offset];
+          bc.w = U[idM + 2 * offset];
+          bc.usrwrk = W;
+          bc.fieldOffset = offset;
+          bc.scalarId = scalarId;
+
+          bc.diff = diff[idM];
+          bc.trans = rho[idM];
+
+          bc.nx = sgeo[sk * p_Nsgeo + p_NXID];
+          bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
+          bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
+
+          bc.t1x = sgeo[sk * p_Nsgeo + p_T1XID];
+          bc.t1y = sgeo[sk * p_Nsgeo + p_T1YID];
+          bc.t1z = sgeo[sk * p_Nsgeo + p_T1ZID];
+
+          bc.t2x = sgeo[sk * p_Nsgeo + p_T2XID];
+          bc.t2y = sgeo[sk * p_Nsgeo + p_T2YID];
+          bc.t2z = sgeo[sk * p_Nsgeo + p_T2ZID];
+
+          bc.sinterp = 0.0;
+          bc.uinterp = 0.0;
+          bc.vinterp = 0.0;
+          bc.winterp = 0.0;
+
+          if (bcType == p_bcTypeINTS) {
+            const int neknekId = neknekPoints[idM];
+            const dlong neknekOffset = neknekPoints[offset];
+            bc.sinterp = neknekS[neknekId + scalarId * neknekOffset];
+            bc.uinterp = neknekU[neknekId + 0 * neknekOffset];
+            bc.vinterp = neknekU[neknekId + 1 * neknekOffset];
+            bc.winterp = neknekU[neknekId + 2 * neknekOffset];
+          }
+          scalarDirichletConditions(&bc);
+          S[idM] = bc.s;
+        }
+      }
+    }
+}

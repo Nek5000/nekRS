@@ -43,7 +43,7 @@ c     Assign a wiggly shear layer near the wall
       if (rr.gt.(1-blt)) uz = uz + amp_sin
 
 c     Quick P-independent randomizer
-      big  = 1.e3*eg + 1.e2*ix + 1.e1*iy + 1.e0*iz
+      big  = 1.e3*ieg + 1.e2*ix + 1.e1*iy + 1.e0*iz
       rand = sin(big)
 
       ux   = .05*rand*rand

@@ -1,0 +1,105 @@
+
+//
+// nekRS User Defined File
+//
+#include "udf.hpp"
+#include "ci.inc"
+
+static dfloat P_U0;
+static dfloat P_V0;
+static dfloat P_OMEGA;
+
+#ifdef __okl__
+
+#include "outside.oudf"
+
+#endif
+
+void UDF_LoadKernels(occa::properties &kernelInfo)
+{
+  kernelInfo["defines/p_pi"] = M_PI;
+  kernelInfo["defines/p_omega"] = P_OMEGA;
+  kernelInfo["defines/p_U0"] = P_U0;
+  kernelInfo["defines/p_V0"] = P_V0;
+
+  dfloat viscosity;
+  platform->options.getArgs("VISCOSITY", viscosity);
+  kernelInfo["defines/p_visc"] = viscosity;
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) {
+    ciSetup(comm, options);
+  }
+  dfloat viscosity;
+  options.getArgs("VISCOSITY", viscosity);
+
+  platform->par->extract("casedata", "p_u0", P_U0);
+  platform->par->extract("casedata", "p_v0", P_V0);
+  platform->par->extract("casedata", "p_omega", P_OMEGA);
+  P_OMEGA *= M_PI;
+
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = P_U0;
+    nek_cb_scnrs[1] = P_V0;
+    nek_cb_scnrs[2] = P_OMEGA;
+    nek_cb_scnrs[3] = viscosity;
+  }
+}
+
+int timeStepConverged(nrs_t *nrs, int stage)
+{
+  if (nrs->neknek->nEXT == 1) {
+    return 1;
+  }
+
+  // do one corrector step
+  return stage > 1;
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  udf.timeStepConverged = timeStepConverged;
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+
+  auto *mesh = nrs->meshV;
+  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
+    userMeshVelocity(mesh->Nlocal, nrs->fieldOffset, mesh->o_x, mesh->o_y, mesh->o_z, mesh->o_U);
+  }
+
+  constexpr int nStepAnalytical = 5;
+  if (tstep <= nStepAnalytical) {
+    exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->o_U);
+  }
+
+  auto o_Uexact = platform->o_mempool.slice0;
+  exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, o_Uexact);
+
+  platform->linAlg->axpbyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, nrs->o_U, -1.0, o_Uexact);
+
+  auto o_UerrX = o_Uexact + 0 * nrs->fieldOffset * sizeof(dfloat);
+  auto o_UerrY = o_Uexact + 1 * nrs->fieldOffset * sizeof(dfloat);
+  auto o_UerrZ = o_Uexact + 2 * nrs->fieldOffset * sizeof(dfloat);
+
+  platform->linAlg->abs(mesh->Nlocal, o_UerrX);
+  platform->linAlg->abs(mesh->Nlocal, o_UerrY);
+  platform->linAlg->abs(mesh->Nlocal, o_UerrZ);
+
+  const auto LinfUx = platform->linAlg->max(mesh->Nlocal, o_UerrX, platform->comm.mpiCommParent);
+  const auto LinfUy = platform->linAlg->max(mesh->Nlocal, o_UerrY, platform->comm.mpiCommParent);
+  const auto LinfUz = platform->linAlg->max(mesh->Nlocal, o_UerrZ, platform->comm.mpiCommParent);
+
+  if (platform->comm.mpiRank == 0) {
+    printf("LinfUx = %g, LinfUy = %g, LinfUz = %g\n", LinfUx, LinfUy, LinfUz);
+  }
+
+  if (ciMode) {
+    ciTestErrors(nrs, time, tstep);
+  }
+}

@@ -3,9 +3,11 @@
 : ${PROJ_ID:=""}
 : ${QUEUE:=""}
 : ${NEKRS_HOME:="$HOME/.local/nekrs"}
+: ${NEKRS_CACHE_BCAST:=1}
+: ${NEKRS_SKIP_BUILD_ONLY:=0}
 
 if [ $# -ne 3 ]; then
-  echo "usage: [PROJ_ID] [QUEUE] $0 <casename> <number of compute nodes> <hh:mm:ss>"
+  echo "usage: [PROJ_ID=value] [QUEUE=value] $0 <casename> <number of compute nodes> <hh:mm:ss>"
   exit 0
 fi
 
@@ -45,29 +47,23 @@ if [ ! -f $case.udf ]; then
   exit 1
 fi
 
-if [ ! -f $case.oudf ]; then
-  echo "Cannot find" $case.oudf
-  exit 1
-fi
-
 if [ ! -f $case.re2 ]; then
   echo "Cannot find" $case.re2
   exit 1
 fi
 
 
-# romio setup
-export ROMIO_HINTS="$(pwd)/.romio_hint"
-if [ ! -f "$ROMIO_HINTS" ]; then
-  echo "romio_no_indep_rw true"   >$ROMIO_HINTS
-  echo "romio_cb_write enable"   >>$ROMIO_HINTS
-  echo "romio_ds_write enable"   >>$ROMIO_HINTS
-  echo "romio_cb_read enable"    >>$ROMIO_HINTS
-  echo "romio_ds_read enable"    >>$ROMIO_HINTS
-  echo "cb_buffer_size 16777216" >>$ROMIO_HINTS
-  echo "cb_config_list *:1"      >>$ROMIO_HINTS
+striping_unit=16777216
+max_striping_factor=128
+let striping_factor=$nodes/2
+if [ $striping_factor -gt $max_striping_factor ]; then
+  striping_factor=$max_striping_factor
+fi
+if [ $striping_factor -lt 1 ]; then
+  striping_factor=1
 fi
 
+MPICH_MPIIO_HINTS="*:striping_unit=${striping_unit}:striping_factor=${striping_factor}:romio_cb_write=enable:romio_ds_write=disable:romio_no_indep_rw=true"
 
 # sbatch
 SFILE=s.bin
@@ -96,16 +92,28 @@ echo "nvidia-smi" >>$SFILE
 echo "export SLURM_CPU_BIND=\"cores\"" >> $SFILE
 echo "export CRAY_ACCEL_TARGET=nvidia80" >>$SFILE
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
+echo "export MPICH_OFI_NIC_POLICY=NUMA" >>$SFILE
 
 echo "ulimit -s unlimited " >>$SFILE
 echo "export NEKRS_HOME=$NEKRS_HOME" >>$SFILE
 echo "export NEKRS_GPU_MPI=1 " >>$SFILE
 
-echo "export ROMIO_HINTS=$ROMIO_HINTS" >>$SFILE
+echo "export MPICH_MPIIO_HINTS=$MPICH_MPIIO_HINTS" >>$SFILE
+echo "export MPICH_MPIIO_STATS=1" >>$SFILE
 
 echo "# Workaround for https://github.com/Nek5000/Nek5000/issues/759" >> $SFILE
 echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE
 
+echo "if [ \$NEKRS_CACHE_BCAST -eq 1 ]; then" >> $SFILE
+echo "  export NEKRS_LOCAL_TMP_DIR=\$TMPDIR/nrs" >> $SFILE
+echo "  mkdir \$NEKRS_LOCAL_TMP_DIR" >> $SFILE
+echo "fi" >> $SFILE
+
+if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
+echo "# precompilation" >>$SFILE
+echo "srun -n 1 $bin --backend $backend --device-id 0 --setup $case --build-only $ntasks" >>$SFILE
+fi
+echo "" >> $SFILE
 
 echo "date" >>$SFILE
 echo "srun $bin --backend $backend --setup $case" >>$SFILE

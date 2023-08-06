@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -12,6 +12,7 @@
  *****************************************************************************/
 
 #include "_hypre_struct_mv.h"
+#include "_hypre_struct_mv.hpp"
 
 /* this currently cannot be greater than 7 */
 #ifdef MAX_DEPTH
@@ -36,7 +37,7 @@ typedef struct
  *--------------------------------------------------------------------------*/
 
 void *
-hypre_StructMatvecCreate( )
+hypre_StructMatvecCreate( void )
 {
    hypre_StructMatvecData *matvec_data;
 
@@ -54,8 +55,8 @@ hypre_StructMatvecSetup( void               *matvec_vdata,
                          hypre_StructMatrix *A,
                          hypre_StructVector *x            )
 {
-	hypre_StructMatvecData  *matvec_data = (hypre_StructMatvecData  *)matvec_vdata;
-                          
+   hypre_StructMatvecData  *matvec_data = (hypre_StructMatvecData  *)matvec_vdata;
+
    hypre_StructGrid        *grid;
    hypre_StructStencil     *stencil;
    hypre_ComputeInfo       *compute_info;
@@ -96,23 +97,23 @@ hypre_StructMatvecCompute( void               *matvec_vdata,
                            hypre_StructVector *y            )
 {
    hypre_StructMatvecData  *matvec_data = (hypre_StructMatvecData  *)matvec_vdata;
-                          
+
    hypre_ComputePkg        *compute_pkg;
-                          
+
    hypre_CommHandle        *comm_handle;
-                          
+
    hypre_BoxArrayArray     *compute_box_aa;
    hypre_Box               *y_data_box;
-                          
+
    HYPRE_Complex           *xp;
    HYPRE_Complex           *yp;
-                          
+
    hypre_BoxArray          *boxes;
    hypre_Box               *box;
    hypre_Index              loop_size;
    hypre_IndexRef           start;
    hypre_IndexRef           stride;
-                          
+
    HYPRE_Int                constant_coefficient;
 
    HYPRE_Complex            temp;
@@ -125,7 +126,7 @@ hypre_StructMatvecCompute( void               *matvec_vdata,
     *-----------------------------------------------------------------------*/
 
    constant_coefficient = hypre_StructMatrixConstantCoefficient(A);
-   if (constant_coefficient) hypre_StructVectorClearBoundGhostValues(x, 0);
+   if (constant_coefficient) { hypre_StructVectorClearBoundGhostValues(x, 0); }
 
    compute_pkg = (matvec_data -> compute_pkg);
 
@@ -172,7 +173,7 @@ hypre_StructMatvecCompute( void               *matvec_vdata,
 
    for (compute_i = 0; compute_i < 2; compute_i++)
    {
-      switch(compute_i)
+      switch (compute_i)
       {
          case 0:
          {
@@ -186,7 +187,7 @@ hypre_StructMatvecCompute( void               *matvec_vdata,
              * beta*y for constant coefficient (where only Ax gets multiplied by alpha)
              *--------------------------------------------------------------*/
 
-            if ( constant_coefficient==1 )
+            if ( constant_coefficient == 1 )
             {
                temp = beta;
             }
@@ -247,7 +248,7 @@ hypre_StructMatvecCompute( void               *matvec_vdata,
        * y += A*x
        *--------------------------------------------------------------------*/
 
-      switch( constant_coefficient )
+      switch ( constant_coefficient )
       {
          case 0:
          {
@@ -273,7 +274,7 @@ hypre_StructMatvecCompute( void               *matvec_vdata,
       hypre_StructVectorDestroy(x_tmp);
       x = y;
    }
-   
+
    return hypre_error_flag;
 }
 
@@ -289,7 +290,7 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                                  hypre_StructVector *y,
                                  hypre_BoxArrayArray     *compute_box_aa,
                                  hypre_IndexRef           stride
-   )
+                               )
 {
    HYPRE_Int i, j, si;
    HYPRE_Complex           *Ap0;
@@ -308,13 +309,13 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
    HYPRE_Int                xoff6;
    hypre_BoxArray          *compute_box_a;
    hypre_Box               *compute_box;
-                          
+
    hypre_Box               *A_data_box;
    hypre_Box               *x_data_box;
    hypre_StructStencil     *stencil;
    hypre_Index             *stencil_shape;
    HYPRE_Int                stencil_size;
-                          
+
    hypre_Box               *y_data_box;
    HYPRE_Complex           *xp;
    HYPRE_Complex           *yp;
@@ -347,34 +348,34 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
          start  = hypre_BoxIMin(compute_box);
 
          /* unroll up to depth MAX_DEPTH */
-         for (si = 0; si < stencil_size; si+= MAX_DEPTH)
+         for (si = 0; si < stencil_size; si += MAX_DEPTH)
          {
-            depth = hypre_min(MAX_DEPTH, (stencil_size -si));
-            switch(depth)
+            depth = hypre_min(MAX_DEPTH, (stencil_size - si));
+            switch (depth)
             {
                case 7:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
-                  Ap5 = hypre_StructMatrixBoxData(A, i, si+5);
-                  Ap6 = hypre_StructMatrixBoxData(A, i, si+6);
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
+                  Ap5 = hypre_StructMatrixBoxData(A, i, si + 5);
+                  Ap6 = hypre_StructMatrixBoxData(A, i, si + 6);
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
                   xoff5 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+5]);
+                                                  stencil_shape[si + 5]);
                   xoff6 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+6]);
+                                                  stencil_shape[si + 6]);
 
 #define DEVICE_VAR is_device_ptr(yp,Ap0,Ap1,Ap2,Ap3,Ap4,Ap5,Ap6,xp)
                   hypre_BoxLoop3Begin(ndim, loop_size,
@@ -397,25 +398,25 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                   break;
 
                case 6:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
-                  Ap5 = hypre_StructMatrixBoxData(A, i, si+5);
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
+                  Ap5 = hypre_StructMatrixBoxData(A, i, si + 5);
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
                   xoff5 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+5]);
+                                                  stencil_shape[si + 5]);
 
 #define DEVICE_VAR is_device_ptr(yp,Ap0,Ap1,Ap2,Ap3,Ap4,Ap5,xp)
                   hypre_BoxLoop3Begin(ndim, loop_size,
@@ -433,26 +434,26 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                   }
                   hypre_BoxLoop3End(Ai, xi, yi);
 #undef DEVICE_VAR
-                        
+
                   break;
 
                case 5:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
 
 #define DEVICE_VAR is_device_ptr(yp,Ap0,Ap1,Ap2,Ap3,Ap4,xp)
                   hypre_BoxLoop3Begin(ndim, loop_size,
@@ -465,7 +466,7 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                         Ap1[Ai] * xp[xi + xoff1] +
                         Ap2[Ai] * xp[xi + xoff2] +
                         Ap3[Ai] * xp[xi + xoff3] +
-                        Ap4[Ai] * xp[xi + xoff4]; 
+                        Ap4[Ai] * xp[xi + xoff4];
                   }
                   hypre_BoxLoop3End(Ai, xi, yi);
 #undef DEVICE_VAR
@@ -473,19 +474,19 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                   break;
 
                case 4:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
 
 #define DEVICE_VAR is_device_ptr(yp,Ap0,Ap1,Ap2,Ap3,xp)
                   hypre_BoxLoop3Begin(ndim, loop_size,
@@ -505,16 +506,16 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                   break;
 
                case 3:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
 
 #define DEVICE_VAR is_device_ptr(yp,Ap0,Ap1,Ap2,xp)
                   hypre_BoxLoop3Begin(ndim, loop_size,
@@ -525,7 +526,7 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                      yp[yi] +=
                         Ap0[Ai] * xp[xi + xoff0] +
                         Ap1[Ai] * xp[xi + xoff1] +
-                        Ap2[Ai] * xp[xi + xoff2]; 
+                        Ap2[Ai] * xp[xi + xoff2];
                   }
                   hypre_BoxLoop3End(Ai, xi, yi);
 #undef DEVICE_VAR
@@ -533,13 +534,13 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                   break;
 
                case 2:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
 
 #define DEVICE_VAR is_device_ptr(yp,Ap0,Ap1,xp)
                   hypre_BoxLoop3Begin(ndim, loop_size,
@@ -557,10 +558,10 @@ HYPRE_Int hypre_StructMatvecCC0( HYPRE_Complex       alpha,
                   break;
 
                case 1:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
 
 #define DEVICE_VAR is_device_ptr(yp,Ap0,xp)
                   hypre_BoxLoop3Begin(ndim, loop_size,
@@ -607,7 +608,7 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
                                  hypre_StructVector *y,
                                  hypre_BoxArrayArray     *compute_box_aa,
                                  hypre_IndexRef           stride
-   )
+                               )
 {
    HYPRE_Int i, j, si;
    HYPRE_Complex           *Ap0;
@@ -635,12 +636,12 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
 
    hypre_BoxArray          *compute_box_a;
    hypre_Box               *compute_box;
-                          
+
    hypre_Box               *x_data_box;
    hypre_StructStencil     *stencil;
    hypre_Index             *stencil_shape;
    HYPRE_Int                stencil_size;
-                          
+
    hypre_Box               *y_data_box;
    HYPRE_Complex           *xp;
    HYPRE_Complex           *yp;
@@ -674,41 +675,41 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
          Ai = 0;
 
          /* unroll up to depth MAX_DEPTH */
-         for (si = 0; si < stencil_size; si+= MAX_DEPTH)
+         for (si = 0; si < stencil_size; si += MAX_DEPTH)
          {
-            depth = hypre_min(MAX_DEPTH, (stencil_size -si));
-            switch(depth)
+            depth = hypre_min(MAX_DEPTH, (stencil_size - si));
+            switch (depth)
             {
                case 7:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
-                  Ap5 = hypre_StructMatrixBoxData(A, i, si+5);
-                  Ap6 = hypre_StructMatrixBoxData(A, i, si+6);
-                  AAp0 = Ap0[Ai]*alpha;
-                  AAp1 = Ap1[Ai]*alpha;
-                  AAp2 = Ap2[Ai]*alpha;
-                  AAp3 = Ap3[Ai]*alpha;
-                  AAp4 = Ap4[Ai]*alpha;
-                  AAp5 = Ap5[Ai]*alpha;
-                  AAp6 = Ap6[Ai]*alpha;
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
+                  Ap5 = hypre_StructMatrixBoxData(A, i, si + 5);
+                  Ap6 = hypre_StructMatrixBoxData(A, i, si + 6);
+                  AAp0 = Ap0[Ai] * alpha;
+                  AAp1 = Ap1[Ai] * alpha;
+                  AAp2 = Ap2[Ai] * alpha;
+                  AAp3 = Ap3[Ai] * alpha;
+                  AAp4 = Ap4[Ai] * alpha;
+                  AAp5 = Ap5[Ai] * alpha;
+                  AAp6 = Ap6[Ai] * alpha;
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
                   xoff5 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+5]);
+                                                  stencil_shape[si + 5]);
                   xoff6 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+6]);
+                                                  stencil_shape[si + 6]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -729,31 +730,31 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
                   break;
 
                case 6:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
-                  Ap5 = hypre_StructMatrixBoxData(A, i, si+5);
-                  AAp0 = Ap0[Ai]*alpha;
-                  AAp1 = Ap1[Ai]*alpha;
-                  AAp2 = Ap2[Ai]*alpha;
-                  AAp3 = Ap3[Ai]*alpha;
-                  AAp4 = Ap4[Ai]*alpha;
-                  AAp5 = Ap5[Ai]*alpha;
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
+                  Ap5 = hypre_StructMatrixBoxData(A, i, si + 5);
+                  AAp0 = Ap0[Ai] * alpha;
+                  AAp1 = Ap1[Ai] * alpha;
+                  AAp2 = Ap2[Ai] * alpha;
+                  AAp3 = Ap3[Ai] * alpha;
+                  AAp4 = Ap4[Ai] * alpha;
+                  AAp5 = Ap5[Ai] * alpha;
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
                   xoff5 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+5]);
+                                                  stencil_shape[si + 5]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -773,27 +774,27 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
                   break;
 
                case 5:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
-                  AAp0 = Ap0[Ai]*alpha;
-                  AAp1 = Ap1[Ai]*alpha;
-                  AAp2 = Ap2[Ai]*alpha;
-                  AAp3 = Ap3[Ai]*alpha;
-                  AAp4 = Ap4[Ai]*alpha;
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
+                  AAp0 = Ap0[Ai] * alpha;
+                  AAp1 = Ap1[Ai] * alpha;
+                  AAp2 = Ap2[Ai] * alpha;
+                  AAp3 = Ap3[Ai] * alpha;
+                  AAp4 = Ap4[Ai] * alpha;
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -812,23 +813,23 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
                   break;
 
                case 4:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  AAp0 = Ap0[Ai]*alpha;
-                  AAp1 = Ap1[Ai]*alpha;
-                  AAp2 = Ap2[Ai]*alpha;
-                  AAp3 = Ap3[Ai]*alpha;
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  AAp0 = Ap0[Ai] * alpha;
+                  AAp1 = Ap1[Ai] * alpha;
+                  AAp2 = Ap2[Ai] * alpha;
+                  AAp3 = Ap3[Ai] * alpha;
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -846,19 +847,19 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
                   break;
 
                case 3:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  AAp0 = Ap0[Ai]*alpha;
-                  AAp1 = Ap1[Ai]*alpha;
-                  AAp2 = Ap2[Ai]*alpha;
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  AAp0 = Ap0[Ai] * alpha;
+                  AAp1 = Ap1[Ai] * alpha;
+                  AAp2 = Ap2[Ai] * alpha;
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -875,15 +876,15 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
                   break;
 
                case 2:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  AAp0 = Ap0[Ai]*alpha;
-                  AAp1 = Ap1[Ai]*alpha;
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  AAp0 = Ap0[Ai] * alpha;
+                  AAp1 = Ap1[Ai] * alpha;
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -899,11 +900,11 @@ HYPRE_Int hypre_StructMatvecCC1( HYPRE_Complex       alpha,
                   break;
 
                case 1:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  AAp0 = Ap0[Ai]*alpha;
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  AAp0 = Ap0[Ai] * alpha;
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -935,7 +936,7 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                                  hypre_StructVector *y,
                                  hypre_BoxArrayArray     *compute_box_aa,
                                  hypre_IndexRef           stride
-   )
+                               )
 {
    HYPRE_Int i, j, si;
    HYPRE_Complex           *Ap0;
@@ -964,13 +965,13 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
    HYPRE_Int                Ai_CC;
    hypre_BoxArray          *compute_box_a;
    hypre_Box               *compute_box;
-                          
+
    hypre_Box               *A_data_box;
    hypre_Box               *x_data_box;
    hypre_StructStencil     *stencil;
    hypre_Index             *stencil_shape;
    HYPRE_Int                stencil_size;
-                          
+
    hypre_Box               *y_data_box;
    HYPRE_Complex           *xp;
    HYPRE_Complex           *yp;
@@ -978,7 +979,7 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
    hypre_Index              loop_size;
    hypre_IndexRef           start;
    HYPRE_Int                ndim;
-   HYPRE_Complex            zero[1]={0};
+   HYPRE_Complex            zero[1] = {0};
 
    stencil       = hypre_StructMatrixStencil(A);
    stencil_shape = hypre_StructStencilShape(stencil);
@@ -1015,22 +1016,22 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
          /* unroll up to depth MAX_DEPTH
             Only the constant coefficient part of the matrix is referenced here,
             the center (variable) coefficient part is deferred. */
-         for (si = 0; si < stencil_size; si+= MAX_DEPTH)
+         for (si = 0; si < stencil_size; si += MAX_DEPTH)
          {
-            depth = hypre_min(MAX_DEPTH, (stencil_size -si));
-            switch(depth)
+            depth = hypre_min(MAX_DEPTH, (stencil_size - si));
+            switch (depth)
             {
                case 7:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
-                  Ap5 = hypre_StructMatrixBoxData(A, i, si+5);
-                  Ap6 = hypre_StructMatrixBoxData(A, i, si+6);
-		  if ( (0 <= si_center-si) && (si_center-si < 7) )
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
+                  Ap5 = hypre_StructMatrixBoxData(A, i, si + 5);
+                  Ap6 = hypre_StructMatrixBoxData(A, i, si + 6);
+                  if ( (0 <= si_center - si) && (si_center - si < 7) )
                   {
-                     switch ( si_center-si )
+                     switch ( si_center - si )
                      {
                         case 0: Ap0 = zero; break;
                         case 1: Ap1 = zero; break;
@@ -1041,7 +1042,7 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                         case 6: Ap6 = zero; break;
                      }
                   }
-		  
+
                   AAp0 = Ap0[Ai_CC];
                   AAp1 = Ap1[Ai_CC];
                   AAp2 = Ap2[Ai_CC];
@@ -1049,24 +1050,24 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   AAp4 = Ap4[Ai_CC];
                   AAp5 = Ap5[Ai_CC];
                   AAp6 = Ap6[Ai_CC];
-                  
+
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
                   xoff5 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+5]);
+                                                  stencil_shape[si + 5]);
                   xoff6 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+6]);
+                                                  stencil_shape[si + 6]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -1088,15 +1089,15 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   break;
 
                case 6:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
-                  Ap5 = hypre_StructMatrixBoxData(A, i, si+5);
-		  if ( (0 <= si_center-si) && (si_center-si < 6) )
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
+                  Ap5 = hypre_StructMatrixBoxData(A, i, si + 5);
+                  if ( (0 <= si_center - si) && (si_center - si < 6) )
                   {
-                     switch ( si_center-si )
+                     switch ( si_center - si )
                      {
                         case 0: Ap0 = zero; break;
                         case 1: Ap1 = zero; break;
@@ -1114,17 +1115,17 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   AAp5 = Ap5[Ai_CC];
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
                   xoff5 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+5]);
+                                                  stencil_shape[si + 5]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -1144,14 +1145,14 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   break;
 
                case 5:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  Ap4 = hypre_StructMatrixBoxData(A, i, si+4);
-		  if ( (0 <= si_center-si) && (si_center-si < 5) )
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  Ap4 = hypre_StructMatrixBoxData(A, i, si + 4);
+                  if ( (0 <= si_center - si) && (si_center - si < 5) )
                   {
-                     switch ( si_center-si )
+                     switch ( si_center - si )
                      {
                         case 0: Ap0 = zero; break;
                         case 1: Ap1 = zero; break;
@@ -1167,15 +1168,15 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   AAp4 = Ap4[Ai_CC];
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
                   xoff4 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+4]);
+                                                  stencil_shape[si + 4]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -1194,13 +1195,13 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   break;
 
                case 4:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-                  Ap3 = hypre_StructMatrixBoxData(A, i, si+3);
-                  if ( (0 <= si_center-si) && (si_center-si < 4) )
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  Ap3 = hypre_StructMatrixBoxData(A, i, si + 3);
+                  if ( (0 <= si_center - si) && (si_center - si < 4) )
                   {
-                     switch ( si_center-si )
+                     switch ( si_center - si )
                      {
                         case 0: Ap0 = zero; break;
                         case 1: Ap1 = zero; break;
@@ -1214,13 +1215,13 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   AAp3 = Ap3[Ai_CC];
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
                   xoff3 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+3]);
+                                                  stencil_shape[si + 3]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -1238,12 +1239,12 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   break;
 
                case 3:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-                  Ap2 = hypre_StructMatrixBoxData(A, i, si+2);
-		  if ( (0 <= si_center-si) && (si_center-si < 3) )
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  Ap2 = hypre_StructMatrixBoxData(A, i, si + 2);
+                  if ( (0 <= si_center - si) && (si_center - si < 3) )
                   {
-                     switch ( si_center-si )
+                     switch ( si_center - si )
                      {
                         case 0: Ap0 = zero; break;
                         case 1: Ap1 = zero; break;
@@ -1255,11 +1256,11 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   AAp2 = Ap2[Ai_CC];
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
                   xoff2 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+2]);
+                                                  stencil_shape[si + 2]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -1276,11 +1277,11 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   break;
 
                case 2:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-                  Ap1 = hypre_StructMatrixBoxData(A, i, si+1);
-		  if ( (0 <= si_center-si) && (si_center-si < 2) )
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  Ap1 = hypre_StructMatrixBoxData(A, i, si + 1);
+                  if ( (0 <= si_center - si) && (si_center - si < 2) )
                   {
-                     switch ( si_center-si )
+                     switch ( si_center - si )
                      {
                         case 0: Ap0 = zero; break;
                         case 1: Ap1 = zero; break;
@@ -1290,9 +1291,9 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   AAp1 = Ap1[Ai_CC];
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
                   xoff1 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+1]);
+                                                  stencil_shape[si + 1]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -1308,15 +1309,15 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
                   break;
 
                case 1:
-                  Ap0 = hypre_StructMatrixBoxData(A, i, si+0);
-		  if ( si_center-si == 0 )
+                  Ap0 = hypre_StructMatrixBoxData(A, i, si + 0);
+                  if ( si_center - si == 0 )
                   {
                      Ap0 = zero;
                   }
                   AAp0 = Ap0[Ai_CC];
 
                   xoff0 = hypre_BoxOffsetDistance(x_data_box,
-                                                  stencil_shape[si+0]);
+                                                  stencil_shape[si + 0]);
 
 #define DEVICE_VAR is_device_ptr(yp,xp)
                   hypre_BoxLoop2Begin(ndim, loop_size,
@@ -1336,7 +1337,7 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
          Ap0 = hypre_StructMatrixBoxData(A, i, si_center);
          xoff0 = hypre_BoxOffsetDistance(x_data_box,
                                          stencil_shape[si_center]);
-         if (alpha!= 1.0 )
+         if (alpha != 1.0 )
          {
 #define DEVICE_VAR is_device_ptr(yp,Ap0,xp)
             hypre_BoxLoop3Begin(ndim, loop_size,
@@ -1379,7 +1380,7 @@ HYPRE_Int hypre_StructMatvecCC2( HYPRE_Complex       alpha,
 HYPRE_Int
 hypre_StructMatvecDestroy( void *matvec_vdata )
 {
-	hypre_StructMatvecData *matvec_data = (hypre_StructMatvecData *)matvec_vdata;
+   hypre_StructMatvecData *matvec_data = (hypre_StructMatvecData *)matvec_vdata;
 
    if (matvec_data)
    {

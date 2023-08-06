@@ -1,5 +1,8 @@
-#include <kernelRequestManager.hpp>
-#include <platform.hpp>
+#include "nrssys.hpp"
+#include "kernelRequestManager.hpp"
+#include "platform.hpp"
+#include "fileUtils.hpp"
+
 kernelRequestManager_t::kernelRequestManager_t(const platform_t& m_platform)
 : kernelsProcessed(false),
   platformRef(m_platform)
@@ -22,15 +25,8 @@ kernelRequestManager_t::add(kernelRequest_t request, bool checkUnique)
   {
     int unique = (iterAndBoolPair.second) ? 1 : 0;
     MPI_Allreduce(MPI_IN_PLACE, &unique, 1, MPI_INT, MPI_MIN, platformRef.comm.mpiComm);
-    if(!unique){
-      if(platformRef.comm.mpiRank == 0)
-      {
-        std::cout << "Error in kernelRequestManager_t::add\n";
-        std::cout << "Request details:\n";
-        std::cout << request.to_string();
-      }
-      ABORT(1);
-    }
+    nrsCheck(!unique, platformRef.comm.mpiComm, EXIT_FAILURE, 
+             "request details: %s\n", request.to_string().c_str());
   }
 
   const std::string fileName = request.fileName;
@@ -47,48 +43,48 @@ kernelRequestManager_t::get(const std::string& request, bool checkValid) const
     int errorFlag = issueError ? 1 : 0;
     MPI_Allreduce(MPI_IN_PLACE, &errorFlag, 1, MPI_INT, MPI_MAX, platformRef.comm.mpiComm);
 
-    if(errorFlag){
-      if(platformRef.comm.mpiRank == 0)
-      {
-        std::cout << "\n";
-        std::cout << "Error in kernelRequestManager_t::getKernel():\n";
-        std::cout << "Cannot find requested kernel " << request << "!\n";
-
-        std::cout << "Available:\n";
+    auto errTxt = [&]()
+    { 
+        std::stringstream txt;
+        txt << "\n";
+        txt << "Cannot find requested kernel " << request << "!\n";
+        txt << "Available:\n";
         for(auto&& keyAndValue : requestToKernelMap)
-        {
-          std::cout << "\t" << keyAndValue.first << "\n";
-        }
-        std::cout << "===========================================================\n";
-      }
-      ABORT(1);
-    }
+          txt << "\t" << keyAndValue.first << "\n";
+
+        txt << "===========================================================\n";
+        return txt.str();
+    };
+
+    nrsCheck(errorFlag, platformRef.comm.mpiComm, EXIT_FAILURE, errTxt().c_str(), "");
   }
 
-  return requestToKernelMap.at(request);
+
+  occa::kernel knl = requestToKernelMap.at(request); 
+  nrsCheck(!knl.isInitialized(), MPI_COMM_SELF, EXIT_FAILURE, 
+           "requested kernel %s not initialized!\n", request.c_str());
+
+  return knl;
 }
-
-
 
 void
 kernelRequestManager_t::compile()
 {
-
   if(kernelsProcessed) return;
+
   kernelsProcessed = true;
 
-  constexpr int maxCompilingRanks {100};
+  constexpr int maxCompilingRanks {20};
 
-  const bool buildNodeLocal = useNodeLocalCache();
-
-  const int rank = buildNodeLocal ? platformRef.comm.localRank : platformRef.comm.mpiRank;
+  const int rank = platform->cacheLocal ? platformRef.comm.localRank : platformRef.comm.mpiRank;
   const int ranksCompiling =
     std::min(
       maxCompilingRanks,
-      buildNodeLocal ?
+      platform->cacheLocal ?
         platformRef.comm.mpiCommLocalSize :
         platformRef.comm.mpiCommSize
     );
+
 
   std::vector<std::string> kernelFiles(fileNameToRequestMap.size());
   
@@ -115,8 +111,8 @@ kernelRequestManager_t::compile()
           const std::string suffix = kernelRequest.suffix;
           const occa::properties props = kernelRequest.props;
 
-          // MPI staging already handled
-          auto kernel = device.buildKernel(fileName, props, suffix, false);
+          const bool buildRank0 = false;
+          auto kernel = device.buildKernel(fileName, props, suffix, buildRank0);
           requestToKernel[requestName] = kernel;
         }
       }
@@ -133,8 +129,8 @@ kernelRequestManager_t::compile()
         const std::string suffix = kernelRequest.suffix;
         const occa::properties props = kernelRequest.props;
 
-        // MPI staging already handled
-        auto kernel = device.buildKernel(fileName, props, suffix, false);
+        const bool buildRank0 = false;
+        auto kernel = device.buildKernel(fileName, props, suffix, buildRank0); // will just load because binary exists already
         requestToKernel[requestName] = kernel;
       }
     }
@@ -142,6 +138,17 @@ kernelRequestManager_t::compile()
 
   MPI_Barrier(platform->comm.mpiComm);
   compileKernels();
+
+  const auto OCCA_CACHE_DIR0 = occa::env::OCCA_CACHE_DIR;
+  if(platform->cacheBcast) {
+    const auto OCCA_CACHE_DIR_LOCAL = platform->tmpDir / fs::path("occa/");
+    const auto srcPath = fs::path(getenv("OCCA_CACHE_DIR")); 
+    fileBcast(srcPath, OCCA_CACHE_DIR_LOCAL / "..", platform->comm.mpiComm, platform->verbose); 
+    occa::env::OCCA_CACHE_DIR = std::string(OCCA_CACHE_DIR_LOCAL);
+  }
+
   MPI_Barrier(platform->comm.mpiComm);
   loadKernels();
+
+  occa::env::OCCA_CACHE_DIR = OCCA_CACHE_DIR0;
 }

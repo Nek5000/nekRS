@@ -1,0 +1,30 @@
+// given SAd_k
+// compute:
+// x_k+1 = x_k + d_k
+// r_k+1 = r_k - SAd_k
+// d_k+1 = rho_k+1*rho_k*d_k  + 2*rho_k+1*r_k+1/delta
+//       = (dCoeff     )*d_k  + (rCoeff )*r_k+1
+@kernel void updateChebyshev(const dlong N,
+                             const pfloat dCoeff,
+                             const pfloat rCoeff,
+                             @ restrict const pfloat *SAd,
+                             @ restrict pfloat *d,
+                             @ restrict pfloat *r,
+                             @ restrict pfloat *x)
+{
+
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const pfloat x_n = x[n];
+    const pfloat d_n = d[n];
+    const pfloat r_n = r[n];
+    const pfloat SAd_n = SAd[n];
+
+    const pfloat x_np1 = x_n + d_n;
+    const pfloat r_np1 = r_n - SAd_n;
+    const pfloat d_np1 = dCoeff * d_n + rCoeff * r_np1;
+
+    x[n] = x_np1;
+    d[n] = d_np1;
+    r[n] = r_np1;
+  }
+}

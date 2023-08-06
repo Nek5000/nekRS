@@ -14,38 +14,25 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
       include 'NEKUSE'
 
-      real kmax
-
-      Re    = 1/param(2)
-      kmax  = 3.9201E-03
-      omax  = 0.5
-
       ux   = 1.0  
       uy   = 0.0 
       uz   = 0.0
 
-      yd = 1 + y
-      tau = 0.0
-      if(yd.ne.0) then
-         omeg = omax + 6./Re/0.075/yd**2
-         tau = 1/omeg
-      endif
-
       if (ifield.eq.2) then
          temp = 1.0
       elseif (ifield.eq.3) then
-         temp = kmax
+         temp = 0.01
       elseif (ifield.eq.4) then
-         temp = tau
+         temp = 0.1
       endif
-
+      
       return
       end
 c-----------------------------------------------------------------------
       subroutine userchk
       include 'SIZE'
       include 'TOTAL'
-
+      
       return
       end
 c-----------------------------------------------------------------------
@@ -60,7 +47,7 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
-      parameter(BETAM = 1.8)
+      parameter(BETAM = 2.8)
 
       call rescale_x(xm1, 0.0,8.0)
       call rescale_x(ym1,-1.0,0.0)
@@ -90,7 +77,7 @@ c-----------------------------------------------------------------------
       subroutine usrdat3
       include 'SIZE'
       include 'TOTAL'
-
+            
       return
       end
 c-----------------------------------------------------------------------

@@ -14,15 +14,24 @@ struct bcData
   dfloat t1x, t1y, t1z;
   dfloat t2x, t2y, t2z;
 
-  dfloat trn, tr1, tr2;
+  dfloat tr1, tr2;
 
   dfloat u, v, w;
   dfloat p;
 
+  // interpolated velocity values
+  dfloat uinterp, vinterp, winterp;
+
   int scalarId;
   dfloat s, flux;
 
+  // interpolated scalar value
+  dfloat sinterp;
+
   dfloat meshu, meshv, meshw;
 
-  @globalPtr const dfloat* wrk;
+  // properties
+  dfloat trans, diff;
+
+  @globalPtr const dfloat* usrwrk;
 };

@@ -1,11 +1,12 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
  ******************************************************************************/
 
 #include "_hypre_struct_ls.h"
+#include "_hypre_struct_mv.hpp"
 
 /*==========================================================================*/
 
@@ -19,7 +20,7 @@ HYPRE_StructPCGCreate( MPI_Comm comm, HYPRE_StructSolver *solver )
       chance of name conflicts. */
    hypre_PCGFunctions * pcg_functions =
       hypre_PCGFunctionsCreate(
-         hypre_CAlloc, hypre_StructKrylovFree,
+         hypre_StructKrylovCAlloc, hypre_StructKrylovFree,
          hypre_StructKrylovCommInfo,
          hypre_StructKrylovCreateVector,
          hypre_StructKrylovDestroyVector, hypre_StructKrylovMatvecCreate,
@@ -36,38 +37,38 @@ HYPRE_StructPCGCreate( MPI_Comm comm, HYPRE_StructSolver *solver )
 
 /*==========================================================================*/
 
-HYPRE_Int 
+HYPRE_Int
 HYPRE_StructPCGDestroy( HYPRE_StructSolver solver )
 {
-   return( hypre_PCGDestroy( (void *) solver ) );
+   return ( hypre_PCGDestroy( (void *) solver ) );
 }
 
 /*==========================================================================*/
 
-HYPRE_Int 
+HYPRE_Int
 HYPRE_StructPCGSetup( HYPRE_StructSolver solver,
                       HYPRE_StructMatrix A,
                       HYPRE_StructVector b,
                       HYPRE_StructVector x      )
 {
-   return( HYPRE_PCGSetup( (HYPRE_Solver) solver,
-                           (HYPRE_Matrix) A,
-                           (HYPRE_Vector) b,
-                           (HYPRE_Vector) x ) );
+   return ( HYPRE_PCGSetup( (HYPRE_Solver) solver,
+                            (HYPRE_Matrix) A,
+                            (HYPRE_Vector) b,
+                            (HYPRE_Vector) x ) );
 }
 
 /*==========================================================================*/
 
-HYPRE_Int 
+HYPRE_Int
 HYPRE_StructPCGSolve( HYPRE_StructSolver solver,
                       HYPRE_StructMatrix A,
                       HYPRE_StructVector b,
                       HYPRE_StructVector x      )
 {
-   return( HYPRE_PCGSolve( (HYPRE_Solver) solver,
-                           (HYPRE_Matrix) A,
-                           (HYPRE_Vector) b,
-                           (HYPRE_Vector) x ) );
+   return ( HYPRE_PCGSolve( (HYPRE_Solver) solver,
+                            (HYPRE_Matrix) A,
+                            (HYPRE_Vector) b,
+                            (HYPRE_Vector) x ) );
 }
 
 /*==========================================================================*/
@@ -76,7 +77,7 @@ HYPRE_Int
 HYPRE_StructPCGSetTol( HYPRE_StructSolver solver,
                        HYPRE_Real         tol    )
 {
-   return( HYPRE_PCGSetTol( (HYPRE_Solver) solver, tol ) );
+   return ( HYPRE_PCGSetTol( (HYPRE_Solver) solver, tol ) );
 }
 
 /*==========================================================================*/
@@ -85,7 +86,7 @@ HYPRE_Int
 HYPRE_StructPCGSetAbsoluteTol( HYPRE_StructSolver solver,
                                HYPRE_Real         tol    )
 {
-   return( HYPRE_PCGSetAbsoluteTol( (HYPRE_Solver) solver, tol ) );
+   return ( HYPRE_PCGSetAbsoluteTol( (HYPRE_Solver) solver, tol ) );
 }
 
 /*==========================================================================*/
@@ -94,7 +95,7 @@ HYPRE_Int
 HYPRE_StructPCGSetMaxIter( HYPRE_StructSolver solver,
                            HYPRE_Int          max_iter )
 {
-   return( HYPRE_PCGSetMaxIter( (HYPRE_Solver) solver, max_iter ) );
+   return ( HYPRE_PCGSetMaxIter( (HYPRE_Solver) solver, max_iter ) );
 }
 
 /*==========================================================================*/
@@ -103,7 +104,7 @@ HYPRE_Int
 HYPRE_StructPCGSetTwoNorm( HYPRE_StructSolver solver,
                            HYPRE_Int          two_norm )
 {
-   return( HYPRE_PCGSetTwoNorm( (HYPRE_Solver) solver, two_norm ) );
+   return ( HYPRE_PCGSetTwoNorm( (HYPRE_Solver) solver, two_norm ) );
 }
 
 /*==========================================================================*/
@@ -112,7 +113,7 @@ HYPRE_Int
 HYPRE_StructPCGSetRelChange( HYPRE_StructSolver solver,
                              HYPRE_Int          rel_change )
 {
-   return( HYPRE_PCGSetRelChange( (HYPRE_Solver) solver, rel_change ) );
+   return ( HYPRE_PCGSetRelChange( (HYPRE_Solver) solver, rel_change ) );
 }
 
 /*==========================================================================*/
@@ -123,10 +124,10 @@ HYPRE_StructPCGSetPrecond( HYPRE_StructSolver         solver,
                            HYPRE_PtrToStructSolverFcn precond_setup,
                            HYPRE_StructSolver         precond_solver )
 {
-   return( HYPRE_PCGSetPrecond( (HYPRE_Solver) solver,
-                                (HYPRE_PtrToSolverFcn) precond,
-                                (HYPRE_PtrToSolverFcn) precond_setup,
-                                (HYPRE_Solver) precond_solver ) );
+   return ( HYPRE_PCGSetPrecond( (HYPRE_Solver) solver,
+                                 (HYPRE_PtrToSolverFcn) precond,
+                                 (HYPRE_PtrToSolverFcn) precond_setup,
+                                 (HYPRE_Solver) precond_solver ) );
 }
 
 /*==========================================================================*/
@@ -135,7 +136,7 @@ HYPRE_Int
 HYPRE_StructPCGSetLogging( HYPRE_StructSolver solver,
                            HYPRE_Int          logging )
 {
-   return( HYPRE_PCGSetLogging( (HYPRE_Solver) solver, logging ) );
+   return ( HYPRE_PCGSetLogging( (HYPRE_Solver) solver, logging ) );
 }
 
 /*==========================================================================*/
@@ -144,7 +145,7 @@ HYPRE_Int
 HYPRE_StructPCGSetPrintLevel( HYPRE_StructSolver solver,
                               HYPRE_Int      print_level )
 {
-   return( HYPRE_PCGSetPrintLevel( (HYPRE_Solver) solver, print_level ) );
+   return ( HYPRE_PCGSetPrintLevel( (HYPRE_Solver) solver, print_level ) );
 }
 
 /*==========================================================================*/
@@ -153,7 +154,7 @@ HYPRE_Int
 HYPRE_StructPCGGetNumIterations( HYPRE_StructSolver  solver,
                                  HYPRE_Int          *num_iterations )
 {
-   return( HYPRE_PCGGetNumIterations( (HYPRE_Solver) solver, num_iterations ) );
+   return ( HYPRE_PCGGetNumIterations( (HYPRE_Solver) solver, num_iterations ) );
 }
 
 /*==========================================================================*/
@@ -162,12 +163,12 @@ HYPRE_Int
 HYPRE_StructPCGGetFinalRelativeResidualNorm( HYPRE_StructSolver  solver,
                                              HYPRE_Real         *norm   )
 {
-   return( HYPRE_PCGGetFinalRelativeResidualNorm( (HYPRE_Solver) solver, norm ) );
+   return ( HYPRE_PCGGetFinalRelativeResidualNorm( (HYPRE_Solver) solver, norm ) );
 }
 
 /*==========================================================================*/
 
-HYPRE_Int 
+HYPRE_Int
 HYPRE_StructDiagScaleSetup( HYPRE_StructSolver solver,
                             HYPRE_StructMatrix A,
                             HYPRE_StructVector y,
@@ -178,7 +179,7 @@ HYPRE_StructDiagScaleSetup( HYPRE_StructSolver solver,
 
 /*==========================================================================*/
 
-HYPRE_Int 
+HYPRE_Int
 HYPRE_StructDiagScale( HYPRE_StructSolver solver,
                        HYPRE_StructMatrix HA,
                        HYPRE_StructVector Hy,
@@ -194,16 +195,16 @@ HYPRE_StructDiagScale( HYPRE_StructSolver solver,
    hypre_Box            *A_data_box;
    hypre_Box            *y_data_box;
    hypre_Box            *x_data_box;
-                     
+
    HYPRE_Real           *Ap;
    HYPRE_Real           *yp;
    HYPRE_Real           *xp;
-                     
+
    hypre_Index           index;
    hypre_IndexRef        start;
    hypre_Index           stride;
    hypre_Index           loop_size;
-                     
+
    HYPRE_Int             i;
 
    /* x = D^{-1} y */

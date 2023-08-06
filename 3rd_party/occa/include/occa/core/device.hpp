@@ -6,6 +6,7 @@
 
 #include <occa/core/kernel.hpp>
 #include <occa/core/memory.hpp>
+#include <occa/core/memoryPool.hpp>
 #include <occa/core/stream.hpp>
 #include <occa/defines.hpp>
 #include <occa/dtype.hpp>
@@ -221,7 +222,7 @@ namespace occa {
      *
      * @endDoc
      */
-    bool isInitialized();
+    bool isInitialized() const;
 
     modeDevice_t* getModeDevice() const;
 
@@ -331,16 +332,43 @@ namespace occa {
      */
     udim_t memoryAllocated() const;
 
+
+    /**
+     * @startDoc{maxMemoryAllocated}
+     *
+     * Description:
+     *   Find the max amount of memory that has been allocated by this specific device.
+     *
+     * Description:
+     *   Returns the max memory allocated in bytes.
+     *
+     * @endDoc
+     */
+    udim_t maxMemoryAllocated() const;
+
     /**
      * @startDoc{finish}
      *
      * Description:
-     *   Finishes any asynchronous operation queued up on the device, such as
-     *   [[async memory allocations|device.malloc]] or [[kernel calls|kernel.operator_parentheses]].
+     *   Waits for all asynchronous operations, such as
+     *   [[async memory allocations|device.malloc]] or [[kernel calls|kernel.operator_parentheses]],
+     *   submitted to the current stream on this device to complete.
      *
      * @endDoc
      */
     void finish();
+
+    /**
+     * @startDoc{finish}
+     *
+     * Description:
+     *   Waits for all asynchronous operations, such as
+     *   [[async memory allocations|device.malloc]] or [[kernel calls|kernel.operator_parentheses]],
+     *   submitted to all streams on this device to complete.
+     *
+     * @endDoc
+     */
+    void finishAll();
 
     /**
      * @startDoc{hasSeparateMemorySpace}
@@ -375,6 +403,22 @@ namespace occa {
      * @endDoc
      */
     stream createStream(const occa::json &props = occa::json());
+
+    /**
+     * @startDoc{wrapStream}
+     *
+     * Description:
+     *   Wrap a native backend stream object inside a [[stream]] for the device.
+     *   The simplest example would be on a `CUDA` device, where a pointer to a cuStream_t, created via cudaStreamCreate, is passed in.
+     *
+     *   > Note that automatic garbage collection is not set for wrapped stream objects.
+     *
+     * Returns:
+     *   The wrapped [[stream]]
+     *
+     * @endDoc
+     */
+    stream wrapStream(void* ptr, const occa::json &props = occa::json());
 
     /**
      * @startDoc{getStream}
@@ -635,34 +679,6 @@ namespace occa {
                         const dtype_t &dtype,
                         const occa::json &props);
 
-    void* umalloc(const dim_t entries,
-                  const dtype_t &dtype,
-                  const void *src = NULL,
-                  const occa::json &props = occa::json());
-
-    void* umalloc(const dim_t entries,
-                  const dtype_t &dtype,
-                  const occa::memory src,
-                  const occa::json &props = occa::json());
-
-    void* umalloc(const dim_t entries,
-                  const dtype_t &dtype,
-                  const occa::json &props);
-
-    template <class T = void>
-    T* umalloc(const dim_t entries,
-                const void *src = NULL,
-                const occa::json &props = occa::json());
-
-    template <class T = void>
-    T* umalloc(const dim_t entries,
-                const occa::memory src,
-                const occa::json &props = occa::json());
-
-    template <class T = void>
-    T* umalloc(const dim_t entries,
-                const occa::json &props);
-
     /**
      * @startDoc{wrapMemory}
      *
@@ -698,7 +714,39 @@ namespace occa {
                             const dim_t entries,
                             const dtype_t &dtype,
                             const occa::json &props = occa::json());
+
+    //  |---[ MemoryPool ]------------------
+    /**
+     * @startDoc{createMemoryPool}
+     *
+     * Description:
+     *   Creates and returns a new [[memoryPool]] to reserve [[memory]].
+     *
+     * Returns:
+     *   Newly created [[memoryPool]]
+     *
+     * @endDoc
+     */
+    experimental::memoryPool createMemoryPool(const occa::json &props = occa::json());
+
     //  |===============================
+
+    /**
+     * @startDoc{unwrap}
+     * 
+     * Description:
+     *   Retreives the mode-specific object associated with this [[device]].
+     *   The lifetime of the returned object is the same as this device.
+     *   Destruction of the returned object during this device's lifetime results in undefined behavior.   
+     *  
+     *   > An OCCA application is responsible for correctly converting the returned `void*` pointer to the corresponding mode-specific device type.
+     *   
+     * Returns:
+     *   A pointer to the mode-specific object associated with this device.
+     * 
+     * @endDoc
+    */
+    void* unwrap();
   };
 
   template <>

@@ -1,0 +1,96 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+
+static dfloat ReTau;
+static dfloat zLength;
+static dfloat xLength;
+static dfloat betaY;
+
+#ifdef __okl__
+
+#endif
+
+/* User Functions */
+
+void userf(nrs_t *nrs, dfloat time, occa::memory o_U, occa::memory o_FU)
+{
+  mesh_t *mesh = nrs->meshV;
+  dfloat mue, rho;
+  platform->options.getArgs("VISCOSITY", mue);
+  platform->options.getArgs("DENSITY", rho);
+  const dfloat RE_B = rho / mue;
+  const dfloat DPDX = (ReTau / RE_B) * (ReTau / RE_B);
+
+  occa::memory o_FUx = o_FU + 0 * nrs->fieldOffset * sizeof(dfloat);
+  platform->linAlg->fill(mesh->Nlocal, DPDX, o_FUx);
+}
+
+void useric(nrs_t *nrs)
+{
+  auto mesh = nrs->meshV;
+
+  const auto C = 5.17;
+  const auto k = 0.41;
+  const auto eps = 1e-2;
+  const auto kx = 23.0;
+  const auto kz = 13.0;
+  const auto alpha = kx * 2 * M_PI / xLength;
+  const auto beta = kz * 2 * M_PI / zLength;
+  dfloat mue;
+  platform->options.getArgs("VISCOSITY", mue);
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    for (int i = 1; i < mesh->Nlocal; i++) {
+      const auto x = mesh->x[i];
+      const auto y = mesh->y[i];
+      const auto z = mesh->z[i];
+      const auto yp = (y < 0) ? (1 + y) * ReTau : (1 - y) * ReTau;
+
+      dfloat ux =
+          1 / k * log(1 + k * yp) + (C - (1 / k) * log(k)) * (1 - exp(-yp / 11) - yp / 11 * exp(-yp / 3));
+      ux *= ReTau * mue;
+
+      nrs->U[i + 0 * nrs->fieldOffset] = ux + eps * beta * sin(alpha * x) * cos(beta * z);
+      nrs->U[i + 1 * nrs->fieldOffset] = eps * sin(alpha * x) * sin(beta * z);
+      nrs->U[i + 2 * nrs->fieldOffset] = -eps * alpha * cos(alpha * x) * sin(beta * z);
+    }
+  }
+}
+
+/* UDF Functions */
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  platform->par->extract("casedata", "ReTau", ReTau);
+  platform->par->extract("casedata", "zLength", zLength);
+  platform->par->extract("casedata", "xLength", xLength);
+  platform->par->extract("casedata", "betaY", betaY);
+
+  *((double *)nek::scPtr(1)) = xLength;
+  *((double *)nek::scPtr(2)) = zLength;
+  *((double *)nek::scPtr(3)) = betaY;
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  if (platform->options.compareArgs("CONSTANT FLOW RATE", "FALSE")) {
+    // assign function pointer to drive flow by constant mean pressure gradient
+    udf.uEqnSource = &userf;
+  }
+
+  useric(nrs);
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+
+#if 0
+  if (nrs->isOutputStep) {
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
+  }
+#endif
+}

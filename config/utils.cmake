@@ -5,13 +5,14 @@ function (__MPI_find_compiler LANG QUERY_FLAG OUTPUT_VARIABLE)
   execute_process(
     COMMAND ${MPI_${LANG}_COMPILER} ${_MPI_COMPILER_WRAPPER_OPTIONS} ${DUMMYSRC}
     OUTPUT_VARIABLE  WRAPPER_OUTPUT OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_VARIABLE   WRAPPER_OUTPUT ERROR_STRIP_TRAILING_WHITESPACE
+    ERROR_VARIABLE   WRAPPER_ERR ERROR_STRIP_TRAILING_WHITESPACE
     RESULT_VARIABLE  WRAPPER_RETURN)
   # Some compiler wrappers will yield spurious zero return values, for example
   # Intel MPI tolerates unknown arguments and if the MPI wrappers loads a shared
   # library that has invalid or missing version information there would be warning
   # messages emitted by ld.so in the compiler output. In either case, we'll treat
   # the output as invalid.
+  set(WRAPPER_OUTPUT "${WRAPPER_OUTPUT} ${WRAPPER_ERR}")
   if("${WRAPPER_OUTPUT}" MATCHES "undefined reference|unrecognized|need to set|no version information available|command not found")
     set(WRAPPER_RETURN 255)
   endif()

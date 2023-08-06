@@ -8,18 +8,17 @@ timeStepper = tombo3
 writeInterval = 50
 
 [MESH]
-boundaryTypeMap = fixedValue, zeroValue, sym
-solver = elasticity
-
-[PROBLEMTYPE]
-stressFormulation = true
+boundaryTypeMap = codedFixedValue, zeroValue, sym
+residualTol = 1e-6
+solver = pcg+block #user
+initialGuess = projection+nVector=1 
 
 [PRESSURE]
 residualTol = 1e-8
 initialGuess = previous
 
 [VELOCITY]
-boundaryTypeMap = fixedValue, zeroValue, sym
+boundaryTypeMap = codedFixedValue, zeroValue, sym
 residualTol = 1e-12
 
 [TEMPERATURE]

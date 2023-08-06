@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -14,8 +14,6 @@
 #ifndef hypre_PFMG_HEADER
 #define hypre_PFMG_HEADER
 
-#include <assert.h>
-
 /*--------------------------------------------------------------------------
  * hypre_PFMGData:
  *--------------------------------------------------------------------------*/
@@ -23,13 +21,13 @@
 typedef struct
 {
    MPI_Comm              comm;
-                      
+
    HYPRE_Real            tol;
    HYPRE_Int             max_iter;
    HYPRE_Int             rel_change;
    HYPRE_Int             zero_guess;
    HYPRE_Int             max_levels;  /* max_level <= 0 means no limit */
-                      
+
    HYPRE_Int             relax_type;     /* type of relaxation to use */
    HYPRE_Real            jacobi_weight;  /* weighted jacobi weight */
    HYPRE_Int             usr_jacobi_weight; /* indicator flag for user weight */
@@ -42,13 +40,14 @@ typedef struct
    HYPRE_Real            dxyz[3];     /* parameters used to determine cdir */
 
    HYPRE_Int             num_levels;
-                      
+
    HYPRE_Int            *cdir_l;  /* coarsening directions */
    HYPRE_Int            *active_l;  /* flags to relax on level l*/
 
    hypre_StructGrid    **grid_l;
    hypre_StructGrid    **P_grid_l;
-                    
+
+   HYPRE_MemoryLocation  memory_location; /* memory location of data */
    HYPRE_Real           *data;
    HYPRE_Real           *data_const;
    hypre_StructMatrix  **A_l;
@@ -76,8 +75,8 @@ typedef struct
    HYPRE_Int             logging;
    HYPRE_Real           *norms;
    HYPRE_Real           *rel_norms;
-#if defined(HYPRE_USING_CUDA)
-  HYPRE_Int             devicelevel;
+#if 0 //defined(HYPRE_USING_CUDA) || defined(HYPRE_USING_HIP)
+   HYPRE_Int             devicelevel;
 #endif
 
 } hypre_PFMGData;

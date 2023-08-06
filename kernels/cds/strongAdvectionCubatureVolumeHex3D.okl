@@ -1,0 +1,488 @@
+#if 0
+@kernel void strongAdvectionCubatureVolumeHex3D(const dlong Nelements,
+                                                const dlong Nscalars,
+                                                const dlong applyWeight,
+                                                @ restrict const dfloat *weight,
+                                                @ restrict const dfloat *vgeo,
+                                                @ restrict const dfloat *cubD,
+                                                @ restrict const dfloat *cubInterpT,
+                                                @ restrict const dfloat *cubProjectT,
+                                                @ restrict const dlong *computeScalar,
+                                                @ restrict const dlong *fieldOffsetScan,
+                                                const dlong voffset,
+                                                const dlong cubatureOffset,
+                                                @ restrict const dfloat *S,
+                                                @ restrict const dfloat *Urst,
+                                                @ restrict const dfloat *RHO,
+                                                @ restrict dfloat *NS)
+{
+  // (phi, U.grad Ud)
+  for (dlong scalarId = 0; scalarId < Nscalars; ++scalarId; @outer(1)) {
+    for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+      if (computeScalar[scalarId]) {
+        @shared dfloat s_cubD[p_cubNq][p_cubNq];
+        @shared dfloat s_cubInterpT[p_Nq][p_cubNq];
+
+        @shared dfloat s_S[p_cubNq][p_cubNq];
+
+        @shared dfloat s_S1[p_cubNq][p_cubNq];
+
+        @exclusive dfloat r_S[p_cubNq], r_Sd[p_cubNq];
+
+        for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+          for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+            const int id = i + j * p_cubNq;
+            if (id < p_Nq * p_cubNq) {
+              s_cubInterpT[j][i] = cubInterpT[id];
+            }
+
+            s_cubD[j][i] = cubD[id];
+
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_S[k] = 0.f;
+              r_Sd[k] = 0.f;
+            }
+          }
+        }
+
+        for (int c = 0; c < p_Nq; ++c) {
+          @barrier();
+
+          for (int b = 0; b < p_cubNq; ++b; @inner(1))
+            for (int a = 0; a < p_cubNq; ++a; @inner(0))
+              if (a < p_Nq && b < p_Nq) {
+                const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+                // U.grad U
+                s_S[b][a] = S[id + fieldOffsetScan[scalarId]];
+              }
+
+          @barrier();
+
+          // interpolate in 'r'
+          for (int b = 0; b < p_cubNq; ++b; @inner(1))
+            for (int i = 0; i < p_cubNq; ++i; @inner(0))
+              if (b < p_Nq) {
+                dfloat S1 = 0;
+                for (int a = 0; a < p_Nq; ++a) {
+                  dfloat Iia = s_cubInterpT[a][i];
+                  S1 += Iia * s_S[b][a];
+                }
+
+                s_S1[b][i] = S1;
+              }
+
+          @barrier();
+
+          // interpolate in 's'
+          for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+            for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+              dfloat S2 = 0;
+              // interpolate in b
+              for (int b = 0; b < p_Nq; ++b) {
+                dfloat Ijb = s_cubInterpT[b][j];
+                S2 += Ijb * s_S1[b][i];
+              }
+
+              // interpolate in c progressively
+#pragma unroll p_cubNq
+              for (int k = 0; k < p_cubNq; ++k) {
+                dfloat Ikc = s_cubInterpT[c][k];
+                r_S[k] += Ikc * S2;
+              }
+
+#pragma unroll p_cubNq
+              for (int k = 0; k < p_cubNq; ++k)
+                r_Sd[k] = r_S[k];
+            }
+          }
+        }
+
+#ifdef smXX
+#pragma unroll p_cubNq
+#endif
+        for (int k = 0; k < p_cubNq; ++k) {
+          @barrier();
+
+          for (int j = 0; j < p_cubNq; ++j; @inner(1))
+            for (int i = 0; i < p_cubNq; ++i; @inner(0))
+              s_S1[j][i] = r_Sd[k];
+
+          @barrier();
+
+          for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+            for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+              dfloat Sdr = 0, Sds = 0, Sdt = 0;
+
+#pragma unroll p_cubNq
+              for (int n = 0; n < p_cubNq; ++n) {
+                dfloat Din = s_cubD[i][n];
+                dfloat Djn = s_cubD[j][n];
+                dfloat Dkn = s_cubD[k][n];
+                //
+                Sdr += Din * s_S1[j][n];
+                Sds += Djn * s_S1[n][i];
+                Sdt += Dkn * r_Sd[n];
+              }
+
+              const dlong id = e * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+              const dfloat Uhat = Urst[id + 0 * cubatureOffset];
+              const dfloat Vhat = Urst[id + 1 * cubatureOffset];
+              const dfloat What = Urst[id + 2 * cubatureOffset];
+
+              // I_f^t*(J_f*C_f^t)*G_f*\hat{D}_f*I_f*u
+              r_S[k] = Uhat * Sdr + Vhat * Sds + What * Sdt;
+            }
+          }
+        }
+
+        // now project back in t
+        for (int c = 0; c < p_Nq; ++c) {
+          @barrier();
+
+          for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+            for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+              dfloat rhsS = 0;
+
+#pragma unroll p_cubNq
+              for (int k = 0; k < p_cubNq; ++k) {
+                dfloat Ikc = s_cubInterpT[c][k];
+                rhsS += Ikc * r_S[k];
+              }
+
+              s_S[j][i] = rhsS;
+            }
+          }
+
+          @barrier();
+
+          for (int b = 0; b < p_cubNq; ++b; @inner(1))
+            for (int i = 0; i < p_cubNq; ++i; @inner(0))
+              if (b < p_Nq) {
+                dfloat rhsS = 0;
+
+                for (int j = 0; j < p_cubNq; ++j) {
+                  dfloat Ijb = s_cubInterpT[b][j];
+                  rhsS += Ijb * s_S[j][i];
+                }
+
+                s_S1[b][i] = rhsS;
+              }
+
+          @barrier();
+
+          for (int b = 0; b < p_cubNq; ++b; @inner(1))
+            for (int a = 0; a < p_cubNq; ++a; @inner(0))
+              if (a < p_Nq && b < p_Nq) {
+                dfloat rhsS = 0;
+
+                for (int i = 0; i < p_cubNq; ++i) {
+                  dfloat Iia = s_cubInterpT[a][i];
+                  rhsS += Iia * s_S1[b][i];
+                }
+                const dlong gid = e * p_Np * p_Nvgeo + c * p_Nq * p_Nq + b * p_Nq + a;
+                const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+
+                const dfloat IJW = vgeo[gid + p_IJWID * p_Np];
+                const dfloat rhoM = RHO[id + fieldOffsetScan[scalarId]];
+                
+                dfloat value = NS[id + fieldOffsetScan[scalarId]];
+                value -= rhoM * IJW * rhsS;
+
+                if(applyWeight){
+                  value *= weight[id];
+                }
+
+                NS[id + fieldOffsetScan[scalarId]] = value;
+              }
+        }
+      }
+    }
+  }
+}
+#else
+@kernel void strongAdvectionCubatureVolumeHex3D(const dlong Nelements,
+                                                const dlong Nfields,
+                                                const dlong applyWeight,
+                                                @ restrict const dfloat *weight,
+                                                @ restrict const dfloat *vgeo,
+                                                @ restrict const dfloat *cubD,
+                                                @ restrict const dfloat *cubInterpT,
+                                                @ restrict const dfloat *cubProjectT,
+                                                @ restrict const dlong *computeScalar,
+                                                @ restrict const dlong *fieldOffsetScan,
+                                                const dlong voffset,
+                                                const dlong cubatureOffset,
+                                                @ restrict const dfloat *S,
+                                                @ restrict const dfloat *Urst,
+                                                @ restrict const dfloat *RHO,
+                                                @ restrict dfloat *NS)
+{
+  // (phi, U.grad Ud)
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @exclusive dfloat r_S[p_cubNq], r_Sd[p_cubNq];
+
+    @shared dfloat s_tmp[p_cubNq][p_cubNq][p_cubNq];
+
+    @exclusive dfloat r_Uhat[p_cubNq], r_Vhat[p_cubNq], r_What[p_cubNq];
+    @exclusive dfloat r_IJW[p_Nq];
+
+    for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+      for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+#pragma unroll p_cubNq
+        for (int k = 0; k < p_cubNq; ++k) {
+          const dlong id = e * p_cubNp + k * p_cubNq * p_cubNq + j * p_cubNq + i;
+          r_Uhat[k] = Urst[id + 0 * cubatureOffset];
+          r_Vhat[k] = Urst[id + 1 * cubatureOffset];
+          r_What[k] = Urst[id + 2 * cubatureOffset];
+        }
+      }
+    }
+    for (int b = 0; b < p_cubNq; ++b; @inner(1)) {
+      for (int a = 0; a < p_cubNq; ++a; @inner(0)) {
+        if (a < p_Nq && b < p_Nq) {
+#pragma unroll p_Nq
+          for (int c = 0; c < p_Nq; ++c) {
+            const dlong gid = e * p_Np * p_Nvgeo + c * p_Nq * p_Nq + b * p_Nq + a;
+            const dfloat IJW = vgeo[gid + p_IJWID * p_Np];
+            r_IJW[c] = IJW;
+          }
+        }
+      }
+    }
+    for (dlong field = 0; field < Nfields; field++) {
+
+      if (computeScalar[field]) {
+
+        @barrier();
+
+        for (int b = 0; b < p_cubNq; ++b; @inner(1)) {
+          for (int a = 0; a < p_cubNq; ++a; @inner(0)) {
+            if (a < p_Nq && b < p_Nq) {
+              for (int c = 0; c < p_Nq; ++c) {
+                const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+                s_tmp[c][b][a] = S[id + fieldOffsetScan[field]];
+              }
+            }
+          }
+        }
+        @barrier();
+
+        // interpolate in 'r'
+        for (int c = 0; c < p_cubNq; ++c; @inner(1)) {
+          for (int b = 0; b < p_cubNq; ++b; @inner(0)) {
+            if (b < p_Nq && c < p_Nq) {
+#pragma unroll p_cubNq
+              for (int c = 0; c < p_cubNq; ++c) {
+                r_S[c] = 0;
+              }
+              for (int a = 0; a < p_Nq; ++a) {
+                dfloat ucba = s_tmp[c][b][a];
+#pragma unroll p_cubNq
+                for (int i = 0; i < p_cubNq; ++i) {
+                  r_S[i] += c_I[i][a] * ucba;
+                }
+              }
+#pragma unroll p_cubNq
+              for (int i = 0; i < p_cubNq; ++i) {
+                s_tmp[c][b][i] = r_S[i];
+              }
+            }
+          }
+        }
+        @barrier();
+
+        // interpolate in 's'
+        for (int c = 0; c < p_cubNq; ++c; @inner(1)) {
+          for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+            if (c < p_Nq) {
+#pragma unroll p_cubNq
+              for (int j = 0; j < p_cubNq; ++j) {
+                r_S[j] = 0;
+              }
+              for (int b = 0; b < p_Nq; ++b) {
+                dfloat ucbi = s_tmp[c][b][i];
+#pragma unroll p_cubNq
+                for (int j = 0; j < p_cubNq; ++j) {
+                  r_S[j] += c_I[j][b] * ucbi;
+                }
+              }
+#pragma unroll p_cubNq
+              for (int j = 0; j < p_cubNq; ++j) {
+                s_tmp[c][j][i] = r_S[j];
+              }
+            }
+          }
+        }
+        @barrier();
+
+        // interpolate in 't'
+        for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+          for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_S[k] = 0;
+            }
+            for (int c = 0; c < p_Nq; ++c) {
+              dfloat ucji = s_tmp[c][j][i];
+#pragma unroll p_cubNq
+              for (int k = 0; k < p_cubNq; ++k) {
+                r_S[k] += c_I[k][c] * ucji;
+              }
+            }
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              s_tmp[k][j][i] = r_S[k];
+            }
+          }
+        }
+        @barrier();
+
+        for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+          for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+            // advection in 'u'
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_Sd[k] = 0;
+            }
+            for (int n = 0; n < p_cubNq; ++n) {
+              dfloat D = c_D[i][n];
+#pragma unroll p_cubNq
+              for (int k = 0; k < p_cubNq; ++k) {
+                r_Sd[k] += D * s_tmp[k][j][n];
+              }
+            }
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_S[k] = r_Uhat[k] * r_Sd[k];
+            }
+
+            // advection in 'v'
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_Sd[k] = 0;
+            }
+            for (int n = 0; n < p_cubNq; ++n) {
+              dfloat D = c_D[j][n];
+#pragma unroll p_cubNq
+              for (int k = 0; k < p_cubNq; ++k) {
+                r_Sd[k] += D * s_tmp[k][n][i];
+              }
+            }
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_S[k] += r_Vhat[k] * r_Sd[k];
+            }
+
+            // advection in 'w'
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_Sd[k] = 0;
+            }
+            for (int n = 0; n < p_cubNq; ++n) {
+              dfloat t = s_tmp[n][j][i];
+#pragma unroll p_cubNq
+              for (int k = 0; k < p_cubNq; ++k) {
+                r_Sd[k] += c_D[k][n] * t;
+              }
+            }
+#pragma unroll p_cubNq
+            for (int k = 0; k < p_cubNq; ++k) {
+              r_S[k] += r_What[k] * r_Sd[k];
+            }
+          }
+        }
+
+        // now project back in 'c'
+        @barrier();
+        for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
+          for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+            for (int c = 0; c < p_Nq; ++c) {
+              r_Sd[c] = 0;
+            }
+            for (int k = 0; k < p_cubNq; ++k) {
+              dfloat sk = r_S[k];
+#pragma unroll p_Nq
+              for (int c = 0; c < p_Nq; ++c) {
+                r_Sd[c] += c_I[k][c] * sk;
+              }
+            }
+#pragma unroll p_Nq
+            for (int c = 0; c < p_Nq; ++c) {
+              s_tmp[c][j][i] = r_Sd[c];
+            }
+          }
+        }
+        @barrier();
+
+        // project back in 'b'
+        for (int c = 0; c < p_cubNq; ++c; @inner(1)) {
+          for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
+            if (c < p_Nq) {
+#pragma unroll p_Nq
+              for (int b = 0; b < p_Nq; ++b) {
+                r_S[b] = 0;
+              }
+              for (int j = 0; j < p_cubNq; ++j) {
+                dfloat scji = s_tmp[c][j][i];
+#pragma unroll p_Nq
+                for (int b = 0; b < p_Nq; ++b) {
+                  r_S[b] += c_I[j][b] * scji;
+                }
+              }
+#pragma unroll p_Nq
+              for (int b = 0; b < p_Nq; ++b) {
+                s_tmp[c][b][i] = r_S[b];
+              }
+            }
+          }
+        }
+        @barrier();
+
+        // project back in 'a'
+        for (int c = 0; c < p_cubNq; ++c; @inner(1)) {
+          for (int b = 0; b < p_cubNq; ++b; @inner(0)) {
+            if (c < p_Nq && b < p_Nq) {
+#pragma unroll p_Nq
+              for (int a = 0; a < p_Nq; ++a) {
+                r_S[a] = 0;
+              }
+              for (int i = 0; i < p_cubNq; ++i) {
+                dfloat scbi = s_tmp[c][b][i];
+#pragma unroll p_Nq
+                for (int a = 0; a < p_Nq; ++a) {
+                  r_S[a] += c_I[i][a] * scbi;
+                }
+              }
+#pragma unroll p_Nq
+              for (int a = 0; a < p_Nq; ++a) {
+                s_tmp[c][b][a] = r_S[a];
+              }
+            }
+          }
+        }
+        @barrier();
+
+        for (int b = 0; b < p_cubNq; ++b; @inner(1)) {
+          for (int a = 0; a < p_cubNq; ++a; @inner(0)) {
+            if (a < p_Nq && b < p_Nq) {
+#pragma unroll p_Nq
+              for (int c = 0; c < p_Nq; ++c) {
+                const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
+                const dfloat rhoM = RHO[id + fieldOffsetScan[field]];
+                dfloat value = NS[id + fieldOffsetScan[field]];
+                value -= rhoM * r_IJW[c] * s_tmp[c][b][a];
+                if(applyWeight){
+                  value *= weight[id];
+                }
+                NS[id + fieldOffsetScan[field]] = value;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+#endif

@@ -1,0 +1,106 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+@kernel void ellipticPreconCoarsenHex3D(const dlong Nelements,
+                                        @ restrict const pfloat *R,
+                                        @ restrict const pfloat *qf,
+                                        @ restrict pfloat *qc)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @exclusive dfloat r_q[p_NqCoarse];
+
+    @shared dfloat s_q[p_NqFine][p_NqFine];
+    @shared dfloat s_Pq[p_NqCoarse][p_NqFine];
+
+    @shared dfloat s_R[p_NqCoarse][p_NqFine];
+
+    // OK:
+    for (int j = 0; j < p_NqFine; ++j; @inner(1))
+      for (int i = 0; i < p_NqFine; ++i; @inner(0)) {
+        int t = i + j * p_NqFine;
+        if (t < p_NqCoarse * p_NqFine)
+          s_R[0][t] = R[t];
+      }
+
+    @barrier();
+
+    for (int j = 0; j < p_NqFine; ++j; @inner(1))
+      for (int i = 0; i < p_NqFine; ++i; @inner(0)) {
+        for (int k = 0; k < p_NqCoarse; ++k)
+          r_q[k] = 0;
+
+        for (int k = 0; k < p_NqFine; ++k) {
+          const int id = i + j * p_NqFine + k * p_NqFine * p_NqFine + e * p_NpFine;
+          const dfloat tmp = qf[id];
+
+          for (int m = 0; m < p_NqCoarse; ++m)
+            r_q[m] += s_R[m][k] * tmp;
+        }
+      }
+
+    for (int k = 0; k < p_NqCoarse; ++k) {
+      @barrier();
+
+      for (int j = 0; j < p_NqFine; ++j; @inner(1))
+        for (int i = 0; i < p_NqFine; ++i; @inner(0))
+
+          s_q[j][i] = r_q[k];
+
+      @barrier();
+
+      for (int j = 0; j < p_NqFine; ++j; @inner(1))
+        for (int i = 0; i < p_NqFine; ++i; @inner(0))
+
+          if (j < p_NqCoarse) {
+            dfloat res = 0;
+
+            for (int m = 0; m < p_NqFine; ++m)
+              res += s_R[j][m] * s_q[m][i];
+
+            s_Pq[j][i] = res;
+          }
+
+      @barrier();
+
+      for (int j = 0; j < p_NqFine; ++j; @inner(1))
+        for (int i = 0; i < p_NqFine; ++i; @inner(0)) {
+          int t = i + j * p_NqFine;
+
+          if (t < p_NqCoarse * p_NqCoarse) {
+            int ti = t % p_NqCoarse;
+            int tj = t / p_NqCoarse;
+
+            dfloat res = 0;
+
+            for (int m = 0; m < p_NqFine; ++m)
+              res += s_R[ti][m] * s_Pq[tj][m];
+
+            const int id = ti + tj * p_NqCoarse + k * p_NqCoarse * p_NqCoarse + e * p_NpCoarse;
+            qc[id] = res;
+          }
+        }
+    }
+  }
+}

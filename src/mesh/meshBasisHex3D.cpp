@@ -24,6 +24,7 @@
 
  */
 
+#include "nrssys.hpp"
 #include "mesh.h"
 #include "mesh3D.h"
 
@@ -350,10 +351,10 @@ void mesh_t::InterpolationMatrixHex3D(int _N,
   int _Np = _Nq * _Nq * _Nq;
 
   // need NpointsIn = _Np
-  if (NpointsIn != _Np)
-    LIBP_ABORT(std::string("Invalid Interplation operator requested."))
+  nrsCheck(NpointsIn != _Np, MPI_COMM_SELF, EXIT_FAILURE, 
+           "Invalid Interplation operator requested", "");
 
-    dfloat* VIn = (dfloat*) malloc(NpointsIn * _Np * sizeof(dfloat));
+  dfloat* VIn = (dfloat*) malloc(NpointsIn * _Np * sizeof(dfloat));
   dfloat* VOut = (dfloat*) malloc(NpointsOut * _Np * sizeof(dfloat));
 
   VandermondeHex3D(_N, NpointsIn,   rIn, sIn, tIn, VIn);

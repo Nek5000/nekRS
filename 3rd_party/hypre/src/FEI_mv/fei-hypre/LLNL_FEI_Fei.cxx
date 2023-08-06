@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <math.h>
 #include "_hypre_utilities.h"
 #include "HYPRE.h"
@@ -972,7 +971,7 @@ int LLNL_FEI_Fei::loadComplete()
    for ( iB = 0; iB < numBlocks_; iB++ )
    {
       ierr = elemBlocks_[iB]->checkLoadComplete();
-      assert( !ierr );
+      hypre_assert( !ierr );
    }
 
    /* -----------------------------------------------------------------

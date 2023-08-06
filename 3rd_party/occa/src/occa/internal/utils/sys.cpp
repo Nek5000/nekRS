@@ -82,7 +82,7 @@ namespace occa {
 
       return (double) (ct.tv_sec + (1.0e-9 * ct.tv_nsec));
 #elif (OCCA_OS == OCCA_MACOS_OS)
-#  ifdef __clang__
+#  if defined __clang__ && defined CLOCK_UPTIME_RAW
       uint64_t nanoseconds = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
 
       return 1.0e-9 * nanoseconds;
@@ -179,9 +179,11 @@ namespace occa {
     int call(const std::string &cmdline) {
 #if (OCCA_OS & (OCCA_LINUX_OS | OCCA_MACOS_OS))
       FILE *fp = popen(cmdline.c_str(), "r");
+      if (!fp) return errno;
       return pclose(fp);
 #else
       FILE *fp = _popen(cmdline.c_str(), "r");
+      if (!fp) return errno;
       return _pclose(fp);
 #endif
     }
@@ -193,8 +195,13 @@ namespace occa {
       FILE *fp = _popen(cmdline.c_str(), "r");
 #endif
 
-      size_t lineBytes = 512;
-      char lineBuffer[512];
+      if (!fp) {
+          output = "Failed to launch process";
+          return errno;
+      }
+
+      const size_t lineBytes = 512;
+      char lineBuffer[lineBytes];
 
       output = "";
       while (fgets(lineBuffer, lineBytes, fp)) {
@@ -394,7 +401,7 @@ namespace occa {
 
     int getTID() {
 #if (OCCA_OS & (OCCA_LINUX_OS | OCCA_MACOS_OS))
-#if OCCA_OS == OCCA_MACOS_OS & (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_12)
+#if OCCA_OS == OCCA_MACOS_OS & (MAC_OS_X_VERSION_MAX_ALLOWED >= 101200)
       uint64_t tid64;
       pthread_threadid_np(NULL, &tid64);
       pid_t tid = (pid_t)tid64;
@@ -545,7 +552,7 @@ namespace occa {
       const float frequency = parseFloat(
         getSystemInfoField(systemInfo, "CPU max MHz")
       );
-      return (udim_t) (frequency * 1e3);
+      return (udim_t) (frequency * 1e6);
 
 #elif (OCCA_OS == OCCA_MACOS_OS)
       const float frequency = parseFloat(
@@ -734,40 +741,43 @@ namespace occa {
         && io::isFile(outFilename)
       );
 
-      std::string compilerFlags;
-      if (env::var("OCCA_CC").size())
-        compilerFlags = env::var("OCCA_CFLAGS");
-      else
-        compilerFlags = env::var("OCCA_CXXFLAGS");
-
       // Avoid creating lockfile if possible
       if (!foundOutput) {
-        io::lock_t lock(hash, "compiler");
-        if (lock.isMine()) {
-          ss << compiler
-             << ' '    << compilerFlags 
-             << ' '    << srcFilename
-             << " -o " << binaryFilename
-             << " > " << buildLogFilename << " 2>&1";
-          const std::string compileLine = ss.str();
+        io::stageFiles(
+          { binaryFilename, buildLogFilename},
+          true,
+          [&](const strVector &tempFilenames) -> bool {
+            const std::string &tempBinaryFilename = tempFilenames[0];
+            const std::string &tempBuildLogFilename = tempFilenames[1];
+            std::stringstream ss_;
 
-          ignoreResult( system(compileLine.c_str()) );
+            ss_ << compiler
+               << ' '    << srcFilename
+               << " -o " << tempBinaryFilename
+               << " > " << tempBuildLogFilename << " 2>&1";
 
-          OCCA_ERROR("Could not compile compilerVendorTest.cpp with following command:\n" << compileLine,
-                     io::isFile(binaryFilename));
+            const std::string compileLine = ss_.str();
+            ignoreResult( system(compileLine.c_str()) );
 
-          int exitStatus = system(binaryFilename.c_str());
-          int vendorBit  = WEXITSTATUS(exitStatus);
+            OCCA_ERROR(
+              "Could not compile compilerVendorTest.cpp with following command:\n" << compileLine,
+              io::isFile(tempBinaryFilename)
+            );
 
-          if (vendorBit < sys::vendor::b_max) {
-            vendor_ = (1 << vendorBit);
+            return true;
           }
+        );
 
-          io::write(outFilename, std::to_string(vendor_));
-          io::markCachedFileComplete(hashDir, "output");
+        int exitStatus = system(binaryFilename.c_str());
+        int vendorBit  = WEXITSTATUS(exitStatus);
 
-          return vendor_;
+        if (vendorBit < sys::vendor::b_max) {
+          vendor_ = (1 << vendorBit);
         }
+
+        io::write(outFilename, std::to_string(vendor_));
+
+        return vendor_;
       }
 
       ss << io::read(outFilename);
@@ -916,14 +926,12 @@ namespace occa {
       ::free(ptr);
     }
 
-    void* dlopen(const std::string &filename,
-                 const io::lock_t &lock) {
+    void* dlopen(const std::string &filename) {
 
 #if (OCCA_OS & (OCCA_LINUX_OS | OCCA_MACOS_OS))
       void *dlHandle = ::dlopen(filename.c_str(),
                                 RTLD_NOW | RTLD_LOCAL);
       if (dlHandle == NULL) {
-        lock.release();
         char *error = dlerror();
         if (error) {
           OCCA_FORCE_ERROR("Error loading binary [" << io::shortname(filename) << "] with dlopen: " << error);
@@ -935,7 +943,6 @@ namespace occa {
       void *dlHandle = LoadLibraryA(filename.c_str());
 
       if (dlHandle == NULL) {
-        lock.release();
         OCCA_ERROR("Error loading .dll [" << io::shortname(filename) << "]: " << GetLastError(),
                    dlHandle != NULL);
       }
@@ -945,8 +952,7 @@ namespace occa {
     }
 
     functionPtr_t dlsym(void *dlHandle,
-                        const std::string &functionName,
-                        const io::lock_t &lock) {
+                        const std::string &functionName) {
       OCCA_ERROR("dl handle is NULL",
                  dlHandle);
 
@@ -954,7 +960,6 @@ namespace occa {
       void *sym = ::dlsym(dlHandle, functionName.c_str());
 
       if (!sym) {
-        lock.release();
         char *error = dlerror();
         if (error) {
           OCCA_FORCE_ERROR("Error loading symbol [" << functionName << "] from binary with dlsym: " << error << "");
@@ -966,7 +971,6 @@ namespace occa {
       void *sym = GetProcAddress((HMODULE) dlHandle, functionName.c_str());
 
       if (sym == NULL) {
-        lock.release();
         OCCA_FORCE_ERROR("Error loading symbol [" << functionName << "] from binary with GetProcAddress");
       }
 #endif

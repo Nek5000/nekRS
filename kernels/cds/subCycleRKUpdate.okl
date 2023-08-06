@@ -1,0 +1,50 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+@kernel void subCycleRKUpdate(const dlong N,
+                              const int stage,
+                              const dfloat dt,
+                              const dlong offset,
+                              @ restrict const dfloat *rka,
+                              @ restrict const dfloat *rkb,
+                              @ restrict dfloat *Ss, // U0 at Tn
+                              @ restrict dfloat *RHSS,
+                              @ restrict dfloat *S)
+{
+  for (dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)) {
+    if (stage == 3) { // Final stage
+      dfloat sn = Ss[id];
+      for (int st = 0; st < stage + 1; st++)
+        sn -= dt * rkb[st] * RHSS[id + st * offset];
+      S[id] = sn;
+    }
+    else {
+      dfloat rhss = RHSS[id + stage * offset];
+      dfloat sn = Ss[id];
+      S[id] = sn - dt * rka[stage + 1] * rhss;
+    }
+  }
+}

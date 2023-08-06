@@ -1,80 +1,109 @@
-//
-// nekRS User Defined File
-//
-
-#include <math.h>
 #include "udf.hpp"
 
-occa::kernel magSqrKernel;
+#ifdef __okl__
+
+@kernel void
+magSqr(const dlong Ntotal, const dlong offset, @ restrict const dfloat *U, @ restrict dfloat *uSqr)
+{
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    uSqr[n + 0 * offset] = U[n + 0 * offset] * U[n + 0 * offset] + U[n + 1 * offset] * U[n + 1 * offset] +
+                           U[n + 2 * offset] * U[n + 2 * offset];
+  }
+}
+
+#endif
 
 void printDiagnostics(nrs_t *nrs, dfloat time, int tstep)
 {
   mesh_t *mesh = nrs->meshV;
 
-  const dfloat scale = 0.5/mesh->volume;
-  magSqrKernel(mesh->Nlocal, nrs->fieldOffset, nrs->o_U, platform->o_mempool.slice0);
-  const dfloat energy = scale * platform->linAlg->innerProd(mesh->Nlocal, 
-    platform->o_mempool.slice0, mesh->o_LMM, platform->comm.mpiComm, 0);
+  const dfloat scale = 0.5 / mesh->volume;
+  magSqr(mesh->Nlocal, nrs->fieldOffset, nrs->o_U, platform->o_mempool.slice0);
+  const dfloat energy = scale * platform->linAlg->innerProd(mesh->Nlocal,
+                                                            platform->o_mempool.slice0,
+                                                            mesh->o_LMM,
+                                                            platform->comm.mpiComm,
+                                                            0);
 
-  nrs->curlKernel(
-    mesh->Nelements,
-    0,
-    mesh->o_vgeo,
-    mesh->o_D,
-    nrs->fieldOffset,
-    nrs->o_U,
-    platform->o_mempool.slice0);
-  magSqrKernel(mesh->Nlocal, nrs->fieldOffset, platform->o_mempool.slice0, platform->o_mempool.slice3);
-  const dfloat enstrophy = scale * platform->linAlg->innerProd(mesh->Nlocal, 
-    platform->o_mempool.slice3, mesh->o_LMM, platform->comm.mpiComm, 0);
+  nrs->curlKernel(mesh->Nelements,
+                  0,
+                  mesh->o_vgeo,
+                  mesh->o_D,
+                  nrs->fieldOffset,
+                  nrs->o_U,
+                  platform->o_mempool.slice0);
+  magSqr(mesh->Nlocal, nrs->fieldOffset, platform->o_mempool.slice0, platform->o_mempool.slice3);
+  const dfloat enstrophy = scale * platform->linAlg->innerProd(mesh->Nlocal,
+                                                               platform->o_mempool.slice3,
+                                                               mesh->o_LMM,
+                                                               platform->comm.mpiComm,
+                                                               0);
 
   dfloat mue, rho;
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho);
-  const dfloat nu = mue/rho;
+  const dfloat nu = mue / rho;
 
-  if(platform->comm.mpiRank == 0)
-    printf("  enst= %g, energy= %g, -2*nu*enst= %g", enstrophy, energy, -2*nu*enstrophy);
+  if (platform->comm.mpiRank == 0) {
+    printf("  time= %g  enst= %g  energy= %g  -2*nu*enst= %g", time, enstrophy, energy, -2 * nu * enstrophy);
+  }
 
   static dfloat energyComputed[3] = {0};
 
-  if(tstep) {
+  if (tstep) {
     dfloat sum = 0.0;
-    for(int i = 0 ; i < nrs->nBDF; ++i)
+    for (int i = 0; i < nrs->nBDF; ++i) {
       sum += nrs->coeffBDF[i] * energyComputed[i];
+    }
     energyComputed[2] = energyComputed[1];
     energyComputed[1] = energyComputed[0];
     energyComputed[0] = energy;
-    const dfloat dissipationRate = (nrs->g0*energy - sum) / nrs->dt[0];
-    const dfloat nuEff = -dissipationRate/(2*enstrophy);
-    if(platform->comm.mpiRank == 0)
-      printf(", d(energy)/dt= %g, nuEff/nu= %g", dissipationRate, nuEff/nu);
+    const dfloat dissipationRate = (nrs->g0 * energy - sum) / nrs->dt[0];
+    const dfloat nuEff = -dissipationRate / (2 * enstrophy);
+    if (platform->comm.mpiRank == 0) {
+      printf("  d(energy)/dt= %g  nuEff/nu= %g", dissipationRate, nuEff / nu);
+    }
   } else {
     energyComputed[0] = energy;
   }
 
-  if(platform->comm.mpiRank == 0) printf("\n");
+  if (platform->comm.mpiRank == 0) {
+    printf("\n");
+  }
 }
 
-/* UDF Functions */                                                      
+/* UDF Functions */
 
-void UDF_LoadKernels(occa::properties& kernelInfo)
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
-  magSqrKernel = oudfBuildKernel(kernelInfo, "magSqr");
+  dfloat eps;
+  platform->par->extract("casedata", "eps", eps);
+  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
+    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
+    nek_cb_scnrs[0] = eps;
+  }
 }
 
 void UDF_Setup(nrs_t *nrs)
 {
- // set IC
- mesh_t *mesh = nrs->meshV;
- for (int n=0; n<mesh->Np*mesh->Nelements; n++) {
-   dfloat x = mesh->x[n];
-   dfloat y = mesh->y[n];
-   dfloat z = mesh->z[n];
-   nrs->U[n+0*nrs->fieldOffset] = sin(x)*cos(y)*cos(z);;
-   nrs->U[n+1*nrs->fieldOffset] = -cos(x)*sin(y)*cos(z); 
-   nrs->U[n+2*nrs->fieldOffset] = 0; 
- }
+  // set IC
+  mesh_t *mesh = nrs->meshV;
+
+  dfloat U0, V0, W0;
+  platform->par->extract("casedata", "U0", U0);
+  platform->par->extract("casedata", "V0", V0);
+  platform->par->extract("casedata", "W0", W0);
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      const auto x = mesh->x[n];
+      const auto y = mesh->y[n];
+      const auto z = mesh->z[n];
+      nrs->U[n + 0 * nrs->fieldOffset] = sin(x) * cos(y) * cos(z) + U0;
+      nrs->U[n + 1 * nrs->fieldOffset] = -cos(x) * sin(y) * cos(z) + V0;
+      nrs->U[n + 2 * nrs->fieldOffset] = W0;
+    }
+  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)

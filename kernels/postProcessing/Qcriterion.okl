@@ -1,0 +1,28 @@
+@kernel void Qcriterion(const dlong N,
+                        const dlong offset,
+                        @ restrict const dfloat *DIV,
+                        @ restrict const dfloat *SOIJ,
+                        @ restrict dfloat *Q)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+    if (n < N) {
+      const dfloat s1 = SOIJ[n + 0 * offset];
+      const dfloat s2 = SOIJ[n + 1 * offset];
+      const dfloat s3 = SOIJ[n + 2 * offset];
+      const dfloat s4 = SOIJ[n + 3 * offset];
+      const dfloat s5 = SOIJ[n + 4 * offset];
+      const dfloat s6 = SOIJ[n + 5 * offset];
+
+      const dfloat o1 = SOIJ[n + 6 * offset];
+      const dfloat o2 = SOIJ[n + 7 * offset];
+      const dfloat o3 = SOIJ[n + 8 * offset];
+   
+      // Frobenius norm
+      const dfloat magSijSqr = s1 * s1 + s2 * s2 + s3 * s3 + 2 * (s4 * s4 + s5 * s5 + s6 * s6);
+      const dfloat magOijSqr =                               2 * (o1 * o1 + o2 * o2 + o3 * o3);
+
+      const dfloat divU = DIV[n];
+ 
+      Q[n] = 0.5 * (divU*divU + magOijSqr - magSijSqr);
+    }
+}

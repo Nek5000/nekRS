@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -144,6 +144,6 @@ HYPRE_Real Norm2(HYPRE_Int n, HYPRE_Real *x)
   } else {
     result = local_result;
   }
-  result = sqrt(result);
+  result = hypre_sqrt(result);
   END_FUNC_VAL(result)
 }

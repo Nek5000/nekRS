@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-set -e
+set -xe
 for x in "$@"; do
   if [[ $x == *"="* ]]; then
     export ${x%%=*}="${x#*=}"
   fi
 done
 
+export NEK_SOURCE_ROOT=$NEK5000_SOURCE_DIR
+
 ${NEK5000_SOURCE_DIR}/bin/nekconfig -build-dep
+rm -f .state
 
 touch SIZE tmp.usr
 ${NEK5000_SOURCE_DIR}/bin/nekconfig

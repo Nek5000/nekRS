@@ -1,6 +1,8 @@
 ---
 Language:        Cpp
 # BasedOnStyle:  LLVM
+InsertBraces: true
+SeparateDefinitionBlocks: Always
 AccessModifierOffset: -2
 AlignAfterOpenBracket: Align
 AlignArrayOfStructures: None
@@ -17,7 +19,7 @@ AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortEnumsOnASingleLine: true
 AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
+AllowShortFunctionsOnASingleLine: Empty 
 AllowShortLambdasOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
@@ -50,8 +52,8 @@ BraceWrapping:
   SplitEmptyNamespace: true
 BreakBeforeBinaryOperators: None
 BreakBeforeConceptDeclarations: true
-#BreakBeforeBraces: Attach
-BreakBeforeBraces: Stroustrup
+BreakBeforeBraces: Linux 
+#BreakBeforeBraces: Stroustrup
 BreakBeforeInheritanceComma: false
 BreakInheritanceList: BeforeColon
 BreakBeforeTernaryOperators: true
@@ -128,7 +130,7 @@ PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 60
 PenaltyIndentedWhitespace: 0
 PointerAlignment: Right
-PPIndentWidth:   -1
+PPIndentWidth:  0 
 ReferenceAlignment: Pointer
 ReflowComments:  true
 ShortNamespaceLines: 1
@@ -166,7 +168,7 @@ StatementAttributeLikeMacros:
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
-TabWidth:        8
+TabWidth:        2
 UseCRLF:         false
 UseTab:          Never
 WhitespaceSensitiveMacros:

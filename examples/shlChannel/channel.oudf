@@ -1,11 +1,8 @@
-@kernel void userf(const dlong N,
-                    const dlong offset,
-                    const dfloat angle,
-                    const dfloat dp,
-                    @restrict dfloat * NU) 
+@kernel void
+cfill(const dlong N, const dlong offset, const dfloat angle, const dfloat dp, @ restrict dfloat *NU)
 {
-  for(dlong n=0;n<N;++n;@tile(p_blockSize,@outer,@inner)){
-    if(n<N){
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < N) {
 
       const dfloat dpdx = dp * cos(angle);
       const dfloat dpdy = dp * sin(angle);
@@ -19,9 +16,8 @@
 }
 
 // Boundary conditions
-void velocityNeumannConditions(bcData* bc)
+void velocityNeumannConditions(bcData *bc)
 {
-  bc->trn = 0.0;
   bc->tr1 = -3.0 * p_visc;
   bc->tr2 = 0.0;
 }

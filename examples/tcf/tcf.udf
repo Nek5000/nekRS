@@ -1,0 +1,129 @@
+#include "udf.hpp"
+
+#ifdef __okl__
+
+void velocityDirichletConditions(bcData *bc)
+{
+  // U = omega x r
+  bc->u = -bc->y;
+  bc->v = bc->x;
+  bc->w = 0.0;
+}
+
+@kernel void
+magSqr(const dlong Ntotal, const dlong offset, @ restrict const dfloat *U, @ restrict dfloat *uSqr)
+{
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < Ntotal) {
+      uSqr[n + 0 * offset] = U[n + 0 * offset] * U[n + 0 * offset] + U[n + 1 * offset] * U[n + 1 * offset] +
+                             U[n + 2 * offset] * U[n + 2 * offset];
+    }
+  }
+}
+
+#endif
+
+void printDiagnostics(nrs_t *nrs, dfloat time, int tstep)
+{
+  mesh_t *mesh = nrs->meshV;
+
+  const dfloat scale = 0.5 / mesh->volume;
+  magSqr(mesh->Nlocal, nrs->fieldOffset, nrs->o_U, platform->o_mempool.slice0);
+  const dfloat energy = scale * platform->linAlg->innerProd(mesh->Nlocal,
+                                                            platform->o_mempool.slice0,
+                                                            mesh->o_LMM,
+                                                            platform->comm.mpiComm,
+                                                            0);
+
+  nrs->curlKernel(mesh->Nelements,
+                  0,
+                  mesh->o_vgeo,
+                  mesh->o_D,
+                  nrs->fieldOffset,
+                  nrs->o_U,
+                  platform->o_mempool.slice0);
+  magSqr(mesh->Nlocal, nrs->fieldOffset, platform->o_mempool.slice0, platform->o_mempool.slice3);
+  const dfloat enstrophy = scale * platform->linAlg->innerProd(mesh->Nlocal,
+                                                               platform->o_mempool.slice3,
+                                                               mesh->o_LMM,
+                                                               platform->comm.mpiComm,
+                                                               0);
+
+  if (platform->comm.mpiRank == 0) {
+    printf("  enst= %g, energy= %g\n", enstrophy, energy);
+  }
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options) {}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  mesh_t *mesh = nrs->meshV;
+
+  dfloat eta;
+  dfloat Ri;
+
+  auto rMin = 1000.0;
+  auto rMax = -1.0;
+
+  for (int n = 0; n < mesh->Nlocal; n++) {
+    dfloat x = mesh->x[n];
+    dfloat y = mesh->y[n];
+    dfloat z = mesh->z[n];
+
+    const auto r = sqrt(x * x + y * y);
+
+    if (x > 0) {
+      rMin = std::min(rMin, r);
+      rMax = std::max(rMax, r);
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &rMin, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+  MPI_Allreduce(MPI_IN_PLACE, &rMax, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+
+  eta = rMin / rMax;
+  Ri = eta / (1 - eta);
+
+  if (platform->comm.mpiRank == 0) {
+    std::cout << "eta: " << std::setprecision(4) << eta << std::endl;
+  }
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    const auto U0 = 1.0;
+
+    const auto A = -eta * eta / (1 - eta * eta);
+    const auto B = Ri * Ri / (1 - eta * eta);
+
+    const auto eps = 0.1;
+
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      dfloat x = mesh->x[n];
+      dfloat y = mesh->y[n];
+      dfloat z = mesh->z[n];
+
+      const auto r = sqrt(x * x + y * y);
+      const auto theta = atan(y / x);
+
+      const auto uThetaLam = A * r + B / r;
+
+      const auto uTheta = U0 * (uThetaLam + eps * sin(theta) * sin((r - Ri) * M_PI / Ri) * sin(z));
+      const auto uR = U0 * (eps * cos(theta) * sin((r - Ri) * M_PI / Ri) * sin(z));
+
+      nrs->U[n + 0 * nrs->fieldOffset] = uR * cos(theta) - uTheta * sin(theta);
+      nrs->U[n + 1 * nrs->fieldOffset] = uR * sin(theta) + uTheta * cos(theta);
+      nrs->U[n + 2 * nrs->fieldOffset] = 0.0;
+    }
+  }
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+  if (tstep % 10 == 0) {
+    printDiagnostics(nrs, time, tstep);
+  }
+  // writeFld(nrs, time, tstep);
+
+  if (nrs->isOutputStep) {
+    postProcessing::Qcriterion(nrs, nrs->cds->o_S);
+  }
+}

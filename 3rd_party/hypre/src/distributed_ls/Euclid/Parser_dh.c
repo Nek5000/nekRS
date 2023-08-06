@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1998-2019 Lawrence Livermore National Security, LLC and other
+ * Copyright (c) 1998 Lawrence Livermore National Security, LLC and other
  * HYPRE Project Developers. See the top-level COPYRIGHT file for details.
  *
  * SPDX-License-Identifier: (Apache-2.0 OR MIT)
@@ -200,7 +200,7 @@ bool Parser_dhReadDouble(Parser_dh p,const char* in, HYPRE_Real *out)
   OptionsNode *node;
 
   if (p != NULL && find(p,in,&node)) {
-    *out = atof(node->value);
+    *out = (HYPRE_Real)atof(node->value);
     optionExists = true;
   }
   END_FUNC_VAL_2(optionExists)

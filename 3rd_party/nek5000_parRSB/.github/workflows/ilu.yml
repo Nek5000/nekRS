@@ -1,0 +1,74 @@
+name: ILU tests
+on:
+  push:
+    branch: [main]
+  pull_request:
+    branch: [main]
+env:
+  GITHUB.TOKEN: ${{ secrets.token }}
+  CIDIR: parRSB-github-ci
+  EXAMPLESDIR: build/examples
+  MPIEXE: "mpirun --oversubscribe"
+jobs:
+  ilu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test: [box_2x2x2, box_10x1x1, box_3x5x7, pyramid, solid, ethier, vortex, expansion]
+        np: [1, 2, 3, 4]
+      fail-fast: false
+    name: "ILU: ${{ matrix.test }}, NP = ${{ matrix.np }}"
+    env:
+      GSVER: 1.0.7
+      CC: mpicc
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install apt dependencies
+        shell: bash
+        run: |
+          sudo apt -y update
+          sudo apt install -y openmpi-bin libopenmpi-dev
+          sudo apt install -y libblas-dev liblapack-dev
+          sudo apt install -y build-essential
+          sudo apt install -y octave
+      - name: Build parRSB and clone tests
+        shell: bash
+        run: |
+          # Build gslib
+          git clone https://github.com/Nek5000/gslib.git
+          make -C gslib -j4
+
+          # Build parRSB
+          export GSLIBPATH=`pwd`/gslib/build/
+          make -j4 examples
+
+          # Clone tests
+          git clone https://github.com/thilinarmtb/${CIDIR}.git
+      - name: ilu0
+        if: always()
+        shell: bash
+        run: |
+          export PARRSB_DUMP_ILU=1
+
+          cp ${EXAMPLESDIR}/ilu .github/workflows/ilu0.m ${CIDIR}/${{ matrix.test }}
+          cd ${CIDIR}/${{ matrix.test }}
+
+          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
+          ${MPIEXE} -np ${{ matrix.np }} ./ilu --mesh ${{ matrix.test }} \
+            --tol=${tol} --ilu_type=0
+
+          octave-cli ilu0.m
+      - name: iluc
+        if: always()
+        shell: bash
+        run: |
+          export PARRSB_DUMP_ILU=1
+
+          cp ${EXAMPLESDIR}/ilu .github/workflows/iluc.m ${CIDIR}/${{ matrix.test }}
+          cd ${CIDIR}/${{ matrix.test }}
+
+          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
+          ${MPIEXE} -np ${{ matrix.np }} ./ilu --mesh ${{ matrix.test }} \
+            --tol=${tol} --ilu_type=1
+
+          octave-cli iluc.m

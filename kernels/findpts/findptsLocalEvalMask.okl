@@ -1,0 +1,298 @@
+#if 1
+#define CODE_NOT_FOUND (2)
+@kernel void findptsLocalEvalMask(const dlong pn,
+                              const dlong Nfields,
+                              const dlong fieldOffset,
+                              const dlong outputOffset,
+                              const dlong myRank,
+                              @ restrict const dlong *const proc,
+                              @ restrict const dlong *const code,
+                              @ restrict const dlong *const el,
+                              @ restrict const dfloat *const r,
+                              @ restrict const dfloat *const in,
+                              @ restrict dfloat *const out)
+{
+
+  for (dlong i = 0; i < pn; ++i; @outer) {
+
+    if(proc[i] == myRank && code[i] != CODE_NOT_FOUND) {
+
+    @shared dfloat wtr[p_Nq];
+    @shared dfloat wts[p_Nq];
+    @shared dfloat wtt[p_Nq];
+    @shared dfloat sums[p_Nq];
+
+    for (dlong j = 0; j < p_Nq; ++j; @inner) {
+      lagrange_eval(wtr, r[3 * i + 0], j);
+      lagrange_eval(wts, r[3 * i + 1], j);
+      lagrange_eval(wtt, r[3 * i + 2], j);
+    }
+    @barrier();
+
+    for (int fld = 0; fld < Nfields; ++fld) {
+
+      const dlong elemOffset = el[i] * p_Np + fld * fieldOffset;
+
+      for (dlong j = 0; j < p_Nq; ++j; @inner) {
+        dfloat sum_j = 0;
+        for (dlong k = 0; k < p_Nq; ++k) {
+          dfloat sum_k = 0;
+
+          for (dlong l = 0; l < p_Nq; ++l) {
+            sum_k += in[elemOffset + j + k * p_Nq + l * p_Nq * p_Nq] * wtt[l];
+          }
+          sum_j += wts[k] * sum_k;
+        }
+        sums[j] = wtr[j] * sum_j;
+      }
+      @barrier();
+#if p_Nq > 16
+      for (dlong j = 0; j < p_Nq; ++j; @inner) {
+        if (j < 16 && j < p_Nq - 16) {
+          sums[j] += sums[j + 16];
+        }
+      }
+      @barrier();
+#endif
+#if p_Nq > 8
+      for (dlong j = 0; j < p_Nq; ++j; @inner) {
+        if (j < 8 && j < p_Nq - 8) {
+          sums[j] += sums[j + 8];
+        }
+      }
+      @barrier();
+#endif
+#if p_Nq > 4
+      for (dlong j = 0; j < p_Nq; ++j; @inner) {
+        if (j < 4 && j < p_Nq - 4) {
+          sums[j] += sums[j + 4];
+        }
+      }
+      @barrier();
+#endif
+#if p_Nq > 2
+      for (dlong j = 0; j < p_Nq; ++j; @inner) {
+        if (j < 2 && j < p_Nq - 2) {
+          sums[j] += sums[j + 2];
+        }
+      }
+      @barrier();
+#endif
+      for (dlong j = 0; j < p_Nq; ++j; @inner) {
+        if (j == 0) {
+          out[i + fld * outputOffset] = sums[0] + sums[1];
+        }
+      }
+      @barrier();
+    }
+  }
+  }
+}
+#endif
+
+#if 0
+// assumes p_blockSize >= p_Nq * p_Nq && 3*p_nptsBlock
+@kernel void findptsLocalEval(const dlong npts,
+                                const dlong Nfields,
+                                const dlong fieldOffset,
+                                const dlong outputOffset,
+                                @restrict const dlong *elIdx,
+                                @restrict const dfloat *rst,
+                                @restrict const dfloat *fld,
+                                @restrict dfloat *out)
+{
+  for (int field = 0; field < Nfields; field++; @outer(1)) {
+    for (int pb = 0; pb < (npts + p_nptsBlock - 1) / p_nptsBlock; pb++; @outer(0)) {
+      @shared volatile dfloat s_L[p_nptsBlock][p_blockSize + 1];
+      @shared dfloat s_lj[p_nptsBlock][3][p_Nq];
+      @shared dfloat s_rst[p_nptsBlock][3];
+
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+
+        if (t < 3 * p_nptsBlock) {
+          const int dim = t / p_nptsBlock;   // dimension
+          const int point = t % p_nptsBlock; // point id
+          const int id = 3 * (pb * p_nptsBlock + point) + dim;
+          if (id < 3 * npts)
+            s_rst[point][dim] = rst[id];
+        }
+
+        @barrier(); // waiting for s_rst
+
+        if (t < p_Nq * p_Nq) {
+          const int l = t / p_Nq;
+          const int m = t % p_Nq;
+
+// compute Lagrangian basis in each direction
+#pragma unroll p_nptsBlock
+          for (int i = 0; i < p_nptsBlock; i++) {
+            if (i + pb * p_nptsBlock < npts && l < 3) {
+              const dfloat r = s_rst[i][l];
+
+              // 2^{p_Nq-1} factor accounts for product
+              // of the inverses of the distances of the GLL points
+              dfloat prod = (1 << (p_Nq - 1));
+
+#pragma unroll p_Nq
+              for (int k = 0; k < p_Nq; k++) {
+                prod *= k == m ? 1.0 : r - z[k];
+              }
+              s_lj[i][l][m] = prod * lagrangeCoeff[m];
+            }
+          }
+        }
+      }
+
+      @barrier();
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < p_Nq * p_Nq) {
+          const int l = t / p_Nq;
+          const int m = t % p_Nq;
+#pragma unroll p_nptsBlock
+          for (int i = 0; i < p_nptsBlock; i++) {
+            if (i + pb * p_nptsBlock < npts) {
+              const dfloat lj_lm = s_lj[i][1][l] * s_lj[i][0][m];
+              const dlong iel = elIdx[i + pb * p_nptsBlock];
+              dfloat sum = 0;
+#pragma unroll p_Nq
+              for (int k = 0; k < p_Nq; k++) {
+                const int offset = iel * p_Np + k * p_Nq * p_Nq + field * fieldOffset;
+                sum += s_lj[i][2][k] * fld[m + l * p_Nq + offset];
+              }
+              s_L[i][m + l * p_Nq] = sum * lj_lm;
+            }
+          }
+        }
+        else {
+#pragma unroll p_nptsBlock
+          for (int i = 0; i < p_nptsBlock; i++) {
+            s_L[i][t] = 0.0;
+          }
+        }
+      }
+      @barrier();
+
+      for (int s = p_blockSize / 2; s >= 2; s >>= 1) {
+        for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+          if (t < s) {
+#pragma unroll
+            for (int i = 0; i < p_nptsBlock; i++) {
+              if (i + pb * p_nptsBlock < npts)
+                s_L[i][t] += s_L[i][t + s];
+            }
+          }
+        }
+        @barrier();
+      }
+
+      // write out
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < p_nptsBlock && t + pb * p_nptsBlock < npts) {
+          out[t + pb * p_nptsBlock + field * outputOffset] = s_L[t][0] + s_L[t][1];
+        }
+      }
+    }
+  }
+}
+#endif
+
+#if 0
+// assumes p_blockSize >= p_Nq * p_Nq && 3*p_nptsElementMax
+@kernel void findpts_local_eval_eBlock(
+        dfloat * const out_base,
+        const dlong  * const el_base,
+        const dfloat * const _r_base,
+        const dlong nElements,
+        const dlong * startPointIdx, const dlong * counts,
+        @restrict const dfloat * const fld)
+{
+  for (int e = 0; e < nElements; e++; @outer(0)) { // loop over elements with particles
+    const int iel = *(el_base + startPointIdx[e]);
+    const int nptsElement = counts[e];
+
+    const dfloat *const r_base = _r_base + 3*startPointIdx[e];
+    const dfloat *fld_e = fld + iel*p_Np;
+    dfloat *out = out_base + startPointIdx[e];
+
+    @shared volatile dfloat s_L[p_nptsElementMax][p_blockSize+1];
+    @shared dfloat s_lj[p_nptsElementMax][3][p_Nq];
+    @shared dfloat s_rst[p_nptsElementMax][3];
+
+    @exclusive dfloat f[p_Nq];
+
+    for(int pt=0; pt < nptsElement; pt += p_nptsElementMax){
+
+      for(int t = 0; t < p_blockSize ; ++t; @inner(0)) {
+        const int l = t / p_Nq;
+        const int m = t % p_Nq;
+
+        if(t < 3*p_nptsElementMax) {
+          const int l = t / p_nptsElementMax;
+          const int m = t % p_nptsElementMax;
+          const int id = m + l*p_nptsElementMax + pt*3;
+          if(id < 3*nptsElement) s_rst[m][l] =  *(id + r_base);
+        }
+
+        if(pt == 0) {
+#pragma unroll
+          for(int k = 0; k < p_Nq; ++k)
+            f[k] = fld_e[m + l*p_Nq + k*p_Nq*p_Nq]; 
+        }
+
+        @barrier(); // waiting for s_rst
+#pragma unroll
+        for (int i = 0; i < p_nptsElementMax; i++) {
+          // compute Lagrangian basis in each direction
+          if(i+pt < nptsElement && l < 3) {
+            const dfloat r = s_rst[i][l];
+            dfloat prod = 1;
+#pragma unroll
+            for (int k = 0; k < p_Nq; k++)
+              prod *= r - z[k];
+
+            s_lj[i][l][m] = prod * lagrangeCoeff[m]; 
+          }
+        }
+      }
+      @barrier();
+
+      for(int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        const int l = t / p_Nq;
+        const int m = t % p_Nq;
+#pragma unroll
+        for (int i = 0; i < p_nptsElementMax; i++) {
+          if(i+pt < nptsElement) {
+            const dfloat lj_lm = s_lj[i][1][l] * s_lj[i][0][m];
+            dfloat sum = 0;
+#pragma unroll
+            for (int k = 0; k < p_Nq; k++) {
+              sum += s_lj[i][2][k] * f[k]; 
+            }
+            s_L[i][m + l*p_Nq] = sum * lj_lm;
+          }
+        }
+      }
+      @barrier();
+
+      for(int s = p_blockSize/2; s >=2; s >>= 1) {
+        for(int t = 0; t < p_blockSize; ++t; @inner(0)) {
+          if(t < s) {
+#pragma unroll
+            for (int i = 0; i < p_nptsElementMax; i++) {
+              if(i+pt < nptsElement) s_L[i][t] += s_L[i][t+s];
+            }
+          }
+        }
+        @barrier();
+      }
+
+      // write out
+      for(int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if(t < p_nptsElementMax && t+pt < nptsElement)
+          out[t+pt] = s_L[t][0] + s_L[t][1];
+      }
+
+    }
+  }
+}
+#endif

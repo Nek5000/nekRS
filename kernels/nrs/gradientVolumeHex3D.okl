@@ -1,0 +1,100 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+@kernel void gradientVolumeHex3D(const dlong Nelements,
+                                 @ restrict const dfloat *vgeo,
+                                 @ restrict const dfloat *D,
+                                 const dlong offset,
+                                 @ restrict const dfloat *P,
+                                 @ restrict dfloat *gradP)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) { // for all elements
+    @shared dfloat s_P[p_Nq][p_Nq];
+    @exclusive dfloat s_Ploc[p_Nq];
+    @shared dfloat s_D[p_Nq][p_Nq];
+
+#ifdef smXX
+#pragma unroll p_Nq
+#endif
+    for (int k = 0; k < p_Nq; ++k) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+
+          s_P[j][i] = P[id];
+
+          if (k == 0)
+            s_D[j][i] = D[j * p_Nq + i];
+          if (k == 0) {
+#pragma unroll p_Nq
+            for (int l = 0; l < p_Nq; ++l) {
+              const dlong other_id = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              s_Ploc[l] = P[other_id];
+            }
+          }
+        }
+      }
+
+      // Make sure all node data is loaded into @shared
+      @barrier();
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          const dlong gid = e * p_Np * p_Nvgeo + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat drdx = vgeo[gid + p_RXID * p_Np];
+          const dfloat drdy = vgeo[gid + p_RYID * p_Np];
+          const dfloat drdz = vgeo[gid + p_RZID * p_Np];
+          const dfloat dsdx = vgeo[gid + p_SXID * p_Np];
+          const dfloat dsdy = vgeo[gid + p_SYID * p_Np];
+          const dfloat dsdz = vgeo[gid + p_SZID * p_Np];
+          const dfloat dtdx = vgeo[gid + p_TXID * p_Np];
+          const dfloat dtdy = vgeo[gid + p_TYID * p_Np];
+          const dfloat dtdz = vgeo[gid + p_TZID * p_Np];
+          const dfloat JW = vgeo[gid + p_JWID * p_Np];
+
+          // compute 'r' and 's' derivatives of (q_m) at node n
+          dfloat dpdr = 0.f, dpds = 0.f, dpdt = 0.f;
+
+#pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; ++n) {
+            const dfloat Dr = s_D[i][n];
+            const dfloat Ds = s_D[j][n];
+            const dfloat Dt = s_D[k][n];
+
+            dpdr += Dr * s_P[j][n];
+            dpds += Ds * s_P[n][i];
+            dpdt += Dt * s_Ploc[n];
+          }
+
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          gradP[id + 0 * offset] = JW * (drdx * dpdr + dsdx * dpds + dtdx * dpdt);
+          gradP[id + 1 * offset] = JW * (drdy * dpdr + dsdy * dpds + dtdy * dpdt);
+          gradP[id + 2 * offset] = JW * (drdz * dpdr + dsdz * dpds + dtdz * dpdt);
+        }
+      }
+      @barrier();
+    } // k-loop
+  }
+}

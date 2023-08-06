@@ -1,0 +1,80 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+// We are solving for Pressure Difference
+@kernel void pressureDirichletBCHex3D(const dlong Nelements,
+                                      const dfloat time,
+                                      const dlong offset,
+                                      @ restrict const dfloat *sgeo,
+                                      @ restrict const dfloat *x,
+                                      @ restrict const dfloat *y,
+                                      @ restrict const dfloat *z,
+                                      @ restrict const dlong *vmapM,
+                                      @ restrict const int *EToBM,
+                                      @ restrict const int *EToB,
+                                      @ restrict const dfloat *rho,
+                                      @ restrict const dfloat *mue,
+                                      @ restrict const dfloat *W,
+                                      @ restrict const dfloat *U,
+                                      @ restrict dfloat *PI)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0))
+    for (int f = 0; f < p_Nfaces; ++f) {
+      @barrier();
+      for (int m = 0; m < p_Nfp; ++m; @inner(0)) {
+        const int n = f * p_Nfp + m;
+        struct bcData bc;
+        const dlong idM = vmapM[e * p_Nfp * p_Nfaces + n];
+        const dlong bcType = EToB[f + p_Nfaces * e];
+
+        if (bcType == p_bcTypeONX || bcType == p_bcTypeONY || bcType == p_bcTypeONZ || bcType == p_bcTypeON || bcType == p_bcTypeO) {
+          bc.idM = idM;
+          bc.id = EToBM[f + p_Nfaces * e];
+          bc.time = time;
+          bc.fieldOffset = offset;
+          bc.x = x[idM];
+          bc.y = y[idM];
+          bc.z = z[idM];
+          const dlong sk = e * p_Nfaces * p_Nfp + n;
+          bc.nx = sgeo[sk * p_Nsgeo + p_NXID];
+          bc.ny = sgeo[sk * p_Nsgeo + p_NYID];
+          bc.nz = sgeo[sk * p_Nsgeo + p_NZID];
+          // Get Current Solution i.e. Un
+          bc.u = U[idM + 0 * offset];
+          bc.v = U[idM + 1 * offset];
+          bc.w = U[idM + 2 * offset];
+          bc.usrwrk = W;
+
+          bc.trans = rho[idM];
+          bc.diff = mue[idM];
+
+          bc.p = 0;
+          pressureDirichletConditions(&bc);
+          PI[idM] = bc.p;
+        }
+      }
+    }
+}

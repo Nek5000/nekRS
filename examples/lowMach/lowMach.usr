@@ -95,11 +95,13 @@ C   Set initial conditions
       integer ix,iy,iz,ieg
 
       INCLUDE 'SIZE'
-      INCLUDE 'TSTEP'
+      INCLUDE 'TOTAL'
       INCLUDE 'NEKUSE'
       INCLUDE 'CASEDATA'
 
       real xd
+
+      p0th = 1.0
 
       XD = X/P_DELTA
 

@@ -1,0 +1,12 @@
+@kernel void mapToMaskedPoint(const dlong Nmasked,
+  @ restrict const dlong *maskIds,
+  @ restrict const dfloat *values,
+  @ restrict dfloat *maskValues)
+{
+
+  for (dlong n = 0; n < Nmasked; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < Nmasked) {
+      maskValues[n] = values[maskIds[n]];
+    }
+  }
+}
