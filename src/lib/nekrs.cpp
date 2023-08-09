@@ -245,7 +245,7 @@ void setup(MPI_Comm commg_in,
   dfloat local_min_vz = *std::min_element(vz, vz + nrs->fieldOffset);
 
   dfloat local_min_p = *std::min_element(nrs->P, nrs->P + nrs->fieldOffset);
-  dfloat local_min_t = *std::min_element(nrs->cds->S, nrs->cds->S + nrs->fieldOffset);
+  dfloat local_min_t = nrs->cds ? *std::min_element(nrs->cds->S, nrs->cds->S + nrs->fieldOffset) : 0;
 
   dfloat local_max_mesh_x = *std::max_element(mesh->x, mesh->x + nrs->fieldOffset);
   dfloat local_max_mesh_y = *std::max_element(mesh->y, mesh->y + nrs->fieldOffset);
@@ -256,7 +256,7 @@ void setup(MPI_Comm commg_in,
   dfloat local_max_vz = *std::max_element(vz, vz + nrs->fieldOffset);
 
   dfloat local_max_p = *std::max_element(nrs->P, nrs->P + nrs->fieldOffset);
-  dfloat local_max_t = *std::max_element(nrs->cds->S, nrs->cds->S + nrs->fieldOffset);
+  dfloat local_max_t = nrs->cds ? *std::max_element(nrs->cds->S, nrs->cds->S + nrs->fieldOffset) : 0;
 
   MPI_Allreduce(&local_min_vx, &global_min_vx, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
   MPI_Allreduce(&local_min_vy, &global_min_vy, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
@@ -655,19 +655,21 @@ void runSensei(double time, double dt, int tstep) {
   if(nrs->o_P.ptr()) {
     o_p.copyTo(pr, Nlocal * sizeof(dfloat));
   }
-  if(nrs->cds->o_S.ptr()) {
-    const dlong nekFieldOffset = nekData.lelt * mesh->Np;
-		int NSfields = nrs->Nscalar;
-    for(int is = 0; is < NSfields; is++) {
-      mesh_t* mesh = nrs->meshV;
-      if(nrs->cds)
-        (is) ? mesh = nrs->meshV: mesh = nrs->cds->mesh[0];
-      const dlong Nlocal = mesh->Nelements * mesh->Np;
-      dfloat* Ti = temp + is * nekFieldOffset;
-      occa::memory o_Si = o_s + is * nrs->fieldOffset * sizeof(dfloat);
-      o_Si.copyTo(Ti, Nlocal * sizeof(dfloat));
+  if(nrs->cds) {
+    if(nrs->cds->o_S.ptr()) {
+      const dlong nekFieldOffset = nekData.lelt * mesh->Np;
+      int NSfields = nrs->Nscalar;
+      for(int is = 0; is < NSfields; is++) {
+        mesh_t* mesh = nrs->meshV;
+        if(nrs->cds)
+          (is) ? mesh = nrs->meshV: mesh = nrs->cds->mesh[0];
+        const dlong Nlocal = mesh->Nelements * mesh->Np;
+        dfloat* Ti = temp + is * nekFieldOffset;
+        occa::memory o_Si = o_s + is * nrs->fieldOffset * sizeof(dfloat);
+        o_Si.copyTo(Ti, Nlocal * sizeof(dfloat));
+      }
     }
-  } 
+  }
 	sensei_bridge_update(&tstep, &time, &daOut);
 }
 #endif
