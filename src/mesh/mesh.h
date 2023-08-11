@@ -46,6 +46,23 @@ struct mesh_t
   std::vector<dfloat> surfaceIntegralMany(int Nfields, dlong offsetFld, int nbID,
                                           const occa::memory& o_bID, const occa::memory& o_fld);
 
+  // Distance pseudo function
+  // type refers to the type of distance function
+  //   type = "cheap_dist" : nek5000-style cheap_dist
+  // other types are not yet supported
+
+  // distance: for each boundary id, compute the distance from the boundary
+  // returns on output a vector field with nbID entries, where each entry is the distance to the boundary id
+  occa::memory
+  distance(int nbID, const occa::memory &o_bID, dlong offsetFld, std::string type, int maxIter = 10000);
+  std::vector<dfloat>
+  distance(const std::vector<dlong> &bID, dlong offsetFld, std::string type, int maxIter = 10000);
+
+  // minDistance: compute minimum distance across all boundary ids
+  // returns a single distance field
+  occa::memory minDistance(int nbID, const occa::memory &o_bID, std::string type, int maxIter = 10000);
+  std::vector<dfloat> minDistance(const std::vector<dlong> &bID, std::string type, int maxIter = 10000);
+
   void move();
   void update(bool updateHost = false);
 
@@ -228,6 +245,9 @@ struct mesh_t
 
   occa::kernel surfaceIntegralKernel;
   occa::kernel surfaceIntegralVectorKernel;
+  occa::kernel setBIDKernel;
+  occa::kernel distanceKernel;
+  occa::kernel hlongSumKernel;
 };
 
 mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &kernelInfo);

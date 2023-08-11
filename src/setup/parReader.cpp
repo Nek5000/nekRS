@@ -526,12 +526,8 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
     options.setArgs("CVODE RELATIVE TOLERANCE", to_string_f(relativeTol));
   }
 
-  if (par->extract(parScope, "absolutetol", absoluteTol)) {
-    options.setArgs("CVODE ABSOLUTE TOLERANCE", to_string_f(absoluteTol));
-  }
-
   options.setArgs("CVODE GMRES BASIS VECTORS", "10");
-  options.setArgs("CVODE SOLVER", "CBGMRES");
+  options.setArgs("CVODE SOLVER", "GMRES");
 
   // parse cvode linear solver
   [&]() {
@@ -622,6 +618,10 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
     options.setArgs("CVODE ADVECTION TYPE", "CUBATURE+CONVECTIVE");
   else
     options.setArgs("CVODE ADVECTION TYPE", "CONVECTIVE");
+
+  if(dealiasing && !options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
+    append_error("dealiasing for CVODE only is not supported!" + parScope);
+  }
 
   std::string recyclePropsStr;
   if (par->extract(parScope, "jtvrecycleproperties", recyclePropsStr)) {
@@ -1567,7 +1567,6 @@ void setDefaultSettings(setupAide &options, std::string casename, int rank)
   options.setArgs("ADVECTION", "TRUE");
   options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
 
-  options.setArgs("RESTART FROM FILE", "FALSE");
   options.setArgs("SOLUTION OUTPUT INTERVAL", "-1");
   options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
   options.setArgs("REGULARIZATION METHOD", "NONE");

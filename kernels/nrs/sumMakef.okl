@@ -36,7 +36,7 @@
                       @ restrict dfloat *BF)
 {
   for (dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)) {
-    const dfloat JW = massMatrix[id];
+    dfloat JW = massMatrix[id];
 
     dfloat bfx = 0;
     dfloat bfy = 0;

@@ -210,18 +210,25 @@ void uic(int ifield) { (*nek_uic_ptr)(&ifield); }
 
 void finalize() { (*nek_end_ptr)(); }
 
-void setic(void)
+void restartFromFile(const std::string& fileName)
 {
-  if (!options->getArgs("RESTART FILE NAME").empty()) {
-    std::string str1;
-    options->getArgs("RESTART FILE NAME", str1);
-    std::string str2(str1.size(), '\0');
-    std::replace_copy(str1.begin(), str1.end(), str2.begin(), '+', ' ');
-    int len = str2.length();
-    (*nek_restart_ptr)((char *)str2.c_str(), &len);
-  }
+  std::string str(fileName.size(), '\0');
+  std::replace_copy(fileName.begin(), fileName.end(), str.begin(), '+', ' ');
+  int len = str.length();
+  (*nek_restart_ptr)((char *)str.c_str(), &len);
+}
 
-  (*nek_setics_ptr)();
+void getIC(void)
+{
+  int Nscalar;
+  options->getArgs("NUMBER OF SCALARS", Nscalar);
+
+  for (int ifield = 1; ifield <= 1+Nscalar; ifield++)
+    uic(ifield);
+
+  double startTime;
+  copyFromNek(startTime);
+  platform->options.setArgs("START TIME", to_string_f(startTime));  
 }
 
 void xm1N(dfloat *_x, dfloat *_y, dfloat *_z, int N, dlong Nelements)

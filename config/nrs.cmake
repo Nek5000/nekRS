@@ -64,6 +64,7 @@ set(SRC
     src/pointInterpolation/findpts/findpts.cpp
     src/pointInterpolation/pointInterpolation.cpp
     src/neknek/neknek.cpp
+    src/neknek/fixCoupledSurfaceFlux.cpp
     src/udf/udf.cpp
     src/udf/compileUDFKernels.cpp
     src/nekInterface/nekInterfaceAdapter.cpp
@@ -73,7 +74,6 @@ set(SRC
     src/postProcessing/Qcriterion.cpp
     src/core/registerCvodeKernels.cpp
     src/solvers/cvode/cvode.cpp
-    src/solvers/cvode/cbGMRES.cpp
     ${BENCH_SOURCES}
     ${MESH_SOURCES}
     ${ELLIPTIC_SOURCES}

@@ -1,4 +1,3 @@
-// computes W_i := invMult / (relTol * abs(y_i) + absTol_i)
 @kernel void errorWeight(const dlong N,
   const dlong Nfields,
   const dfloat relTol,
@@ -12,7 +11,7 @@
     if (n < N) {
       const dfloat invMult = sqrt(invDegree[n]);
       for (dlong fld = 0; fld < Nfields; ++fld) {
-        const dfloat denom = relTol * abs(y[n + fld * N]) + absTol[fld];
+        const dfloat denom = relTol * fabs(y[n + fld * N]) + absTol[fld];
         ewt[n + fld * N] = invMult / denom;
       }
     }

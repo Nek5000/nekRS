@@ -1,0 +1,13 @@
+@kernel void magSqrVector(const dlong N,
+                          const dlong offset,
+                          @ restrict const dfloat *U,
+                          @ restrict dfloat *MAG)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+    if (n < N) {
+      const dfloat s1 = U[n + 0 * offset];
+      const dfloat s2 = U[n + 1 * offset];
+      const dfloat s3 = U[n + 2 * offset];
+      MAG[n] = s1 * s1 + s2 * s2 + s3 * s3;
+    }
+}

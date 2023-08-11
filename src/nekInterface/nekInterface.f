@@ -314,10 +314,9 @@ c-----------------------------------------------------------------------
       call usrdat3
       if(nio.eq.0) write(6,'(A,/)') ' done :: usrdat3'
 
-      call dofcnt
-
+      time = 0.0
       p0thn = p0th
-      ntdump=0
+      ntdump = 0
 
       etimeSetup = dnekclock_sync() - etimes
       if(nio.eq.0) write(6,999) etimeSetup 
@@ -483,8 +482,26 @@ c-----------------------------------------------------------------------
       include 'RESTART'
       include 'INPUT'
 
+      logical  iffort(  ldimt1,0:lpert)
+     $       , ifrest(0:ldimt1,0:lpert)
+     $       , ifprsl(  ldimt1,0:lpert)
+
       call blank(initc(1),132)
       call chcopy(initc(1),rfile,l)
+
+      call slogic (iffort,ifrest,ifprsl,nfiles)
+
+      call nekgsync()
+      call restart(nfiles) !  Check restart files
+      call nekgsync()
+
+      getu = 1
+      getp = 1
+      gett = 1
+ 
+      if (.not. ifgetu) getu = 0 
+      if (.not. ifgetp) getp = 0
+      if (.not. ifgett) gett = 0
 
       return
       end
@@ -532,6 +549,7 @@ c-----------------------------------------------------------------------
 
       ifield_ = ifield
       ifield = ifld
+      if (nio.eq.0) write(6,*) 'useric for ifld ', ifield
       call nekuic
       ifield = ifield_
 

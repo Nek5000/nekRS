@@ -36,7 +36,6 @@
 #endif
 
 #include "getN_VectorMemory.hpp"
-#include "cbGMRES.hpp"
 
 #endif
 
@@ -77,6 +76,52 @@ void cvode_t::initialize()
 {
 }
 
+cvode_t::~cvode_t()
+{
+  if (o_xyz0.size()) {
+    o_xyz0.free();
+  }
+  if (o_coeffExt.size()) {
+    o_coeffExt.free();
+  }
+  if (o_cvodeScalarIds.size()) {
+    o_cvodeScalarIds.free();
+  }
+  if (o_scalarIds.size()) {
+    o_scalarIds.free();
+  }
+  if (o_absTol.size()) {
+    o_absTol.free();
+  }
+
+#ifdef ENABLE_CVODE
+  // despite documentation, this function does not exist?
+  // N_VDestroy_MPIPlusX(cvodeY);
+
+  if (platform->device.mode() == "CUDA") {
+#ifdef ENABLE_CUDA
+    N_VDestroy_Cuda(y);
+#endif
+  } else if (platform->device.mode() == "HIP") {
+#ifdef ENABLE_HIP
+    N_VDestroy_HIP(y);
+#endif
+  } else if (platform->device.mode() == "Serial") {
+    N_VDestroy_Serial(y);
+  }
+
+  CVodeFree(&cvodeMem);
+#endif
+}
+
+void cvode_t::setupDirichletMask()
+{
+}
+
+void cvode_t::applyDirichlet(double time)
+{
+}
+
 void cvode_t::rhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)
 {
 }
@@ -110,45 +155,51 @@ void cvode_t::solve(double t0, double t1, int tstep)
 {
 }
 
+long cvode_t::numSteps() const
+{
+  return this->nsteps;
+}
+
+long cvode_t::numRHSEvals() const
+{
+  return this->nrhs; 
+}
+
+long cvode_t::numNonlinSolveIters() const
+{
+  return this->nni;
+}
+
+long cvode_t::numLinIters() const
+{
+  return this->nli;
+}
+
 #ifdef ENABLE_CVODE
-long cvode_t::numSteps() const
+void cvode_t::updateCounters()
 {
 }
 
-long cvode_t::numRHSEvals() const
+void cvode_t::resetCounters()
 {
+  this->nsteps = 0;
+  this->nrhs = 0;
+  this->nni = 0;
+  this->nli = 0;
 }
 
-long cvode_t::numNonlinSolveIters() const
-{
-}
-
-long cvode_t::numLinIters() const
-{
-}
 #else
-long cvode_t::numSteps() const
+
+void cvode_t::updateCounters()
 {
-  return 0;
 }
 
-long cvode_t::numRHSEvals() const
+void cvode_t::resetCounters()
 {
-  return 0;
-}
-
-long cvode_t::numNonlinSolveIters() const
-{
-  return 0;
-}
-
-long cvode_t::numLinIters() const
-{
-  return 0;
 }
 #endif
 
-void cvode_t::printInfo(bool printVerboseInfo) const
+void cvode_t::printInfo(bool printVerboseInfo)
 {
 }
 
@@ -166,9 +217,5 @@ std::string cvode_t::rhsTagName() const
 }
 
 void cvode_t::setLocalPointSource(userLocalPointSource_t _userLocalPointSource)
-{
-}
-
-cvode_t::~cvode_t()
 {
 }

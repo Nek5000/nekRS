@@ -1,6 +1,7 @@
 #include "nrs.hpp"
 #include <compileKernels.hpp>
 #include "mesh.h"
+#include "nrssys.hpp"
 
 void registerMeshKernels(occa::properties kernelInfoBC)
 {
@@ -37,7 +38,21 @@ void registerMeshKernels(occa::properties kernelInfoBC)
       kernelName = "surfaceIntegralVector";
       platform->kernels.add(meshPrefix + kernelName + orderSuffix, fileName, prop);
     }
- 
+
+    kernelName = "setBIDHex3D";
+    fileName = oklpath + "/mesh/" + kernelName + ".okl";
+    platform->kernels.add(meshPrefix + kernelName + orderSuffix, fileName, kernelInfo);
+
+    kernelName = "distanceHex3D";
+    fileName = oklpath + "/mesh/" + kernelName + ".okl";
+    platform->kernels.add(meshPrefix + kernelName + orderSuffix, fileName, kernelInfo);
+
+    auto hlongSumKernelInfo = kernelInfo;
+    hlongSumKernelInfo["defines/dfloat"] = hlongString;
+    kernelName = "sum";
+    fileName = oklpath + "/linAlg/" + kernelName + ".okl";
+    platform->kernels.add("hlong-" + meshPrefix + kernelName + orderSuffix, fileName, hlongSumKernelInfo);
+
     occa::properties meshKernelInfo = kernelInfo;
     meshKernelInfo["defines/p_cubNq"] = cubNq;
     meshKernelInfo["defines/p_cubNp"] = cubNp;

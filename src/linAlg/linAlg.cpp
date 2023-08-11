@@ -223,6 +223,9 @@ void linAlg_t::setup()
     unitVectorKernel = kernels.get("unitVector");
     entrywiseMagKernel = kernels.get("entrywiseMag");
     linearCombinationKernel = kernels.get("linearCombination");
+    relativeErrorKernel = kernels.get("relativeError");
+    magSqrVectorKernel = kernels.get("magSqrVector");
+    magSqrSymTensorKernel = kernels.get("magSqrSymTensor");
   }
 }
 
@@ -1041,7 +1044,10 @@ void linAlg_t::weightedInnerProdMulti(const dlong N,
     o_w.copyTo(&w, N);
     o_x.copyTo(&x, N);
     o_y.copyTo(&y, N);
-    result[0] = w * x * y;
+    if (weight)
+      result[0] = w * x * y;
+    else
+      result[0] = x * y;
   }
 
   if (_comm != MPI_COMM_SELF) {
@@ -1376,6 +1382,13 @@ void linAlg_t::crossProduct(const dlong N,
                             const occa::memory &o_y,
                             occa::memory &o_z)
 {
+  nrsCheck(o_x.length() < (3*fieldOffset),
+           MPI_COMM_SELF, EXIT_FAILURE, "%s", "o_x too small to store a vector field!\n");
+  nrsCheck(o_y.length() < (3*fieldOffset),
+           MPI_COMM_SELF, EXIT_FAILURE, "%s", "o_x too small to store a vector field!\n");
+  nrsCheck(o_z.length() < (3*fieldOffset),
+           MPI_COMM_SELF, EXIT_FAILURE, "%s", "o_x too small to store a vector field!\n");
+
   crossProductKernel(N, fieldOffset, o_x, o_y, o_z);
 }
 
@@ -1393,13 +1406,52 @@ void linAlg_t::entrywiseMag(const dlong N,
   entrywiseMagKernel(N, Nfields, fieldOffset, o_a, o_b);
 }
 
-// o_y[n] = \sum_{i=0}^{Nfields-1} c_i * x_i 
+void linAlg_t::magSqrVector(const dlong N,
+                            const dlong fieldOffset,
+                            const occa::memory &o_u,
+                            occa::memory &o_mag)
+{
+  nrsCheck(o_u.length() < (3*fieldOffset),
+           MPI_COMM_SELF, EXIT_FAILURE, "%s", "o_u too small to store a vector field!\n");
+
+  magSqrVectorKernel(N, fieldOffset, o_u, o_mag);
+}
+
+void linAlg_t::magSqrSymTensor(const dlong N,
+                               const dlong fieldOffset,
+                               const occa::memory &o_tensor,
+                               occa::memory &o_mag)
+{
+  nrsCheck(o_tensor.length() < 6*fieldOffset,
+           MPI_COMM_SELF, EXIT_FAILURE, "%s", "o_tensor too small to store a symmetric tensor field!\n");
+
+  magSqrSymTensorKernel(N, fieldOffset, o_tensor, o_mag);
+}
+
 void linAlg_t::linearCombination(const dlong N,
                                  const dlong Nfields,
                                  const dlong fieldOffset,
-                                 const occa::memory &o_c,
+                                 const occa::memory &o_coeff,
                                  const occa::memory &o_x,
                                  occa::memory &o_y)
 {
-  linearCombinationKernel(N, Nfields, fieldOffset, o_c, o_x, o_y);
+  nrsCheck(o_coeff.length() < Nfields,
+           MPI_COMM_SELF, EXIT_FAILURE, "o_c too small for %d fields!\n", Nfields);
+  nrsCheck(o_x.length() < (Nfields*fieldOffset),
+           MPI_COMM_SELF, EXIT_FAILURE, "o_x too small to store %d fields!\n", Nfields);
+
+  linearCombinationKernel(N, Nfields, fieldOffset, o_coeff, o_x, o_y);
+}
+
+dfloat linAlg_t::maxRelativeError(const dlong N,
+                                  const dlong Nfields,
+                                  const dlong fieldOffset,
+                                  const dfloat absTol,
+                                  const occa::memory &o_u,
+                                  const occa::memory &o_uRef,
+                                  MPI_Comm comm)
+{ 
+  auto o_err = platform->o_memPool.reserve<dfloat>(std::max(Nfields*fieldOffset, N));
+  relativeErrorKernel(N, Nfields, fieldOffset, absTol, o_u, o_uRef, o_err); 
+  return this->amaxMany(N, Nfields, fieldOffset, o_err, comm);
 }

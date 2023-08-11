@@ -332,22 +332,31 @@ public:
                     const occa::memory &o_a,
                     occa::memory &o_b);
 
-  // o_y[n] = \sum_{i=0}^{Nfields-1} c_i * x_i 
+  void magSqrVector(const dlong N,
+                    const dlong fieldOffset,
+                    const occa::memory &o_u,
+                    occa::memory &o_mag);
+
+  void magSqrSymTensor(const dlong N,
+                       const dlong fieldOffset,
+                       const occa::memory &o_tensor,
+                       occa::memory &o_mag);
+
+  // o_y[n] = x_{Nfields} * coeff_{Nfields} + \sum_{i=0}^{Nfields-1} coeff_i * x_i 
   void linearCombination(const dlong N,
                          const dlong Nfields,
                          const dlong fieldOffset,
-                         const occa::memory &o_c,
+                         const occa::memory &o_coeff,
                          const occa::memory &o_x,
                          occa::memory &o_y);
 
-  // o_z[n] = y_{Nfields} * c_{Nfields} + \sum_{i=0}^{Nfields-1} c_i * x_i 
-  void linearCombination(const dlong N,
-                         const dlong Nfields,
-                         const dlong fieldOffset,
-                         const occa::memory &o_c,
-                         const occa::memory &o_x,
-                         const occa::memory &o_y,
-                         occa::memory &o_z);
+  dfloat maxRelativeError(const dlong N,
+                          const dlong Nfields,
+                          const dlong fieldOffset,
+                          const dfloat absTol,
+                          const occa::memory &o_u,
+                          const occa::memory &o_uRef,
+                          MPI_Comm comm);
 
 
   occa::kernel fillKernel;
@@ -405,6 +414,9 @@ public:
   occa::kernel unitVectorKernel;
   occa::kernel entrywiseMagKernel;
   occa::kernel linearCombinationKernel;
+  occa::kernel relativeErrorKernel;
+  occa::kernel magSqrVectorKernel;
+  occa::kernel magSqrSymTensorKernel;
 };
 
 #endif

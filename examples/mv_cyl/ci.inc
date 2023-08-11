@@ -54,24 +54,12 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if (ciMode == 7 || ciMode == 8) {
     // cvode
     options.setArgs("CVODE", "TRUE");
-    options.setArgs("CVODE INTEGRATOR", "BDF");
-    options.setArgs("CVODE MAX TIMESTEPPER ORDER", "3");
-    options.setArgs("CVODE EPS LIN", "0.05");
-    options.setArgs("CVODE STOP TIME", "TRUE");
 
     double dt0;
     options.getArgs("DT", dt0);
 
-    const auto hmaxRatio = 1;
-    options.setArgs("CVODE HMAX RATIO", to_string_f(hmaxRatio));
-
-    const auto maxSteps = 10000;
-    options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
-
+    options.setArgs("SCALAR00 CVODE ABSOLUTE TOLERANCE", "1e-08");
     options.setArgs("CVODE RELATIVE TOLERANCE", "1e-06");
-    options.setArgs("CVODE ABSOLUTE TOLERANCE", "1e-08");
-    options.setArgs("CVODE GMR VECTORS", "20");
-
     options.setArgs("SCALAR00 SOLVER", "CVODE");
   }
 }

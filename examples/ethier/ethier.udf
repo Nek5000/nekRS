@@ -333,6 +333,14 @@ void particleRHS(nrs_t *nrs, lpm_t *lpm, double time, occa::memory o_y, void *us
   }
 }
 
+int timeStepConverged(nrs_t *nrs, int stage)
+{
+  if(ciMode != 19) return 1;
+  
+  // do one corrector step
+  return stage > 1;
+}
+
 void UDF_Setup(nrs_t *nrs)
 {
   // only ciMode 1 exercises the particles
@@ -409,6 +417,7 @@ void UDF_Setup(nrs_t *nrs)
 
   mesh_t *mesh = nrs->meshV;
   udf.sEqnSource = &userq;
+  udf.timeStepConverged = &timeStepConverged;
   if (platform->options.compareArgs("MOVING MESH", std::string("TRUE"))) {
     o_x0 = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->o_x);
     o_y0 = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->o_y);

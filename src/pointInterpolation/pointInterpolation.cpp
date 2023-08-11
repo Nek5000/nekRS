@@ -261,7 +261,7 @@ void pointInterpolation_t::setTimerName(std::string name)
 }
 
 void pointInterpolation_t::o_update() 
-{ 
-  if(data_.r.size()) findCalled = true;
+{
+  findCalled = true;
   findpts_->o_update(data_); 
 }

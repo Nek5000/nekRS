@@ -28,24 +28,43 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("NEKNEK BOUNDARY EXT ORDER", "1");
   }
   options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-12"));
+  options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-12"));
   options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("1e-08"));
 
   if (ciMode == 2) {
+    std::string casename = platform->options.getArgs("CASENAME");
     int fail = 0;
+    if (casename == "inside") {
+      fail = 1;
+      if (platform->comm.mpiRank == 0) {
+        std::cout << "Unexpected input file for CI mode" << std::endl;
+      }
+    }
 
     MPI_Allreduce(MPI_IN_PLACE, &fail, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
     if (fail) {
       CIFAIL;
     }
   }
+  
 }
 
 void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
 {
   // query velocity solution from inner session
-  std::vector<dfloat> x = {M_PI};
-  std::vector<dfloat> y = {M_PI};
-  std::vector<dfloat> z = {0.05};
+  std::string casename = platform->options.getArgs("CASENAME");
+  std::vector<dfloat> x;
+  std::vector<dfloat> y;
+  std::vector<dfloat> z;
+  if(casename == "outside"){
+    x = {M_PI};
+    y = {M_PI};
+    z = {0.05};
+  } else {
+    x = {0.25 * M_PI, M_PI, M_PI, 1.75 * M_PI};
+    y = {0.25 * M_PI, M_PI, M_PI, 1.75 * M_PI};
+    z = {0.05, 0.05, 0.05, 0.05};
+  }
   int n = x.size();
 
   auto o_xinterp = platform->device.malloc<dfloat>(n, x.data());
@@ -113,9 +132,12 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   auto *mesh = nrs->meshV;
 
   auto o_Uexact = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  auto o_Sexact = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
   exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, o_Uexact);
+  o_Sexact.copyFrom(o_Uexact, nrs->fieldOffset);
 
   platform->linAlg->axpbyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, nrs->o_U, -1.0, o_Uexact);
+  platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->cds->o_S, -1.0, o_Sexact);
 
   auto o_UerrX = o_Uexact + 0 * nrs->fieldOffset;
   auto o_UerrY = o_Uexact + 1 * nrs->fieldOffset;
@@ -124,30 +146,36 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   platform->linAlg->abs(mesh->Nlocal, o_UerrX);
   platform->linAlg->abs(mesh->Nlocal, o_UerrY);
   platform->linAlg->abs(mesh->Nlocal, o_UerrZ);
+  platform->linAlg->abs(mesh->Nlocal, o_Sexact);
 
   const auto errVxGlobal = platform->linAlg->max(mesh->Nlocal, o_UerrX, platform->comm.mpiCommParent);
   const auto errVyGlobal = platform->linAlg->max(mesh->Nlocal, o_UerrY, platform->comm.mpiCommParent);
   const auto errVzGlobal = platform->linAlg->max(mesh->Nlocal, o_UerrZ, platform->comm.mpiCommParent);
+  const auto errSGlobal = platform->linAlg->max(mesh->Nlocal, o_Sexact, platform->comm.mpiCommParent);
 
   // scheme is first-order accurate
   dfloat expectedErrVx = 0.0;
   dfloat expectedErrVy = 0.0;
   dfloat expectedErrVz = 0.0;
+  dfloat expectedErrS = 0.0;
 
   if (ciMode == 1 || ciMode == 3) {
     expectedErrVx = 5E-07;
     expectedErrVy = 5E-07;
     expectedErrVz = 2E-08;
+    expectedErrS = 5E-07;
   } else if (ciMode == 2) {
     expectedErrVx = 0.008;
     expectedErrVy = 0.007;
     expectedErrVz = 8E-05;
+    expectedErrS = 0.008;
   }
 
   bool passed = true;
   passed &= errVxGlobal < 1.1 * expectedErrVx;
   passed &= errVyGlobal < 1.1 * expectedErrVy;
   passed &= errVzGlobal < 1.1 * expectedErrVz;
+  passed &= errSGlobal < 1.1 * expectedErrS;
 
   int flag = passed;
   MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
@@ -157,13 +185,15 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   } else {
     if (platform->comm.mpiRank == 0) {
       printf("errVxGlobal = %g, expectedErrVx = %g, errVyGlobal = %g, expectedErrVy = %g, errVzGlobal = %g, "
-             "expectedErrVz = %g\n",
+             "expectedErrVz = %g, errSGlobal = %g, expectedErrS = %g\n",
              errVxGlobal,
              expectedErrVx,
              errVyGlobal,
              expectedErrVy,
              errVzGlobal,
-             expectedErrVz);
+             expectedErrVz,
+             errSGlobal,
+             expectedErrS);
     }
     (CIFAIL);
   }

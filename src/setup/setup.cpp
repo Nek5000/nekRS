@@ -209,11 +209,7 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     platform->options.getArgs("CASENAME", casename);
 
     nek::setup(nrs);
-    nek::setic();
-    nek::userchk();
-    if (platform->comm.mpiRank == 0) {
-      std::cout << "\n";
-    }
+
   }
 
   nrs->cht = 0;
@@ -585,14 +581,21 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
     }
   }
 
-  // get IC + t0 from nek
-  double startTime;
-  nek::copyFromNek(startTime);
-  platform->options.setArgs("START TIME", to_string_f(startTime));
+  if (!platform->options.getArgs("RESTART FILE NAME").empty()) {
+    std::string fileName;
+    platform->options.getArgs("RESTART FILE NAME", fileName);
+    nek::restartFromFile(fileName);
+
+    double startTime;
+    nek::copyFromNek(startTime);
+    platform->options.setArgs("START TIME", to_string_f(startTime));
+  } else {
+    nek::getIC();
+  }
 
   // udf setup
   if (platform->comm.mpiRank == 0) {
-    printf("calling UDF_Setup ... ");
+    printf("calling UDF_Setup ... \n");
   }
   fflush(stdout);
 
@@ -623,6 +626,9 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
   if (options.compareArgs("MOVING MESH", "TRUE")) {
     mesh->o_U.copyFrom(mesh->U);
   }
+ 
+  double startTime;
+  platform->options.getArgs("START TIME", startTime);
 
   // ensure both codes see the same mesh + IC
   nek::ocopyToNek(startTime, 0);

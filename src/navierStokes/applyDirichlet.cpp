@@ -290,4 +290,8 @@ void applyDirichlet(nrs_t *nrs, double time)
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE"))
     applyDirichletMesh(nrs, time, nrs->_mesh->o_U, nrs->_mesh->o_Ue, nrs->o_U);
+
+  if (nrs->neknek) {
+    fixCoupledSurfaceFlux(nrs, nrs->o_U);
+  }
 }

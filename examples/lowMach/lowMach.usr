@@ -16,13 +16,20 @@ c-----------------------------------------------------------------------
       real pre,vT_err,VX_err,QTL_err, pr_err
 
       real sumqw,l2_err,exact,max_err,XD,sech
-
+      
+      real dist(lx1,ly1,lz1,lelt)
+      save dist
+      
       real err(3)
       save err
       COMMON /NRSSCPTR/ nrs_scptr(1)
       integer*8         nrs_scptr
 
-      if (istep.lt.1) return
+      if (istep.lt.1) then
+        call cheap_dist(dist, 1, 'v  ')
+        nrs_scptr(1) = loc(dist(1,1,1,1))
+        return
+      endif
 
       nrs_scptr(1) = loc(err(1))
 

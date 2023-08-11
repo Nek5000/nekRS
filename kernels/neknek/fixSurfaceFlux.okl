@@ -1,0 +1,33 @@
+@kernel void fixSurfaceFlux(const dlong Nelements,
+                            const dlong fieldOffset,
+                            @ restrict const dfloat *sgeo,
+                            @ restrict const dlong *vmapM,
+                            @ restrict const int *EToB,
+                            const dfloat gamma,
+                            @ restrict dfloat *U)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      if (t < p_Nfp) {
+        for (int f = 0; f < p_Nfaces; f++) {
+          const dlong bcType = EToB[f + p_Nfaces * e];
+
+          if (bcType == p_bcTypeINT) {
+            const int n = t + f * p_Nfp;
+            const dlong sid = e * p_Nfaces * p_Nfp + n;
+
+            const dlong idM = vmapM[sid];
+            const dfloat nx = sgeo[sid * p_Nsgeo + p_NXID];
+            const dfloat ny = sgeo[sid * p_Nsgeo + p_NYID];
+            const dfloat nz = sgeo[sid * p_Nsgeo + p_NZID];
+
+            U[idM + 0 * fieldOffset] += gamma * nx;
+            U[idM + 1 * fieldOffset] += gamma * ny;
+            U[idM + 2 * fieldOffset] += gamma * nz;
+          }
+        }
+      }
+    }
+    @barrier();
+  }
+}

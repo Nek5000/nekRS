@@ -1,0 +1,102 @@
+dfloat distance(dfloat a, dfloat b, dfloat c, dfloat x, dfloat y, dfloat z)
+{
+  dfloat d2 = (a - x) * (a - x) + (b - y) * (b - y) + (c - z) * (c - z);
+  dfloat d = 0.0;
+  if (d2 > 0.0) {
+    d = sqrt(d2);
+  }
+  return d;
+}
+
+dlong dlongMax(dlong i, dlong j)
+{
+  return (i > j) ? i : j;
+}
+
+dlong dlongMin(dlong i, dlong j)
+{
+  return (i < j) ? i : j;
+}
+
+@kernel void distanceHex3D(const dlong Nelements,
+                           const dlong Nfields,
+                           const dlong fieldOffset,
+                           @ restrict const dfloat *xpt,
+                           @ restrict const dfloat *ypt,
+                           @ restrict const dfloat *zpt,
+                           @ restrict dfloat *dist,
+                           @ restrict hlong *changed)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) { // for all elements
+    @shared dfloat s_xpt[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_ypt[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_zpt[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_d[p_Nq][p_Nq][p_Nq];
+
+    for(dlong fld = 0; fld < Nfields; fld++){
+      for (int k = 0; k < p_Nq; ++k; @inner(1)) {
+        for (int j = 0; j < p_Nq; ++j; @inner(0)) {
+          for (int i = 0; i < p_Nq; ++i) {
+            const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+            if(fld == 0){
+              s_xpt[k][j][i] = xpt[id];
+              s_ypt[k][j][i] = ypt[id];
+              s_zpt[k][j][i] = zpt[id];
+              changed[id] = 0;
+            }
+            s_d[k][j][i] = dist[id + fld * fieldOffset];
+          }
+        }
+      }
+
+      @barrier();
+
+      for (int k = 0; k < p_Nq; ++k; @inner(1)) {
+        for (int j = 0; j < p_Nq; ++j; @inner(0)) {
+          for (int i = 0; i < p_Nq; ++i) {
+            const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+            
+            const dfloat x = s_xpt[k][j][i];
+            const dfloat y = s_ypt[k][j][i];
+            const dfloat z = s_zpt[k][j][i];
+
+            const dlong i0 = dlongMax(i - 1, 0);
+            const dlong j0 = dlongMax(j - 1, 0);
+            const dlong k0 = dlongMax(k - 1, 0);
+
+            const dlong i1 = dlongMin(i + 1, p_Nq-1);
+            const dlong j1 = dlongMin(j + 1, p_Nq-1);
+            const dlong k1 = dlongMin(k + 1, p_Nq-1);
+
+            hlong change = 0;
+
+            for (int kk = k0; kk <= k1; ++kk) {
+              for (int jj = j0; jj <= j1; ++jj) {
+                for (int ii = i0; ii <= i1; ++ii) {
+
+                  const dlong iid = e * p_Np + kk * p_Nq * p_Nq + jj * p_Nq + ii;
+                  
+                  const dfloat xx = s_xpt[kk][jj][ii];
+                  const dfloat yy = s_ypt[kk][jj][ii];
+                  const dfloat zz = s_zpt[kk][jj][ii];
+
+                  // Allow data-race as this is a stochastic process
+                  const dfloat d = s_d[kk][jj][ii] + distance(xx, yy, zz, x, y, z);
+                  if (d < s_d[k][j][i]) {
+                    s_d[k][j][i] = d;
+                    change++;
+                  }
+                }
+              }
+            }
+
+            // write out result
+            changed[id] += change;
+            dist[id + fld * fieldOffset] = s_d[k][j][i];
+          }
+        }
+      }
+      @barrier();
+    }
+  }
+}

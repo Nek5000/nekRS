@@ -12,7 +12,7 @@
 
 ## Breaking Changes
 * `o_mempool.slice0` etc. was removed (see examples how to use new memory pool)
-* occa::memory objects are typed now (allocate with malloc<T> and use words instead of bytes for malloc, slice, copyFrom/To)  
+* allocate occa::memory with malloc<T> and use words instead of bytes for malloc, slice, copyFrom/To
 * writeFld takes `const occa::memory&` instead of `const void*`
 * [udf] API argument `time` is `double` instead of `dfloat` 
 

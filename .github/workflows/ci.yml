@@ -152,6 +152,11 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: |
         NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 18
+    
+    - name: 'ethier sub-stepping'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: |
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 19
 
   lowMach:
     needs: install

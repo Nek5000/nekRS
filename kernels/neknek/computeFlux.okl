@@ -1,0 +1,108 @@
+#define REDUCE(bs)                                                                                           \
+  if (t < bs) {                                                                                              \
+    s_flux[t] += s_flux[t + bs];                                                                             \
+    s_intArea[t] += s_intArea[t + bs];                                                                       \
+  }
+
+@kernel void computeFlux(const dlong Nelements,
+                         const dlong fieldOffset,
+                         @ restrict const dfloat *sgeo,
+                         @ restrict const dlong *vmapM,
+                         @ restrict const int *EToB,
+                         @ restrict const dfloat *U,
+                         @ restrict dfloat *result)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    @shared dfloat s_flux[p_blockSize];
+    @shared dfloat s_intArea[p_blockSize];
+
+    // reduce over all element faces
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      s_flux[t] = 0.0;
+      s_intArea[t] = 0.0;
+      if (t < p_Nfp) {
+        for (int f = 0; f < p_Nfaces; f++) {
+          const dlong bcType = EToB[f + p_Nfaces * e];
+
+          if (bcType == p_bcTypeV || bcType == p_bcTypeINT) {
+            const int n = t + f * p_Nfp;
+            const dlong sid = e * p_Nfaces * p_Nfp + n;
+
+            const dlong idM = vmapM[sid];
+            const dfloat sWJ = sgeo[sid * p_Nsgeo + p_WSJID];
+            const dfloat nx = sgeo[sid * p_Nsgeo + p_NXID];
+            const dfloat ny = sgeo[sid * p_Nsgeo + p_NYID];
+            const dfloat nz = sgeo[sid * p_Nsgeo + p_NZID];
+
+            const dfloat Udotn =
+                U[idM + 0 * fieldOffset] * nx + U[idM + 1 * fieldOffset] * ny + U[idM + 2 * fieldOffset] * nz;
+            s_flux[t] += Udotn * sWJ;
+
+            // only integrate on int portion of boundary
+            if (bcType == p_bcTypeINT) {
+              s_intArea[t] += sWJ;
+            }
+          }
+        }
+      }
+    }
+    @barrier();
+
+    // reduce over face points
+#if p_blockSize > 512
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(512);
+    }
+    @barrier();
+#endif
+
+#if p_blockSize > 256
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(256);
+    }
+    @barrier();
+#endif
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(128);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(64);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(32);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(16);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(8);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(4);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      REDUCE(2);
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      if (t < 1) {
+        result[e + 0 * Nelements] = s_flux[0] + s_flux[1];
+        result[e + 1 * Nelements] = s_intArea[0] + s_intArea[1];
+      }
+      @barrier();
+    }
+  }
+}

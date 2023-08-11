@@ -11,6 +11,7 @@
 struct nrs_t;
 
 bool neknekCoupled();
+void fixCoupledSurfaceFlux(nrs_t *nrs, occa::memory o_U);
 
 class neknek_t {
 public:
@@ -47,6 +48,8 @@ public:
   void updateBoundary(nrs_t *nrs, int tstep, int stage);
 
   occa::kernel copyNekNekPointsKernel;
+  occa::kernel computeFluxKernel;
+  occa::kernel fixSurfaceFluxKernel;
 };
 
 #endif

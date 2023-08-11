@@ -11,7 +11,10 @@ occa::memory cdsSolve(const int is, cds_t* cds, double time, int stage)
     mesh = cds->meshV;
   }
 
-  platform->timer.tic("scalar rhs", 1);  
+  platform->timer.tic("scalar rhs", 1);
+
+  auto o_rhs = platform->o_memPool.reserve<dfloat>(cds->fieldOffset[is]);
+  o_rhs.copyFrom(cds->o_BF, cds->fieldOffset[is], 0, cds->fieldOffsetScan[is]);
 
   cds->neumannBCKernel(mesh->Nelements,
                        1,
@@ -31,7 +34,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, double time, int stage)
                        cds->o_diff,
                        cds->o_rho,
                        *(cds->o_usrwrk),
-                       cds->o_BF);
+                       o_rhs);
 
   platform->timer.toc("scalar rhs");
 
@@ -46,7 +49,6 @@ occa::memory cdsSolve(const int is, cds_t* cds, double time, int stage)
      return o_S0;
   }();
 
-  auto o_rhs = cds->o_BF.slice(cds->fieldOffsetScan[is], cds->fieldOffset[is]);
   ellipticSolve(cds->solver[is], o_rhs, o_S);
 
   return o_S;

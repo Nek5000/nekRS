@@ -209,8 +209,46 @@ void ciTestPlanarAvg(nrs_t *nrs)
   testFusedPlanarAvg(nrs, "yz");
 }
 
+void ciTestDistance(nrs_t *nrs)
+{
+  auto mesh = nrs->meshV;
+  auto dist = mesh->minDistance({1}, "cheap_dist");
+
+  nek::ocopyToNek();
+  nek::userchk();
+  double *n5kDist = (double *)nek::scPtr(1);
+  
+  // for zeros
+  const auto floorTol = 1e2 * std::numeric_limits<dfloat>::epsilon();
+
+  // for end check
+  const auto tol = 1e4 * std::numeric_limits<dfloat>::epsilon();
+
+  dfloat maxRelErr = 0.0;
+  for(int n = 0; n < mesh->Nlocal; ++n){
+    auto relErr = std::abs(dist[n]-n5kDist[n]);
+    if (std::abs(n5kDist[n]) > floorTol) {
+      relErr /= std::abs(n5kDist[n]);
+    }
+    maxRelErr = std::max(maxRelErr, relErr);
+  }
+
+  MPI_Allreduce(MPI_IN_PLACE, &maxRelErr, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+
+  if(maxRelErr > tol){
+    CIFAIL;
+    nrsFinalize(nrs);
+    exit(platform->exitValue);
+  }
+
+}
+
 void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
+  if(tstep == 0){
+    ciTestDistance(nrs);
+  }
+
   if (!nrs->lastStep) {
     return;
   }

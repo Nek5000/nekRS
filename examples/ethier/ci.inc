@@ -125,7 +125,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   options.setArgs("SCALAR00 SOLVER", "PCG+COMBINED");
   options.setArgs("SCALAR01 SOLVER", "PCG");
 
-  if (ciMode == 2) {
+  if (ciMode == 2 || ciMode == 19) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
@@ -230,17 +230,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if (ciMode == 16) {
 
     options.setArgs("CVODE", "TRUE");
-    options.setArgs("CVODE INTEGRATOR", "BDF");
-    options.setArgs("CVODE MAX TIMESTEPPER ORDER", "3");
-    options.setArgs("CVODE EPS LIN", "0.05");
-    options.setArgs("CVODE STOP TIME", "TRUE");
-
-    const auto maxSteps = 10000;
-    options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
-
+    options.setArgs("SCALAR00 CVODE ABSOLUTE TOLERANCE", "1e-10");
+    options.setArgs("SCALAR01 CVODE ABSOLUTE TOLERANCE", "1e-10");
     options.setArgs("CVODE RELATIVE TOLERANCE", "1e-10");
-    options.setArgs("CVODE ABSOLUTE TOLERANCE", "1e-12");
-    options.setArgs("CVODE GMR VECTORS", "20");
+
+    options.setArgs("CVODE GMRES BASIS VECTORS", "20");
 
     options.setArgs("SCALAR00 SOLVER", "CVODE");
     options.setArgs("SCALAR01 SOLVER", "CVODE");
@@ -250,17 +244,12 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if (ciMode == 17) {
 
     options.setArgs("CVODE", "TRUE");
-    options.setArgs("CVODE INTEGRATOR", "BDF");
-    options.setArgs("CVODE MAX TIMESTEPPER ORDER", "3");
-    options.setArgs("CVODE EPS LIN", "0.05");
-    options.setArgs("CVODE STOP TIME", "TRUE");
 
-    const auto maxSteps = 10000;
-    options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
+    options.setArgs("SCALAR00 CVODE ABSOLUTE TOLERANCE", "1e-10");
+    options.setArgs("SCALAR01 CVODE ABSOLUTE TOLERANCE", "1e-10");
 
     options.setArgs("CVODE RELATIVE TOLERANCE", "1e-10");
-    options.setArgs("CVODE ABSOLUTE TOLERANCE", "1e-12");
-    options.setArgs("CVODE GMR VECTORS", "20");
+    options.setArgs("CVODE GMRES BASIS VECTORS", "20");
 
     options.setArgs("SCALAR01 SOLVER", "CVODE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
@@ -270,12 +259,12 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if (ciMode == 18) {
 
     options.setArgs("CVODE", "TRUE");
-    options.setArgs("CVODE INTEGRATOR", "BDF");
-    options.setArgs("CVODE MAX TIMESTEPPER ORDER", "3");
-    options.setArgs("CVODE EPS LIN", "0.05");
-    options.setArgs("CVODE STOP TIME", "TRUE");
+
+    options.setArgs("SCALAR00 CVODE ABSOLUTE TOLERANCE", "1e-10");
+    options.setArgs("SCALAR01 CVODE ABSOLUTE TOLERANCE", "1e-10");
 
     options.setArgs("ADVECTION TYPE", "CONVECTIVE");
+    options.setArgs("CVODE ADVECTION TYPE", "CONVECTIVE");
 
     options.setArgs("SCALAR00 REGULARIZATION METHOD", "HPFRT");
     options.setArgs("SCALAR01 REGULARIZATION METHOD", "HPFRT");
@@ -284,12 +273,8 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("SCALAR00 HPFRT STRENGTH", "10.0");
     options.setArgs("SCALAR01 HPFRT STRENGTH", "10.0");
 
-    const auto maxSteps = 10000;
-    options.setArgs("CVODE MAX STEPS", std::to_string(maxSteps));
-
     options.setArgs("CVODE RELATIVE TOLERANCE", "1e-10");
-    options.setArgs("CVODE ABSOLUTE TOLERANCE", "1e-12");
-    options.setArgs("CVODE GMR VECTORS", "20");
+    options.setArgs("CVODE GMRES BASIS VECTORS", "20");
 
     options.setArgs("SCALAR00 SOLVER", "CVODE");
     options.setArgs("SCALAR01 SOLVER", "CVODE");
@@ -782,6 +767,58 @@ void ciTestSurfaceIntegral(nrs_t *nrs)
   }
 }
 
+void ciTestDistance(nrs_t *nrs)
+{
+  auto mesh = nrs->meshV;
+
+  int nbID = 1;
+  int bID = 1;
+  occa::memory o_bID = platform->o_memPool.reserve<int>(nbID);
+  o_bID.copyFrom(&bID);
+
+  auto o_dist = mesh->minDistance(nbID, o_bID, "cheap_dist");
+
+  std::vector<dfloat> dist(mesh->Nlocal);
+  o_dist.copyTo(dist.data(), mesh->Nlocal);
+
+  // distance from wall is 1-r
+  dfloat maxRelErr = 0.0;
+  std::vector<dfloat> refVal(mesh->Nlocal, 0.0);
+  for(int n = 0; n < mesh->Nlocal; ++n){
+    const auto x = mesh->x[n];
+    const auto y = mesh->y[n];
+    const auto z = mesh->z[n];
+    const auto r = std::sqrt(x*x + y*y + z*z);
+
+    const auto ref = std::abs(1. - r);
+    refVal[n] = ref;
+  }
+
+  auto o_refVal = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
+  o_refVal.copyFrom(refVal.data(), mesh->Nlocal);
+
+  platform->linAlg->axpby(mesh->Nlocal, 1.0, o_refVal, -1.0, o_dist);
+  platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_LMM, o_dist);
+  platform->linAlg->axmy(mesh->Nlocal, 1.0, mesh->o_LMM, o_refVal);
+  auto intErr = platform->linAlg->sum(mesh->Nlocal, o_dist, platform->comm.mpiComm);
+  auto intRef = platform->linAlg->sum(mesh->Nlocal, o_refVal, platform->comm.mpiComm);
+  auto relErr = std::abs(intErr / intRef);
+  const auto relTol = 2e-2;
+  if(relErr > relTol){
+    if(platform->comm.mpiRank == 0){
+      std::cout << "ciTestDistance: relative error " << relErr << " is too large!\n";
+    }
+    CIFAIL;
+  }
+
+  if (platform->exitValue) {
+    nrsFinalize(nrs);
+    exit(platform->exitValue);
+  }
+
+
+}
+
 dfloat sum(dfloat const *const array, const int size, MPI_Comm comm)
 {
   dfloat sumr = 0.0;
@@ -973,6 +1010,9 @@ void ciTestErrors(nrs_t *nrs,
   }
 
   if (ciMode == 15) {
+
+    ciTestDistance(nrs);
+    
     ciTestLVector(nrs, time, exactUVWPKernel);
 
     ciTestPointInterpolation(nrs, time, exactUVWPKernel);
@@ -1049,6 +1089,14 @@ void ciTestErrors(nrs_t *nrs,
     s1Err = abs((err[2] - 6.67E-12) / err[2]);
     s2Err = abs((err[3] - 7.49E-12) / err[3]);
     pIterErr = abs(NiterP - 4);
+    vxErr = abs((err[0] - 2.77E-10) / err[0]);
+    prErr = abs((err[1] - 6.98E-10) / err[1]);
+    break;
+  case 19: // same as 2, 11, but solves converge in a single step
+    velIterErr = abs(NiterU - 1);
+    s1Err = abs((err[2] - 6.67E-12) / err[2]);
+    s2Err = abs((err[3] - 7.49E-12) / err[3]);
+    pIterErr = abs(NiterP - 1);
     vxErr = abs((err[0] - 2.77E-10) / err[0]);
     prErr = abs((err[1] - 6.98E-10) / err[1]);
     break;

@@ -3,6 +3,7 @@ set(MESH_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/mesh)
 set(MESH_SOURCES
     ${MESH_SOURCE_DIR}/meshSetup.cpp
     ${MESH_SOURCE_DIR}/meshSurfaceIntegral.cpp
+    ${MESH_SOURCE_DIR}/meshDistance.cpp
     ${MESH_SOURCE_DIR}/meshNekReader.cpp
     ${MESH_SOURCE_DIR}/meshPhysicalNodesHex3D.cpp
     ${MESH_SOURCE_DIR}/meshGlobalIds.cpp

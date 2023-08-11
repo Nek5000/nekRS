@@ -1,0 +1,15 @@
+@kernel void magSqrSymTensor(const dlong N,
+                             const dlong offset,
+                             @ restrict const dfloat *SIJ,
+                             @ restrict dfloat *MAG)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dfloat s1 = SIJ[n + 0 * offset];
+    const dfloat s2 = SIJ[n + 1 * offset];
+    const dfloat s3 = SIJ[n + 2 * offset];
+    const dfloat s4 = SIJ[n + 3 * offset];
+    const dfloat s5 = SIJ[n + 4 * offset];
+    const dfloat s6 = SIJ[n + 5 * offset];
+    MAG[n] = s1 * s1 + s2 * s2 + s3 * s3 + 2 * (s4 * s4 + s5 * s5 + s6 * s6);
+  }
+}

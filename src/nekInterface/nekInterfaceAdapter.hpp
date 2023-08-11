@@ -123,7 +123,8 @@ int lglel(int e);
 int setup(nrs_t *nrs);
 void bootstrap();
 void ifoutfld(int i);
-void setic(void);
+void getIC(void);
+void restartFromFile(const std::string& fileName);
 void userchk(void);
 int bcmap(int bid, int ifld);
 

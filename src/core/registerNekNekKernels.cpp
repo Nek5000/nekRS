@@ -1,3 +1,5 @@
+#include "bcMap.hpp"
+#include "mesh.h"
 #include <nrs.hpp>
 #include <compileKernels.hpp>
 #include <limits>
@@ -24,6 +26,17 @@ void registerNekNekKernels()
   std::string kernelName = "copyNekNekPoints";
   std::string fileName = oklpath + "/neknek/" + kernelName + ".okl";
   platform->kernels.add(kernelName, fileName, platform->kernelInfo);
+
+  auto surfaceFluxKernelInfo = platform->kernelInfo;
+  surfaceFluxKernelInfo += meshKernelProperties(N);
+  bcMap::addKernelConstants(surfaceFluxKernelInfo);
+  kernelName = "computeFlux";
+  fileName = oklpath + "/neknek/" + kernelName + ".okl";
+  platform->kernels.add(kernelName, fileName, surfaceFluxKernelInfo);
+
+  kernelName = "fixSurfaceFlux";
+  fileName = oklpath + "/neknek/" + kernelName + ".okl";
+  platform->kernels.add(kernelName, fileName, surfaceFluxKernelInfo);
 
   auto findptsKernelInfo = platform->kernelInfo;
   findptsKernelInfo["includes"].asArray();

@@ -173,6 +173,10 @@ static void loadKernels(mesh_t *mesh)
   mesh->surfaceGeometricFactorsKernel = platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D" + orderSuffix);
   mesh->cubatureGeometricFactorsKernel = platform->kernels.get(meshPrefix + "cubatureGeometricFactorsHex3D" + orderSuffix);
 
+  mesh->setBIDKernel = platform->kernels.get(meshPrefix + "setBIDHex3D" + orderSuffix);
+  mesh->distanceKernel = platform->kernels.get(meshPrefix + "distanceHex3D" + orderSuffix);
+  mesh->hlongSumKernel = platform->kernels.get("hlong-" + meshPrefix + "sum" + orderSuffix);
+
   mesh->velocityDirichletKernel = platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
   mesh->nStagesSumVectorKernel = platform->kernels.get(meshPrefix + "nStagesSumVector");
 }
@@ -272,6 +276,19 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
     const int maxTemporalOrder = 3;
     mesh->coeffAB = (dfloat *)calloc(maxTemporalOrder, sizeof(dfloat));
     mesh->o_coeffAB = platform->device.malloc<dfloat>(maxTemporalOrder, mesh->coeffAB);
+  }
+
+  { 
+    std::vector<dfloat> tmp(mesh->Nlocal);
+    mesh->ogs->o_invDegree.copyTo(tmp.data());
+
+    double sum = 0;
+    for (int i = 0; i < mesh->Nlocal; i++) {
+      sum += tmp[i];
+    }
+    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm);
+    if (platform->comm.mpiRank == 0)
+      printf("unique number of gridpoints: : %lld\n", static_cast<hlong>(sum+0.1));
   }
 
   {
@@ -453,6 +470,19 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
   mesh->computeInvLMM();
 
   mesh->volume = platform->linAlg->sum(mesh->Nlocal, mesh->o_LMM, platform->comm.mpiComm);
+
+  { 
+    std::vector<dfloat> tmp(mesh->Nlocal);
+    mesh->ogs->o_invDegree.copyTo(tmp.data());
+
+    double sum = 0;
+    for (int i = 0; i < mesh->Nlocal; i++) {
+      sum += tmp[i];
+    }
+    MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm);
+    if (platform->comm.mpiRank == 0)
+      printf("unique number of gridpoints: : %lld\n", static_cast<hlong>(sum+0.1));
+  }
 
   {
     double valMin = (double)mesh->NlocalGatherElements / mesh->Nelements;

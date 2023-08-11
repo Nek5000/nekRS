@@ -86,8 +86,12 @@ solver                      none                                       linear so
                             PFGMRES [D for PRESSURE] 
                               +nVector=<int>                           dimension of Krylov space
 
-residualTol                 <float>                                    absolute residual tolerance  
+residualTol                 <float>                                    absolute linear solver residual tolerance 
+                            1e-4 [D] 
                             +relative=<float>                          use absolute/relative residual (whatever is reached first) 
+
+absoluteTol                 <float>                                    absolute solver tolerance (for CVODE only) 
+                            1e-6 [D] 
 
 initialGuess                previous
                             extrapolation [D] 
@@ -213,8 +217,6 @@ solver                      cbGMRES [D], GMRES                         linear so
 gsType                      classical [D], modified
 relativeTol                 <float>                                    relative tolerance
                             1e-4 [D]
-absoluteTol                 <float>                                    absolute tolerance
-                            1e-6 [D]
 epsLin                      <float>                                    ratio between linear and nonlinear tolerances
                             0.5 [D]
 sigScale                    <float>                                    scaling coeff for Jv difference quotient 

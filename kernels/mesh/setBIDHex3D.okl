@@ -1,0 +1,42 @@
+@kernel void setBIDHex3D(const dlong Nelements,
+                         const dlong Nfields,
+                         const dlong fieldOffset,
+                         const dlong nbID,
+                         const dfloat value,
+                         const dlong *bID,
+                         const dlong mode,
+                         @ restrict const dlong *vmapM,
+                         @ restrict const int *EToBM,
+                         @ restrict dfloat *U)
+{
+  for (dlong e = 0; e < Nelements; e++; @outer(0)) {
+    // reduce over all element faces
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      if (t < p_Nfp) {
+        for (int f = 0; f < p_Nfaces; f++) {
+          const dlong bIDM = EToBM[f + p_Nfaces * e];
+
+          if (bIDM > 0) {
+            for (int ibID = 0; ibID < nbID; ibID++) {
+              if (bIDM == bID[ibID]) {
+                const int n = t + f * p_Nfp;
+                const dlong sid = e * p_Nfaces * p_Nfp + n;
+
+                const dlong idM = vmapM[sid];
+                // mode 0: zero across all fields for all boundary conditions
+                // mode 1: zero each individual bid on a field-by-field basis
+                if(mode == 0){
+                  for (int fld = 0; fld < Nfields; fld++) {
+                    U[idM + fld * fieldOffset] = value;
+                  }
+                } else {
+                  U[idM + ibID * fieldOffset] = value;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -377,6 +377,8 @@ neknek_t::neknek_t(nrs_t *nrs, dlong _nsessions, dlong _sessionID)
   neknekSetup(nrs);
 
   this->copyNekNekPointsKernel = platform->kernels.get("copyNekNekPoints");
+  this->computeFluxKernel = platform->kernels.get("computeFlux");
+  this->fixSurfaceFluxKernel = platform->kernels.get("fixSurfaceFlux");
 }
 
 void neknek_t::updateBoundary(nrs_t *nrs, int tstep, int stage)

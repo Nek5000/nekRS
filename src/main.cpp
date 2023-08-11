@@ -479,7 +479,6 @@ int main(int argc, char** argv)
     return EXIT_SUCCESS;
   }
 
-  int tStep = 0;
   double time = nekrs::startTime();
 
   double elapsedTime = 0;
@@ -493,10 +492,8 @@ int main(int argc, char** argv)
       std::cout << "initialization took " << elapsedTime << " s" << std::endl;
   }
 
-  int isLastStep = 1;
-  if (nekrs::endTime() > nekrs::startTime() || nekrs::numSteps() > tStep) {
-    isLastStep = 0;
-  }
+  int tStep = 0;
+  int isLastStep = nekrs::lastStep(nekrs::startTime(), tStep, elapsedTime);
   nekrs::lastStep(isLastStep);
 
   nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
@@ -512,7 +509,7 @@ int main(int argc, char** argv)
       std::cout << "endTime or numSteps reached already -> skip timestepping\n"; 
     else if (nekrs::endTime() > nekrs::startTime())
       std::cout << "\ntimestepping to time " << nekrs::endTime() << " ...\n";
-    else
+    else if (nekrs::numSteps() > tStep)
       std::cout << "\ntimestepping for " << nekrs::numSteps() << " steps ...\n";
   }
 
