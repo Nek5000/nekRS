@@ -1,5 +1,4 @@
 [GENERAL]
-# polynomial order of session need not match that of another session
 polynomialOrder = 7
 #startFrom = "restart.fld"
 numSteps = 100
@@ -29,5 +28,4 @@ boundaryTypeMap = int
 P_U0 = 5.0
 P_V0 = 1.5
 P_OMEGA = 2 # multiplied by pi
-P_SCALE = 2 # multiplied by pi
-
+P_SCALE = 1.5 # multiplied by pi

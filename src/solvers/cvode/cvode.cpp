@@ -78,40 +78,6 @@ void cvode_t::initialize()
 
 cvode_t::~cvode_t()
 {
-  if (o_xyz0.size()) {
-    o_xyz0.free();
-  }
-  if (o_coeffExt.size()) {
-    o_coeffExt.free();
-  }
-  if (o_cvodeScalarIds.size()) {
-    o_cvodeScalarIds.free();
-  }
-  if (o_scalarIds.size()) {
-    o_scalarIds.free();
-  }
-  if (o_absTol.size()) {
-    o_absTol.free();
-  }
-
-#ifdef ENABLE_CVODE
-  // despite documentation, this function does not exist?
-  // N_VDestroy_MPIPlusX(cvodeY);
-
-  if (platform->device.mode() == "CUDA") {
-#ifdef ENABLE_CUDA
-    N_VDestroy_Cuda(y);
-#endif
-  } else if (platform->device.mode() == "HIP") {
-#ifdef ENABLE_HIP
-    N_VDestroy_HIP(y);
-#endif
-  } else if (platform->device.mode() == "Serial") {
-    N_VDestroy_Serial(y);
-  }
-
-  CVodeFree(&cvodeMem);
-#endif
 }
 
 void cvode_t::setupDirichletMask()
@@ -216,6 +182,9 @@ std::string cvode_t::rhsTagName() const
   return 0;
 }
 
-void cvode_t::setLocalPointSource(userLocalPointSource_t _userLocalPointSource)
+void cvode_t::setLocalPointSource(userLocalPointSourceE_t _userLocalPointSource)
+{
+}
+void cvode_t::setLocalPointSource(userLocalPointSourceL_t _userLocalPointSource)
 {
 }

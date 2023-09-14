@@ -16,6 +16,7 @@
 
 #endif
 
-int cbGMRES(SUNLinearSolver S, N_Vector x, N_Vector b, realtype delta);
+int cbGMRESSolve(SUNLinearSolver S, N_Vector x, N_Vector b, realtype delta);
+void cbGMRESSetup(SUNLinearSolver S);
 
 #endif

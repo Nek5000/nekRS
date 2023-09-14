@@ -242,8 +242,8 @@ void nrsSetup(MPI_Comm comm, setupAide &options, nrs_t *nrs)
       nrsCheck(msh->Nbid != bcMap::size(field),
                platform->comm.mpiComm,
                EXIT_FAILURE,
-               "Size of %s boundaryTypeMap does not match number of boundary IDs in mesh!\n",
-               field.c_str());
+               "Size of %s boundaryTypeMap (%d) does not match number of boundary IDs in mesh (%d)!\n",
+               field.c_str(), bcMap::size(field), msh->Nbid);
     }
 
     bcMap::checkBoundaryAlignment(nrs->meshV);

@@ -77,14 +77,44 @@ public:
             const dlong npt_max,
             const dfloat newt_tol);
 
+  // ctor with multi-session support
+  findpts_t(MPI_Comm comm,
+            const dfloat *const x,
+            const dfloat *const y,
+            const dfloat *const z,
+            const dlong Nq,
+            const dlong Nelements,
+            const dlong m,
+            const dfloat bbox_tol,
+            const dlong local_hash_size,
+            const dlong global_hash_size,
+            const dlong npt_max,
+            const dfloat newt_tol,
+            const dlong sessionId_,
+            const dfloat *const distfint);
+
   ~findpts_t();
 
   void find(data_t *findPtsData, const occa::memory& o_x, const occa::memory& o_y, const occa::memory& o_z, const dlong npt);
+  void find(data_t *findPtsData,
+            const occa::memory &o_x,
+            const occa::memory &o_y,
+            const occa::memory &o_z,
+            const occa::memory &o_sess,
+            const dlong sessionIdMatch,
+            const dlong npt);
 
   void find(data_t *findPtsData,
             const dfloat *const x,
             const dfloat *const y,
             const dfloat *const z,
+            const dlong npt);
+  void find(data_t *findPtsData,
+            const dfloat *const x,
+            const dfloat *const y,
+            const dfloat *const z,
+            const dlong *const session,
+            const dlong sessionIdMatch,
             const dlong npt);
 
   // Device versions
@@ -127,6 +157,9 @@ public:
 private:
   static constexpr int maxFields = 30;
 
+  bool useMultiSessionSupport = false;
+  int sessionId = 0;
+
   MPI_Comm comm;
   int rank;
   TimerLevel timerLevel = TimerLevel::None;
@@ -142,6 +175,9 @@ private:
   occa::memory o_x;
   occa::memory o_y;
   occa::memory o_z;
+
+  // distance function -- used for multi-session support
+  occa::memory o_distfint;
 
   // results after find call
   occa::memory o_code;
@@ -174,20 +210,28 @@ private:
 
   void findptsLocal(int *const code,
                     int *const el,
+                    int *const elsid,
                     dfloat *const r,
                     dfloat *const dist2,
+                    dfloat *const disti,
                     const dfloat *const x,
                     const dfloat *const y,
                     const dfloat *const z,
+                    const dlong *const sess,
+                    const int sessionIdMatch,
                     const int pn);
 
   void findptsLocal(int *const code,
                     int *const el,
+                    int *const elsid,
                     dfloat *const r,
                     dfloat *const dist2,
+                    dfloat *const disti,
                     occa::memory o_xint,
                     occa::memory o_yint,
                     occa::memory o_zint,
+                    occa::memory o_sess,
+                    const int sessionIdMatch,
                     const int pn);
 
   template <typename OutputType>

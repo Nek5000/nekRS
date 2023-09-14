@@ -301,22 +301,23 @@ dfloat pMGLevel::maxEigSmoothAx()
   hlong Nglobal = 0;
   MPI_Allreduce(&Nlocal, &Nglobal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
-  occa::memory o_invDegree = platform->device.malloc<dfloat>(Nlocal, elliptic->ogs->invDegree);
+  auto o_invDegree = platform->o_memPool.reserve<dfloat>(Nlocal);
+  o_invDegree.copyFrom(elliptic->ogs->invDegree);
   const auto k = (unsigned int) std::min(pMGLevel::Narnoldi, Nglobal);
 
   std::vector<double> H(k*k, 0.0);
-  auto Vx = randomVector<dfloat>(M);
+  auto Vx = randomVector<dfloat>(M, 0.0, 1.0, true); // deterministic random numbers
 
   std::vector<occa::memory> o_V(k+1);
   for(int i = 0; i <= k; i++) {
-    o_V[i] = platform->device.malloc<dfloat>(M);
+    o_V[i] = platform->o_memPool.reserve<dfloat>(M);
   }
 
-  occa::memory o_Vx = platform->device.malloc<dfloat>(M); 
-  occa::memory o_VxPfloat = platform->device.malloc<pfloat>(M); 
+  auto o_Vx = platform->o_memPool.reserve<dfloat>(M); 
+  auto o_VxPfloat = platform->o_memPool.reserve<pfloat>(M); 
 
-  occa::memory o_AVx = platform->device.malloc<dfloat>(M);
-  occa::memory o_AVxPfloat = platform->device.malloc<pfloat>(M); 
+  auto o_AVx = platform->o_memPool.reserve<dfloat>(M);
+  auto o_AVxPfloat = platform->o_memPool.reserve<pfloat>(M); 
 
   if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
     ogsGatherScatter(Vx.data(), ogsDfloat, ogsAdd, mesh->ogs);

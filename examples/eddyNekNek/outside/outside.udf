@@ -8,6 +8,7 @@
 static dfloat P_U0;
 static dfloat P_V0;
 static dfloat P_OMEGA;
+static dfloat P_SCALE;
 
 #ifdef __okl__
 void exact(dfloat *uu, dfloat *vv, dfloat *ww, dfloat xx, dfloat yy, dfloat zz, double time, dfloat visc)
@@ -186,7 +187,9 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   platform->par->extract("casedata", "p_u0", P_U0);
   platform->par->extract("casedata", "p_v0", P_V0);
   platform->par->extract("casedata", "p_omega", P_OMEGA);
+  platform->par->extract("casedata", "p_scale", P_SCALE);
   P_OMEGA *= M_PI;
+  P_SCALE *= M_PI;
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
@@ -194,12 +197,13 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
     nek_cb_scnrs[1] = P_V0;
     nek_cb_scnrs[2] = P_OMEGA;
     nek_cb_scnrs[3] = viscosity;
+    nek_cb_scnrs[4] = P_SCALE;
   }
 }
 
 int timeStepConverged(nrs_t *nrs, int stage)
 {
-  if (nrs->neknek->nEXT == 1) {
+  if (nrs->neknek->nEXT() == 1) {
     return 1;
   }
 

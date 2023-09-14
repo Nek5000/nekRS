@@ -24,6 +24,7 @@ occa::memory cdsSolve(const int is, cds_t* cds, double time, int stage)
                        is,
                        time,
                        cds->fieldOffset[is],
+                       0,
                        cds->EToBOffset,
                        mesh->o_x,
                        mesh->o_y,

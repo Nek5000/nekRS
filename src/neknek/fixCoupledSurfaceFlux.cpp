@@ -2,28 +2,28 @@
 #include "nrs.hpp"
 #include <array>
 
-void fixCoupledSurfaceFlux(nrs_t *nrs, occa::memory o_U)
+void neknek_t::fixCoupledSurfaceFlux(occa::memory o_U)
 {
-  if (nrs->neknek == nullptr || !nrs->flow) {
+  if (!nrs->flow) {
     return;
   }
 
-  auto neknek = nrs->neknek;
   auto mesh = nrs->meshV;
 
   constexpr int nReduction = 2;
   auto o_reduction = platform->o_memPool.reserve<dfloat>(nReduction * mesh->Nelements);
 
-  neknek->computeFluxKernel(mesh->Nelements,
-                            nrs->fieldOffset,
-                            mesh->o_sgeo,
-                            mesh->o_vmapM,
-                            nrs->o_EToB,
-                            o_U,
-                            o_reduction);
+  this->computeFluxKernel(mesh->Nelements,
+                          nrs->fieldOffset,
+                          mesh->o_sgeo,
+                          mesh->o_vmapM,
+                          nrs->o_EToB,
+                          o_U,
+                          o_reduction);
 
   std::vector<dfloat> reduction(nReduction * mesh->Nelements);
   o_reduction.copyTo(reduction.data());
+  o_reduction.free();
 
   std::array<dfloat, nReduction> res;
   for (int fld = 0; fld < nReduction; fld++) {
@@ -42,11 +42,11 @@ void fixCoupledSurfaceFlux(nrs_t *nrs, occa::memory o_U)
     gamma = -1.0 * flux / area;
   }
 
-  neknek->fixSurfaceFluxKernel(mesh->Nelements,
-                               nrs->fieldOffset,
-                               mesh->o_sgeo,
-                               mesh->o_vmapM,
-                               nrs->o_EToB,
-                               gamma,
-                               o_U);
+  this->fixSurfaceFluxKernel(mesh->Nelements,
+                             nrs->fieldOffset,
+                             mesh->o_sgeo,
+                             mesh->o_vmapM,
+                             nrs->o_EToB,
+                             gamma,
+                             o_U);
 }

@@ -89,6 +89,9 @@ static uint count_bits(unsigned char *p, uint n)
   call findpts_setup(h, comm,np, ndim, xm,ym,zm, nr,ns,nt,nel,
                      mr,ms,mt, bbox_tol, loc_hash_size, gbl_hash_size,
                      npt_max, newt_tol)
+  call findptsms_setup(h, comm,np, ndim, xm,ym,zm, nr,ns,nt,nel,
+                     mr,ms,mt, bbox_tol, loc_hash_size, gbl_hash_size,
+                     npt_max, newt_tol,idsess,distf)
 
     (zm,nt,mt all ignored when ndim==2)
                      
@@ -131,9 +134,16 @@ static uint count_bits(unsigned char *p, uint n)
                    the 1-norm of the step in (r,s,t) is smaller than newt_tol
                 or the objective (dist^2) increases while the predicted (model)
                   decrease is smaller than newt_tol * (the objective)
+  Additional arguments for multisession findpts
+    idsess: integer session ID number of the domain.. same for all elements
+            on a processor. findpts will ignore elements who have the 
+            same session ID as that of the sought point by findpts
+    distf : e.g. distance of each node from a surface
+            nodal field which will be maximized during search in findpts. 
 
   --------------------------------------------------------------------------
   call findpts_free(h)
+  call findptsms_free(h)
   
   --------------------------------------------------------------------------
   call findpts(h, code_base,  code_stride,
@@ -144,6 +154,17 @@ static uint count_bits(unsigned char *p, uint n)
                      x_base,     x_stride,
                      y_base,     y_stride,
                      z_base,     z_stride, npt)
+
+  call findptsms(h, code_base,  code_stride,
+                  proc_base,  proc_stride,
+                    el_base,    el_stride,
+                     r_base,     r_stride,
+                 dist2_base, dist2_stride,
+                     x_base,     x_stride,
+                     y_base,     y_stride,
+                     z_base,     z_stride, 
+                  sess_base,  sess_stride, 
+                 sess_match,          npt)
 
     (z_base, z_stride ignored when ndim==2)
 
@@ -160,6 +181,12 @@ static uint count_bits(unsigned char *p, uint n)
           dist2: distance squared from found to sought point (in xyz space)
         input:
           x, y, z: coordinates of sought point
+   Additional input for findptsms
+          sess: session ID of the sought point
+    sess_match: 1 - find points in elements who session id is same from points
+	      : 0 - find points in elements who session id is different from
+                    points
+                
     
     the *_base arguments point to the data for the first point,
       each is advanced by the corresponding *_stride argument for the next point
@@ -200,6 +227,12 @@ static uint count_bits(unsigned char *p, uint n)
 
   --------------------------------------------------------------------------*/
 
+#define ffindptsms_setup      FORTRAN_NAME(findptsms_setup     ,FINDPTSMS_SETUP     )
+#define ffindptsms_free       FORTRAN_NAME(findptsms_free      ,FINDPTSMS_FREE      )
+#define ffindptsms            FORTRAN_NAME(findptsms           ,FINDPTSMS           )
+#define ffindptsms_eval       FORTRAN_NAME(findptsms_eval      ,FINDPTSMS_EVAL      )
+#define ffindptsms_eval_local FORTRAN_NAME(findptsms_eval_local,FINDPTSMS_EVAL_LOCAL)
+
 #define ffindpts_setup      FORTRAN_NAME(findpts_setup     ,FINDPTS_SETUP     )
 #define ffindpts_free       FORTRAN_NAME(findpts_free      ,FINDPTS_FREE      )
 #define ffindpts            FORTRAN_NAME(findpts           ,FINDPTS           )
@@ -211,7 +244,7 @@ static struct handle *handle_array = 0;
 static int handle_max = 0;
 static int handle_n = 0;
 
-void ffindpts_setup(sint *const handle,
+void ffindptsms_setup(sint *const handle,
   const MPI_Fint *const comm, const sint *const np,
   const sint *ndim,
   const double *const xm, const double *const ym, const double *const zm,
@@ -221,8 +254,11 @@ void ffindpts_setup(sint *const handle,
   const double *const bbox_tol,
   const sint *const loc_hash_size, const sint *const gbl_hash_size,
   const sint *const npt_max,
-  const double *const newt_tol)
+  const double *const newt_tol,
+  const uint *const nsid,
+  const double *const distfint)
 {
+  uint ims=1;
   struct handle *h;
   if(handle_n==handle_max)
     handle_max+=handle_max/2+1,
@@ -240,8 +276,8 @@ void ffindpts_setup(sint *const handle,
     comm_init_check(&fd->cr.comm, *comm, *np);
     buffer_init(&fd->cr.data,1000);
     buffer_init(&fd->cr.work,1000);
-    setup_aux_2(fd, elx,n,*nel,m,*bbox_tol,
-                *loc_hash_size,*gbl_hash_size, *npt_max, *newt_tol);
+    setupms_aux_2(fd, elx,n,*nel,m,*bbox_tol,
+                *loc_hash_size,*gbl_hash_size, *npt_max, *newt_tol, nsid, distfint,ims);
   } else if(h->ndim==3) {
     struct findpts_data_3 *const fd = tmalloc(struct findpts_data_3,1);
     const double *elx[3];
@@ -253,8 +289,65 @@ void ffindpts_setup(sint *const handle,
     comm_init_check(&fd->cr.comm, *comm, *np);
     buffer_init(&fd->cr.data,1000);
     buffer_init(&fd->cr.work,1000);
-    setup_aux_3(fd, elx,n,*nel,m,*bbox_tol,
-                *loc_hash_size,*gbl_hash_size, *npt_max, *newt_tol);
+    setupms_aux_3(fd, elx,n,*nel,m,*bbox_tol,
+                *loc_hash_size,*gbl_hash_size, *npt_max, *newt_tol, nsid, distfint,ims);
+  } else
+    fail(1,__FILE__,__LINE__,
+         "findptsms_setup: ndim must be 2 or 3; given ndim=%u",(unsigned)h->ndim);
+  *handle = handle_n++;
+}
+
+void ffindpts_setup(sint *const handle,
+  const MPI_Fint *const comm, const sint *const np,
+  const sint *ndim,
+  const double *const xm, const double *const ym, const double *const zm,
+  const sint *const nr, const sint *const ns, const sint *const nt,
+  const sint *const nel,
+  const sint *const mr, const sint *const ms, const sint *const mt,
+  const double *const bbox_tol,
+  const sint *const loc_hash_size, const sint *const gbl_hash_size,
+  const sint *const npt_max,
+  const double *const newt_tol)
+{
+  uint ims=0;
+  struct handle *h;
+  if(handle_n==handle_max)
+    handle_max+=handle_max/2+1,
+    handle_array=trealloc(struct handle,handle_array,handle_max);
+  h = &handle_array[handle_n];
+  h->ndim = *ndim;
+  if(h->ndim==2) {
+    struct findpts_data_2 *const fd = tmalloc(struct findpts_data_2,1);
+    const double *elx[2];
+    uint n[2], m[2];
+    elx[0]=xm,elx[1]=ym;
+    n[0]=*nr,n[1]=*ns;
+    m[0]=*mr,m[1]=*ms;
+    h->data = fd;
+    comm_init_check(&fd->cr.comm, *comm, *np);
+    buffer_init(&fd->cr.data,1000);
+    buffer_init(&fd->cr.work,1000);
+    unsigned int *nsid = tmalloc(uint,1);
+    double *distfint = tmalloc(double,1);
+    *nsid = 0;
+    *distfint = 0;
+    setupms_aux_2(fd, elx,n,*nel,m,*bbox_tol,
+                *loc_hash_size,*gbl_hash_size, *npt_max, *newt_tol, nsid, distfint,ims);
+  } else if(h->ndim==3) {
+    struct findpts_data_3 *const fd = tmalloc(struct findpts_data_3,1);
+    const double *elx[3];
+    uint n[3], m[3];
+    elx[0]=xm,elx[1]=ym,elx[2]=zm;
+    n[0]=*nr,n[1]=*ns,n[2]=*nt;
+    m[0]=*mr,m[1]=*ms,m[2]=*mt;
+    h->data = fd;
+    comm_init_check(&fd->cr.comm, *comm, *np);
+    buffer_init(&fd->cr.data,1000);
+    buffer_init(&fd->cr.work,1000);
+    const uint *nsid;
+    const double *distfint;
+    setupms_aux_3(fd, elx,n,*nel,m,*bbox_tol,
+                *loc_hash_size,*gbl_hash_size, *npt_max, *newt_tol, nsid, distfint,ims);
   } else
     fail(1,__FILE__,__LINE__,
          "findpts_setup: ndim must be 2 or 3; given ndim=%u",(unsigned)h->ndim);
@@ -266,6 +359,16 @@ void ffindpts_setup(sint *const handle,
   if(*handle<0 || *handle>=handle_n || !(h=&handle_array[*handle])->data) \
     fail(1,__FILE__,__LINE__,func ": invalid handle")
 
+void ffindptsms_free(const sint *const handle)
+{
+  CHECK_HANDLE("findptsms_free");
+  if(h->ndim==2)
+    PREFIXED_NAME(findptsms_free_2)(h->data);
+  else
+    PREFIXED_NAME(findptsms_free_3)(h->data);
+  h->data = 0;
+}
+
 void ffindpts_free(const sint *const handle)
 {
   CHECK_HANDLE("findpts_free");
@@ -274,6 +377,67 @@ void ffindpts_free(const sint *const handle)
   else
     PREFIXED_NAME(findpts_free_3)(h->data);
   h->data = 0;
+}
+
+void ffindptsms(const sint *const handle,
+            sint *const        code_base, const sint *const       code_stride,
+            sint *const        proc_base, const sint *const       proc_stride,
+            sint *const          el_base, const sint *const         el_stride,
+          double *const           r_base, const sint *const          r_stride,
+          double *const       dist2_base, const sint *const      dist2_stride,
+    const double *const           x_base, const sint *const          x_stride,
+    const double *const           y_base, const sint *const          y_stride,
+    const double *const           z_base, const sint *const          z_stride,
+    const   uint *const  session_id_base, const uint *const session_id_stride,
+    const   uint *const session_id_match, const sint *const npt)
+{
+  CHECK_HANDLE("findptsms");
+  if(h->ndim==2) {
+    const double *xv_base[2];
+    unsigned xv_stride[2];
+    xv_base[0]=x_base, xv_base[1]=y_base;
+    xv_stride[0] = *x_stride*sizeof(double),
+    xv_stride[1] = *y_stride*sizeof(double);
+
+    const uint *sess_base,*sess_match;
+    unsigned   sess_stride;
+    sess_base   =  session_id_base;
+    sess_stride = *session_id_stride*sizeof(uint);
+    sess_match  =  session_id_match;
+     
+    PREFIXED_NAME(findptsms_2)(
+      (uint*) code_base,(* code_stride)*sizeof(sint  ),
+      (uint*) proc_base,(* proc_stride)*sizeof(sint  ),
+      (uint*)   el_base,(*   el_stride)*sizeof(sint  ),
+                 r_base,(*    r_stride)*sizeof(double),
+             dist2_base,(*dist2_stride)*sizeof(double),
+                xv_base,     xv_stride                , 
+              sess_base,   sess_stride                ,
+             sess_match, *npt, h->data);
+  } else {
+    const double *xv_base[3];
+    unsigned xv_stride[3];
+    xv_base[0]=x_base, xv_base[1]=y_base, xv_base[2]=z_base;
+    xv_stride[0] = *x_stride*sizeof(double),
+    xv_stride[1] = *y_stride*sizeof(double),
+    xv_stride[2] = *z_stride*sizeof(double);
+
+    const uint *sess_base,*sess_match;
+    unsigned   sess_stride;
+    sess_base   =  session_id_base;
+    sess_stride = *session_id_stride*sizeof(uint);
+    sess_match  =  session_id_match;
+
+    PREFIXED_NAME(findptsms_3)(
+      (uint*) code_base,(* code_stride)*sizeof(sint  ),
+      (uint*) proc_base,(* proc_stride)*sizeof(sint  ),
+      (uint*)   el_base,(*   el_stride)*sizeof(sint  ),
+                 r_base,(*    r_stride)*sizeof(double),
+             dist2_base,(*dist2_stride)*sizeof(double),
+                xv_base,     xv_stride                ,
+              sess_base,   sess_stride                ,
+             sess_match, *npt, h->data);
+  }
 }
 
 void ffindpts(const sint *const handle,
@@ -294,13 +458,14 @@ void ffindpts(const sint *const handle,
     xv_base[0]=x_base, xv_base[1]=y_base;
     xv_stride[0] = *x_stride*sizeof(double),
     xv_stride[1] = *y_stride*sizeof(double);
+
     PREFIXED_NAME(findpts_2)(
-      (uint*)code_base,(* code_stride)*sizeof(sint  ),
-      (uint*)proc_base,(* proc_stride)*sizeof(sint  ),
-      (uint*)  el_base,(*   el_stride)*sizeof(sint  ),
-                r_base,(*    r_stride)*sizeof(double),
-            dist2_base,(*dist2_stride)*sizeof(double),
-               xv_base,     xv_stride,
+      (uint*) code_base,(* code_stride)*sizeof(sint  ),
+      (uint*) proc_base,(* proc_stride)*sizeof(sint  ),
+      (uint*)   el_base,(*   el_stride)*sizeof(sint  ),
+                 r_base,(*    r_stride)*sizeof(double),
+             dist2_base,(*dist2_stride)*sizeof(double),
+                xv_base,     xv_stride                ,
       *npt, h->data);
   } else {
     const double *xv_base[3];
@@ -309,15 +474,44 @@ void ffindpts(const sint *const handle,
     xv_stride[0] = *x_stride*sizeof(double),
     xv_stride[1] = *y_stride*sizeof(double),
     xv_stride[2] = *z_stride*sizeof(double);
+
     PREFIXED_NAME(findpts_3)(
-      (uint*)code_base,(* code_stride)*sizeof(sint  ),
-      (uint*)proc_base,(* proc_stride)*sizeof(sint  ),
-      (uint*)  el_base,(*   el_stride)*sizeof(sint  ),
-                r_base,(*    r_stride)*sizeof(double),
-            dist2_base,(*dist2_stride)*sizeof(double),
-               xv_base,     xv_stride,
+      (uint*) code_base,(* code_stride)*sizeof(sint  ),
+      (uint*) proc_base,(* proc_stride)*sizeof(sint  ),
+      (uint*)   el_base,(*   el_stride)*sizeof(sint  ),
+                 r_base,(*    r_stride)*sizeof(double),
+             dist2_base,(*dist2_stride)*sizeof(double),
+                xv_base,     xv_stride                ,
       *npt, h->data);
   }
+}
+
+
+void ffindptsms_eval(const sint *const handle,
+        double *const  out_base, const sint *const  out_stride,
+  const   sint *const code_base, const sint *const code_stride,
+  const   sint *const proc_base, const sint *const proc_stride,
+  const   sint *const   el_base, const sint *const   el_stride,
+  const double *const    r_base, const sint *const    r_stride,
+  const sint *const npt, const double *const in)
+{
+  CHECK_HANDLE("findptsms_eval");
+  if(h->ndim==2)
+    PREFIXED_NAME(findptsms_eval_2)(
+              out_base,(* out_stride)*sizeof(double),
+      (uint*)code_base,(*code_stride)*sizeof(sint  ),
+      (uint*)proc_base,(*proc_stride)*sizeof(sint  ),
+      (uint*)  el_base,(*  el_stride)*sizeof(sint  ),
+                r_base,(*   r_stride)*sizeof(double),
+      *npt, in, h->data);
+  else
+    PREFIXED_NAME(findptsms_eval_3)(
+              out_base,(* out_stride)*sizeof(double),
+      (uint*)code_base,(*code_stride)*sizeof(sint  ),
+      (uint*)proc_base,(*proc_stride)*sizeof(sint  ),
+      (uint*)  el_base,(*  el_stride)*sizeof(sint  ),
+                r_base,(*   r_stride)*sizeof(double),
+      *npt, in, h->data);
 }
 
 void ffindpts_eval(const sint *const handle,
@@ -347,6 +541,26 @@ void ffindpts_eval(const sint *const handle,
       *npt, in, h->data);
 }
 
+void ffindptsms_eval_local(const sint *const handle,
+        double *const  out_base, const sint *const  out_stride,
+  const   sint *const   el_base, const sint *const   el_stride,
+  const double *const    r_base, const sint *const    r_stride,
+  const sint *const npt, const double *const in)
+{
+  CHECK_HANDLE("findptsms_eval_local");
+  if(h->ndim==2)
+    findptsms_local_eval_2(
+              out_base,(* out_stride)*sizeof(double),
+      (uint*)  el_base,(*  el_stride)*sizeof(sint  ),
+                r_base,(*   r_stride)*sizeof(double),
+      *npt, in, &((struct findpts_data_2 *)h->data)->local);
+  else
+    findptsms_local_eval_3(
+              out_base,(* out_stride)*sizeof(double),
+      (uint*)  el_base,(*  el_stride)*sizeof(sint  ),
+                r_base,(*   r_stride)*sizeof(double),
+      *npt, in, &((struct findpts_data_3 *)h->data)->local);
+}
 void ffindpts_eval_local(const sint *const handle,
         double *const  out_base, const sint *const  out_stride,
   const   sint *const   el_base, const sint *const   el_stride,

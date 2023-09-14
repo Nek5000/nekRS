@@ -27,11 +27,12 @@ public:
   
   occa::memory & optr();
   const occa::memory & optr() const;
-  void optr(const std::vector<dlong>& offsets, occa::memory & o_L);
+  void optr(const std::vector<dlong> &fieldOffsets, occa::memory &o_L);
   void optr(occa::memory & o_L);
-  
-  const std::vector<dlong> & offsets() const;
-  void offsets(const std::vector<dlong>& offsets);
+
+  void fieldOffsets(const std::vector<dlong> &fieldOffsets);
+  const std::vector<dlong> &fieldOffsets() const;
+  const std::vector<dlong> &fieldOffsetScans() const;
 
   const occa::memory & invDegree(int field) const;
 
@@ -61,6 +62,7 @@ private:
   std::vector<dlong> fieldOffset_;
   std::vector<dlong> fieldOffsetScan_;
   std::vector<dlong> Nlocals_;
+  dlong fieldOffsetSum_;
 
   occa::kernel EToLKernel_;
   occa::kernel LToEKernel_;
@@ -76,9 +78,7 @@ private:
   std::map<mesh_t*, occa::memory> fields_; // Map from field number inside mesh to actual field number
   
   // field information
-  std::vector<dlong> offsets_;
-  occa::memory o_offsets_;
-
+  occa::memory o_fieldOffsetScan_;
 };
 
 #endif

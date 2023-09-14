@@ -267,9 +267,6 @@ void setupField(std::vector<std::string> slist, std::string field)
   importFromNek = false;
   lowerCase(field);
 
-  if (slist[0].compare("none") == 0)
-    return;
-
   fields.insert(field);
 
   if (field.compare("velocity") == 0)
@@ -338,7 +335,7 @@ void setup()
 
 void deriveMeshBoundaryConditions(std::vector<std::string> velocityBCs)
 {
-  if (velocityBCs.size() == 0 || velocityBCs[0].compare("none") == 0) return;
+  if (velocityBCs.size() == 0) return;
 
   meshConditionsDerived = true;
 

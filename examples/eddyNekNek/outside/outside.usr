@@ -197,14 +197,12 @@ c-----------------------------------------------------------------------
       P_V0 = sc_nrs(2)
       P_OMEGA = sc_nrs(3)
       P_VISC = sc_nrs(4)
-
-      one   = 1.
-      twopi = 8.*atan(one)
+      P_SCALE = sc_nrs(5) ! scale for mesh size
 
       n = nx1*ny1*nz1*nelt    !  Rescale mesh to [0,2pi]^2
 
-      call cmult(xm1,twopi,n)
-      call cmult(ym1,twopi,n)
+      call cmult(xm1,P_SCALE,n)
+      call cmult(ym1,P_SCALE,n)
       
       do iel=1,nelt
       do ifc=1,2*ndim

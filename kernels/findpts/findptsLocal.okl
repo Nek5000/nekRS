@@ -21,8 +21,7 @@ static dfloat obbox_test(const obbox_t *const b, const dfloat x[3])
   const dfloat bxyz = obbox_axis_test(b, x);
   if (bxyz < 0) {
     return bxyz;
-  }
-  else {
+  } else {
     dfloat dxyz[3];
     for (dlong d = 0; d < 3; ++d) {
       dxyz[d] = x[d] - b->c0[d];
@@ -77,7 +76,10 @@ static void lin_solve_sym_2(dfloat x[2], const dfloat A[3], const dfloat y[2])
   x[1] = idet * (A[0] * y[1] - A[1] * y[0]);
 }
 
-static dfloat norm2(const dfloat x[3]) { return x[0] * x[0] + x[1] * x[1] + x[2] * x[2]; }
+static dfloat norm2(const dfloat x[3])
+{
+  return x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+}
 
 /* the bit structure of flags is CTTSSRR
    the C bit --- 1<<6 --- is set when the point is converged
@@ -98,13 +100,21 @@ static dlong num_constrained(const dlong flags)
 }
 
 /* assumes x = 0, 1, or 2 */
-static dlong plus_1_mod_3(const dlong x) { return ((x | x >> 1) + 1) & 3u; }
+static dlong plus_1_mod_3(const dlong x)
+{
+  return ((x | x >> 1) + 1) & 3u;
+}
+
 static dlong plus_2_mod_3(const dlong x)
 {
   const dlong y = (x - 1) & 3u;
   return y ^ (y >> 1);
 }
-static dlong plus_1_mod_2(const dlong x) { return x ^ 1u; }
+
+static dlong plus_1_mod_2(const dlong x)
+{
+  return x ^ 1u;
+}
 
 /* assumes x = 1 << i, with i < 6, returns i+1 */
 static dlong which_bit(const dlong x)
@@ -113,7 +123,10 @@ static dlong which_bit(const dlong x)
   return (y - (y >> 2)) | ((x - 1) & 4u) | (x >> 4);
 }
 
-static dlong face_index(const dlong x) { return which_bit(x) - 1; }
+static dlong face_index(const dlong x)
+{
+  return which_bit(x) - 1;
+}
 
 static dlong edge_index(const dlong x)
 {
@@ -125,7 +138,10 @@ static dlong edge_index(const dlong x)
   return ((0u - (y & 1u)) & re) | ((0u - ((y >> 2) & 1u)) & se) | ((0u - ((y >> 4) & 1u)) & te);
 }
 
-static dlong point_index(const dlong x) { return ((x >> 1) & 1u) | ((x >> 2) & 2u) | ((x >> 3) & 4u); }
+static dlong point_index(const dlong x)
+{
+  return ((x >> 1) & 1u) | ((x >> 2) & 2u) | ((x >> 3) & 4u);
+}
 
 // gets face info
 // Must be called within an inner loop, with the final argument being the loop index
@@ -218,6 +234,7 @@ get_edge(const dfloat *elx[3], dfloat *wtend[3], dlong ei, dfloat *workspace, dl
   }
   return edge;
 }
+
 static findptsElementGPT_t get_pt(const dfloat *elx[3], dfloat *wtend[3], dlong pi)
 {
   const dlong side_n1 = pi & 1, side_n2 = (pi >> 1) & 1, side_n3 = (pi >> 2) & 1;
@@ -233,10 +250,12 @@ static findptsElementGPT_t get_pt(const dfloat *elx[3], dfloat *wtend[3], dlong 
     dfloat *wt2 = wtend[1] + p_Nq * (1 + 3 * side_n2);
     dfloat *wt3 = wtend[2] + p_Nq * (1 + 3 * side_n3);
 
-    for (dlong i = 0; i < 3; ++i)
+    for (dlong i = 0; i < 3; ++i) {
       pt.jac[3 * d + i] = 0;
-    for (dlong i = 0; i < hes_stride; ++i)
+    }
+    for (dlong i = 0; i < hes_stride; ++i) {
       pt.hes[hes_stride * d + i] = 0;
+    }
 
     for (dlong j = 0; j < p_Nq; ++j) {
       pt.jac[3 * d + 0] += wt1[j] * ELX(d, j, in2, in3);
@@ -299,14 +318,12 @@ bool reject_prior_step_q(findptsElementPoint_t *out,
     if (decr >= 0.9 * pred) {
       // very good iteration
       out->tr = p->tr * 2;
-    }
-    else {
+    } else {
       // good iteration
       out->tr = p->tr;
     }
     return false;
-  }
-  else {
+  } else {
     /* reject step; note: the point will pass through this routine
        again, and we set things up here so it gets classed as a
        "very good iteration" --- this doubles the trust radius,
@@ -316,12 +333,14 @@ bool reject_prior_step_q(findptsElementPoint_t *out,
     dfloat v2 = fabs(p->r[2] - p->oldr[2]);
     out->tr = (v1 > v2 ? (v0 > v1 ? v0 : v1) : (v0 > v2 ? v0 : v2)) / 4;
     out->dist2 = p->dist2;
-    for (dlong d = 0; d < 3; ++d)
+    for (dlong d = 0; d < 3; ++d) {
       out->r[d] = p->oldr[d];
+    }
     out->flags = p->flags >> 7;
     out->dist2p = -DBL_MAX;
-    if (pred < dist2 * tol)
+    if (pred < dist2 * tol) {
       out->flags |= CONVERGED_FLAG;
+    }
     return true;
   }
 }
@@ -343,10 +362,12 @@ void newton_vol(findptsElementPoint_t *const out,
 
   mask = 0x3fu;
   for (d = 0; d < 3; ++d) {
-    if (r0[d] - tr > -1)
+    if (r0[d] - tr > -1) {
       bnd[2 * d] = r0[d] - tr, mask ^= 1u << (2 * d);
-    if (r0[d] + tr < 1)
+    }
+    if (r0[d] + tr < 1) {
       bnd[2 * d + 1] = r0[d] + tr, mask ^= 2u << (2 * d);
+    }
   }
 
   lin_solve_3(dr, jac, resid);
@@ -354,25 +375,29 @@ void newton_vol(findptsElementPoint_t *const out,
   fac = 1, flags = 0;
   for (d = 0; d < 3; ++d) {
     dfloat nr = r0[d] + dr[d];
-    if ((nr - bnd[2 * d]) * (bnd[2 * d + 1] - nr) >= 0)
+    if ((nr - bnd[2 * d]) * (bnd[2 * d + 1] - nr) >= 0) {
       continue;
+    }
     if (nr < bnd[2 * d]) {
       dfloat f = (bnd[2 * d] - r0[d]) / dr[d];
-      if (f < fac)
+      if (f < fac) {
         fac = f, flags = 1u << (2 * d);
-    }
-    else {
+      }
+    } else {
       dfloat f = (bnd[2 * d + 1] - r0[d]) / dr[d];
-      if (f < fac)
+      if (f < fac) {
         fac = f, flags = 2u << (2 * d);
+      }
     }
   }
 
-  if (flags == 0)
+  if (flags == 0) {
     goto newton_vol_fin;
+  }
 
-  for (d = 0; d < 3; ++d)
+  for (d = 0; d < 3; ++d) {
     dr[d] *= fac;
+  }
 
 newton_vol_face : {
   const dlong fi = face_index(flags);
@@ -392,27 +417,27 @@ newton_vol_face : {
   JtJ[2] = jac[d2] * jac[d2] + jac[3 + d2] * jac[3 + d2] + jac[6 + d2] * jac[6 + d2];
   lin_solve_sym_2(drc, JtJ, y);
 #define CHECK_CONSTRAINT(drcd, d3)                                                                           \
-{                                                                                                            \
-const dfloat rz = r0[d3] + dr[d3], lb = bnd[2 * d3], ub = bnd[2 * d3 + 1];                                   \
-const dfloat delta = drcd, nr = r0[d3] + (dr[d3] + delta);                                                   \
-if ((nr - lb) * (ub - nr) < 0) {                                                                             \
-if (nr < lb) {                                                                                               \
-dfloat f = (lb - rz) / delta;                                                                                \
-if (f < fac)                                                                                                 \
-fac = f, new_flags = 1u << (2 * d3);                                                                         \
-}                                                                                                            \
-else {                                                                                                       \
-dfloat f = (ub - rz) / delta;                                                                                \
-if (f < fac)                                                                                                 \
-fac = f, new_flags = 2u << (2 * d3);                                                                         \
-}                                                                                                            \
-}                                                                                                            \
-}
+  {                                                                                                          \
+    const dfloat rz = r0[d3] + dr[d3], lb = bnd[2 * d3], ub = bnd[2 * d3 + 1];                               \
+    const dfloat delta = drcd, nr = r0[d3] + (dr[d3] + delta);                                               \
+    if ((nr - lb) * (ub - nr) < 0) {                                                                         \
+      if (nr < lb) {                                                                                         \
+        dfloat f = (lb - rz) / delta;                                                                        \
+        if (f < fac)                                                                                         \
+          fac = f, new_flags = 1u << (2 * d3);                                                               \
+      } else {                                                                                               \
+        dfloat f = (ub - rz) / delta;                                                                        \
+        if (f < fac)                                                                                         \
+          fac = f, new_flags = 2u << (2 * d3);                                                               \
+      }                                                                                                      \
+    }                                                                                                        \
+  }
   CHECK_CONSTRAINT(drc[0], d1);
   CHECK_CONSTRAINT(drc[1], d2);
   dr[d1] += fac * drc[0], dr[d2] += fac * drc[1];
-  if (new_flags == 0)
+  if (new_flags == 0) {
     goto newton_vol_fin;
+  }
   flags |= new_flags;
 }
 
@@ -453,12 +478,14 @@ newton_vol_relax : {
     dlong f = flags >> (2 * d) & 3u;
     if (f) {
       dr[d] = bnd[2 * d + (f - 1)] - r0[d];
-      if (dr[d] * y[d] < 0)
+      if (dr[d] * y[d] < 0) {
         flags &= ~(3u << (2 * d));
+      }
     }
   }
-  if (flags == old_flags)
+  if (flags == old_flags) {
     goto newton_vol_fin;
+  }
   switch (num_constrained(flags)) {
   case 1:
     goto newton_vol_face;
@@ -469,8 +496,9 @@ newton_vol_relax : {
 
 newton_vol_fin:
   flags &= mask;
-  if (fabs(dr[0]) + fabs(dr[1]) + fabs(dr[2]) < tol)
+  if (fabs(dr[0]) + fabs(dr[1]) + fabs(dr[2]) < tol) {
     flags |= CONVERGED_FLAG;
+  }
   {
     const dfloat res0 = resid[0] - (jac[0] * dr[0] + jac[1] * dr[1] + jac[2] * dr[2]),
                  res1 = resid[1] - (jac[3] * dr[0] + jac[4] * dr[1] + jac[5] * dr[2]),
@@ -484,6 +512,7 @@ newton_vol_fin:
   }
   out->flags = flags | (p->flags << 7);
 }
+
 void newton_face(findptsElementPoint_t *const out,
                  const dfloat jac[9],
                  const dfloat rhes[3],
@@ -513,25 +542,30 @@ void newton_face(findptsElementPoint_t *const out,
 
   new_flags = flags;
   mask = 0x3fu;
-  if (r0[0] - tr > -1)
+  if (r0[0] - tr > -1) {
     bnd[0] = -tr, mask ^= 1u;
-  else
+  } else {
     bnd[0] = -1 - r0[0];
-  if (r0[0] + tr < 1)
+  }
+  if (r0[0] + tr < 1) {
     bnd[1] = tr, mask ^= 2u;
-  else
+  } else {
     bnd[1] = 1 - r0[0];
-  if (r0[1] - tr > -1)
+  }
+  if (r0[1] - tr > -1) {
     bnd[2] = -tr, mask ^= 1u << 2;
-  else
+  } else {
     bnd[2] = -1 - r0[1];
-  if (r0[1] + tr < 1)
+  }
+  if (r0[1] + tr < 1) {
     bnd[3] = tr, mask ^= 2u << 2;
-  else
+  } else {
     bnd[3] = 1 - r0[1];
+  }
 
-  if (A[0] + A[2] <= 0 || A[0] * A[2] <= A[1] * A[1])
+  if (A[0] + A[2] <= 0 || A[0] * A[2] <= A[1] * A[1]) {
     goto newton_face_constrained;
+  }
   lin_solve_sym_2(dr, A, y);
 
 #define EVAL(r, s) -(y[0] * r + y[1] * s) + (r * A[0] * r + (2 * r * A[1] + s * A[2]) * s) / 2
@@ -544,31 +578,38 @@ newton_face_constrained:
   v = EVAL(bnd[0], bnd[2]);
   i = 1u | (1u << 2);
   tv = EVAL(bnd[1], bnd[2]);
-  if (tv < v)
+  if (tv < v) {
     v = tv, i = 2u | (1u << 2);
+  }
   tv = EVAL(bnd[0], bnd[3]);
-  if (tv < v)
+  if (tv < v) {
     v = tv, i = 1u | (2u << 2);
+  }
   tv = EVAL(bnd[1], bnd[3]);
-  if (tv < v)
+  if (tv < v) {
     v = tv, i = 2u | (2u << 2);
+  }
   if (A[0] > 0) {
     dfloat drc;
     drc = (y[0] - A[1] * bnd[2]) / A[0];
-    if ((drc - bnd[0]) * (bnd[1] - drc) >= 0 && (tv = EVAL(drc, bnd[2])) < v)
+    if ((drc - bnd[0]) * (bnd[1] - drc) >= 0 && (tv = EVAL(drc, bnd[2])) < v) {
       v = tv, i = 1u << 2, dr[0] = drc;
+    }
     drc = (y[0] - A[1] * bnd[3]) / A[0];
-    if ((drc - bnd[0]) * (bnd[1] - drc) >= 0 && (tv = EVAL(drc, bnd[3])) < v)
+    if ((drc - bnd[0]) * (bnd[1] - drc) >= 0 && (tv = EVAL(drc, bnd[3])) < v) {
       v = tv, i = 2u << 2, dr[0] = drc;
+    }
   }
   if (A[2] > 0) {
     dfloat drc;
     drc = (y[1] - A[1] * bnd[0]) / A[2];
-    if ((drc - bnd[2]) * (bnd[3] - drc) >= 0 && (tv = EVAL(bnd[0], drc)) < v)
+    if ((drc - bnd[2]) * (bnd[3] - drc) >= 0 && (tv = EVAL(bnd[0], drc)) < v) {
       v = tv, i = 1u, dr[1] = drc;
+    }
     drc = (y[1] - A[1] * bnd[1]) / A[2];
-    if ((drc - bnd[2]) * (bnd[3] - drc) >= 0 && (tv = EVAL(bnd[1], drc)) < v)
+    if ((drc - bnd[2]) * (bnd[3] - drc) >= 0 && (tv = EVAL(bnd[1], drc)) < v) {
       v = tv, i = 2u, dr[1] = drc;
+    }
   }
 #undef EVAL
 
@@ -578,13 +619,14 @@ newton_face_constrained:
     dir[1] = d2;
     for (dlong d = 0; d < 2; ++d) {
       const dlong f = i >> (2 * d) & 3u;
-      if (f == 0)
+      if (f == 0) {
         r[d] = r0[d] + dr[d];
-      else {
-        if ((f & (mask >> (2 * d))) == 0)
+      } else {
+        if ((f & (mask >> (2 * d))) == 0) {
           r[d] = r0[d] + (f == 1 ? -tr : tr);
-        else
+        } else {
           r[d] = (f == 1 ? -1 : 1), new_flags |= f << (2 * dir[d]);
+        }
       }
     }
   }
@@ -592,8 +634,9 @@ newton_face_fin:
   out->dist2p = -2 * v;
   dr[0] = r[0] - p->r[d1];
   dr[1] = r[1] - p->r[d2];
-  if (fabs(dr[0]) + fabs(dr[1]) < tol)
+  if (fabs(dr[0]) + fabs(dr[1]) < tol) {
     new_flags |= CONVERGED_FLAG;
+  }
   out->r[dn] = p->r[dn], out->r[d1] = r[0], out->r[d2] = r[1];
   out->flags = new_flags | (p->flags << 7);
 }
@@ -631,25 +674,29 @@ static void newton_edge(findptsElementPoint_t *const out,
     }
   }
 
-  if ((nr = oldr - tr) > -1)
+  if ((nr = oldr - tr) > -1) {
     dr = -tr;
-  else
+  } else {
     nr = -1, dr = -1 - oldr, new_flags = flags | 1u << (2 * de);
+  }
   v = EVAL(dr);
 
-  if ((tnr = oldr + tr) < 1)
+  if ((tnr = oldr + tr) < 1) {
     tdr = tr;
-  else
+  } else {
     tnr = 1, tdr = 1 - oldr, tnew_flags = flags | 2u << (2 * de);
+  }
   tv = EVAL(tdr);
 
-  if (tv < v)
+  if (tv < v) {
     nr = tnr, dr = tdr, v = tv, new_flags = tnew_flags;
+  }
 
 newton_edge_fin:
   /* check convergence */
-  if (fabs(dr) < tol)
+  if (fabs(dr) < tol) {
     new_flags |= CONVERGED_FLAG;
+  }
   out->r[de] = nr;
   out->r[dn1] = p->r[dn1];
   out->r[dn2] = p->r[dn2];
@@ -664,8 +711,9 @@ void seed_j(const dfloat *elx[3],
             dfloat *r[3],
             const int j)
 {
-  if (j >= p_Nq)
+  if (j >= p_Nq) {
     return;
+  }
 
   dist2[j] = DBL_MAX;
 
@@ -723,14 +771,19 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
   return uJtJs * Jr[j];
 }
 
-@kernel void findptsLocal(const dlong npt,
+@kernel void findptsLocal(const dlong multiSess,
+                          const dlong sessionId,
+                          const dlong sessionIdMatch,
+                          const dlong npt,
                           const dfloat tol,
                           @ restrict const dfloat *x,
                           @ restrict const dfloat *y,
                           @ restrict const dfloat *z,
+                          @ restrict const dlong *sess,
                           @ restrict const dfloat *xElemCoord,
                           @ restrict const dfloat *yElemCoord,
                           @ restrict const dfloat *zElemCoord,
+                          @ restrict const dfloat *distfint,
                           @ restrict dfloat *wtend_x,
                           @ restrict dfloat *wtend_y,
                           @ restrict dfloat *wtend_z,
@@ -744,8 +797,10 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                           @ restrict dlong *hashOffset,
                           dlong *const code_base,
                           @ restrict dlong *const el_base,
+                          @ restrict dlong *const elsid_base,
                           @ restrict dfloat *const r_base,
-                          @ restrict dfloat *const dist2_base)
+                          @ restrict dfloat *const dist2_base,
+                          @ restrict dfloat *const disti_base)
 {
 #define MAX_CONST(a, b) (((a) > (b)) ? (a) : (b))
 #define p_innerSize 32
@@ -773,8 +828,10 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
 
     dlong *code_i = code_base + i;
     dlong *el_i = el_base + i;
+    dlong *elsid_i = elsid_base + i;
     dfloat *r_i = r_base + 3 * i;
     dfloat *dist2_i = dist2_base + i;
+    dfloat *disti_i = disti_base + i;
 
     //// map_points_to_els ////
     findptsLocalHashData_t hash;
@@ -788,7 +845,11 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
     const dlong *elp = hash.offset + hash.offset[hi], *const ele = hash.offset + hash.offset[hi + 1];
     *code_i = CODE_NOT_FOUND;
 
-    for (; elp != ele; ++elp) {
+    bool doCompute = true;
+    if (multiSess) {
+      doCompute = sessionIdMatch ? sess[i] == sessionId : sess[i] != sessionId;
+    }
+    for (; (elp != ele) && doCompute; ++elp) {
 
       const dlong el = *elp;
 
@@ -823,8 +884,9 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                 fpt->dist2p = 0;
                 fpt->tr = 1;
               }
-              if (j < 3)
+              if (j < 3) {
                 fpt->x[j] = x_i[j];
+              }
               constraint_init = 0;
             }
             @barrier();
@@ -832,8 +894,9 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
             {
               dfloat *dist2_temp = r_workspace_ptr;
               dfloat *r_temp[3];
-              for (dlong d = 0; d < 3; ++d)
+              for (dlong d = 0; d < 3; ++d) {
                 r_temp[d] = dist2_temp + (1 + d) * p_Nq;
+              }
               for (dlong j = 0; j < p_innerSize; ++j; @inner) {
                 seed_j(elx, x_i, dist2_temp, r_temp, j);
               }
@@ -844,8 +907,9 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                   for (dlong j = 0; j < p_Nq; ++j) {
                     if (dist2_temp[j] < fpt->dist2) {
                       fpt->dist2 = dist2_temp[j];
-                      for (dlong d = 0; d < 3; ++d)
+                      for (dlong d = 0; d < 3; ++d) {
                         fpt->r[d] = r_temp[d][j];
+                      }
                     }
                   }
                 }
@@ -975,7 +1039,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                     jac_temp[3 * 3 * qp + 3 * d + d1] = sums_k[0] * D1[qp];
                     jac_temp[3 * 3 * qp + 3 * d + d2] = sums_k[1] * J1[qp];
                     jac_temp[3 * 3 * qp + 3 * d + dn] = sums_k[3] * J1[qp];
-                    if(d == 0){
+                    if (d == 0) {
                       hes_temp[3 * qp] = sums_k[0] * DD1[qp];
                       hes_temp[3 * qp + 1] = sums_k[1] * D1[qp];
                       hes_temp[3 * qp + 2] = sums_k[2] * J1[qp];
@@ -986,18 +1050,21 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                 for (dlong l = 0; l < p_innerSize; ++l; @inner) {
                   if (l < 3) {
                     resid[l] = fpt->x[l];
-                    for (dlong j = 0; j < p_Nq; ++j)
+                    for (dlong j = 0; j < p_Nq; ++j) {
                       resid[l] -= resid_temp[l + j * 3];
+                    }
                   }
                   if (l < 3 * 3) {
                     jac[l] = 0;
-                    for (dlong j = 0; j < p_Nq; ++j)
+                    for (dlong j = 0; j < p_Nq; ++j) {
                       jac[l] += jac_temp[l + j * 3 * 3];
+                    }
                   }
                   if (l < 3) {
                     hes[l] = 0;
-                    for (dlong j = 0; j < p_Nq; ++j)
+                    for (dlong j = 0; j < p_Nq; ++j) {
                       hes[l] += hes_temp[l + 3 * j];
+                    }
                     hes[l] *= resid[l];
                   }
                 }
@@ -1009,8 +1076,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                           resid[0] * jac[dn] + resid[1] * jac[3 + dn] + resid[2] * jac[6 + dn];
                       if (steep * tmp->r[dn] < 0) { /* relax constraint */
                         newton_vol(fpt, jac, resid, tmp, tol);
-                      }
-                      else {
+                      } else {
                         newton_face(fpt, jac, hes, resid, d1, d2, dn, tmp->flags & FLAG_MASK, tmp, tol);
                       }
                     }
@@ -1062,8 +1128,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                     }
                     if (j < 3) {
                       resid[j] = tmp->x[j] - sum;
-                    }
-                    else {
+                    } else {
                       jac[d * 3 + d_j[row - 1]] = sum;
                     }
                   }
@@ -1110,8 +1175,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                       if (steep[0] < 0) {
                         if (steep[1] < 0) {
                           newton_vol(fpt, jac, resid, tmp, tol);
-                        }
-                        else {
+                        } else {
                           dfloat rh[3];
                           rh[0] = hes[0], rh[1] = hes[1], rh[2] = hes[3];
                           newton_face(fpt,
@@ -1125,8 +1189,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                                       tmp,
                                       tol);
                         }
-                      }
-                      else {
+                      } else {
                         if (steep[1] < 0) {
                           dfloat rh[3];
                           rh[0] = hes[4], rh[1] = hes[2], rh[2] = hes[0];
@@ -1140,8 +1203,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                                       tmp->flags & (3u << (dn1 * 2)),
                                       tmp,
                                       tol);
-                        }
-                        else {
+                        } else {
                           newton_edge(fpt,
                                       jac,
                                       hes[0],
@@ -1184,8 +1246,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                         if (steep[1] < 0) {
                           if (steep[2] < 0) {
                             newton_vol(fpt, jac, resid, tmp, tol);
-                          }
-                          else {
+                          } else {
                             d1 = 0, d2 = 1, dn = 2, hi0 = 0, hi1 = 1, hi2 = 3;
                             dfloat rh[3];
                             rh[0] = resid[0] * hes[hi0] + resid[1] * hes[6 + hi0] + resid[2] * hes[12 + hi0],
@@ -1202,8 +1263,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                                         tmp,
                                         tol);
                           }
-                        }
-                        else {
+                        } else {
                           if (steep[2] < 0) {
                             d1 = 2, d2 = 0, dn = 1, hi0 = 5, hi1 = 2, hi2 = 0;
                             dfloat rh[3];
@@ -1220,8 +1280,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                                         (tmp->flags) & (3u << (2 * dn)),
                                         tmp,
                                         tol);
-                          }
-                          else {
+                          } else {
                             de = 0, dn1 = 1, dn2 = 2, hi0 = 0;
                             const dfloat rh =
                                 resid[0] * hes[hi0] + resid[1] * hes[6 + hi0] + resid[2] * hes[12 + hi0];
@@ -1237,8 +1296,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                                         tol);
                           }
                         }
-                      }
-                      else {
+                      } else {
                         if (steep[1] < 0) {
                           if (steep[2] < 0) {
                             d1 = 1, d2 = 2, dn = 0, hi0 = 3, hi1 = 4, hi2 = 5;
@@ -1256,8 +1314,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                                         (tmp->flags) & (3u << (2 * dn)),
                                         tmp,
                                         tol);
-                          }
-                          else {
+                          } else {
                             de = 1, dn1 = 2, dn2 = 0, hi0 = 3;
                             const dfloat rh =
                                 resid[0] * hes[hi0] + resid[1] * hes[6 + hi0] + resid[2] * hes[12 + hi0];
@@ -1272,8 +1329,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                                         tmp,
                                         tol);
                           }
-                        }
-                        else {
+                        } else {
                           if (steep[2] < 0) {
                             de = 2, dn1 = 0, dn2 = 1, hi0 = 5;
                             const dfloat rh =
@@ -1288,8 +1344,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                                         tmp->flags & (~(3u << (2 * de))),
                                         tmp,
                                         tol);
-                          }
-                          else {
+                          } else {
                             fpt->r[0] = tmp->r[0], fpt->r[1] = tmp->r[1], fpt->r[2] = tmp->r[2];
                             fpt->dist2p = 0;
                             fpt->flags = tmp->flags | CONVERGED_FLAG;
@@ -1307,11 +1362,54 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                 break;
               }
               @barrier();
-              for (dlong j = 0; j < p_innerSize; ++j; @inner)
-                if (j == 0)
+              for (dlong j = 0; j < p_innerSize; ++j; @inner) {
+                if (j == 0) {
                   *tmp = *fpt;
+                }
+              }
               @barrier();
             }
+          }
+
+          @barrier();
+
+          //// findpts_el_eval ////
+          if (multiSess) {
+            dfloat *wtr = r_workspace_ptr + 0 * p_Nq;
+            dfloat *wts = r_workspace_ptr + 1 * p_Nq;
+            dfloat *wtt = r_workspace_ptr + 2 * p_Nq;
+            dfloat *sums = r_workspace_ptr + 3 * p_Nq;
+            dfloat *distrsti = r_workspace_ptr + 4 * p_Nq;
+            for (dlong j = 0; j < p_innerSize; ++j; @inner) {
+              if (j < p_Nq) {
+                lagrange_eval(wtr, fpt->r[0], j);
+                lagrange_eval(wts, fpt->r[1], j);
+                lagrange_eval(wtt, fpt->r[2], j);
+              }
+            }
+            @barrier();
+            for (dlong j = 0; j < p_innerSize; ++j; @inner) {
+              dfloat sum_j = 0;
+              for (dlong k = 0; k < p_Nq; ++k) {
+                dfloat sum_k = 0;
+
+                for (dlong l = 0; l < p_Nq; ++l) {
+                  sum_k += distfint[el * p_Np + j + k * p_Nq + l * p_Nq * p_Nq] * wtt[l];
+                }
+                sum_j += wts[k] * sum_k;
+              }
+              sums[j] = wtr[j] * sum_j;
+            }
+            @barrier();
+            for (dlong j = 0; j < p_innerSize; ++j; @inner) {
+              if (j == 0) {
+                *distrsti = 0.0;
+                for (int k = 0; k < p_Nq; ++k) {
+                  *distrsti += sums[k];
+                }
+              }
+            }
+            @barrier();
           }
 
           bool converged_internal = (fpt->flags & FLAG_MASK) == CONVERGED_FLAG;
@@ -1321,9 +1419,16 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                 *el_i = el;
                 *code_i = converged_internal ? CODE_INTERNAL : CODE_BORDER;
                 *dist2_i = fpt->dist2;
+                if (multiSess) {
+                  // from findpts_el_eval above
+                  dfloat *distrsti = r_workspace_ptr + 4 * p_Nq;
+                  *disti_i = *distrsti;
+                  *elsid_i = sessionId;
+                }
               }
-              if (j < 3)
+              if (j < 3) {
                 r_i[j] = fpt->r[j];
+              }
             }
             @barrier();
             if (converged_internal) {

@@ -5,7 +5,7 @@ static int NELGX;
 static int NELGY;
 static int NELGZ;
 
-#define EPS 1e-2
+double numCVODERHS = 0;
 
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
@@ -217,7 +217,7 @@ void ciTestDistance(nrs_t *nrs)
   nek::ocopyToNek();
   nek::userchk();
   double *n5kDist = (double *)nek::scPtr(1);
-  
+
   // for zeros
   const auto floorTol = 1e2 * std::numeric_limits<dfloat>::epsilon();
 
@@ -225,8 +225,8 @@ void ciTestDistance(nrs_t *nrs)
   const auto tol = 1e4 * std::numeric_limits<dfloat>::epsilon();
 
   dfloat maxRelErr = 0.0;
-  for(int n = 0; n < mesh->Nlocal; ++n){
-    auto relErr = std::abs(dist[n]-n5kDist[n]);
+  for (int n = 0; n < mesh->Nlocal; ++n) {
+    auto relErr = std::abs(dist[n] - n5kDist[n]);
     if (std::abs(n5kDist[n]) > floorTol) {
       relErr /= std::abs(n5kDist[n]);
     }
@@ -235,25 +235,30 @@ void ciTestDistance(nrs_t *nrs)
 
   MPI_Allreduce(MPI_IN_PLACE, &maxRelErr, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
 
-  if(maxRelErr > tol){
+  if (maxRelErr > tol) {
     CIFAIL;
     nrsFinalize(nrs);
     exit(platform->exitValue);
   }
-
 }
 
 void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
-  if(tstep == 0){
+  if (tstep == 0) {
     ciTestDistance(nrs);
+    ciTestPlanarAvg(nrs);
+  }
+
+  if (nrs->cds->cvode) {
+    numCVODERHS += nrs->cds->cvode->numRHSEvals();
+    numCVODERHS += nrs->cds->cvode->numLinIters();
   }
 
   if (!nrs->lastStep) {
     return;
   }
 
-  ciTestPlanarAvg(nrs);
+  numCVODERHS /= tstep;
 
   const int rank = platform->comm.mpiRank;
 
@@ -274,11 +279,28 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
     prErr = abs((err[1] - 3.22E-03) / err[1]);
     sErr = abs((err[2] - 1.05E-06) / err[2]);
     break;
+  case 3:
+    vxErr = abs((err[0] - 1.8E-05) / err[0]);
+    prErr = abs((err[1] - 3.36E-03) / err[1]);
+    sErr = abs((err[2] - 3.5E-07) / err[2]);
+    break;
   }
+
+  const dfloat EPS = (ciMode == 3) ? 1e-1 : 1e-2;
 
   if (rank == 0) {
     printf("relative error to target: vx=%g pr=%g s=%g\n", vxErr, prErr, sErr);
   }
 
   (vxErr < EPS && prErr < EPS && sErr < EPS) ? (CIPASS) : (CIFAIL);
+
+  if (nrs->cds->cvode) {
+    dfloat expectedCVODERHS = 3.6;
+    if (rank == 0) {
+      printf("CVODE RHS evaluations per timestep: expected = %g, actual = %g\n",
+             expectedCVODERHS,
+             numCVODERHS);
+    }
+    numCVODERHS > 1.1 * expectedCVODERHS ? (CIFAIL) : (CIPASS);
+  }
 }

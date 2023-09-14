@@ -72,6 +72,7 @@ s_ndU[j][i] = 0;                                                                
                             const dlong startScalar,
                             const double time,
                             const dlong offset,
+                            const dlong outputOffset,
                             const dlong EToBOffset,
                             @ restrict const dfloat *x,
                             @ restrict const dfloat *y,
@@ -237,7 +238,7 @@ s_ndU[j][i] = 0;                                                                
 #pragma unroll p_Nq
           for (int k = 0; k < p_Nq; k++) {
             const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-            rhsU[id] -= r_rhsU[k];
+            rhsU[id + scalarId * outputOffset] -= r_rhsU[k];
           }
         }
       }

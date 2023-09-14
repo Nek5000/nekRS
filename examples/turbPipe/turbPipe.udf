@@ -5,7 +5,7 @@
 #include "plugins/velRecycling.hpp"
 #include "plugins/tavg.hpp"
 
-static dfloat ZLENGTH;
+static dfloat zLen;
 static int NSLABS;
 static int NELSLAB;
 
@@ -17,33 +17,64 @@ static int NELSLAB;
 
 void UDF_Setup(nrs_t *nrs)
 {
+  mesh_t *mesh = nrs->meshV;
+  zLen = abs( 
+              platform->linAlg->max(mesh->Nlocal, mesh->o_z, platform->comm.mpiComm) - 
+              platform->linAlg->min(mesh->Nlocal, mesh->o_z, platform->comm.mpiComm)
+            ); 
+
+  // set IC
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto rand = randomVector<dfloat>(mesh->Nlocal, -1.0, 1.0, true);
+
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      const auto R = 0.5;
+
+      const auto xr = mesh->x[n] / R;
+      const auto yr = mesh->y[n] / R;
+      const auto zo = 2 * M_PI * mesh->z[n] / zLen;
+
+      auto rr = xr * xr + yr * yr;
+      rr = (rr > 0) ? sqrt(rr) : 0.0;
+      const auto th = atan2(mesh->y[n], mesh->x[n]);
+
+      auto uz = 6/5. * (1 - pow(rr, 6));
+
+      // add a wiggly shear layer near the wall
+      const auto amp_z    = 0.35;  // Fraction of 2pi for z-based phase modification
+      const auto freq_z   = 4.0;   // Number of wiggles in axial- (z-) direction
+      const auto freq_t   = 9.0;   // Frequency of wiggles in azimuthal-direction
+      const auto amp_clip = 0.2;   // Clipped amplitude
+      const auto amp_tht  = 5.0;   //  Amplification factor for clipped sine function
+      const auto blt      = 0.07;  // Fraction of boundary layer with momentum deficit
+
+      const auto phase_z = amp_z * 2 * M_PI * sin(freq_z * zo);
+
+      auto amp_sin = amp_tht * sin(freq_t * th + phase_z);
+      if (amp_sin >  amp_clip) amp_sin =  amp_clip;
+      if (amp_sin < -amp_clip) amp_sin = -amp_clip;
+      if (rr > (1 - blt)) uz += amp_sin;
+
+      nrs->U[n + 0 * nrs->fieldOffset] = 0.05 * pow(rand[n], 2);
+      nrs->U[n + 1 * nrs->fieldOffset] = 0.1  * pow(rand[n], 3);
+      nrs->U[n + 2 * nrs->fieldOffset] = uz + 0.01 * rand[n];
+    }
+  }
+
   nrs->o_usrwrk = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
 
-  // recycling
-  const dfloat wbar = 1.0;
+  // velocity recycling
+  const dfloat uBulk = 1.0;
   const int bID = 1;
-  dfloat zRecycLayer = 0.25 * ZLENGTH;
+  dfloat zRecycLayer = 0.25 * zLen;
 #if 0
-  const hlong offset = NELSLAB * round(NSLABS * zRecycLayer / ZLENGTH);
-  velRecycling::setup(nrs, nrs->o_usrwrk, offset, bID, wbar);
+  const hlong offset = NELSLAB * round(NSLABS * zRecycLayer / zLen);
+  velRecycling::setup(nrs, nrs->o_usrwrk, offset, bID, uBulk);
 #else
-  velRecycling::setup(nrs, nrs->o_usrwrk, 0.0, 0.0, zRecycLayer, bID, wbar);
+  velRecycling::setup(nrs, nrs->o_usrwrk, 0.0, 0.0, zRecycLayer, bID, uBulk);
 #endif
 
   tavg::setup(nrs);
-}
-
-void UDF_Setup0(MPI_Comm comm, setupAide &options)
-{
-  platform->par->extract("casedata", "zlength", ZLENGTH);
-  platform->par->extract("casedata", "nslabs", NSLABS);
-  platform->par->extract("casedata", "nelslab", NELSLAB);
-  if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
-    nek_cb_scnrs[0] = ZLENGTH;
-    nek_cb_scnrs[1] = NSLABS;
-    nek_cb_scnrs[2] = NELSLAB;
-  }
 }
 
 void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)

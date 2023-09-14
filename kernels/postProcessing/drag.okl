@@ -57,7 +57,6 @@ s_sum[t] += s_sum[t + bs];                                                      
               s_sum[t] += sqrt(dragx * dragx + dragy * dragy + dragz * dragz);
             }
           }
-          @barrier();
         }
       }
     }

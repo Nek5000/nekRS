@@ -161,11 +161,11 @@ void velRecycling::setup(nrs_t *nrs_,
 
   o_Uint = platform->device.malloc<dfloat>(nrs->NVfields * alignStride<dfloat>(nPoints));
   o_maskIds = platform->device.malloc<dlong>(nPoints);
-  auto maskIds = (dlong *)calloc(nPoints, sizeof(dlong));
+  std::vector<dlong> maskIds(nPoints);
 
-  auto xBid = (dfloat *)calloc(nPoints, sizeof(dfloat));
-  auto yBid = (dfloat *)calloc(nPoints, sizeof(dfloat));
-  auto zBid = (dfloat *)calloc(nPoints, sizeof(dfloat));
+  std::vector<dfloat> xBid(nPoints);
+  std::vector<dfloat> yBid(nPoints);
+  std::vector<dfloat> zBid(nPoints);
 
   cnt = 0;
   for (int e = 0; e < mesh->Nelements; e++) {
@@ -181,14 +181,15 @@ void velRecycling::setup(nrs_t *nrs_,
       }
     }
   }
-  o_maskIds.copyFrom(maskIds);
-  free(maskIds);
+  o_maskIds.copyFrom(maskIds.data());
 
   interp = new pointInterpolation_t(nrs);
-  interp->setPoints(nPoints, xBid, yBid, zBid);
-  free(xBid);
-  free(yBid);
-  free(zBid);
+
+  auto o_xBid = platform->device.malloc<dfloat>(nPoints, xBid.data());
+  auto o_yBid = platform->device.malloc<dfloat>(nPoints, yBid.data());
+  auto o_zBid = platform->device.malloc<dfloat>(nPoints, zBid.data());
+
+  interp->setPoints(nPoints, o_xBid, o_yBid, o_zBid);
   const auto verbosity = pointInterpolation_t::VerbosityLevel::Basic;
   interp->find(verbosity);
 }

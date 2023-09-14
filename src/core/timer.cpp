@@ -415,9 +415,15 @@ void timer_t::printRunStat(int step)
 
   const double tMinSolveStep = query("minSolveStep", "DEVICE:MAX");
   const double tMaxSolveStep = query("maxSolveStep", "DEVICE:MAX");
+
+  const double tScalarCvode = query("cvode_t::solve", "DEVICE:MAX");
+
+  bool printFlops = !platform->options.compareArgs("PRESSURE PRECONDITIONER", "SEMFEM") && 
+                    tScalarCvode < 0;
+
   const double flops =
       platform->flopCounter->get(platform->comm.mpiComm) / (tElapsedTimeSolve * platform->comm.mpiCommSize);
-  bool printFlops = !platform->options.compareArgs("PRESSURE PRECONDITIONER", "SEMFEM");
+
 
   printStatEntry("  solve                 ", tElapsedTimeSolve, tElapsedTimeSolve);
   if (tElapsedTimeSolve > 0 && rank == 0) {
@@ -530,7 +536,6 @@ void timer_t::printRunStat(int step)
   printStatEntry("    scalarSolve         ", "scalarSolve", "DEVICE:MAX", tElapsedTimeSolve);
   printStatEntry("      rhs               ", "scalar rhs", "DEVICE:MAX", tScalar);
   
-  const double tScalarCvode = query("cvode_t::solve", "DEVICE:MAX");
 
   auto cvodeMakeQPredicate = [](const std::string &tag) {
     bool match = tag.find("cvode_t::") != std::string::npos && tag.find("makeq") != std::string::npos;

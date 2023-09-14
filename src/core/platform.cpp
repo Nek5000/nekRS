@@ -60,6 +60,9 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
 
   oogs::gpu_mpi(std::stoi(getenv("NEKRS_GPU_MPI")));
 
+  if(getenv("OOGS_SYNC_RECV"))
+    oogs::sync_recv(std::stoi(getenv("OOGS_SYNC_RECV")));
+
   verbose = options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
 
   timer.enableSync();

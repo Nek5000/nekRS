@@ -7,22 +7,29 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
-template <typename T> std::vector<T> randomVector(int N, T min = 0, T max = 1)
+#include <platform.hpp>
+
+template <typename T> std::vector<T> randomVector(int N, T min = 0, T max = 1, bool deterministic = false)
 {
-  int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-  std::random_device rd;
-
-  // poor man's solution seeding random_device
   unsigned int seed;
-  for(int i=0; i<rank; i++) {
-    seed = rd(); 
+  if(deterministic) {
+    seed = platform->comm.mpiRank; 
+  } else {
+    // std::random_device is a non-deterministic uniform random bit generator,
+    // although implementations are allowed to implement std::random_device using
+    // a pseudo-random number engine if there is no support for non-deterministic 
+    // random number generation.
+    std::random_device rd;
+
+    // poor man solution to ensure random seed values across all mpi ranks
+    for(int i = 0; i < platform->comm.mpiRank; i++) {
+      seed = rd(); 
+    }
   }
 
   std::default_random_engine dev(seed);
-  std::uniform_real_distribution<T> dist{min, max};
 
+  std::uniform_real_distribution<T> dist{min, max};
   auto gen = [&dist, &dev]() { return dist(dev); };
 
   std::vector<T> vec(N);

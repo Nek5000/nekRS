@@ -11,6 +11,7 @@
 #include "neknek.hpp"
 #include "cvode.hpp"
 #include "fldFile.hpp"
+#include "randomVector.hpp"
 
 std::vector<std::string> fieldsToSolve(setupAide &options);
 

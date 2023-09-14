@@ -5,6 +5,7 @@
 * Interpolation based velocity recycling
 * Build time option (`-DNEKRS_USE_DFLOAT_FLOAT=ON`) to run solver using FP32
 * combinedPCG
+* multi session nek-nek
 * Various bug fixes
 
 ## Good to know
@@ -15,6 +16,7 @@
 * allocate occa::memory with malloc<T> and use words instead of bytes for malloc, slice, copyFrom/To
 * writeFld takes `const occa::memory&` instead of `const void*`
 * [udf] API argument `time` is `double` instead of `dfloat` 
+* processing of `nekrs.upd` is triggered by SIGUSR2 instead of every N-steps
 
 ## Known Bugs / Restrictions
 

@@ -1,4 +1,5 @@
 
+#include <cstdio>
 #include <cstdlib>
 #include <mpi.h>
 #include "nrs.hpp"
@@ -10,9 +11,23 @@
 #include "pointInterpolation.hpp"
 #include <algorithm>
 #include <inttypes.h>
+#include "bcMap.hpp"
 
-pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_, double bb_tol, double newton_tol_, bool mySession_)
-    : pointInterpolation_t(nrs_, platform->comm.mpiCommParent, nrs_->_mesh->Nlocal, nrs_->_mesh->Nlocal, bb_tol, newton_tol_, mySession_)
+pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
+                                           double bb_tol,
+                                           double newton_tol_,
+                                           bool mySession_,
+                                           dlong sessionID_,
+                                           bool multipleSessionSupport_)
+    : pointInterpolation_t(nrs_,
+                           platform->comm.mpiCommParent,
+                           nrs_->_mesh->Nlocal,
+                           nrs_->_mesh->Nlocal,
+                           bb_tol,
+                           newton_tol_,
+                           mySession_,
+                           sessionID_,
+                           multipleSessionSupport_)
 {
 }
 
@@ -22,8 +37,11 @@ pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
                                            dlong globalHashSize,
                                            double bb_tol,
                                            double newton_tol_,
-                                           bool mySession_)
-    : nrs(nrs_), newton_tol(newton_tol_), mySession(mySession_), nPoints(0)
+                                           bool mySession_,
+                                           dlong sessionID_,
+                                           bool multipleSessionSupport_)
+    : nrs(nrs_), newton_tol(newton_tol_), mySession(mySession_), sessionID(sessionID_),
+      multipleSessionSupport(multipleSessionSupport_), nPoints(0)
 {
 
   // communicator is implicitly required to be either platform->comm.mpiComm or platform->comm.mpiCommParent
@@ -53,6 +71,28 @@ pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
     mesh->o_z.copyTo(mesh->z, mesh->Nlocal);
   }
 
+  std::vector<dfloat> dist;
+  if (multipleSessionSupport_) {
+    std::vector<int> bID;
+    for (auto &[key, bcID] : bcMap::map()) {
+      const auto field = key.first;
+      if (field == "velocity") {
+        if (bcID == bcMap::bcTypeINT) {
+          bID.push_back(key.second + 1);
+        }
+      }
+    }
+
+    const auto nbID = bID.size();
+    auto o_bID = platform->o_memPool.reserve<dlong>(nbID);
+    o_bID.copyFrom(bID.data());
+
+    _o_distance = mesh->minDistance(nbID, o_bID, "cheap_dist");
+    dist.resize(mesh->Nlocal);
+    _o_distance.copyTo(dist.data(), mesh->Nlocal);
+    o_bID.free();
+  }
+
   findpts_ = std::make_unique<findpts::findpts_t>(comm,
                                                   mySession ? mesh->x : nullptr,
                                                   mySession ? mesh->y : nullptr,
@@ -64,10 +104,22 @@ pointInterpolation_t::pointInterpolation_t(nrs_t *nrs_,
                                                   localHashSize,
                                                   globalHashSize,
                                                   npt_max,
-                                                  newton_tol);
+                                                  newton_tol,
+                                                  sessionID,
+                                                  dist.data());
 }
 
-void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity)
+occa::memory pointInterpolation_t::distance()
+{
+  nrsCheck(!multipleSessionSupport,
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "%s\n",
+           "distance requires multipleSessionSupport to be enabled in the pointInterpolation_t object!");
+  return _o_distance;
+}
+
+void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity, bool matchSession)
 {
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic("pointInterpolation_t::find", 1);
@@ -79,12 +131,12 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity)
            "%s\n", "find called without any points added!");
 
   const auto n = nPoints;
+  const dlong sessionIDMatch = matchSession;
 
   if (useHostPoints) {
-    findpts_->find(&data_, _x, _y, _z, n);
-  }
-  else {
-    findpts_->find(&data_, _o_x, _o_y, _o_z, n);
+    findpts_->find(&data_, _x, _y, _z, _session, sessionIDMatch, n);
+  } else {
+    findpts_->find(&data_, _o_x, _o_y, _o_z, _o_session, sessionIDMatch, n);
   }
 
   if (verbosity != VerbosityLevel::None) {
@@ -206,6 +258,11 @@ void pointInterpolation_t::eval(dlong nFields,
 
 void pointInterpolation_t::setPoints(int n, dfloat *x, dfloat *y, dfloat *z)
 {
+  this->setPoints(n, x, y, z, nullptr);
+}
+
+void pointInterpolation_t::setPoints(int n, dfloat *x, dfloat *y, dfloat *z, dlong *session)
+{
 
   pointsAdded = true;
   useHostPoints = true;
@@ -220,9 +277,20 @@ void pointInterpolation_t::setPoints(int n, dfloat *x, dfloat *y, dfloat *z)
   _x = x;
   _y = y;
   _z = z;
+  _session = session;
 }
 
 void pointInterpolation_t::setPoints(int n, const occa::memory& o_x, const occa::memory& o_y, const occa::memory& o_z)
+{
+  occa::memory o_null;
+  this->setPoints(n, o_x, o_y, o_z, o_null);
+}
+
+void pointInterpolation_t::setPoints(int n,
+                                     const occa::memory &o_x,
+                                     const occa::memory &o_y,
+                                     const occa::memory &o_z,
+                                     const occa::memory &o_session)
 {
 
   pointsAdded = true;
@@ -237,7 +305,8 @@ void pointInterpolation_t::setPoints(int n, const occa::memory& o_x, const occa:
     _o_x = o_x;
     _o_y = o_y;
     _o_z = o_z;
- 
+    _o_session = o_session;
+
     h_x_vec.resize(n);
     h_y_vec.resize(n);
     h_z_vec.resize(n);

@@ -5,6 +5,8 @@ static int ciMode = 0;
 
 #define EPS 1e-1
 
+double numCVODERHS = 0;
+
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", std::string("7"));
@@ -66,9 +68,16 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 
 void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
+  if (nrs->cds->cvode) {
+    numCVODERHS += nrs->cds->cvode->numRHSEvals();
+    numCVODERHS += nrs->cds->cvode->numLinIters();
+  }
+
   if (!nrs->lastStep) {
     return;
   }
+
+  numCVODERHS /= tstep;
 
   const int rank = platform->comm.mpiRank;
   mesh_t *mesh = nrs->meshV;
@@ -148,4 +157,14 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
     printf("\n");
   }
   passed ? (CIPASS) : (CIFAIL);
+
+  if (nrs->cds->cvode) {
+    dfloat expectedCVODERHS = 1.77;
+    if (rank == 0) {
+      printf("CVODE RHS evaluations per timestep: expected = %g, actual = %g\n",
+             expectedCVODERHS,
+             numCVODERHS);
+    }
+    numCVODERHS > 1.1 * expectedCVODERHS ? (CIFAIL) : (CIPASS);
+  }
 }

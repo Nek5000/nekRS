@@ -195,7 +195,7 @@ LVector_t<FPType>::LVector_t(const std::vector<mesh_t*>& meshes, bool oallocate)
     meshToFields[mesh] = std::vector<dlong>();
   }
 
-
+  fieldOffsetSum_ = 0;
   for(int fld = 0; fld < meshes.size(); ++fld){
     auto mesh = meshes[fld];
     auto mapping = LVectorMappingManager_t::instance().get(mesh);
@@ -210,6 +210,7 @@ LVector_t<FPType>::LVector_t(const std::vector<mesh_t*>& meshes, bool oallocate)
     
     Nlocals_[fld] = mapping.Nlocal;
     fieldOffset_[fld] = alignStride<FPType>(mapping.Nlocal);
+    fieldOffsetSum_ += fieldOffset_[fld];
     NfieldsMesh_[mesh]++;
     NlocalMesh_[mesh] = mapping.Nlocal;
     meshToFields[mesh].push_back(fld);
@@ -220,17 +221,15 @@ LVector_t<FPType>::LVector_t(const std::vector<mesh_t*>& meshes, bool oallocate)
     auto fields = meshToFields.at(mesh);
     fields_[mesh] = platform->device.malloc<dlong>(fields.size(), fields.data());
   }
-  
+
   fieldOffsetScan_[0] = 0;
-  dlong fieldOffsetSum = fieldOffset_[0];
-  for(int fld = 1; fld < meshes.size(); ++fld){
-    fieldOffsetSum += fieldOffset_[fld];
+  for (int fld = 1; fld < meshes.size(); ++fld) {
     fieldOffsetScan_[fld] = fieldOffsetScan_[fld-1] + fieldOffset_[fld-1];
   }
 
-  o_offsets_ = platform->device.malloc<dlong>(meshes.size(), fieldOffsetScan_.data());
+  o_fieldOffsetScan_ = platform->device.malloc<dlong>(meshes.size(), fieldOffsetScan_.data());
   if(oallocate){
-    o_L_ = platform->device.malloc<FPType>(fieldOffsetSum);
+    o_L_ = platform->device.malloc<FPType>(fieldOffsetSum_);
   }
 
   auto suffix = LVector_t<FPType>::FPTypeString();
@@ -253,33 +252,25 @@ const occa::memory & LVector_t<FPType>::optr() const
 }
 
 // =======================================================================================================
-template<typename FPType>
-void LVector_t<FPType>::optr(const std::vector<dlong>& offsets, occa::memory &o_L)
+template <typename FPType>
+void LVector_t<FPType>::optr(const std::vector<dlong> &fieldOffsets, occa::memory &o_L)
 {
-  // offsets size _must_ match the number of fields
-  nrsCheck(offsets.size() != this->nFields(),
-           platform->comm.mpiComm,
-           EXIT_FAILURE,
-           "LVector_t::optr offsets.size() = %ld, while expecting %d entries!\n",
-           offsets.size(),
-           this->nFields());
-  
-  if(this->o_L_.size() != 0 && oallocate_){
-    this->o_L_.free();
-  }
-  if(this->o_offsets_.size() != 0){
-    this->o_offsets_.free();
-  }
-
-  this->o_L_ = o_L;
-  this->o_offsets_ = platform->device.malloc<dlong>(offsets.size(), offsets.data());
+  this->fieldOffsets(fieldOffsets);
+  this->optr(o_L);
 }
 
 // =======================================================================================================
 template<typename FPType>
 void LVector_t<FPType>::optr(occa::memory &o_L)
 {
-  if(this->o_L_.size() != 0 && oallocate_){
+  nrsCheck(o_L.size() <= this->size(),
+           platform->comm.mpiComm,
+           EXIT_FAILURE,
+           "LVector_t::optr o_L.size() = %ld, while expecting at least %d entries!\n",
+           o_L.size(),
+           this->size());
+
+  if (this->o_L_.isInitialized() && oallocate_) {
     this->o_L_.free();
   }
 
@@ -287,26 +278,52 @@ void LVector_t<FPType>::optr(occa::memory &o_L)
 }
 
 // =======================================================================================================
-template<typename FPType>
-const std::vector<dlong>& LVector_t<FPType>::offsets() const
+template <typename FPType> void LVector_t<FPType>::fieldOffsets(const std::vector<dlong> &fieldOffsets)
 {
-  return this->offsets_;
-}
+  if (this->nFields() == 0) {
+    return;
+  }
 
-// =======================================================================================================
-template<typename FPType>
-void LVector_t<FPType>::offsets(const std::vector<dlong>& offsets)
-{
   // offsets size _must_ match the number of fields
-  nrsCheck(offsets.size() != this->nFields(),
+  nrsCheck(fieldOffsets.size() != this->nFields(),
            platform->comm.mpiComm,
            EXIT_FAILURE,
            "LVector_t::offsets offsets.size() = %ld, while expecting %d entries!\n",
-           offsets.size(),
+           fieldOffsets.size(),
            this->nFields());
 
-  this->offsets_ = offsets;
-  this->o_offsets_ = platform->device.malloc<dlong>(offsets.size(), offsets.data());
+  // check that each fieldOffset is at least as large as the corresponding Nlocal
+  std::ostringstream errLogger;
+  for (int fld = 0; fld < this->nFields(); ++fld) {
+    if (fieldOffsets[fld] < this->Nlocal(fld)) {
+      errLogger << "LVector_t::offsets offsets[" << fld << "] = " << fieldOffsets[fld]
+                << ", while expecting at least " << this->Nlocal(fld) << "!\n";
+    }
+  }
+
+  const auto errString = errLogger.str();
+  nrsCheck(errString.size() != 0, platform->comm.mpiComm, EXIT_FAILURE, "%s", errString.c_str());
+
+  std::copy(fieldOffsets.begin(), fieldOffsets.end(), this->fieldOffset_.begin());
+  this->fieldOffsetScan_[0] = 0;
+  this->fieldOffsetSum_ = this->fieldOffset_[0];
+  for (int fld = 1; fld < this->nFields(); ++fld) {
+    this->fieldOffsetScan_[fld] = this->fieldOffsetScan_[fld - 1] + this->fieldOffset_[fld - 1];
+    this->fieldOffsetSum_ += this->fieldOffset_[fld];
+  }
+  this->o_fieldOffsetScan_.copyFrom(this->fieldOffsetScan_.data());
+}
+
+// =======================================================================================================
+template <typename FPType> const std::vector<dlong> &LVector_t<FPType>::fieldOffsets() const
+{
+  return this->fieldOffset_;
+}
+
+// =======================================================================================================
+template <typename FPType> const std::vector<dlong> &LVector_t<FPType>::fieldOffsetScans() const
+{
+  return this->fieldOffsetScan_;
 }
 
 // =======================================================================================================
@@ -323,16 +340,14 @@ void LVector_t<FPType>::copyToE(const dlong EFieldOffset, occa::memory & o_E) co
   // loop over unique mesh objects to minimize number of kernel calls
   for(auto [uniqueMesh, _] : o_EToLs_)
   {
-    LToEKernel_(
-      uniqueMesh->Nlocal,
-      NfieldsMesh_.at(uniqueMesh),
-      EFieldOffset,
-      fields_.at(uniqueMesh),
-      o_offsets_,
-      o_EToLs_.at(uniqueMesh),
-      o_L_,
-      o_E
-    );
+    LToEKernel_(uniqueMesh->Nlocal,
+                NfieldsMesh_.at(uniqueMesh),
+                EFieldOffset,
+                fields_.at(uniqueMesh),
+                o_fieldOffsetScan_,
+                o_EToLs_.at(uniqueMesh),
+                o_L_,
+                o_E);
   }
 }
 
@@ -343,16 +358,14 @@ void LVector_t<FPType>::copyFromE(const dlong EFieldOffset, const occa::memory &
   // loop over unique mesh objects to minimize number of kernel calls
   for(auto [uniqueMesh, _] : o_EToLs_)
   {
-    EToLKernel_(
-      uniqueMesh->Nlocal,
-      NfieldsMesh_.at(uniqueMesh),
-      EFieldOffset,
-      fields_.at(uniqueMesh),
-      o_offsets_,
-      o_EToLUniques_.at(uniqueMesh),
-      o_E,
-      o_L_
-    );
+    EToLKernel_(uniqueMesh->Nlocal,
+                NfieldsMesh_.at(uniqueMesh),
+                EFieldOffset,
+                fields_.at(uniqueMesh),
+                o_fieldOffsetScan_,
+                o_EToLUniques_.at(uniqueMesh),
+                o_E,
+                o_L_);
   }
 }
 
@@ -385,12 +398,11 @@ dlong LVector_t<FPType>::Nlocal(int field) const
 }
 
 // =======================================================================================================
-template<typename FPType>
-dlong LVector_t<FPType>::size() const
+template <typename FPType> dlong LVector_t<FPType>::size() const
 {
-  return this->o_L_.length();
+  return this->fieldOffsetSum_;
 }
-  
+
 // =======================================================================================================
 template<typename FPType>
 const std::vector<mesh_t*> &

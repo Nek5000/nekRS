@@ -9,6 +9,7 @@
 #include "subCycling.hpp"
 #include "udf.hpp"
 #include "bcMap.hpp"
+#include "applyDirichlet.hpp"
 #include "bdry.hpp"
 #include "Urst.hpp"
 
@@ -385,7 +386,7 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
   const int isOutputStep = nrs->isOutputStep;
 
   if (nrs->neknek) {
-    nrs->neknek->updateBoundary(nrs, tstep, stage);
+    nrs->neknek->updateBoundary(tstep, stage);
   }
 
   if (nrs->cvode) {
@@ -562,8 +563,7 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
         if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
           cds->strongAdvectionCubatureVolumeKernel(cds->meshV->Nelements,
                                                    1,
-                                                   0,
-                                                   mesh->o_LMM,
+                                                   0, /* weighted */
                                                    mesh->o_vgeo,
                                                    mesh->o_cubDiffInterpT,
                                                    mesh->o_cubInterpT,
@@ -579,8 +579,7 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
         } else {
           cds->strongAdvectionVolumeKernel(cds->meshV->Nelements,
                                            1,
-                                           0,
-                                           mesh->o_LMM,
+                                           0, /* weighted */
                                            mesh->o_vgeo,
                                            mesh->o_D,
                                            cds->o_compute + is,
@@ -849,7 +848,7 @@ void printInfo(nrs_t *nrs, double time, int tstep, bool printStepInfo, bool prin
       }
 
       if (nrs->neknek) {
-        printf("neknek   : sync %.2e  exchange %.2e\n", nrs->neknek->tSync, nrs->neknek->tExch);
+        printf("neknek   : sync %.2e  exchange %.2e\n", nrs->neknek->tSync(), nrs->neknek->tExch());
       }
 
       if (nrs->flow) {
@@ -1003,6 +1002,9 @@ void printInfo(nrs_t *nrs, double time, int tstep, bool printStepInfo, bool prin
       printf("  elapsedStep= %.2es  elapsedStepSum= %.5es\n", elapsedStep, elapsedStepSum);
     }
   }
+
+  if (nrs->cvode)
+    nrs->cvode->resetCounters();
 
   bool largeCFLCheck = (cfl > 30) && numberActiveFields(nrs);
 

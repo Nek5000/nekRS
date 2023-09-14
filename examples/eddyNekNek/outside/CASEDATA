@@ -1,3 +1,3 @@
-      real p_u0, p_v0, p_omega, p_visc
+      real p_u0, p_v0, p_omega, p_visc, p_scale
 
-      common /casevars/ p_u0, p_v0, p_omega, p_visc
+      common /casevars/ p_u0, p_v0, p_omega, p_visc, p_scale

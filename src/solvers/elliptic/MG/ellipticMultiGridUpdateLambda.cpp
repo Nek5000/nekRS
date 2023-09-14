@@ -2,8 +2,7 @@
 #include "ellipticPrecon.h"
 #include "ellipticMultiGrid.h"
 
-void
-ellipticMultiGridUpdateLambda(elliptic_t* elliptic)
+void ellipticMultiGridUpdateLambda(elliptic_t* elliptic)
 {
   precon_t *precon = elliptic->precon;
   MGSolver_t::multigridLevel** levels = precon->MGSolver->levels;
@@ -13,6 +12,7 @@ ellipticMultiGridUpdateLambda(elliptic_t* elliptic)
     platform->copyDfloatToPfloatKernel(elliptic->mesh->Nlocal, elliptic->o_lambda0, ellipticFine->o_lambda0);
     if(!ellipticFine->poisson)
       platform->copyDfloatToPfloatKernel(elliptic->mesh->Nlocal, elliptic->o_lambda1, ellipticFine->o_lambda1);
+
   }
 
   for(int levelIndex = 1; levelIndex < elliptic->nLevels; levelIndex++) {
@@ -30,6 +30,5 @@ ellipticMultiGridUpdateLambda(elliptic_t* elliptic)
       precon->coarsenKernel(ellipticCoarse->mesh->Nelements, 
                             ellipticCoarse->o_interp, 
                             ellipticFine->o_lambda1, ellipticCoarse->o_lambda1);
- 
   }
 }

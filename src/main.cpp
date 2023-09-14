@@ -90,6 +90,7 @@
 namespace {
 
 int worldRank;
+volatile sig_atomic_t processUpdFile = 0;
 
 struct cmdOptions
 {
@@ -361,7 +362,7 @@ MPI_Comm setupSession(cmdOptions *cmdOpt, const MPI_Comm &comm)
   return newComm;
 }
 
-void signalHandler(int signum) 
+void signalHandlerBacktrace(int signum) 
 {
    { // needs to be refactored as this is not async-signal-safe
      std::cerr << "generating stacktrace ...\n";
@@ -374,6 +375,12 @@ void signalHandler(int signum)
      fclose(fp);
    }
 }
+
+void signalHandlerUpdateFile(int signum) 
+{
+  processUpdFile = 1;
+}
+
 
 } // namespace
 
@@ -397,10 +404,11 @@ int main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
   }
 
+  std::signal(SIGUSR2, signalHandlerUpdateFile);  
   {
     const char* env_val = std::getenv("NEKRS_SIGNUM_BACKTRACE");
     if (env_val)
-      std::signal(std::atoi(env_val), signalHandler);  
+      std::signal(std::atoi(env_val), signalHandlerBacktrace);  
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
@@ -546,9 +554,13 @@ int main(int argc, char** argv)
  
     time = nekrs::finishStep();
 
-    if(nekrs::updateFileCheckFreq()) {
-      if(tStep % nekrs::updateFileCheckFreq()) 
+    {
+      int read = processUpdFile;
+      MPI_Bcast(&read, 1, MPI_INT, 0, comm);
+      if(read) {
         nekrs::processUpdFile();
+        processUpdFile = 0;
+      }
     }
 
     if (nekrs::printInfoFreq()) {

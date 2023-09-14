@@ -9,8 +9,8 @@ polynomialOrder = 7
 stopAt = endTime
 endTime = 200
 
-dt = 6.0e-3
-#dt = targetCFL=4 + max=1e-2 + initial=6e-3
+#dt = 6.0e-3
+dt = targetCFL=4 + max=1e-2 + initial=6e-3
 
 timeStepper = tombo2
 subCyclingSteps = 2
@@ -38,7 +38,6 @@ residualTol = 1e-06
 regularization = avm+highestModalDecay  
 
 [CASEDATA]
-#/* diameters  */
-ZLENGTH = 20.0
+# adjust to actual mesh 
 NSLABS  = 60
-NELSLAB = 108
+NELSLAB = 132 

@@ -46,7 +46,44 @@ void ciSetup(MPI_Comm comm, setupAide &options)
       CIFAIL;
     }
   }
-  
+}
+
+void ciTestPartitionOfUnity(nrs_t *nrs, double time, int tstep)
+{
+  auto mesh = nrs->meshV;
+  auto minMaxFld = [&](occa::memory o_a) {
+    const auto minFld = platform->linAlg->min(mesh->Nlocal, o_a, platform->comm.mpiCommParent);
+    const auto maxFld = platform->linAlg->max(mesh->Nlocal, o_a, platform->comm.mpiCommParent);
+    return std::make_tuple(minFld, maxFld);
+  };
+
+  const auto [minX, maxX] = minMaxFld(mesh->o_x);
+  const auto [minY, maxY] = minMaxFld(mesh->o_y);
+  const auto [minZ, maxZ] = minMaxFld(mesh->o_z);
+  const auto expectedGlobalVolume = (maxX - minX) * (maxY - minY) * (maxZ - minZ);
+
+  const auto o_partition = nrs->neknek->partitionOfUnity();
+  auto o_volume = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+
+  platform->linAlg->axmyz(mesh->Nlocal, 1.0, o_partition, mesh->o_LMM, o_volume);
+
+  const auto globalVolume = platform->linAlg->sum(mesh->Nlocal, o_volume, platform->comm.mpiCommParent);
+
+  o_volume.free();
+
+  const auto relErr = abs(globalVolume - expectedGlobalVolume) / expectedGlobalVolume;
+
+  const auto tol = 5e-6;
+  if (relErr > tol) {
+    if (platform->comm.mpiRank == 0) {
+      std::cout << "Partition of unity test failed: " << relErr << std::endl;
+      std::cout << "Expected value : " << expectedGlobalVolume << std::endl;
+      std::cout << "Actual   value : " << globalVolume << std::endl;
+    }
+    CIFAIL;
+    nrsFinalize(nrs);
+    exit(platform->exitValue);
+  }
 }
 
 void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
@@ -56,7 +93,7 @@ void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
   std::vector<dfloat> x;
   std::vector<dfloat> y;
   std::vector<dfloat> z;
-  if(casename == "outside"){
+  if (casename == "outside") {
     x = {M_PI};
     y = {M_PI};
     z = {0.05};
@@ -72,11 +109,11 @@ void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
   auto o_zinterp = platform->device.malloc<dfloat>(n, z.data());
   auto o_UouterExact = platform->device.malloc<dfloat>(nrs->NVfields * n);
   auto o_Uouter = platform->device.malloc<dfloat>(nrs->NVfields * n);
-  
+
   exactUVW(n, n, time, o_xinterp, o_yinterp, o_zinterp, o_UouterExact);
 
   auto interp = pointInterpolation_t(nrs);
-  interp.setPoints(n, x.data(), y.data(), z.data());
+  interp.setPoints(n, o_xinterp, o_yinterp, o_zinterp);
   interp.find(pointInterpolation_t::VerbosityLevel::Detailed);
   interp.eval(nrs->NVfields, nrs->fieldOffset, nrs->o_U, n, o_Uouter);
 
@@ -97,7 +134,9 @@ void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
   }
 
   auto tol = 1e-6;
-  if(ciMode == 2) tol = 1e-3;
+  if (ciMode == 2) {
+    tol = 1e-3;
+  }
   bool passed = true;
   passed &= (maxErrU < tol);
   passed &= (maxErrV < tol);
@@ -106,8 +145,8 @@ void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
   int allPassed = passed;
   MPI_Allreduce(MPI_IN_PLACE, &allPassed, 1, MPI_INT, MPI_MIN, platform->comm.mpiCommParent);
 
-  if(!passed){
-    if(platform->comm.mpiRank == 0){
+  if (!passed) {
+    if (platform->comm.mpiRank == 0) {
       std::cout << "Point interpolation errors too large:\n";
       std::cout << "  maxErrU = " << maxErrU << "\n";
       std::cout << "  maxErrV = " << maxErrV << "\n";
@@ -117,17 +156,101 @@ void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
     nrsFinalize(nrs);
     exit(platform->exitValue);
   }
+
+  o_xinterp.free();
+  o_yinterp.free();
+  o_zinterp.free();
+  o_UouterExact.free();
+  o_Uouter.free();
+}
+
+void vizNekNekField(nrs_t *nrs)
+{
+  auto mesh = nrs->meshV;
+  auto neknek = nrs->neknek;
+
+  occa::memory o_null;
+
+  const auto neknekFieldOffset = neknek->fieldOffset();
+
+  std::vector<dfloat> Uviz(nrs->NVfields * nrs->fieldOffset, 0.0);
+  std::vector<dfloat> neknekU(nrs->NVfields * neknekFieldOffset, 0.0);
+  std::fill(Uviz.begin(), Uviz.end(), 0.0);
+  std::fill(neknekU.begin(), neknekU.end(), 0.0);
+  neknek->o_U().copyTo(neknekU.data(), nrs->NVfields * neknekFieldOffset);
+
+  std::vector<dlong> neknekPointMap(mesh->Nlocal, -1);
+  neknek->o_pointMap().copyTo(neknekPointMap.data(), mesh->Nlocal);
+
+  for (int n = 0; n < mesh->Nlocal; ++n) {
+    auto ip = neknekPointMap[n];
+    if (ip != -1) {
+      for (int fld = 0; fld < nrs->NVfields; ++fld) {
+        Uviz[fld * nrs->fieldOffset + n] = neknekU[fld * neknekFieldOffset + ip];
+      }
+    } else {
+      // not a neknek point, set to 0
+      for (int fld = 0; fld < nrs->NVfields; ++fld) {
+        Uviz[fld * nrs->fieldOffset + n] = 0.0;
+      }
+    }
+  }
+
+  auto o_Uviz = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset, Uviz.data());
+  writeFld("viz", 0.0, 0, 1, 1, o_Uviz, o_null, o_null, 0);
+}
+
+void ciTestInitialStep(nrs_t *nrs, double time, int tstep)
+{
+  auto mesh = nrs->meshV;
+  auto neknek = nrs->neknek;
+  const auto neknekFieldOffset = neknek->fieldOffset();
+  exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->o_U);
+  
+  neknek->updateBoundary(tstep, 2); // pass in stage == 2 to prevent lagging
+
+  auto o_Uexp = platform->o_memPool.reserve<dfloat>(nrs->NVfields * neknekFieldOffset);
+  auto npt = neknek->npt();
+  exactUVW(npt, neknekFieldOffset, time, neknek->o_x(), neknek->o_y(), neknek->o_z(), o_Uexp);
+
+  // compare errors
+  platform->linAlg->axpbyMany(npt, nrs->NVfields, neknekFieldOffset, 1.0, neknek->o_U(), -1.0, o_Uexp);
+  platform->linAlg->aydxMany(npt, nrs->NVfields, neknekFieldOffset, 1, 1.0, neknek->o_U(), o_Uexp);
+  platform->linAlg->abs(nrs->NVfields * neknekFieldOffset, o_Uexp);
+  auto maxRelErr = platform->linAlg->max(nrs->NVfields * neknekFieldOffset, o_Uexp, platform->comm.mpiComm);
+  auto maxRelErrGlob =
+      platform->linAlg->max(nrs->NVfields * neknekFieldOffset, o_Uexp, platform->comm.mpiCommParent);
+  if (platform->comm.mpiRank == 0) {
+    std::cout << "NekNek interpolation errors:\n";
+    std::cout << "  maxRelErr = " << maxRelErr << "\n";
+    std::cout << "  maxRelErrGlob = " << maxRelErrGlob << "\n";
+  }
+
+  const auto tol = 1e-5;
+  bool passed = (maxRelErrGlob < tol);
+  o_Uexp.free();
+
+  if (!passed) {
+    vizNekNekField(nrs);
+    CIFAIL;
+    nrsFinalize(nrs);
+    exit(platform->exitValue);
+  }
 }
 
 void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
+  if (tstep == 0) {
+    ciTestInitialStep(nrs, time, tstep);
+    ciTestPointInterp(nrs, time, tstep);
+    ciTestPartitionOfUnity(nrs, time, tstep);
+  }
+
   const int rank = platform->comm.mpiRank;
-  
+
   if (!nrs->lastStep) {
     return;
   }
-  
-  ciTestPointInterp(nrs, time, tstep);
 
   auto *mesh = nrs->meshV;
 
@@ -153,6 +276,9 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   const auto errVzGlobal = platform->linAlg->max(mesh->Nlocal, o_UerrZ, platform->comm.mpiCommParent);
   const auto errSGlobal = platform->linAlg->max(mesh->Nlocal, o_Sexact, platform->comm.mpiCommParent);
 
+  o_Uexact.free();
+  o_Sexact.free();
+
   // scheme is first-order accurate
   dfloat expectedErrVx = 0.0;
   dfloat expectedErrVy = 0.0;
@@ -162,7 +288,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   if (ciMode == 1 || ciMode == 3) {
     expectedErrVx = 5E-07;
     expectedErrVy = 5E-07;
-    expectedErrVz = 2E-08;
+    expectedErrVz = 3E-08;
     expectedErrS = 5E-07;
   } else if (ciMode == 2) {
     expectedErrVx = 0.008;

@@ -37,6 +37,7 @@
                                       @ restrict const int *EToB,
                                       @ restrict const dfloat *rho,
                                       @ restrict const dfloat *mue,
+                                      const dlong neknekOffset,
                                       @ restrict const dlong* neknekPoints,
                                       @ restrict const dfloat* neknekU,
                                       @ restrict const dfloat *W,
@@ -130,7 +131,6 @@
 
           if (bcType == p_bcTypeINT) {
             const int neknekId = neknekPoints[idM];
-            const dlong neknekOffset = neknekPoints[offset];
             bc.uinterp = neknekU[neknekId + 0 * neknekOffset];
             bc.vinterp = neknekU[neknekId + 1 * neknekOffset];
             bc.winterp = neknekU[neknekId + 2 * neknekOffset];

@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 // for platform
+#include "nekInterfaceAdapter.hpp"
 #include "nrssys.hpp"
 #include "nrs.hpp"
 #include "tuple_for_each.hpp"
@@ -60,16 +61,20 @@ struct findpts_data_3 {
 };
 
 auto *gslibFindptsSetup(MPI_Comm mpi_comm,
-                         const dfloat *const _elx[findpts::dim],
-                         const dlong n[findpts::dim],
-                         const dlong nel,
-                         const dlong m[findpts::dim],
-                         const dfloat bbox_tol,
-                         const dlong local_hash_size,
-                         const dlong global_hash_size,
-                         const dlong npt_max,
-                         const dfloat newt_tol)
+                        const dfloat *const _elx[findpts::dim],
+                        const dlong n[findpts::dim],
+                        const dlong nel,
+                        const dlong m[findpts::dim],
+                        const dfloat bbox_tol,
+                        const dlong local_hash_size,
+                        const dlong global_hash_size,
+                        const dlong npt_max,
+                        const dfloat newt_tol,
+                        const dlong nsid,
+                        const dfloat *const _distfint)
 {
+
+  bool useMultiSessionSupport = _distfint != nullptr;
 
   struct comm gs_comm;
   comm_init(&gs_comm, mpi_comm);
@@ -93,16 +98,38 @@ auto *gslibFindptsSetup(MPI_Comm mpi_comm,
     }
   }
 
-  auto *h = findpts_setup_3(&gs_comm,
-                            elx,
-                            n_,
-                            (uint) nel,
-                            m_,
-                            (double) bbox_tol,
-                            (uint) local_hash_size,
-                            (uint) global_hash_size,
-                            (unsigned) npt_max,
-                            (double) newt_tol);
+  void *h;
+  if (useMultiSessionSupport) {
+    std::vector<double> distfint(Nlocal);
+    for (int i = 0; i < Nlocal; i++) {
+      distfint[i] = _distfint[i];
+    }
+
+    uint unsid = nsid;
+    h = findptsms_setup_3(&gs_comm,
+                          elx,
+                          n_,
+                          (uint)nel,
+                          m_,
+                          (double)bbox_tol,
+                          (uint)local_hash_size,
+                          (uint)global_hash_size,
+                          (unsigned)npt_max,
+                          (double)newt_tol,
+                          &unsid,
+                          distfint.data());
+  } else {
+    h = findpts_setup_3(&gs_comm,
+                        elx,
+                        n_,
+                        (uint)nel,
+                        m_,
+                        (double)bbox_tol,
+                        (uint)local_hash_size,
+                        (uint)global_hash_size,
+                        (unsigned)npt_max,
+                        (double)newt_tol);
+  }
 
   comm_free(&gs_comm);
   return h;
@@ -134,7 +161,10 @@ static void manageBuffers(dlong pn, dlong outputOffset, dlong nOutputFields)
   dlong Nbytes = 0;
   Nbytes += pn * sizeof(dlong);                            // code
   Nbytes += pn * sizeof(dlong);                            // element
+  Nbytes += pn * sizeof(dlong);                            // elsid
+  Nbytes += pn * sizeof(dlong);                            // session
   Nbytes += pn * sizeof(dfloat);                           // dist2
+  Nbytes += pn * sizeof(dfloat);                           // disti
   Nbytes += dim * pn * sizeof(dfloat);                     // r,s,t data
   Nbytes += dim * pn * sizeof(dfloat);                     // x,y,z coordinates
   Nbytes += nOutputFields * outputOffset * sizeof(dfloat); // output buffer
@@ -205,11 +235,15 @@ static void manageBuffers(dlong pn, dlong outputOffset, dlong nOutputFields)
 
 void findpts_t::findptsLocal(int *const code,
                              int *const el,
+                             int *const elsid,
                              dfloat *const r,
                              dfloat *const dist2,
+                             dfloat *const disti,
                              const dfloat *const x,
                              const dfloat *const y,
                              const dfloat *const z,
+                             const dlong *const sess,
+                             const int sessionIdMatch,
                              const int pn)
 {
   if (timerLevel == TimerLevel::Detailed) {
@@ -239,10 +273,19 @@ void findpts_t::findptsLocal(int *const code,
   occa::memory o_el = pool::o_scratch + byteOffset;
   byteOffset += sizeof(dlong) * pn;
 
+  occa::memory o_elsid = pool::o_scratch + byteOffset;
+  byteOffset += sizeof(dlong) * pn;
+
+  occa::memory o_sess = pool::o_scratch + byteOffset;
+  byteOffset += sizeof(dlong) * pn;
+
   occa::memory o_r = pool::o_scratch + byteOffset;
   byteOffset += dim * sizeof(dfloat) * pn;
 
   occa::memory o_dist2 = pool::o_scratch + byteOffset;
+  byteOffset += sizeof(dfloat) * pn;
+
+  occa::memory o_disti = pool::o_scratch + byteOffset;
   byteOffset += sizeof(dfloat) * pn;
 
   occa::memory o_xint = pool::o_scratch + byteOffset;
@@ -257,18 +300,27 @@ void findpts_t::findptsLocal(int *const code,
   o_xint.copyFrom(x, sizeof(dfloat) * pn);
   o_yint.copyFrom(y, sizeof(dfloat) * pn);
   o_zint.copyFrom(z, sizeof(dfloat) * pn);
+  if (useMultiSessionSupport) {
+    o_sess.copyFrom(sess, sizeof(dlong) * pn);
+  }
 
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic(timerName + "findptsLocal::localKernel", 0);
   }
-  this->localKernel(pn,
+  dlong multiSess = useMultiSessionSupport;
+  this->localKernel(useMultiSessionSupport,
+                    sessionId,
+                    sessionIdMatch,
+                    pn,
                     this->tol,
                     o_xint,
                     o_yint,
                     o_zint,
+                    o_sess,
                     this->o_x,
                     this->o_y,
                     this->o_z,
+                    this->o_distfint,
                     this->o_wtend_x,
                     this->o_wtend_y,
                     this->o_wtend_z,
@@ -282,8 +334,10 @@ void findpts_t::findptsLocal(int *const code,
                     this->o_offset,
                     o_code,
                     o_el,
+                    o_elsid,
                     o_r,
-                    o_dist2);
+                    o_dist2,
+                    o_disti);
   if (timerLevel != TimerLevel::None) {
     platform->timer.toc(timerName + "findptsLocal::localKernel");
   }
@@ -291,8 +345,10 @@ void findpts_t::findptsLocal(int *const code,
   if (pn > 0) {
     o_code.copyTo(code, sizeof(dlong) * pn);
     o_el.copyTo(el, sizeof(dlong) * pn);
+    o_elsid.copyTo(elsid, sizeof(dlong) * pn);
     o_r.copyTo(r, dim * sizeof(dfloat) * pn);
     o_dist2.copyTo(dist2, sizeof(dfloat) * pn);
+    o_disti.copyTo(disti, sizeof(dfloat) * pn);
   }
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "findptsLocal");
@@ -301,11 +357,15 @@ void findpts_t::findptsLocal(int *const code,
 
 void findpts_t::findptsLocal(int *const code,
                              int *const el,
+                             int *const elsid,
                              dfloat *const r,
                              dfloat *const dist2,
+                             dfloat *const disti,
                              occa::memory o_xint,
                              occa::memory o_yint,
                              occa::memory o_zint,
+                             occa::memory o_sess,
+                             const int sessionIdMatch,
                              const int pn)
 {
   if (timerLevel == TimerLevel::Detailed) {
@@ -334,23 +394,35 @@ void findpts_t::findptsLocal(int *const code,
   occa::memory o_el = pool::o_scratch + byteOffset;
   byteOffset += sizeof(dlong) * pn;
 
+  occa::memory o_elsid = pool::o_scratch + byteOffset;
+  byteOffset += sizeof(dlong) * pn;
+
   occa::memory o_r = pool::o_scratch + byteOffset;
   byteOffset += dim * sizeof(dfloat) * pn;
 
   occa::memory o_dist2 = pool::o_scratch + byteOffset;
   byteOffset += sizeof(dfloat) * pn;
 
+  occa::memory o_disti = pool::o_scratch + byteOffset;
+  byteOffset += sizeof(dfloat) * pn;
+
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic(timerName + "findptsLocal::localKernel", 0);
   }
-  this->localKernel(pn,
+  dlong multiSess = useMultiSessionSupport;
+  this->localKernel(useMultiSessionSupport,
+                    sessionId,
+                    sessionIdMatch,
+                    pn,
                     this->tol,
                     o_xint,
                     o_yint,
                     o_zint,
+                    o_sess,
                     this->o_x,
                     this->o_y,
                     this->o_z,
+                    this->o_distfint,
                     this->o_wtend_x,
                     this->o_wtend_y,
                     this->o_wtend_z,
@@ -364,8 +436,10 @@ void findpts_t::findptsLocal(int *const code,
                     this->o_offset,
                     o_code,
                     o_el,
+                    o_elsid,
                     o_r,
-                    o_dist2);
+                    o_dist2,
+                    o_disti);
   if (timerLevel != TimerLevel::None) {
     platform->timer.toc(timerName + "findptsLocal::localKernel");
   }
@@ -373,8 +447,10 @@ void findpts_t::findptsLocal(int *const code,
   if (pn > 0) {
     o_code.copyTo(code, sizeof(dlong) * pn);
     o_el.copyTo(el, sizeof(dlong) * pn);
+    o_elsid.copyTo(elsid, sizeof(dlong) * pn);
     o_r.copyTo(r, dim * sizeof(dfloat) * pn);
     o_dist2.copyTo(dist2, sizeof(dfloat) * pn);
+    o_disti.copyTo(disti, sizeof(dfloat) * pn);
   }
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "findptsLocal");
@@ -829,6 +905,40 @@ findpts_t::findpts_t(MPI_Comm comm,
                      const dlong npt_max,
                      const dfloat newt_tol)
 {
+  findpts_t(comm,
+            x,
+            y,
+            z,
+            Nq,
+            Nelements,
+            m,
+            bbox_tol,
+            local_hash_size,
+            global_hash_size,
+            npt_max,
+            newt_tol,
+            0,
+            nullptr);
+}
+
+findpts_t::findpts_t(MPI_Comm comm,
+                     const dfloat *const x,
+                     const dfloat *const y,
+                     const dfloat *const z,
+                     const dlong Nq,
+                     const dlong Nelements,
+                     const dlong m,
+                     const dfloat bbox_tol,
+                     const dlong local_hash_size,
+                     const dlong global_hash_size,
+                     const dlong npt_max,
+                     const dfloat newt_tol,
+                     const dlong sessionId_,
+                     const dfloat *const distfint)
+{
+  sessionId = sessionId_;
+  useMultiSessionSupport = distfint != nullptr;
+
   const dlong Nlocal = Nq * Nq * Nq * Nelements;
 
   const dfloat *elx[dim] = {x, y, z};
@@ -844,7 +954,9 @@ findpts_t::findpts_t(MPI_Comm comm,
                                          local_hash_size,
                                          global_hash_size,
                                          npt_max,
-                                         newt_tol);
+                                         newt_tol,
+                                         sessionId_,
+                                         distfint);
 
   auto *findptsData = (findpts_data_3 *)this->_findptsData;
 
@@ -859,10 +971,16 @@ findpts_t::findpts_t(MPI_Comm comm,
     this->o_x = platform->device.malloc(Nlocal * sizeof(dfloat));
     this->o_y = platform->device.malloc(Nlocal * sizeof(dfloat));
     this->o_z = platform->device.malloc(Nlocal * sizeof(dfloat));
+    if (useMultiSessionSupport) {
+      this->o_distfint = platform->device.malloc(Nlocal * sizeof(dfloat));
+    }
 
     this->o_x.copyFrom(x, Nlocal * sizeof(dfloat));
     this->o_y.copyFrom(y, Nlocal * sizeof(dfloat));
     this->o_z.copyFrom(z, Nlocal * sizeof(dfloat));
+    if (useMultiSessionSupport) {
+      this->o_distfint.copyFrom(distfint, Nlocal * sizeof(dfloat));
+    }
     std::vector<dfloat> c(dim * Nelements, 0.0);
     std::vector<dfloat> A(dim * dim * Nelements, 0.0);
     std::vector<dfloat> minBound(dim * Nelements, 0.0);
@@ -936,7 +1054,11 @@ findpts_t::findpts_t(MPI_Comm comm,
 findpts_t::~findpts_t()
 {
   auto *findptsData = (findpts_data_3 *)this->_findptsData;
-  findpts_free_3(findptsData);
+  if (useMultiSessionSupport) {
+    findptsms_free_3(findptsData);
+  } else {
+    findpts_free_3(findptsData);
+  }
 }
 
 static slong lfloor(dfloat x) { return floor(x); }
@@ -959,11 +1081,11 @@ static ulong hash_index_3(const hashData_t *p, const dfloat x[dim])
 
 struct srcPt_t {
   dfloat x[dim];
-  int index, proc;
+  int index, proc, sessionId;
 };
 struct outPt_t {
-  dfloat r[dim], dist2;
-  int index, code, el, proc;
+  dfloat r[dim], dist2, disti;
+  int index, code, el, proc, elsid;
 };
 
 void findpts_t::find(data_t *const findPtsData,
@@ -972,9 +1094,22 @@ void findpts_t::find(data_t *const findPtsData,
                      const occa::memory& o_zintIn,
                      const dlong npt)
 {
+  occa::memory o_NULL;
+  this->find(findPtsData, o_xintIn, o_yintIn, o_zintIn, o_NULL, 0, npt);
+}
+
+void findpts_t::find(data_t *const findPtsData,
+                     const occa::memory &o_xintIn,
+                     const occa::memory &o_yintIn,
+                     const occa::memory &o_zintIn,
+                     const occa::memory &o_sessIn,
+                     const dlong sessionIdMatch,
+                     const dlong npt)
+{
   const auto o_xint = o_xintIn.isInitialized() ? o_xintIn.cast(occa::dtype::byte) : o_xintIn;
   const auto o_yint = o_yintIn.isInitialized() ? o_yintIn.cast(occa::dtype::byte) : o_yintIn;
   const auto o_zint = o_zintIn.isInitialized() ? o_zintIn.cast(occa::dtype::byte) : o_zintIn;
+  const auto o_session = o_sessIn.isInitialized() ? o_sessIn.cast(occa::dtype::byte) : o_sessIn;
 
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic(timerName + "find", 1);
@@ -983,6 +1118,10 @@ void findpts_t::find(data_t *const findPtsData,
   static std::vector<dfloat> x_base;
   static std::vector<dfloat> y_base;
   static std::vector<dfloat> z_base;
+  static std::vector<int> session;
+  static std::vector<dfloat> disti;
+  static std::vector<int> elsid;
+
   static std::vector<int> codeArr;
   static std::vector<int> elArr;
   static std::vector<dfloat> rArr;
@@ -990,12 +1129,18 @@ void findpts_t::find(data_t *const findPtsData,
   static std::vector<dfloat> x0;
   static std::vector<dfloat> x1;
   static std::vector<dfloat> x2;
+  static std::vector<int> sessArr;
+  static std::vector<dfloat> distiArr;
+  static std::vector<int> elsidArr;
 
   if (x_base.size() < npt) {
     constexpr int growthFactor = 2;
     x_base.resize(growthFactor * npt);
     y_base.resize(growthFactor * npt);
     z_base.resize(growthFactor * npt);
+    session.resize(growthFactor * npt);
+    disti.resize(growthFactor * npt);
+    elsid.resize(growthFactor * npt);
   }
 
   platform->timer.tic(timerName + "find::initial copy op", 1);
@@ -1003,6 +1148,11 @@ void findpts_t::find(data_t *const findPtsData,
     o_xint.copyTo(x_base.data(), npt * sizeof(dfloat));
     o_yint.copyTo(y_base.data(), npt * sizeof(dfloat));
     o_zint.copyTo(z_base.data(), npt * sizeof(dfloat));
+    if (useMultiSessionSupport) {
+      o_session.copyTo(session.data(), npt * sizeof(dlong));
+    } else {
+      std::fill(session.begin(), session.end(), 0);
+    }
   }
   platform->timer.toc(timerName + "find::initial copy op");
 
@@ -1019,7 +1169,18 @@ void findpts_t::find(data_t *const findPtsData,
   /* look locally first */
   const auto timerNameSave = timerName;
   timerName = timerName + "find::";
-  findptsLocal(code_base, el_base, r_base, dist2_base, o_xint, o_yint, o_zint, npt);
+  findptsLocal(code_base,
+               el_base,
+               elsid.data(),
+               r_base,
+               dist2_base,
+               disti.data(),
+               o_xint,
+               o_yint,
+               o_zint,
+               o_session,
+               sessionIdMatch,
+               npt);
   timerName = timerNameSave;
 
   /* send unfound and border points to global hash cells */
@@ -1046,13 +1207,14 @@ void findpts_t::find(data_t *const findPtsData,
         x[d] = *xp[d];
       }
       *proc = id;
-      if (*code != CODE_INTERNAL) {
+      if ((*code != CODE_INTERNAL) || useMultiSessionSupport) {
         const auto hi = hash_index_3(&hash, x);
         for (int d = 0; d < dim; ++d) {
           pt->x[d] = x[d];
         }
         pt->index = index;
         pt->proc = hi % np;
+        pt->sessionId = session[index];
         ++pt;
       }
       for (int d = 0; d < dim; ++d) {
@@ -1170,23 +1332,31 @@ void findpts_t::find(data_t *const findPtsData,
       x0.resize(growthFactor * srcPt_t.n);
       x1.resize(growthFactor * srcPt_t.n);
       x2.resize(growthFactor * srcPt_t.n);
+      sessArr.resize(growthFactor * srcPt_t.n);
+      distiArr.resize(growthFactor * srcPt_t.n);
+      elsidArr.resize(growthFactor * srcPt_t.n);
     }
 
     for (int point = 0; point < srcPt_t.n; ++point) {
       x0[point] = spt[point].x[0];
       x1[point] = spt[point].x[1];
       x2[point] = spt[point].x[2];
+      sessArr[point] = spt[point].sessionId;
     }
 
     const auto timerNameSave = timerName;
     timerName = timerName + "find::send back::";
     findptsLocal(codeArr.data(),
                  elArr.data(),
+                 elsidArr.data(),
                  rArr.data(),
                  dist2Arr.data(),
+                 distiArr.data(),
                  x0.data(),
                  x1.data(),
                  x2.data(),
+                 sessArr.data(),
+                 sessionIdMatch,
                  srcPt_t.n);
     timerName = timerNameSave;
 
@@ -1194,7 +1364,9 @@ void findpts_t::find(data_t *const findPtsData,
     for (int point = 0; point < srcPt_t.n; point++) {
       opt[point].code = codeArr[point];
       opt[point].el = elArr[point];
+      opt[point].elsid = elsidArr[point];
       opt[point].dist2 = dist2Arr[point];
+      opt[point].disti = distiArr[point];
       for (int d = 0; d < dim; ++d) {
         opt[point].r[d] = rArr[dim * point + d];
       }
@@ -1238,20 +1410,122 @@ void findpts_t::find(data_t *const findPtsData,
   /* merge remote results with user data */
   {
     int n = outPt_t.n;
-    struct outPt_t *opt = (struct outPt_t *)outPt_t.ptr;
-    for (; n; --n, ++opt) {
-      const int index = opt->index;
-      if (code_base[index] == CODE_INTERNAL)
-        continue;
-      if (code_base[index] == CODE_NOT_FOUND || opt->code == CODE_INTERNAL ||
-          opt->dist2 < dist2_base[index]) {
-        for (int d = 0; d < dim; ++d) {
-          r_base[dim * index + d] = opt->r[d];
+    struct outPt_t *opt;
+    if (useMultiSessionSupport) {
+      sarray_sort_2(struct outPt_t,
+                    outPt_t.ptr,
+                    outPt_t.n,
+                    index,
+                    0,
+                    elsid,
+                    0,
+                    &cr.data); /* sort by pt and session of donor element */
+      uint oldindex, nextindex;
+      uint oldelsid, nextelsid;
+      uint istart, ioriginator;
+      oldindex = 0;
+      istart = 0;
+      ioriginator = 0;
+      double asdisti, asdist2, asr[findpts::dim];
+      uint ascode, aselsid, asproc, asel; /*winner of all session */
+
+      double csdisti, csdist2, csr[findpts::dim];
+      uint cscode, cselsid, csproc, csel; /*winner of current session */
+
+      for (opt = (struct outPt_t *)outPt_t.ptr; n; --n, ++opt) {
+        const uint index = opt->index;
+        nextindex = n > 1 ? (opt + 1)->index : index;
+        nextelsid = n > 1 ? (opt + 1)->elsid : opt->elsid;
+
+        if (index != oldindex || n == outPt_t.n) { /* initialize overall winner for each pt */
+          oldindex = index;
+          asdisti = -std::numeric_limits<double>::max();
+          oldelsid = 0;
+          istart = 0;
+          ioriginator = 0;
+          if (code_base[index] != CODE_NOT_FOUND) {
+            ioriginator = 1;
+          }
         }
-        dist2_base[index] = opt->dist2;
-        proc_base[index] = opt->proc;
-        el_base[index] = opt->el;
-        code_base[index] = opt->code;
+        if (opt->elsid != oldelsid || istart == 0) { /* initialize winner for current session */
+          istart = 1;
+          oldelsid = opt->elsid;
+          if (ioriginator == 1 && elsid[index] == opt->elsid) { /* if the originating session found the pt */
+            csdisti = disti[index];
+            csdist2 = dist2_base[index];
+            cscode = code_base[index];
+            cselsid = elsid[index];
+            csproc = proc_base[index];
+            csel = el_base[index];
+            unsigned d;
+            for (d = 0; d < findpts::dim; ++d) {
+              csr[d] = r_base[d];
+            }
+            ioriginator = 0;
+          } else {
+            cscode = CODE_NOT_FOUND;
+          }
+        }
+
+        if (cscode != CODE_INTERNAL) {
+          if (cscode == CODE_NOT_FOUND || opt->code == CODE_INTERNAL || opt->dist2 < csdist2) {
+            csdisti = opt->disti;
+            csdist2 = opt->dist2;
+            cscode = opt->code;
+            cselsid = opt->elsid;
+            csproc = opt->proc;
+            csel = opt->el;
+            unsigned d;
+            for (d = 0; d < findpts::dim; ++d) {
+              csr[d] = opt->r[d];
+            }
+          }
+        }
+
+        if (n == 1 || opt->elsid != nextelsid || index != nextindex) { /* update overall winner */
+          if (csdisti >= asdisti) {
+            asdisti = csdisti;
+            asdist2 = csdist2;
+            ascode = cscode;
+            aselsid = cselsid;
+            asproc = csproc;
+            asel = csel;
+            unsigned d;
+            for (d = 0; d < findpts::dim; ++d) {
+              asr[d] = csr[d];
+            }
+          }
+          if (index != nextindex || n == 1) { /* copy overall winner to output array */
+            if (!(ioriginator == 1 && asdisti < disti[index])) {
+              disti[index] = asdisti;
+              dist2_base[index] = asdist2;
+              code_base[index] = ascode;
+              elsid[index] = aselsid;
+              proc_base[index] = asproc;
+              el_base[index] = asel;
+              for (int d = 0; d < findpts::dim; ++d) {
+                r_base[dim * index + d] = asr[d];
+              }
+            }
+          }
+        }
+      }
+    } else {
+      for (opt = (struct outPt_t *)outPt_t.ptr; n; --n, ++opt) {
+        const int index = opt->index;
+        if (code_base[index] == CODE_INTERNAL) {
+          continue;
+        }
+        if (code_base[index] == CODE_NOT_FOUND || opt->code == CODE_INTERNAL ||
+            opt->dist2 < dist2_base[index]) {
+          for (int d = 0; d < dim; ++d) {
+            r_base[dim * index + d] = opt->r[d];
+          }
+          dist2_base[index] = opt->dist2;
+          proc_base[index] = opt->proc;
+          el_base[index] = opt->el;
+          code_base[index] = opt->code;
+        }
       }
     }
     array_free(&outPt_t);
@@ -1294,293 +1568,37 @@ void findpts_t::find(data_t *const findPtsData,
                      const dfloat *const z_base,
                      const dlong npt)
 {
-  if (timerLevel != TimerLevel::None) {
-    platform->timer.tic(timerName + "find", 1);
-  }
-  static std::vector<int> codeArr;
-  static std::vector<int> elArr;
-  static std::vector<dfloat> rArr;
-  static std::vector<dfloat> dist2Arr;
-  static std::vector<dfloat> x0;
-  static std::vector<dfloat> x1;
-  static std::vector<dfloat> x2;
+  this->find(findPtsData, x_base, y_base, z_base, nullptr, 0, npt);
+}
 
-  int *const code_base = findPtsData->code_base;
-  int *const proc_base = findPtsData->proc_base;
-  int *const el_base = findPtsData->el_base;
-  dfloat *const r_base = findPtsData->r_base;
-  dfloat *const dist2_base = findPtsData->dist2_base;
-  hashData_t &hash = *this->hash;
-  crystal &cr = *this->cr;
-  const int np = cr.comm.np, id = cr.comm.id;
-  struct array hash_pt, srcPt_t, outPt_t;
-
-  /* look locally first */
-  const auto timerNameSave = timerName;
-  timerName = timerName + "find::";
-  findptsLocal(code_base, el_base, r_base, dist2_base, x_base, y_base, z_base, npt);
-  timerName = timerNameSave;
-
-  /* send unfound and border points to global hash cells */
-  if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "find::unfound", 1);
-  }
-  {
-    int index;
-    int *code = code_base, *proc = proc_base;
-    const dfloat *xp[dim];
-    struct srcPt_t *pt;
-
-    xp[0] = x_base;
-    xp[1] = y_base;
-    xp[2] = z_base;
-
-    array_init(struct srcPt_t, &hash_pt, npt);
-    pt = (struct srcPt_t *)hash_pt.ptr;
-
-    dfloat x[dim];
-
-    for (index = 0; index < npt; ++index) {
-      for (int d = 0; d < dim; ++d) {
-        x[d] = *xp[d];
-      }
-      *proc = id;
-      if (*code != CODE_INTERNAL) {
-        const auto hi = hash_index_3(&hash, x);
-        for (int d = 0; d < dim; ++d) {
-          pt->x[d] = x[d];
-        }
-        pt->index = index;
-        pt->proc = hi % np;
-        ++pt;
-      }
-      for (int d = 0; d < dim; ++d) {
-        xp[d]++;
-      }
-      code++;
-      proc++;
-    }
-    hash_pt.n = pt - (struct srcPt_t *)hash_pt.ptr;
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::unfound::sarray_transfer", 1);
-    }
-
-    sarray_transfer(struct srcPt_t, &hash_pt, proc, 1, &cr);
-
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "find::unfound::sarray_transfer");
-    }
-  }
-
-  if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.toc(timerName + "find::unfound");
-    platform->timer.tic(timerName + "find::send unfound", 1);
-  }
-
-  /* look up points in hash cells, route to possible procs */
-  {
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::send unfound::compute hash", 1);
-    }
-    const unsigned int *const hash_offset = hash.offset;
-    int count = 0, *proc, *proc_p;
-    const struct srcPt_t *p = (struct srcPt_t *)hash_pt.ptr, *const pe = p + hash_pt.n;
-    struct srcPt_t *q;
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::send unfound::compute hash::get count", 1);
-    }
-    for (; p != pe; ++p) {
-      const int hi = hash_index_3(&hash, p->x) / np;
-      const int i = hash_offset[hi], ie = hash_offset[hi + 1];
-      count += ie - i;
-    }
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "find::send unfound::compute hash::get count");
-      platform->timer.tic(timerName + "find::send unfound::compute hash::do allocations", 1);
-    }
-    proc = tmalloc(int, count);
-    proc_p = proc;
-    array_init(struct srcPt_t, &srcPt_t, count), q = (struct srcPt_t *)srcPt_t.ptr;
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "find::send unfound::compute hash::do allocations");
-      platform->timer.tic(timerName + "find::send unfound::compute hash::doubly nested loop", 1);
-    }
-    p = (struct srcPt_t *)hash_pt.ptr;
-    for (; p != pe; ++p) {
-      const int hi = hash_index_3(&hash, p->x) / np;
-      int i = hash_offset[hi];
-      const int ie = hash_offset[hi + 1];
-      for (; i != ie; ++i) {
-        const int pp = hash_offset[i];
-        if (pp == p->proc)
-          continue; /* don't send back to source proc */
-        *proc_p++ = pp;
-        *q++ = *p;
-      }
-    }
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "find::send unfound::compute hash::doubly nested loop");
-    }
-    array_free(&hash_pt);
-    srcPt_t.n = proc_p - proc;
-#ifdef DIAGNOSTICS
-    printf("(proc %u) hashed; routing %u/%u\n", id, (int)srcPt_t.n, count);
-#endif
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "find::send unfound::compute hash");
-      platform->timer.tic(timerName + "find::send unfound::sarray_transfer_ext", 1);
-    }
-
-    sarray_transfer_ext(struct srcPt_t, &srcPt_t, reinterpret_cast<unsigned int *>(proc), sizeof(int), &cr);
-
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "find::send unfound::sarray_transfer_ext");
-    }
-    free(proc);
-  }
-
-  if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.toc(timerName + "find::send unfound");
-    platform->timer.tic(timerName + "find::send back", 1);
-  }
-
-  /* look for other procs' points, send back */
-  {
-    int n = srcPt_t.n;
-    const struct srcPt_t *spt;
-    struct outPt_t *opt;
-    array_init(struct outPt_t, &outPt_t, n);
-    outPt_t.n = n;
-    spt = (struct srcPt_t *)srcPt_t.ptr;
-    opt = (struct outPt_t *)outPt_t.ptr;
-    for (; n; --n, ++spt, ++opt) {
-      opt->index = spt->index;
-      opt->proc = spt->proc;
-    }
-    spt = (struct srcPt_t *)srcPt_t.ptr;
-    opt = (struct outPt_t *)outPt_t.ptr;
-
-    // resize result buffers
-    if (codeArr.size() < srcPt_t.n) {
-      constexpr int growthFactor = 2;
-      codeArr.resize(growthFactor * srcPt_t.n);
-      elArr.resize(growthFactor * srcPt_t.n);
-      rArr.resize(growthFactor * dim * srcPt_t.n);
-      dist2Arr.resize(growthFactor * srcPt_t.n);
-
-      x0.resize(growthFactor * srcPt_t.n);
-      x1.resize(growthFactor * srcPt_t.n);
-      x2.resize(growthFactor * srcPt_t.n);
-    }
-
-    for (int point = 0; point < srcPt_t.n; ++point) {
-      x0[point] = spt[point].x[0];
-      x1[point] = spt[point].x[1];
-      x2[point] = spt[point].x[2];
-    }
-
-    const auto timerNameSave = timerName;
-    timerName = timerName + "find::send back::";
-    findptsLocal(codeArr.data(),
-                 elArr.data(),
-                 rArr.data(),
-                 dist2Arr.data(),
-                 x0.data(),
-                 x1.data(),
-                 x2.data(),
-                 srcPt_t.n);
-    timerName = timerNameSave;
-
-    // unpack arrays into opt
-    for (int point = 0; point < srcPt_t.n; point++) {
-      opt[point].code = codeArr[point];
-      opt[point].el = elArr[point];
-      opt[point].dist2 = dist2Arr[point];
-      for (int d = 0; d < dim; ++d) {
-        opt[point].r[d] = rArr[dim * point + d];
-      }
-    }
-    array_free(&srcPt_t);
-    /* group by code to eliminate unfound points */
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::send back::sarray_sort", 1);
-    }
-    sarray_sort(struct outPt_t, opt, outPt_t.n, code, 0, &cr.data);
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "find::send back::sarray_sort");
-    }
-    n = outPt_t.n;
-    while (n && opt[n - 1].code == CODE_NOT_FOUND)
-      --n;
-    outPt_t.n = n;
-#ifdef DIAGNOSTICS
-    printf("(proc %u) sending back %u found points\n", id, (int)outPt_t.n);
-#endif
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::send back::sarray_transfer", 1);
-    }
-
-    sarray_transfer(struct outPt_t, &outPt_t, proc, 1, &cr);
-
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "find::send back::sarray_transfer");
-    }
-  }
-
-  if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.toc(timerName + "find::send back");
-    platform->timer.tic(timerName + "find::merge", 1);
-  }
-
-  /* merge remote results with user data */
-  {
-    int n = outPt_t.n;
-    struct outPt_t *opt = (struct outPt_t *)outPt_t.ptr;
-    for (; n; --n, ++opt) {
-      const int index = opt->index;
-      if (code_base[index] == CODE_INTERNAL)
-        continue;
-      if (code_base[index] == CODE_NOT_FOUND || opt->code == CODE_INTERNAL ||
-          opt->dist2 < dist2_base[index]) {
-        for (int d = 0; d < dim; ++d) {
-          r_base[dim * index + d] = opt->r[d];
-        }
-        dist2_base[index] = opt->dist2;
-        proc_base[index] = opt->proc;
-        el_base[index] = opt->el;
-        code_base[index] = opt->code;
-      }
-    }
-    array_free(&outPt_t);
-  }
-  if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.toc(timerName + "find::merge");
-    platform->timer.tic(timerName + "find::copy to device", 1);
-  }
+void findpts_t::find(data_t *const findPtsData,
+                     const dfloat *const x_base,
+                     const dfloat *const y_base,
+                     const dfloat *const z_base,
+                     const dlong *const session,
+                     const dlong sessionIdMatch,
+                     const dlong npt)
+{
+  occa::memory o_xint, o_yint, o_zint, o_session;
   if (npt > 0) {
-    if (o_code.size() < npt * sizeof(dlong)) {
-      if (o_code.size()) {
-        o_code.free();
-        o_el.free();
-        o_r.free();
-        o_proc.free();
-      }
-      o_code = platform->device.malloc(npt * sizeof(dlong));
-      o_el = platform->device.malloc(npt * sizeof(dlong));
-      o_r = platform->device.malloc(npt * dim * sizeof(dfloat));
-      o_proc = platform->device.malloc(npt * sizeof(dlong));
-    }
+    o_xint = platform->o_memPool.reserve<dfloat>(npt);
+    o_yint = platform->o_memPool.reserve<dfloat>(npt);
+    o_zint = platform->o_memPool.reserve<dfloat>(npt);
+    o_session = platform->o_memPool.reserve<dlong>(npt);
+  }
 
-    o_code.copyFrom(code_base, npt * sizeof(dlong));
-    o_el.copyFrom(el_base, npt * sizeof(dlong));
-    o_r.copyFrom(r_base, npt * dim * sizeof(dfloat));
-    o_proc.copyFrom(proc_base, npt * sizeof(dlong));
-  }
-  if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.toc(timerName + "find::copy to device");
-  }
-  if (timerLevel != TimerLevel::None) {
-    platform->timer.toc(timerName + "find");
+  o_xint.copyFrom(x_base, npt);
+  o_yint.copyFrom(y_base, npt);
+  o_zint.copyFrom(z_base, npt);
+  o_session.copyFrom(session, npt);
+
+  this->find(findPtsData, o_xint, o_yint, o_zint, o_session, sessionIdMatch, npt);
+
+  if (npt > 0) {
+    o_xint.free();
+    o_yint.free();
+    o_zint.free();
+    o_session.free();
   }
 }
 

@@ -56,13 +56,19 @@ elliptic_t* ellipticBuildMultigridLevelFine(elliptic_t* baseElliptic)
   ellipticBuildPreconditionerKernels(elliptic);
 
   elliptic->o_lambda0 = platform->device.malloc<pfloat>(mesh->Nlocal);
-  platform->copyDfloatToPfloatKernel(mesh->Nlocal, baseElliptic->o_lambda0, elliptic->o_lambda0);
+  if(elliptic->options.compareArgs("ELLIPTIC PRECO COEFF FIELD", "TRUE")) {
+    platform->copyDfloatToPfloatKernel(mesh->Nlocal, baseElliptic->o_lambda0, elliptic->o_lambda0);
+  } else {
+    platform->linAlg->pfill(mesh->Nlocal, elliptic->lambda0Avg, elliptic->o_lambda0);
+  }
+
   if(baseElliptic->poisson) { 
     elliptic->o_lambda1 = nullptr; 
   } else {
     elliptic->o_lambda1 = platform->device.malloc<pfloat>(mesh->Nlocal);
     platform->copyDfloatToPfloatKernel(mesh->Nlocal, baseElliptic->o_lambda1, elliptic->o_lambda1);
   }
+
 
   pfloat *tmp = (pfloat*) calloc(mesh->Nlocal, sizeof(pfloat));
   for(int i = 0; i < mesh->Nlocal; i++) {

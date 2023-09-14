@@ -58,7 +58,7 @@ cheapDist(mesh_t *mesh, int nbID, const occa::memory &o_bID, dlong offsetFld, bo
   }();
 
   const auto Nfields = minDist ? 1 : nbID;
-  auto o_dist = platform->o_memPool.reserve<dfloat>(Nfields * offsetFld);
+  auto o_dist = platform->device.malloc<dfloat>(Nfields * offsetFld);
   platform->linAlg->fill(Nfields * offsetFld, 0.0, o_dist);
 
   // as defined in nek5000 cheap_dist

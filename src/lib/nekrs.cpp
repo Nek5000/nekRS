@@ -24,17 +24,22 @@ namespace fs = std::filesystem;
 // extern variable from nrssys.hpp
 platform_t *platform;
 
+namespace {
+
 static nrs_t *nrs;
 static setupAide options;
 
 static int rank, size;
 static MPI_Comm commg, comm;
 
+static double currDt;
 static double lastOutputTime = 0;
 static int firstOutfld = 1;
 static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 static bool initialized = false;
+
+}
 
 namespace nekrs {
 
@@ -424,24 +429,16 @@ void processUpdFile()
   MPI_Bcast(&fsize, 1, MPI_LONG_LONG_INT, 0, comm);
 
   if (fsize) {
-    exit(1);
-    if (rank == 0)
-      std::cout << "processing " << updFile << " ...\n";
+    std::string txt = "processing " + updFile + " ...\n";
 
     if (rank != 0)
       rbuf = new char[fsize];
+
     MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
     std::stringstream is;
     is.write(rbuf, fsize);
     inipp::Ini ini;
     ini.parse(is, false);
-
-    std::string end;
-    ini.extract("", "end", end);
-    if (end == "true") {
-      enforceLastStep = 1;
-      platform->options.setArgs("END TIME", "-1");
-    }
 
     std::string checkpoint;
     ini.extract("", "checkpoint", checkpoint);
@@ -452,7 +449,7 @@ void processUpdFile()
     ini.extract("general", "endtime", endTime);
     if (!endTime.empty()) {
       if (rank == 0)
-        std::cout << "  set endTime = " << endTime << "\n";
+        txt += "  set endTime = " + endTime + "\n";
       platform->options.setArgs("END TIME", endTime);
     }
 
@@ -460,7 +457,7 @@ void processUpdFile()
     ini.extract("general", "numsteps", numSteps);
     if (!numSteps.empty()) {
       if (rank == 0)
-        std::cout << "  set numSteps = " << numSteps << "\n";
+        txt += "  set numSteps = " + numSteps + "\n";
       platform->options.setArgs("NUMBER TIMESTEPS", numSteps);
     }
 
@@ -468,9 +465,12 @@ void processUpdFile()
     ini.extract("general", "writeinterval", writeInterval);
     if (!writeInterval.empty()) {
       if (rank == 0)
-        std::cout << "  set writeInterval = " << writeInterval << "\n";
+        txt += "  set writeInterval = " + writeInterval + "\n";
       platform->options.setArgs("SOLUTION OUTPUT INTERVAL", writeInterval);
     }
+
+    if (rank == 0)
+      std::cout << txt; 
 
     delete[] rbuf;
   }
@@ -494,7 +494,11 @@ void resetTimer(const std::string &key) { platform->timer.reset(key); }
 
 int exitValue() { return platform->exitValue; }
 
-void initStep(double time, double dt, int tstep) { timeStepper::initStep(nrs, time, dt, tstep); }
+void initStep(double time, double dt, int tstep)
+{ 
+  timeStepper::initStep(nrs, time, dt, tstep);
+  currDt = dt;
+}
 
 bool runStep(std::function<bool(int)> convergenceCheck, int corrector)
 {
@@ -520,7 +524,7 @@ bool runStep(int corrector)
 double finishStep()
 {
   timeStepper::finishStep(nrs);
-  return nrs->timePrevious + setPrecision(nrs->dt[0], std::numeric_limits<decltype(nrs->dt[0])>::digits10 + 1);
+  return nrs->timePrevious + setPrecision(currDt, std::numeric_limits<decltype(nrs->dt[0])>::digits10 + 1);
 }
 
 bool stepConverged() { return nrs->timeStepConverged; }
@@ -529,7 +533,7 @@ bool stepConverged() { return nrs->timeStepConverged; }
 
 int nrsFinalize(nrs_t *nrs)
 {
-  auto exitValue = nekrs::exitValue();
+  int exitValue = nekrs::exitValue();
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     if (nrs->uSolver)
       delete nrs->uSolver;
@@ -555,8 +559,11 @@ int nrsFinalize(nrs_t *nrs)
     AMGXfinalize();
     nek::finalize();
   }
-
-  if (platform->comm.mpiRank == 0)
+ 
+  int rankGlobal;
+  MPI_Comm_rank(platform->comm.mpiCommParent, &rankGlobal);
+  MPI_Allreduce(MPI_IN_PLACE, &exitValue, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
+  if (rankGlobal == 0)
     std::cout << "finished with exit code " << exitValue << std::endl;
 
   return exitValue;

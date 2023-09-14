@@ -6,7 +6,7 @@ string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "NVHPC" USING_NVHPC)
 if(USING_GNU OR USING_INTEL_LLVM OR USING_NVHPC)
   message(CHECK_PASS "Found the ${CMAKE_Fortran_COMPILER_ID} Fortran compiler")
 else()
-  message(FATAL_ERROR "No supported Fortran compiles found to build Nek5000 interface!")
+  message(FATAL_ERROR "No supported Fortran compiler found to build Nek5000 interface!")
 endif()
 
 if (${NEK5000_PPLIST} MATCHES "PARRSB")

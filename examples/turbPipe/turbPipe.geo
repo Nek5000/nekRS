@@ -4,33 +4,27 @@
    >>> To generate mesh run: gmsh turbPipe.geo -3 -order 2   
 */
 
-//constants
-PI=3.14159265359;
-
-meshDim=3; 
-
 // GRID SETTINGS ///////////////////////////////////////
 
 // Geometrical parameters
-// Note: r<RB<R
-R=0.5;   //Pipe radius
+R=0.5;        //Pipe radius
 r=0.35;
-RB=0.48917;   
+RB=0.48917;   // r<RB<R 
 lambda=0.6;   //=R_{arc}/R
-Lz=6;   //length in z-dir
+Lz=20;        //length in z
 
 // Grid Paramaters
-Nc=8;   // no. of nodes (=#elem+1) in azimuthal direction
+Nc=7;   // no. of nodes (=#elem+1) in azimuthal direction
 NB=2;   // no. of elemtns adjacent to the wall
-NM=5;   // no. of nodes (=#elem+1) between the near wall layer and central square part
+NM=4;   // no. of nodes (=#elem+1) between the near wall layer and central square part
 
 compressRatio_B=0.85;  //ratio of grid compression toward the wall (<1)
 compressRatio_M=0.87;  //compression ratio in the middle layer
-Nz=35;  //no of elements in z-dir (streamwise)
+Nz=60;  //no of elements in z-dir (streamwise)
 
 ///////////////////////////////////////////////////
 
-th=PI/4.;  //theta
+th=Pi/4.;  //theta
 dx=r*Cos(th);
 dy=r*Sin(th);
 dxB=RB*Cos(th);
@@ -101,38 +95,27 @@ Line Loop(7)={17, 10, -18, -6}; Plane Surface(7)={7};
 Line Loop(8)={-7, 18, 11, -19}; Plane Surface(8)={8}; 
 Line Loop(9)={-8, 19, 12, -20}; Plane Surface(9)={9}; 
 
-If (meshDim==2)
-  //Line Loop (50)={9,10,11,12};
-   Physical Line("wall")={9, 10, 11, 12};
-// Physical Line("wall")={50};
-   Physical Surface(1)={1:9};
-EndIf
-
 Recombine Surface "*";
 Transfinite Surface "*";
 
-If (meshDim==3)
+//make a 3d mesh by extrusion in z-dir
+mesh3D[]=Extrude {0,0,Lz} 
+{
+    Surface{1:9};
+    Layers{Nz}; 
+    Recombine; 
+};
 
-   //make a 3d mesh by extrusion in z-dir
-   mesh3D[]=Extrude {0,0,Lz} 
-   {
-       Surface{1:9};
-       Layers{Nz}; 
-       Recombine; 
-   };
+//Physical Surfaces & Volume (Note: gmsh only generates mesh for the physical entities)
+// 1: inlet
+// 2: outlet
+// 3: wall
+Physical Surface("inlet") = {6, 7, 8, 9, 5, 2, 3, 4, 1};
+Physical Surface("outlet") = {152, 174, 196, 218, 64, 86, 108, 130, 42};
+Physical Surface("wall") = {139, 213, 191, 165};
+Physical Volume("flowDomain") = {6, 2, 1, 4, 8, 3, 7, 5, 9};
 
-   //Physical Surfaces & Volume (Note: gmsh only generates mesh for the physical entities)
-   // 1: inlet
-   // 2: outlet
-   // 3: wall
-   Physical Surface("inlet") = {6, 7, 8, 9, 5, 2, 3, 4, 1};
-   Physical Surface("outlet") = {152, 174, 196, 218, 64, 86, 108, 130, 42};
-   Physical Surface("wall") = {139, 213, 191, 165};
-   Physical Volume("flowDomain") = {6, 2, 1, 4, 8, 3, 7, 5, 9};
-
-   Recombine Volume "*";
-
-EndIf
+Recombine Volume "*";
 
 Coherence;
 
@@ -145,6 +128,6 @@ SetOrder 2;
 Mesh.Format = 1;
 Mesh.MshFileVersion = 2.2;
 Mesh.SaveAll = 0;
-Mesh.Binary = 0;
+Mesh.Binary = 1;
 
 Save "turbPipe.msh";

@@ -22,6 +22,8 @@ std::vector<dfloat> zpg0;
 
 std::vector<dfloat> pid0;
 
+double numCVODERHS = 0;
+
 // solve ODE system dx_i/dt = u_i using 4th order Runge-Kutta
 occa::memory solveODE(nrs_t *nrs,
                       dfloat t0,
@@ -1001,6 +1003,11 @@ void ciTestErrors(nrs_t *nrs,
     particles->migrate(); // invoke particle migration
   }
 
+  if(nrs->cds->cvode){
+    numCVODERHS += nrs->cds->cvode->numRHSEvals();
+    numCVODERHS += nrs->cds->cvode->numLinIters();
+  }
+
   if (!nrs->lastStep) {
     return;
   }
@@ -1067,8 +1074,8 @@ void ciTestErrors(nrs_t *nrs,
   int s01IterErr, s02IterErr;
 
   if (ciMode == 16 || ciMode == 17 || ciMode == 18) {
-    NiterS01 = nrs->cds->cvode->numSteps();
-    NiterS02 = nrs->cds->cvode->numLinIters();
+    NiterS01 = numCVODERHS / tstep; // average number of RHS + linIters per step
+    NiterS02 = numCVODERHS / tstep;
   }
 
   s01IterErr = abs(NiterS01 - 2);
@@ -1207,18 +1214,18 @@ void ciTestErrors(nrs_t *nrs,
     pIterErr = abs(NiterP - 4);
     vxErr = abs((err[0] - 2.78E-10) / err[0]);
     prErr = abs((err[1] - 7.11E-10) / err[1]);
-    s01IterErr = abs(NiterS01 - 1); // nsteps
-    s02IterErr = abs(NiterS02 - 2); // nli
+    s01IterErr = abs(NiterS01 - 3.5); // nsteps
+    s02IterErr = abs(NiterS02 - 3.5); // nli
     break;
   case 17:
     velIterErr = abs(NiterU - 10);
     s1Err = abs((err[2] - 6.11E-12) / err[2]);
-    s2Err = abs((err[3] - 2.51E-08) / err[3]);
+    s2Err = abs((err[3] - 4.92E-08) / err[3]);
     pIterErr = abs(NiterP - 4);
     vxErr = abs((err[0] - 2.78E-10) / err[0]);
     prErr = abs((err[1] - 7.11E-10) / err[1]);
-    s01IterErr = abs(NiterS01 - 1); // nsteps
-    s02IterErr = abs(NiterS02 - 2); // nli
+    s01IterErr = abs(NiterS01 - 1.67); // nsteps
+    s02IterErr = abs(NiterS02 - 1.67); // nli
     break;
   }
 

@@ -73,6 +73,8 @@ void applyDirichletVelocity(nrs_t *nrs, double time, occa::memory& o_U,occa::mem
     applyZeroNormalMask(nrs, nrs->meshV, nrs->uvwSolver->o_EToB, nrs->o_zeroNormalMaskVelocity, o_Ue);
   }
 
+  const auto neknekFieldOffset = nrs->neknek ? nrs->neknek->fieldOffset() : 0;
+
   mesh_t *mesh = nrs->meshV;
 
   occa::memory o_tmp = platform->o_memPool.reserve<dfloat>((nrs->NVfields+1) * nrs->fieldOffset);
@@ -108,8 +110,9 @@ void applyDirichletVelocity(nrs_t *nrs, double time, occa::memory& o_U,occa::mem
                                    nrs->o_EToB,
                                    nrs->o_rho,
                                    nrs->o_mue,
-                                   nrs->neknek ? nrs->neknek->o_pointMap : o_NULL,
-                                   nrs->neknek ? nrs->neknek->o_U : o_NULL,
+                                   neknekFieldOffset,
+                                   nrs->neknek ? nrs->neknek->o_pointMap() : o_NULL,
+                                   nrs->neknek ? nrs->neknek->o_U() : o_NULL,
                                    nrs->o_usrwrk,
                                    o_U,
                                    o_tmp.slice(nrs->fieldOffset));
@@ -161,6 +164,7 @@ void applyDirichletVelocity(nrs_t *nrs, double time, occa::memory& o_U,occa::mem
 void applyDirichletScalars(nrs_t *nrs, double time, occa::memory& o_S, occa::memory& o_Se)
 {
   cds_t *cds = nrs->cds;
+  const auto neknekFieldOffset = cds->neknek ? cds->neknek->fieldOffset() : 0;
   for (int is = 0; is < cds->NSfields; is++) {
     if (!cds->compute[is])
       continue;
@@ -194,9 +198,10 @@ void applyDirichletScalars(nrs_t *nrs, double time, occa::memory& o_S, occa::mem
                              cds->o_Ue,
                              o_diff_i,
                              o_rho_i,
-                             cds->neknek ? cds->neknek->o_pointMap : o_NULL,
-                             cds->neknek ? cds->neknek->o_U : o_NULL,
-                             cds->neknek ? cds->neknek->o_S : o_NULL,
+                             neknekFieldOffset,
+                             cds->neknek ? cds->neknek->o_pointMap() : o_NULL,
+                             cds->neknek ? cds->neknek->o_U() : o_NULL,
+                             cds->neknek ? cds->neknek->o_S() : o_NULL,
                              *(cds->o_usrwrk),
                              o_SiDirichlet);
 
@@ -292,6 +297,6 @@ void applyDirichlet(nrs_t *nrs, double time)
     applyDirichletMesh(nrs, time, nrs->_mesh->o_U, nrs->_mesh->o_Ue, nrs->o_U);
 
   if (nrs->neknek) {
-    fixCoupledSurfaceFlux(nrs, nrs->o_U);
+    nrs->neknek->fixCoupledSurfaceFlux(nrs->o_U);
   }
 }

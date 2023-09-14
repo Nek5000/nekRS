@@ -13,18 +13,25 @@ using findpts::TimerLevel;
 class pointInterpolation_t {
 public:
   enum class VerbosityLevel { None, Basic, Detailed };
-  pointInterpolation_t(nrs_t *nrs_, double bb_tol = 0.01, double newton_tol_ = 0, bool mySession_ = true);
+  pointInterpolation_t(nrs_t *nrs_,
+                       double bb_tol = 0.01,
+                       double newton_tol_ = 0,
+                       bool mySession_ = true,
+                       dlong sessionID_ = 0,
+                       bool multipleSessionSupport_ = false);
   pointInterpolation_t(nrs_t *nrs_,
                        MPI_Comm comm,
                        dlong localHashSize,
                        dlong globalHashSize,
                        double bb_tol = 0.01,
                        double newton_tol_ = 0,
-                       bool mySession_ = true);
+                       bool mySession_ = true,
+                       dlong sessionID_ = 0,
+                       bool multipleSessionSupport_ = false);
   ~pointInterpolation_t() = default;
 
   // Finds the process, element, and reference coordinates of the given points
-  void find(VerbosityLevel verbosity = VerbosityLevel::Basic);
+  void find(VerbosityLevel verbosity = VerbosityLevel::Basic, bool matchSession = false);
 
   void
   eval(dlong nFields, dlong inputFieldOffset, const occa::memory& o_in, dlong outputFieldOffset, occa::memory& o_out);
@@ -41,9 +48,15 @@ public:
 
   // add points on device
   void setPoints(int n, const occa::memory& o_x, const occa::memory& o_y, const occa::memory& o_z);
+  void setPoints(int n,
+                 const occa::memory &o_x,
+                 const occa::memory &o_y,
+                 const occa::memory &o_z,
+                 const occa::memory &o_session);
 
   // add points on host
   void setPoints(int n, dfloat *x, dfloat *y, dfloat *z);
+  void setPoints(int n, dfloat *x, dfloat *y, dfloat *z, dlong *session);
 
   // set timer level
   void setTimerLevel(TimerLevel level);
@@ -53,6 +66,9 @@ public:
   // this is used to prefix the timer names
   void setTimerName(std::string name);
 
+  // for multi-session cases, query distance function to "int" bounds
+  occa::memory distance();
+
 private:
   nrs_t *nrs;
   double newton_tol;
@@ -61,6 +77,8 @@ private:
   std::unique_ptr<findpts::findpts_t> findpts_;
   findpts::data_t data_;
   bool mySession;
+  dlong sessionID;
+  bool multipleSessionSupport;
 
   bool findCalled = false;
 
@@ -75,10 +93,13 @@ private:
   dfloat * _x;
   dfloat * _y;
   dfloat * _z;
+  dlong *_session;
 
   occa::memory _o_x;
   occa::memory _o_y;
   occa::memory _o_z;
+  occa::memory _o_session;
+  occa::memory _o_distance;
 
   // for storing host points to output when a particle leaves the domain
   std::vector<dfloat> h_x_vec;

@@ -20,9 +20,6 @@ class nrs_t;
 
 class cvode_t {
 public:
-  
-  using LVec = LVector_t<dfloat>;
-
 #ifdef ENABLE_CVODE
   static constexpr bool enabled = true;
 #else
@@ -32,10 +29,16 @@ public:
       void(nrs_t *nrs, double time, double t0, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)>;
   using userJacobian_t = std::function<
       void(nrs_t *nrs, double time, double t0, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)>;
-  using userLocalPointSource_t =
-      std::function<void(nrs_t *nrs, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)>;
+  using userLocalPointSourceL_t =
+      std::function<void(nrs_t *nrs, double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot)>;
+  using userLocalPointSourceE_t =
+      std::function<void(nrs_t *nrs, double time, const occa::memory& o_y, occa::memory &_ydot)>;
+
   using userPostNrsToCv_t = std::function<void(nrs_t *nrs,  LVector_t<dfloat> & o_LField, bool isYdot)>;
   using userPostCvToNrs_t = std::function<void(nrs_t *nrs, occa::memory o_EField, bool isYdot)>;
+  using userMakeq_t = std::function<void(nrs_t *nrs, double time)>;
+  using userPreSolve_t = std::function<void(nrs_t *nrs)>;
+  using userPostSolve_t = std::function<void(nrs_t *nrs)>;
 
   cvode_t(nrs_t *nrs);
   ~cvode_t();
@@ -45,10 +48,17 @@ public:
 
   void setRHS(userRHS_t _userRHS) { userRHS = _userRHS; }
   void setJacobian(userJacobian_t _userJacobian) { userJacobian = _userJacobian; }
-  void setLocalPointSource(userLocalPointSource_t _userLocalPointSource);
+  void setLocalPointSource(userLocalPointSourceL_t _userLocalPointSource);
+  void setLocalPointSource(userLocalPointSourceE_t _userLocalPointSource);
 
   void setUserPostCvToNrs(userPostCvToNrs_t _userPostCvToNrs) { userPostCvToNrs = _userPostCvToNrs; }
   void setUserPostNrsToCv(userPostNrsToCv_t _userPostNrsToCv) { userPostNrsToCv = _userPostNrsToCv; }
+  void setUserMakeq(userMakeq_t _userMakeq) { userMakeq = _userMakeq; }
+  void setUserPreSolve(userPreSolve_t _userPreSolve) { userPreSolve = _userPreSolve; }
+
+  void setUserPostSolve(userPostSolve_t _userPostSolve) { userPostSolve = _userPostSolve; }
+
+  void setQthermalFSCache(const occa::memory& o_qthermalFSCache_) { o_qthermalFSCache = o_qthermalFSCache_; }
 
   void printInfo(bool printVerboseInfo);
 
@@ -93,19 +103,14 @@ public:
   occa::memory o_pointSource; // scratch field for point source
   occa::memory o_vgeoPfloat;
 
-  // L-vector specific accessors
-  const auto & meshes() const { return YLVec->meshes(); }
-  const auto & offsets() const { return YLVec->offsets(); }
-  auto getLocalPointSource() { return userLocalPointSource; }
-
 private:
   long int nsteps;
   long int nrhs;
   long int nni;
   long int nli;
-  
-  std::shared_ptr<LVec> YLVec;
-  std::shared_ptr<LVec> YdotLVec;
+
+  std::shared_ptr<LVector_t<dfloat>> YLVec;
+  std::shared_ptr<LVector_t<dfloat>> YdotLVec;
 
   oogs_t *gsh;
 
@@ -174,9 +179,14 @@ private:
   userRHS_t userRHS;
   userJacobian_t userJacobian;
 
-  userLocalPointSource_t userLocalPointSource;
+  userLocalPointSourceL_t userLocalPointSourceL;
+  userLocalPointSourceE_t userLocalPointSourceE;
+
   userPostCvToNrs_t userPostCvToNrs;
   userPostNrsToCv_t userPostNrsToCv;
+  userMakeq_t userMakeq;
+  userPreSolve_t userPreSolve;
+  userPostSolve_t userPostSolve;
 
   void makeq(double time);
 
@@ -191,6 +201,8 @@ private:
   dfloat _g0;
 
   dlong Nscalar;
+
+  occa::memory o_qthermalFSCache;
 
   occa::memory o_invRhoCpAvg;
 

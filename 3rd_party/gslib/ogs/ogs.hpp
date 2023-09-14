@@ -290,6 +290,7 @@ oogs_t *setup(int N, long long int *ids, const int k, const int stride, const ch
 void gpu_mpi(int val);
 void overlap(int val);
 int gpu_mpi();
+void sync_recv(int val);
 void destroy(oogs_t *h);
 
 }

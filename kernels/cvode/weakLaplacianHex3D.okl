@@ -1,9 +1,7 @@
 @kernel void weakLaplacianHex3D(const dlong Nelements,
                                 const dlong Nscalars,
-                                @ restrict const dlong *computeScalar,
                                 @ restrict const dlong *fieldOffsetScan,
                                 @ restrict const dfloat *ggeo,
-                                @ restrict const dfloat *invLMM,
                                 @ restrict const dfloat *D,
                                 @ restrict const dfloat *lambda,
                                 @ restrict const dfloat *q,
@@ -126,10 +124,9 @@
 #pragma unroll p_Nq
           for (int k = 0; k < p_Nq; k++) {
             const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-            const dfloat imm = invLMM[id];
-            dfloat value = Aq[id + fieldOffsetScan[scalarId]];
+            dfloat value = r_GwJ[k] * Aq[id + fieldOffsetScan[scalarId]];
             value -= r_Aq[k];
-            Aq[id + fieldOffsetScan[scalarId]] = value * imm;
+            Aq[id + fieldOffsetScan[scalarId]] = value;
           }
         }
       }

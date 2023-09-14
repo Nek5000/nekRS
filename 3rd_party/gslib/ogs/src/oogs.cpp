@@ -22,8 +22,6 @@ MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);                                        
 }                                                                                                            \
 } while (0)
 
-// #define GLOBAL_SYNC_RECV
-
 // hardwired for now
 static constexpr unsigned transpose = 0;
 static constexpr unsigned recv = 0 ^ transpose;
@@ -31,6 +29,7 @@ static constexpr unsigned send = 1 ^ transpose;
 
 static int OGS_MPI_SUPPORT = 0;
 static int OGS_OVERLAP = 1;
+static int OGS_SYNC_RECV = 0;
 static int compiled = 0;
 
 typedef enum { mode_plain, mode_vec, mode_many, mode_dry_run } gs_mode;
@@ -187,10 +186,9 @@ static void pairwiseExchange(int unit_size, oogs_t *gs)
       buf = (unsigned char *)gs->bufSend;
     }
 
-#ifdef GLOBAL_SYNC_RECV
-    if (!gs->earlyPrepostRecv)
+    if (OGS_SYNC_RECV) {
       MPI_Barrier(gs->comm);
-#endif
+    }
 
     comm_req *req = &pwd->req[pwd->comm[recv].n];
     const struct pw_comm_data *c = &pwd->comm[send];
@@ -276,6 +274,11 @@ void oogs::overlap(int val)
 int oogs::gpu_mpi()
 {
   return OGS_MPI_SUPPORT;
+}
+
+void oogs::sync_recv(int val)
+{
+  OGS_SYNC_RECV = val;  
 }
 
 void oogs::compile(const occa::device &device,
@@ -520,7 +523,7 @@ oogs_t *oogs::setup(ogs_t *ogs,
   if (gsMode == OOGS_AUTO) {
     auto knlOverlapStr = (callback) ? "userKnlOverlap" : ""; 
     if (gs->rank == 0) {
-      printf("autotune gs for wordSize=%d nFields=%d %s\n", Nbytes, nVec, knlOverlapStr);
+      printf("autotuning gs for wordSize=%d nFields=%d %s\n", Nbytes, nVec, knlOverlapStr);
     }
     const int Ntests = 10;
     double elapsedMin = std::numeric_limits<double>::max();
@@ -851,10 +854,6 @@ void oogs::start(const occa::memory &o_v,
         MPI_CHECK(MPI_Irecv((void *)buf, len, MPI_UNSIGNED_CHAR, *p, *p, gs->comm, req++));
         buf += len;
       }
-
-#ifdef GLOBAL_SYNC_RECV
-    MPI_Barrier(gs->comm);
-#endif
     }
   }
 }

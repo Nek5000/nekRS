@@ -139,7 +139,7 @@ void MGSolver_t::coarseLevel_t::setupSolver(
   }
   else if (options.compareArgs("COARSE SOLVER", "AMGX")){
     std::string configFile;
-    options.getArgs("AMGX CONFIG FILE", configFile);
+    platform->options.getArgs("AMGX CONFIG FILE", configFile);
     char *cfg = NULL;
     if(configFile.size()) cfg = (char*) configFile.c_str();
     AMGX = new AMGX_t(
