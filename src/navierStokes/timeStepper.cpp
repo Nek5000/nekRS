@@ -638,6 +638,29 @@ void scalarSolve(nrs_t *nrs, dfloat time, occa::memory o_S, int stage)
                                 cds->o_BFDiag,
                                 cds->o_ellipticCoeff);
 
+    auto o_lambda1 = cds->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat)); // o_lambda0=h1, o_lambda1=h2
+
+    cds->robinLhsBCKernel(mesh->Nelements,
+                          1,  
+                          mesh->o_LMM, // o_invLMM = 1./QQT(bm1), but here we need 1./bm1
+                          mesh->o_sgeo,
+                          mesh->o_vmapM,
+                          mesh->o_EToB,
+                          is,
+                          time,
+                          cds->fieldOffset[is],
+                          cds->EToBOffset,
+                          mesh->o_x,
+                          mesh->o_y,
+                          mesh->o_z,
+                          cds->o_Ue,
+                          cds->o_S,
+                          cds->o_EToB,
+                          cds->o_diff,
+                          cds->o_rho,
+                          *(cds->o_usrwrk),
+                          o_lambda1);
+
     occa::memory o_Snew = cdsSolve(is, cds, time, stage);
     o_Snew.copyTo(o_S, cds->fieldOffset[is] * sizeof(dfloat), cds->fieldOffsetScan[is] * sizeof(dfloat));
   }

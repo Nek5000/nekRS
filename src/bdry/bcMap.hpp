@@ -37,6 +37,7 @@ constexpr int bcTypeINTS = p_bcTypeINTS;
 constexpr int bcTypeS = p_bcTypeS;
 constexpr int bcTypeF0 = p_bcTypeF0;
 constexpr int bcTypeF = p_bcTypeF;
+constexpr int bcTypeRobin = p_bcTypeRobin;
 
 constexpr int bcTypeNone = p_bcTypeNone;
 
@@ -61,6 +62,7 @@ constexpr int bcTypeNone = p_bcTypeNone;
 #undef p_bcTypeS
 #undef p_bcTypeF0
 #undef p_bcTypeF
+#undef p_bcTypeRobin
 
 #undef p_bcTypeNone
 

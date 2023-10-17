@@ -2057,7 +2057,7 @@ void parseProblemTypeSection(const int rank, setupAide &options, inipp::Ini *par
         options.setArgs("VELOCITY STRESSFORMULATION", "TRUE");
 
       options.setArgs("ADVECTION", "TRUE");
-      if (eqn == "stokes") {
+      if (std::strstr(eqn.c_str(), "stokes")) {
         options.setArgs("ADVECTION", "FALSE");
       }
     }

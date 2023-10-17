@@ -1,0 +1,223 @@
+c-----------------------------------------------------------------------
+      subroutine uservp (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer e,f,eg
+c     e = gllel(eg)
+
+      udiff =0.
+      utrans=0.
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userf  (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer e,f,eg
+c     e = gllel(eg)
+
+      ffx = 0.0
+      ffy = 0.0
+      ffz = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userq  (ix,iy,iz,eg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      integer e,f,eg
+c     e = gllel(eg)
+
+      qvol   = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk
+      include 'SIZE'
+      include 'TOTAL'
+
+      common /casevars/ p_hc, p_con, lamb
+      real p_hc, p_con, lamb
+      real nu
+
+      n = nx1*ny1*nz1*nelt
+      tbar = glsc2(bm1,t,n)/voltm1
+
+      tbar_lamb = exp(-lamb*p_con*time)
+      ratio = tbar_lamb / tbar
+      if (nid.eq.0) write(6,1) istep,time,tbar,' tbar '
+     $                       , lamb, tbar_lamb, ratio
+    1 format(i9,1p2e12.4,a6,1p3e12.4)
+      
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userbc (ix,iy,iz,iside,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      ux=1.0
+      uy=0.0
+      uz=0.0
+      temp=0.0
+      tinf=0.0
+      hc=2.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      ux=1.0
+      uy=0.0
+      uz=0.0
+      temp=1.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat0
+      implicit none
+      include 'SIZE'
+      include 'TOTAL'
+
+      common /casevars/ p_hc, p_con, lamb
+      real p_hc, p_con, lamb
+
+      COMMON /NRSSCPTR/ nrs_scptr(3)
+      integer*8         nrs_scptr
+
+      nrs_scptr(1) = loc(P_HC)
+      nrs_scptr(2) = loc(P_CON)
+      nrs_scptr(3) = loc(lamb)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2
+      implicit none
+      include 'SIZE'
+      include 'TOTAL'
+      real x0,x1
+      integer iel,ifc
+
+      common /casevars/ p_hc, p_con, lamb
+      real p_hc, p_con, lamb
+
+      call get_first_eigen(p_hc,p_con,lamb)
+
+      ! Domain = [0,1]^2 x [0,0.2]
+      x0=0.0
+      x1=1.0
+      call rescale_x(xm1,x0,x1)
+      call rescale_x(ym1,x0,x1)
+      call rescale_x(zm1,0.0,0.2)
+      
+      ! BC
+      do iel=1,nelt
+      do ifc=5,6
+         cbc(ifc,iel,1) = 'P  '
+         cbc(ifc,iel,2) = 'P  '
+      enddo
+      do ifc=1,2*ndim
+         if(cbc(ifc,iel,1).eq.'v01') then
+           boundaryID(ifc,iel) = 1
+         elseif(cbc(ifc,iel,1).eq.'v02') then
+           boundaryID(ifc,iel) = 2
+         elseif(cbc(ifc,iel,1).eq.'v03') then
+           boundaryID(ifc,iel) = 3
+         elseif(cbc(ifc,iel,1).eq.'v04') then
+           boundaryID(ifc,iel) = 4
+         endif
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+      include 'SIZE'
+      include 'TOTAL'
+c
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrsetvert(glo_num,nel,nx,ny,nz) ! to modify glo_num
+      integer*8 glo_num(1)
+
+      ! kludge for periodic bc in z
+      nxy  = nx*ny
+      nxyz = nx*ny*nz
+      do iel = 1,nel 
+         ioff = nxyz*(iel-1)
+         do ixy = 1,nxy
+            glo_num(ioff + nxy*(nz-1) + ixy) = glo_num(ioff + ixy)
+         enddo
+      enddo
+
+      return 
+      end
+c-----------------------------------------------------------------------
+      subroutine get_first_eigen(hc,con,lamb)
+      implicit none
+      include 'SIZE'
+      real hc, con, lamb
+      real alph, beta, cx, cx2i, tx, dx, y, rhs, x
+      integer it, Nit
+
+      alph = hc
+      beta = con
+      rhs = alph/beta
+      if (nio.eq.0) write(*,*)'get lamb', alph, beta, rhs
+      if (rhs.eq.0) then
+         lamb = 0.0
+         return
+      endif
+
+c     solve x tanh x = alph / beta, then lamb = x*x
+      Nit = 20
+      x = 3.141592653589793/2.0 - 0.001 ! init guess, first sol is bouned by pi/2
+
+      cx = cos(x)
+      cx2i = 1.0/(cx*cx)
+      tx = tan(x)
+      y = x * tx - rhs
+      dx = x * cx2i + tx
+
+      do it = 1,Nit
+
+         x = x - y / dx ! Newton it
+
+         cx = cos(x)
+         cx2i = 1.0/(cx*cx)
+         tx = tan(x)
+         y = x * tx - rhs
+         dx = x * cx2i + tx
+         if (nio.eq.0) write(*,*)'get lamb', it, x, x*x, y
+
+      enddo
+
+      lamb = x*x
+
+      return
+      end
+c-----------------------------------------------------------------------

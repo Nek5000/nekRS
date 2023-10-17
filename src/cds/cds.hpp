@@ -117,6 +117,8 @@ struct cds_t
 
   occa::kernel neumannBCKernel;
   occa::kernel dirichletBCKernel;
+  occa::kernel robinLhsBCKernel;
+  occa::kernel robinRhsBCKernel;
   occa::kernel setEllipticCoeffKernel;
 
   occa::kernel maskCopyKernel;

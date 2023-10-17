@@ -35,6 +35,26 @@ occa::memory cdsSolve(const int is, cds_t* cds, dfloat time, int stage)
                        *(cds->o_usrwrk),
                        cds->o_BF);
 
+  cds->robinRhsBCKernel(mesh->Nelements,
+                        1,
+                        mesh->o_sgeo,
+                        mesh->o_vmapM,
+                        mesh->o_EToB,
+                        is,
+                        time,
+                        cds->fieldOffset[is],
+                        cds->EToBOffset,
+                        mesh->o_x,
+                        mesh->o_y,
+                        mesh->o_z,
+                        cds->o_Ue,
+                        cds->o_S,
+                        cds->o_EToB,
+                        cds->o_diff,
+                        cds->o_rho,
+                        *(cds->o_usrwrk),
+                        cds->o_BF);
+
   platform->timer.toc("scalar rhs");
 
   const occa::memory &o_S0 =

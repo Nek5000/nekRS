@@ -39,6 +39,7 @@ lower value wins on shared edges/corners
 #define p_bcTypeS 2
 #define p_bcTypeF0 3
 #define p_bcTypeF 4
+#define p_bcTypeRobin 5
 
 #define p_scalNBcType 4
 

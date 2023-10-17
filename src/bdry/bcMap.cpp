@@ -108,6 +108,7 @@ static std::map<std::string, int> sBcTextToID = {{"periodic", 0},
                                                  {"zerogradient", bcMap::bcTypeF0},
                                                  {"codedfixedgradient", bcMap::bcTypeF},
                                                  {"codedFixedgradient", bcMap::bcTypeF},
+                                                 {"robin", bcMap::bcTypeRobin},
                                                  {"none", bcMap::bcTypeNone}
 };
 
@@ -116,6 +117,7 @@ static std::map<int, std::string> sBcIDToText = {{0, "periodic"},
                                                  {bcMap::bcTypeS, "codedFixedValue"},
                                                  {bcMap::bcTypeF0, "zeroGradient"},
                                                  {bcMap::bcTypeF, "codedFixedGradient"},
+                                                 {bcMap::bcTypeRobin, "robin"},
                                                  {bcMap::bcTypeNone ,"none"}
 };
 
@@ -249,6 +251,9 @@ static void s_setup(std::string field, std::vector<std::string> slist)
       key = "zerogradient";
     if (key.compare("o") == 0)
       key = "zerogradient";
+
+    if (key.compare("c") == 0)
+      key = "robin";
 
     nrsCheck(sBcTextToID.find(key) == sBcTextToID.end(), platform->comm.mpiComm, EXIT_FAILURE,
              "Invalid scalar bcType (%s)\n", key.c_str());
@@ -472,6 +477,8 @@ int ellipticType(int bid, std::string field)
       bcType = NEUMANN;
       if (bcID == bcTypeS)
         bcType = DIRICHLET;
+      if (bcID == bcTypeRobin)
+        bcType = NEUMANN;
       if (bcID == bcTypeNone)
         bcType = NO_OP;
     }
@@ -781,10 +788,12 @@ void addKernelConstants(occa::properties &kernelInfo)
   kernelInfo["defines/p_bcTypeON"] = bcTypeON;
   kernelInfo["defines/p_bcTypeO"] = bcTypeO;
 
+
   kernelInfo["defines/p_bcTypeINTS"] = bcTypeINTS;
   kernelInfo["defines/p_bcTypeS"] = bcTypeS;
   kernelInfo["defines/p_bcTypeF0"] = bcTypeF0;
   kernelInfo["defines/p_bcTypeF"] = bcTypeF;
+  kernelInfo["defines/p_bcTypeRobin"] = bcTypeRobin;
 }
 
 } // namespace

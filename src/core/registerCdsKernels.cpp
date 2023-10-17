@@ -114,6 +114,13 @@ void registerCdsKernels(occa::properties kernelInfoBC)
     fileName = oklpath + "/cds/" + kernelName + ".okl";
     platform->kernels.add(section + kernelName, fileName, kernelInfoBC);
 
+    kernelName = "robinLhsBC" + suffix;
+    fileName = oklpath + "/cds/" + kernelName + ".okl";
+    platform->kernels.add(section + kernelName, fileName, kernelInfoBC);
+    kernelName = "robinRhsBC" + suffix;
+    fileName = oklpath + "/cds/" + kernelName + ".okl";
+    platform->kernels.add(section + kernelName, fileName, kernelInfoBC);
+
     kernelName = "setEllipticCoeff";
     fileName = oklpath + "/core/" + kernelName + ".okl";
     platform->kernels.add(section + kernelName, fileName, kernelInfo);

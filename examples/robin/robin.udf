@@ -1,0 +1,273 @@
+//
+// nekRS User Defined File
+//
+#include <math.h>
+#include "udf.hpp"
+
+#include "bdry.hpp" // applyDirichlet
+#include "timeStepper.hpp" // scalarSolveCvode, printInfo
+#include "constantFlowRate.hpp" // printInfo
+
+static dfloat P_COEF, P_X0, P_Y0, P_HC;
+static dfloat P_s0conductivity, P_s0lamb;
+
+static dfloat hmh_h1, hmh_h2;
+static occa::memory o_Texact;
+
+#ifdef __okl__
+
+#include "robin.oudf"
+
+#endif
+
+// test hmh solver with Robin BC
+// Solving Helmholtz equations
+//   - div h1 grad T + h2 T = q
+void test_hmh_solver(nrs_t *nrs, const dfloat timeNew, const int tstep, const int caseId, const int is)
+{
+// Test case: - 1/pi^2 \nabla^2 u + a^2 u = 0
+// u_exact = sin(a*pi*x + x0) + cos(a*pi*y + y0)
+// Robin BC: h1 * dudn (inward normal) = hc * (T - Tinf);
+// Input: a, x0, y0, hc
+
+  cds_t *cds = nrs->cds;
+  mesh_t *mesh;
+  (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
+  std::string sid = scalarDigitStr(is);
+
+  const dlong isOffset = cds->fieldOffsetScan[is];
+  const dlong isOffsetByte = cds->fieldOffsetScan[is] * sizeof(dfloat);
+
+  occa::memory o_S = cds->o_S + isOffsetByte;
+  occa::memory o_FS = cds->o_FS + isOffsetByte;
+  occa::memory o_BF = cds->o_BF + isOffsetByte;
+
+  occa::memory o_diff = cds->o_diff + isOffsetByte;
+  occa::memory o_rho = cds->o_rho + isOffsetByte;
+
+  occa::memory o_lambda0 = cds->o_ellipticCoeff.slice(0 * nrs->fieldOffset * sizeof(dfloat)); // h1
+  occa::memory o_lambda1 = cds->o_ellipticCoeff.slice(1 * nrs->fieldOffset * sizeof(dfloat)); // h2
+
+  const int cds_compute_bak = cds->compute[is], stage = 0;
+  cds->compute[is] = 1;
+
+  // extract Dirichlet BC, all scalars+flow
+//  applyDirichletScalars(nrs, timeNew, cds->o_S, cds->o_Se); // TODO: isolate kernel?
+  applyDirichlet(nrs, timeNew);
+
+  // setup o_diff and o_rho, all scalars, hpfrt included
+  evaluateProperties(nrs, timeNew);
+
+  // extract h1 and h2, put into o_ellipticCoeff
+  o_lambda0.copyFrom(o_diff, mesh->Nlocal * sizeof(dfloat)); 
+  o_lambda1.copyFrom(o_rho, mesh->Nlocal * sizeof(dfloat)); 
+
+  // h2 += robin
+  cds->robinLhsBCKernel(mesh->Nelements,
+                        1,
+                        mesh->o_LMM,
+                        mesh->o_sgeo,
+                        mesh->o_vmapM,
+                        mesh->o_EToB,
+                        is,
+                        timeNew,
+                        cds->fieldOffset[is],
+                        cds->EToBOffset,
+                        mesh->o_x,
+                        mesh->o_y,
+                        mesh->o_z,
+                        cds->o_Ue,
+                        cds->o_S,
+                        cds->o_EToB,
+                        cds->o_diff,
+                        cds->o_rho,
+                        *(cds->o_usrwrk),
+                        o_lambda1);
+
+  // Compute rhs
+  platform->linAlg->fillKernel(cds->fieldOffset, 0.0, o_FS);
+  if (udf.sEqnSource) {
+    platform->timer.tic("udfSEqnSource", 1);
+    udf.sEqnSource(nrs, timeNew, cds->o_S, cds->o_FS); // this go through all scalars, inefficient
+    platform->timer.toc("udfSEqnSource");
+  }
+
+  if (platform->options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "HPFRT")) { // ok, all FS interface
+    cds->filterRTKernel(cds->meshV->Nelements,
+                        is,
+                        1,
+                        nrs->fieldOffset,
+                        cds->o_applyFilterRT,
+                        cds->o_filterMT,
+                        cds->o_filterS,
+                        cds->o_rho,
+                        cds->o_S,
+                        cds->o_FS);
+      
+      double flops = 6 * mesh->Np * mesh->Nq + 4 * mesh->Np;
+      flops *= static_cast<double>(mesh->Nelements);
+      platform->flopCounter->add("scalarFilterRT", flops);
+  }
+  // TODO: MOVING MESH
+
+  // BF = bm1 * FS
+  o_BF.copyFrom(mesh->o_LMM, mesh->Nlocal * sizeof(dfloat));
+  platform->linAlg->axmy(mesh->Nlocal, 1.0, o_FS, o_BF); // y = a*x*y
+
+  // main solve, neumann + robin
+  occa::memory o_Snew = cdsSolve(is, cds, timeNew, stage);
+  o_Snew.copyTo(cds->o_S, cds->fieldOffset[is] * sizeof(dfloat), isOffsetByte);
+
+  // check results
+  exactT(caseId, mesh->Nlocal, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, o_Texact);
+  const dfloat norm1 = platform->linAlg->amax(mesh->Nlocal, o_Texact, platform->comm.mpiComm);
+
+  platform->linAlg->axpby(mesh->Nlocal, 1.0, o_S, -1.0, o_Texact); // y = ax+by
+  const dfloat err1 = platform->linAlg->amax(mesh->Nlocal, o_Texact, platform->comm.mpiComm);
+  const dfloat err2 = err1 / norm1; 
+
+  if (platform->comm.mpiRank==0) {
+    const char tags[2][5] = {"poi ","hmh "};
+    const dfloat h2tmp = (caseId==0) ? 0.0 : hmh_h2;
+    printf("\nhmh_test %s step=%d time=%g scalarId=%d (h1,h2)=(%g,%g)  err (abs,rel)=(%g,%g) \n",
+           tags[caseId],tstep,timeNew,is,hmh_h1,h2tmp,err1,err2);
+  }
+  timeStepper::printInfo(nrs, timeNew, tstep, false, true);
+
+  cds->compute[is] = cds_compute_bak;
+}
+
+void userq(nrs_t *nrs, dfloat time, occa::memory o_S, occa::memory o_FS)
+{
+  cds_t *cds = nrs->cds; 
+  occa::memory o_SProp = cds->o_prop;
+  occa::memory o_diff = o_SProp.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));
+  occa::memory o_tran = o_SProp.slice(1 * cds->fieldOffsetSum * sizeof(dfloat));
+
+  for(int is=0; is<nrs->Nscalar; is++){
+    int caseId = 0;
+    if (time>1.0) caseId = 1;
+
+    mesh_t *mesh;
+    (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
+
+    occa::memory o_h1 = o_diff + cds->fieldOffsetScan[is] * sizeof(dfloat);
+    occa::memory o_h2 = o_tran + cds->fieldOffsetScan[is] * sizeof(dfloat);
+    occa::memory o_FSi = o_FS + cds->fieldOffsetScan[is] * sizeof(dfloat);
+
+    if (is==0) {
+      platform->linAlg->fill(mesh->Nlocal, 0.0, o_FSi);
+    } else {
+      exactTrhs(caseId, mesh->Nlocal, mesh->o_x, mesh->o_y, mesh->o_z, o_h1, o_h2, nrs->fieldOffset, o_FSi);
+    }
+  }
+}
+
+void uservp(nrs_t *nrs,
+            dfloat time,
+            occa::memory o_U,
+            occa::memory o_S,
+            occa::memory o_UProp,
+            occa::memory o_SProp)
+{
+  // Flow (is off)
+  mesh_t *meshV = nrs->meshV;
+  occa::memory o_mue = o_UProp.slice(0 * nrs->fieldOffset * sizeof(dfloat));
+  occa::memory o_rho = o_UProp.slice(1 * nrs->fieldOffset * sizeof(dfloat));
+
+  // Heat
+  cds_t *cds = nrs->cds; 
+  occa::memory o_diff = o_SProp.slice(0 * cds->fieldOffsetSum * sizeof(dfloat));
+  occa::memory o_tran = o_SProp.slice(1 * cds->fieldOffsetSum * sizeof(dfloat));
+
+  mesh_t *meshS0 = cds->mesh[0]; 
+  // Scalar00: do nothing, load diff/rhocp from par
+
+  // Scalar + sid
+  for(int is=1; is<nrs->Nscalar; is++){
+    occa::memory o_h1 = o_diff + cds->fieldOffsetScan[is] * sizeof(dfloat);
+    occa::memory o_h2 = o_tran + cds->fieldOffsetScan[is] * sizeof(dfloat);
+    platform->linAlg->fill(cds->meshV->Nlocal, hmh_h1, o_h1);
+    if (time<=1.0) {
+      platform->linAlg->fill(cds->meshV->Nlocal, 0.0, o_h2);
+    } else {
+      platform->linAlg->fill(cds->meshV->Nlocal, hmh_h2, o_h2);
+    }
+  }
+}
+
+void UDF_LoadKernels(occa::properties &kernelInfo)
+{   
+  kernelInfo["defines/p_HC"] = P_HC;
+  kernelInfo["defines/p_COEF"] = P_COEF;
+  kernelInfo["defines/p_X0"] = P_X0;
+  kernelInfo["defines/p_Y0"] = P_Y0;
+  kernelInfo["defines/p_pi"] = M_PI;
+} 
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+
+  platform->par->extract("casedata", "p_hc", P_HC);
+  platform->par->extract("casedata", "p_coef", P_COEF);
+  platform->par->extract("casedata", "p_x0", P_X0);
+  platform->par->extract("casedata", "p_y0", P_Y0);
+
+  hmh_h1 = 1.0/M_PI/M_PI;
+  hmh_h2 = -P_COEF*P_COEF;
+
+  platform->options.getArgs("SCALAR00 DIFFUSIVITY", P_s0conductivity);
+
+  *((double *)nek::scPtr(1)) = P_HC;
+  *((double *)nek::scPtr(2)) = P_s0conductivity;
+  *((double *)nek::scPtr(3)) = P_s0lamb;
+}
+
+void UDF_Setup(nrs_t *nrs)
+{
+  platform_t *platform = platform_t::getInstance();
+  mesh_t *mesh = nrs->meshV;
+
+  udf.sEqnSource = &userq;
+  udf.properties = &uservp;
+
+  o_Texact = platform->device.malloc(mesh->Nlocal, sizeof(dfloat));
+}
+
+void UDF_ExecuteStep(nrs_t *nrs, dfloat time, int tstep)
+{
+  cds_t *cds = nrs->cds;
+
+  // turn off all passive scalars except TEMP
+  if (tstep==0) {
+    for(int is=1; is<nrs->Nscalar; is++){
+      cds->compute[is] = 0;
+    }
+  }
+  // Run 2 tests, 3 BC each
+  if (tstep==0 || tstep==1001) {
+    int caseId = 0;
+    if (time>1.0) caseId = 1;
+    test_hmh_solver(nrs, time, tstep, caseId, 1);
+    test_hmh_solver(nrs, time, tstep, caseId, 2);
+    test_hmh_solver(nrs, time, tstep, caseId, 3);
+  }
+
+  // chk TEMP min/max average
+  mesh_t *meshS0 = cds->mesh[0];
+  occa::memory o_S0 = cds->o_S + cds->fieldOffsetScan[0] * sizeof(dfloat);
+  const dfloat tbar = 
+      platform->linAlg->innerProd(meshS0->Nlocal, o_S0, meshS0->o_LMM, platform->comm.mpiComm) / meshS0->volume;
+  P_s0lamb = *((double *)nek::scPtr(3));
+  const dfloat tbar_lamb = exp(-P_s0lamb*P_s0conductivity*time);
+  const dfloat ratio = tbar_lamb / tbar;
+  if (platform->comm.mpiRank == 0) {
+    printf(" tbar: %4d %12.4e %12.4e lamb %12.4e %12.4e %12.4e\n", tstep, time, tbar, P_s0lamb, tbar_lamb, ratio);
+  }
+/*
+  if (nrs->isOutputStep) {
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
+  }
+*/
+}
