@@ -657,6 +657,8 @@ c-----------------------------------------------------------------------
           ibc = p_bcTypeF0 
         else if (c.eq.'f  ') then 
           ibc = p_bcTypeF 
+        else if (c.eq.'c  ') then 
+          ibc = p_bcTypeRobin 
         endif
       endif
 
@@ -832,6 +834,8 @@ c
              map(p_bcTypeF0) = 1
            else if(cb.eq.'f  ') then 
              map(p_bcTypeF) = 1
+           else if(cb.eq.'c  ') then 
+             map(p_bcTypeRobin) = 1
            endif
         enddo
         enddo
@@ -940,6 +944,8 @@ c
              boundaryID(ifc,iel) = map(p_bcTypeF0) 
            else if(cb.eq.'f  ') then 
              boundaryID(ifc,iel) = map(p_bcTypeF)
+           else if(cb.eq.'c  ') then 
+             boundaryID(ifc,iel) = map(p_bcTypeRobin)
            endif
         enddo
         enddo
@@ -965,6 +971,8 @@ c
               bcID = p_bcTypeF0 
             else if(cb.eq.'f  ') then
               bcID = p_bcTypeF 
+            else if(cb.eq.'c  ') then
+              bcID = p_bcTypeRobin 
             else
               if(cb.ne.'E  ' .and. cb.ne.'P  ') then
                 ierr = 1
@@ -985,6 +993,7 @@ c
            if(bcID.eq.p_bcTypeS) cbc_bmap(bID, ifld) = 't  ' 
            if(bcID.eq.p_bcTypeF0) cbc_bmap(bID, ifld) = 'I  ' 
            if(bcID.eq.p_bcTypeF) cbc_bmap(bID, ifld) = 'f  ' 
+           if(bcID.eq.p_bcTypeRobin) cbc_bmap(bID, ifld) = 'c  ' 
         enddo
  199    continue
       enddo
@@ -1005,6 +1014,8 @@ c
              map(p_bcTypeF0) = 1
            else if(cb.eq.'f  ') then
              map(p_bcTypeF) = 1
+           else if(cb.eq.'c  ') then
+             map(p_bcTypeRobin) = 1
            endif
         enddo
         enddo
@@ -1031,6 +1042,8 @@ c
              boundaryIDt(ifc,iel) = map(p_bcTypeF0) 
            else if(cb.eq.'f  ') then 
              boundaryIDt(ifc,iel) = map(p_bcTypeF)  
+           else if(cb.eq.'c  ') then 
+             boundaryIDt(ifc,iel) = map(p_bcTypeRobin)  
            else
              if(cb.ne.'E  ' .and. cb.ne.'P  ') then
                ierr = 1
@@ -1051,6 +1064,8 @@ c
      $    cbc_bmap(map(p_bcTypeF0), ifld) = 'I  '
         if(map(p_bcTypeF).gt.0)
      $    cbc_bmap(map(p_bcTypeF), ifld) = 'f  '
+        if(map(p_bcTypeF).gt.0)
+     $    cbc_bmap(map(p_bcTypeRobin), ifld) = 'c  '
 
       endif
 

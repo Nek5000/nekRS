@@ -1,0 +1,232 @@
+void exactPoisson(dfloat *u,
+                  dfloat *dudx, 
+                  dfloat *dudy, 
+                  dfloat *dudz, 
+                  const dfloat x,
+                  const dfloat y,
+                  const dfloat z,
+                  const dfloat coef,
+                  const dfloat x0,
+                  const dfloat y0)
+{
+  const dfloat c = coef * p_pi;
+  const dfloat xx = c*x + x0;
+  const dfloat yy = c*y + y0;
+
+  *(u) = sin(xx) + cos(yy);
+  *(dudx) =  c * cos(xx);
+  *(dudy) = -c * sin(yy);
+  *(dudz) = 0.0;
+}
+void exactPoissonRhs(dfloat *rhs,
+                     const dfloat x,
+                     const dfloat y,
+                     const dfloat z,
+                     const dfloat h1,
+                     const dfloat h2,
+                     const dfloat coef,
+                     const dfloat x0,
+                     const dfloat y0)
+{
+  const dfloat c = coef * p_pi;
+  const dfloat xx = c*x + x0;
+  const dfloat yy = c*y + y0;
+  const dfloat u = sin(xx) + cos(yy);
+
+  *(rhs) = coef * coef * u;
+}
+
+void exactHmholtz(dfloat *u,
+                  dfloat *dudx, 
+                  dfloat *dudy, 
+                  dfloat *dudz, 
+                  const dfloat x,
+                  const dfloat y,
+                  const dfloat z,
+                  const dfloat coef,
+                  const dfloat x0,
+                  const dfloat y0)
+{
+  const dfloat c = coef * p_pi;
+  const dfloat xx = c*x + x0;
+  const dfloat yy = c*y + y0;
+
+  *(u) = sin(xx) + cos(yy);
+  *(dudx) =  c * cos(xx);
+  *(dudy) = -c * sin(yy);
+  *(dudz) = 0.0;
+}
+void exactHmholtzRhs(dfloat *rhs,
+                    const dfloat x,
+                    const dfloat y,
+                    const dfloat z,
+                    const dfloat h1,
+                    const dfloat h2,
+                    const dfloat coef,
+                    const dfloat x0,
+                    const dfloat y0)
+{
+  *(rhs) = 0.0;
+}
+/*
+void exactHmholtz2(dfloat *u,
+                   dfloat *dudx,
+                   dfloat *dudy,
+                   dfloat *dudz,
+                   const dfloat x,
+                   const dfloat y,
+                   const dfloat z,
+                   const dfloat coef,
+                   const dfloat x0,
+                   const dfloat y0)
+{
+  const dfloat c = coef * p_pi;
+  const dfloat xx = c*x + x0; 
+  const dfloat yy = c*y + y0;
+  
+  *(u) = sin(xx) + cos(yy);
+  *(dudx) =  c * cos(xx);
+  *(dudy) = -c * sin(yy); 
+  *(dudz) = 0.0;
+}
+
+void exactHmholtzRhs2(dfloat *rhs,
+                      const dfloat x,
+                      const dfloat y,
+                      const dfloat z,
+                      const dfloat h1,
+                      const dfloat h2,
+                      const dfloat coef,
+                      const dfloat x0,
+                      const dfloat y0)
+{
+  const dfloat c = coef * p_pi;
+  const dfloat xx = c*x + x0; 
+  const dfloat yy = c*y + y0;
+  
+  *(rhs) = 0.0;
+}
+*/
+@kernel void exactT(const int caseId,
+                    const dlong Ntotal,
+                    @ restrict const dfloat *X,
+                    @ restrict const dfloat *Y,
+                    @ restrict const dfloat *Z,
+                    const dlong offset,
+                    @ restrict dfloat *U)
+{
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < Ntotal) {
+      dfloat u, dudx, dudy, dudz;
+      const dfloat x = X[n];
+      const dfloat y = Y[n];
+      const dfloat z = Z[n];
+      if (caseId==0) {
+        exactPoisson(&u, &dudx, &dudy, &dudz, x, y, z, p_COEF, p_X0, p_Y0);
+      } else if (caseId==1) {
+        exactHmholtz(&u, &dudx, &dudy, &dudz, x, y, z, p_COEF, p_X0, p_Y0);
+      }
+      U[n + 0 * offset] = u;
+    }
+  }
+}
+
+@kernel void exactTrhs(const int caseId,
+                       const dlong Ntotal,
+                       @ restrict const dfloat *X,
+                       @ restrict const dfloat *Y,
+                       @ restrict const dfloat *Z,
+                       @ restrict const dfloat *lambda0,
+                       @ restrict const dfloat *lambda1,
+                       const dlong offset,
+                       @ restrict dfloat *RHS)
+{ 
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < Ntotal) { 
+      dfloat rhs;
+      const dfloat x = X[n];
+      const dfloat y = Y[n];
+      const dfloat z = Z[n];
+      const dfloat h1 = lambda0[n];
+      const dfloat h2 = lambda1[n];
+      if (caseId==0) {
+        exactPoissonRhs(&rhs, x, y, z, h1, h2, p_COEF, p_X0, p_Y0);
+      } else if (caseId==1) {
+        exactHmholtzRhs(&rhs, x, y, z, h1, h2, p_COEF, p_X0, p_Y0);
+      }
+      RHS[n + 0 * offset] = rhs;
+    }
+  }
+}
+
+// Boundary conditions
+void velocityDirichletConditions(bcData *bc)
+{
+  bc->u = 1.0;
+  bc->v = 0.0;
+  bc->w = 0.0;
+}
+
+void scalarNeumannConditions(bcData *bc)
+{     
+  if (bc->scalarId==0) {
+
+    bc->flux = 0.0;
+
+  } else {
+
+    dfloat u, dudx, dudy, dudz;
+    if (bc->time>1.0) {
+      exactHmholtz(&u, &dudx, &dudy, &dudz, bc->x, bc->y, bc->z, p_COEF, p_X0, p_Y0);
+    } else {
+      exactPoisson(&u, &dudx, &dudy, &dudz, bc->x, bc->y, bc->z, p_COEF, p_X0, p_Y0);
+    }
+    const dfloat flux = bc->diff * (dudx * bc->nx + dudy * bc->ny + dudz * bc->nz);
+    bc->flux = flux;
+
+  }
+}
+
+void scalarDirichletConditions(bcData *bc)
+{
+  if (bc->scalarId==0) {
+
+    bc->s = 0.0;
+
+  } else {
+
+    dfloat u, dudx, dudy, dudz;
+    if (bc->time>1.0) {
+      exactHmholtz(&u, &dudx, &dudy, &dudz, bc->x, bc->y, bc->z, p_COEF, p_X0, p_Y0);
+    } else {
+      exactPoisson(&u, &dudx, &dudy, &dudz, bc->x, bc->y, bc->z, p_COEF, p_X0, p_Y0);
+    }
+    bc->s = u;
+
+  }
+}
+
+// h1 * dudn = hc * (T - Tinf);
+void scalarRobinConditions(bcData *bc)
+{   
+  if (bc->scalarId==0) {
+
+    bc->hc = p_HC;
+    bc->tinf = 0.0;
+  } else {
+
+    dfloat u, dudx, dudy, dudz;
+    if (bc->time>1.0) {
+      exactHmholtz(&u, &dudx, &dudy, &dudz, bc->x, bc->y, bc->z, p_COEF, p_X0, p_Y0);
+    } else {
+      exactPoisson(&u, &dudx, &dudy, &dudz, bc->x, bc->y, bc->z, p_COEF, p_X0, p_Y0);
+    }
+
+    const dfloat flux = bc->diff * (dudx * bc->nx + dudy * bc->ny + dudz * bc->nz);
+    const dfloat tinf = u + flux/p_HC;
+
+    bc->hc = p_HC;
+    bc->tinf = tinf;
+
+  }
+}

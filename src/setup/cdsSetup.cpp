@@ -223,6 +223,10 @@ cds_t *cdsSetup(nrs_t *nrs, setupAide options)
     cds->neumannBCKernel = platform->kernels.get(section + kernelName);
     kernelName = "dirichletBC";
     cds->dirichletBCKernel = platform->kernels.get(section + kernelName);
+    kernelName = "robinRhsBC" + suffix;
+    cds->robinRhsBCKernel = platform->kernels.get(section + kernelName);
+    kernelName = "robinLhsBC" + suffix;
+    cds->robinLhsBCKernel = platform->kernels.get(section + kernelName);
 
     kernelName = "setEllipticCoeff";
     cds->setEllipticCoeffKernel = platform->kernels.get(section + kernelName);

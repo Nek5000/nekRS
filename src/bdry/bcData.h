@@ -24,6 +24,7 @@ struct bcData
 
   int scalarId;
   dfloat s, flux;
+  dfloat hc, tinf;
 
   // interpolated scalar value
   dfloat sinterp;

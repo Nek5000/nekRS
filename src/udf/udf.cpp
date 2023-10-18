@@ -19,6 +19,7 @@ static int velocityNeumannConditions = 0;
 static int pressureDirichletConditions = 0;
 static int scalarDirichletConditions = 0;
 static int scalarNeumannConditions = 0;
+static int scalarRobinConditions = 0;
 
 static std::string udfFile;
 
@@ -58,6 +59,8 @@ static void verifyOudf()
       oudfFindNeumann(field);
     if (field.compare(0, 6, "scalar") == 0 && bcID == bcMap::bcTypeF)
       oudfFindNeumann(field);
+    if (field.compare(0, 6, "scalar") == 0 && bcID == bcMap::bcTypeRobin)
+      oudfFindRobin(field);
   }
 }
 
@@ -106,6 +109,13 @@ void oudfFindNeumann(std::string &field)
   nrsCheck(field.find("scalar") != std::string::npos && !scalarNeumannConditions,
            MPI_COMM_SELF, EXIT_FAILURE,
            "%s\n", "Cannot find scalarNeumannConditions!");
+}
+
+void oudfFindRobin(std::string &field)
+{
+  nrsCheck(field.find("scalar") != std::string::npos && !scalarRobinConditions,
+           MPI_COMM_SELF, EXIT_FAILURE,
+           "%s\n", "Cannot find scalarRobinConditions!");
 }
 
 void adjustOudf(bool buildRequired, const std::string &postOklSource, const std::string &filePath)
@@ -162,9 +172,13 @@ void adjustOudf(bool buildRequired, const std::string &postOklSource, const std:
 
   found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+scalarDirichletConditions)"));
   scalarDirichletConditions = found;
-
   if (!found && buildRequired)
     f << "void scalarDirichletConditions(bcData *bc){}\n";
+
+  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+scalarRobinConditions)"));
+  scalarRobinConditions = found;
+  if (!found && buildRequired)
+    f << "void scalarRobinConditions(bcData *bc){}\n";
 
   if (buildRequired)
     f << "#endif\n";
@@ -460,6 +474,7 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
   MPI_Bcast(&pressureDirichletConditions, 1, MPI_INT, 0, comm);
   MPI_Bcast(&scalarNeumannConditions, 1, MPI_INT, 0, comm);
   MPI_Bcast(&scalarDirichletConditions, 1, MPI_INT, 0, comm);
+  MPI_Bcast(&scalarRobinConditions, 1, MPI_INT, 0, comm);
 
   MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_SUM, platform->comm.mpiComm);
 

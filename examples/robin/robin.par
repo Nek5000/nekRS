@@ -1,0 +1,68 @@
+[OCCA]
+backend = SERIAL
+
+[GENERAL] 
+polynomialOrder = 7
+#startFrom = "restart.fld"
+numSteps = 2000
+dt = 5e-03
+timeStepper = tombo2
+writeControl = steps
+writeInterval = 1000
+
+maxIterations = 500
+
+[PROBLEMTYPE]
+equation = Stokes+variableViscosity # ADVECTION = F + strs form
+
+[PRESSURE]
+residualTol = 1e-08
+
+[VELOCITY]
+solver= none
+boundaryTypeMap = v, v, v, v
+residualTol = 1e-12
+density = 1.0
+viscosity = 0.01 
+
+[TEMPERATURE]
+#solver = none
+boundaryTypeMap = I, robin, I, I
+#boundaryTypeMap = I, c, I, I
+rhoCp = 1.0
+conductivity = 1.0
+residualTol = 1e-14
+regularization = none
+initialguess = previous
+
+
+[SCALAR01]
+#solver = none
+boundaryTypeMap = t, t, t, t
+rho = 1.0
+diffusivity = 1.0
+residualTol = 1e-14
+regularization = none
+
+[SCALAR02]
+#solver = none
+boundaryTypeMap = t, f, f, f
+rho = 1.0
+diffusivity = 1.0
+residualTol = 1e-14
+regularization = none
+
+[SCALAR03]
+#solver = none
+boundaryTypeMap = t, robin, t, t
+rho = 1.0
+diffusivity = 1.0
+residualTol = 1e-14
+regularization = none
+
+[CASEDATA]
+p_hc = 2.0
+p_coef = 2.0 
+p_x0 = 0.0
+p_y0 = 0.0
+
