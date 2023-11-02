@@ -26,4 +26,4 @@ Here are a few important things you should know about contributing:
 * The act of submitting a PR (with or without an explicit Signed-off-by tag) will be understood as an affirmation of
 the developer certificate of origin (DCO), which you can find at http://developercertificate.org/. 
 
-* In some cases (e.g. squashed commits) we won't preserve the original commit author information. However all contributors are acknowledged in the notes of each release. 
+* We won't preserve the original commit author information but all contributors are acknowledged in the notes of each release. 

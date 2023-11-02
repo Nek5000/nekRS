@@ -12,10 +12,13 @@ dfloat viscousDrag(nrs_t *nrs, int nbID, const occa::memory& o_bID, occa::memory
 //       ( SO0          )         (     SO8  SO7)
 // Sij = ( SO3  SO1     )  Oij =  (          SO6)
 //       ( SO5  SO4  SO2)         (             )
-void strainRotationRate(nrs_t *nrs, bool smooth, bool rotationRate, occa::memory& o_Sij);
-void strainRate(nrs_t *nrs, bool smooth, occa::memory& o_Sij);
+void strainRotationRate(nrs_t *nrs, bool smooth, bool rotationRate, 
+                        const occa::memory& o_U, occa::memory& o_SO);
 
-void Qcriterion(nrs_t *nrs, occa::memory& o_Q);
+void strainRate(nrs_t *nrs, bool smooth,
+                const occa::memory& o_U, occa::memory& o_S);
+
+void Qcriterion(nrs_t *nrs, const occa::memory& o_U, occa::memory& o_Q);
 }
 
 #endif

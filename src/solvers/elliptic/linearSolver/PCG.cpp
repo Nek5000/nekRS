@@ -283,7 +283,7 @@ static int combinedPCG(elliptic_t *elliptic,
   platform->linAlg->fill(elliptic->Nfields * elliptic->fieldOffset, 0.0, o_v);
 
   if(platform->comm.mpiRank == 0 && verbose) {
-    printf("PCG ");
+    printf("PCGC ");
     printf("%s: initial res norm %.15e WE NEED TO GET TO %e \n", elliptic->name.c_str(), rdotr, tol);
   }
 

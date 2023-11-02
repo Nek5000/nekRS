@@ -1,47 +1,63 @@
 @kernel void fusedAddRhoDiv(const dlong N,
-                      const dlong Nfields,
-                      const dlong fieldOffset,
-                      @ restrict const dfloat *invLMM,
-                      const dlong fieldRho,
-                      @ restrict const dfloat *rho,
-                      @ restrict const dfloat *ptSource,
-                      @ restrict dfloat *FS)
+                            const dlong NlocalV,
+                            const dlong Nfields,
+                            const dlong fieldOffset,
+                            @ restrict const dfloat *invLMMT,
+                            @ restrict const dfloat *invLMM,
+                            const dlong fieldRho,
+                            @ restrict const dfloat *rhoCp,
+                            @ restrict const dfloat *rho,
+                            @ restrict const dfloat *ptSource,
+                            const dfloat dpdt,
+                            @ restrict dfloat *FS)
 {
   if(fieldRho) {
 
     for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
-      const dfloat _invLMM = invLMM[n];
-      for (int fld = 0; fld < Nfields; ++fld) {
-        const dlong id = n + fld*fieldOffset;
-        const dfloat invRho = 1/rho[id];
-        dfloat value = _invLMM * FS[id];
+      const dfloat dpdtTerm = (n < NlocalV) ? dpdt : 0; 
+      dfloat value = invLMMT[n] * FS[n] + dpdtTerm;
+#if p_addPointSource
+        value += ptSource[n];
+#endif
+      FS[n] = value/rhoCp[n];
+
+      if (n < NlocalV) {
+        const dfloat _invLMM = invLMM[n];
+ 
+        for (int fld = 1; fld < Nfields; ++fld) {
+          const dlong id = n + fld*fieldOffset;
+          const dfloat invRho = 1/rho[id];
+          dfloat value = _invLMM * FS[id];
 #if p_addPointSource
           value += ptSource[id];
 #endif
-        FS[id] = value * invRho;
+          FS[id] = value * invRho;
+        }
       }
     }
 
   } else {
 
     for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
-      const dfloat _invLMM = invLMM[n];
-
-      dfloat value = _invLMM * FS[n];
+      const dfloat dpdtTerm = (n < NlocalV) ? dpdt : 0; 
+      dfloat value = invLMMT[n] * FS[n] + dpdtTerm;
 #if p_addPointSource
         value += ptSource[n];
 #endif
-      FS[n] = value/rho[n];
+      FS[n] = value/rhoCp[n];
 
-      // cache for reuse
-      const dfloat invRho = 1/rho[n + fieldOffset];
-
-      for (int fld = 1; fld < Nfields; ++fld) {
-        dfloat value = _invLMM * FS[n + fld * fieldOffset];
+      if (n < NlocalV) {
+        // cache for reuse
+        const dfloat _invLMM = invLMM[n];
+        const dfloat invRho = 1/rho[n + fieldOffset];
+ 
+        for (int fld = 1; fld < Nfields; ++fld) {
+          dfloat value = _invLMM * FS[n + fld * fieldOffset];
 #if p_addPointSource
-          value += ptSource[n + fld * fieldOffset];
+            value += ptSource[n + fld * fieldOffset];
 #endif
-        FS[n + fld * fieldOffset] = value * invRho;
+          FS[n + fld * fieldOffset] = value * invRho;
+        }
       }
     }
   }

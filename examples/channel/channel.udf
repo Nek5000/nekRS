@@ -54,10 +54,11 @@ void UDF_Setup(nrs_t *nrs)
   udf.uEqnSource = &userf;
   udf.properties = &uservp;
 
-  double *mul = (double *)nek::scPtr(1);
-  double *FUx = (double *)nek::scPtr(2);
-  double *FUy = (double *)nek::scPtr(3);
-  double *FUz = (double *)nek::scPtr(4);
+  nek::userchk();
+  auto mul = (double *)nek::scPtr(1);
+  auto FUx = (double *)nek::scPtr(2);
+  auto FUy = (double *)nek::scPtr(3);
+  auto FUz = (double *)nek::scPtr(4);
 
   o_nekFU = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
   o_nekMue = platform->device.malloc<dfloat>(nrs->fieldOffset);

@@ -212,13 +212,13 @@ void udfBuild(const std::string& _udfFile, setupAide &options)
   const std::string cmakeBuildDir = cache_dir + "/udf";
   const std::string postOklSource = cmakeBuildDir + "/CMakeFiles/OKL.dir/okl.cpp.i";
 
-  const std::string libnekrsFile = installDir + "/lib/libnekrs.so"; 
+  const std::string libnekrsFile = (sizeof(dfloat) == sizeof(float)) ?  installDir + "/lib/libnekrs-fp32.so"
+                                                                     :  installDir + "/lib/libnekrs.so"; 
   const std::string libnekrsHashFile = cache_dir + "/udf/libnekrs.hash";
 
   std::string oudfFile;
   options.getArgs("UDF OKL FILE", oudfFile);
   oudfFile = fs::absolute(oudfFile);
-
 
   MPI_Comm comm = (platform->cacheLocal) ? platform->comm.mpiCommLocal : platform->comm.mpiComm;
   int buildRank;

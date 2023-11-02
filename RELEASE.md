@@ -12,10 +12,12 @@
 * [reproducibility] variable time step controller restricts dt to 5 significant digits
 
 ## Breaking Changes
-* `o_mempool.slice0` etc. was removed (see examples how to use new memory pool)
-* allocate occa::memory with malloc<T> and use words instead of bytes for malloc, slice, copyFrom/To
+* `occa::memory::o_mempool` was removed instead use `auto foo = platform->o_memPool.reserve<T>(N)`
+* `occa::memory` objects (with a few exceptions) are typed now  
+* `occa::memory::slice, occa::memory::copyFrom, occa::memory::copyTo` are type aware (use words not bytes)
 * writeFld takes `const occa::memory&` instead of `const void*`
 * [udf] API argument `time` is `double` instead of `dfloat` 
+* nek::userchk is no longer called automatically during setup 
 * processing of `nekrs.upd` is triggered by SIGUSR2 instead of every N-steps
 
 ## Known Bugs / Restrictions
@@ -67,6 +69,8 @@ asked and answered questions, and were part of inspiring discussions.
 * [par] Replace `stressFormulation = true` by `equation = navierStokes+variableViscosity` 
 * [par] Replace bcType `fixedValue` by `codedFixedValue`
 * [par] Replace `elasticity` by `pcg+block` for mesh solver
+* [okl] Replace `@barrier("local")` by `@barrier()` 
+* [oudf] `bc` struct member `trn` was removed
 * Use occa::memory mesh_t objects for vgeo, cubvgeo, ggeom, sgeom, LMM, invLMM (no longer mirrored on host)
 * All `boundaryIDs` need to be assigned in  `boundaryTypeMap` (use `none` for an internal boundary)
 

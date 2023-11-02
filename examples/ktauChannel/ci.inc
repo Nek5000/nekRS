@@ -60,7 +60,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   occa::memory o_bidWall = platform->device.malloc<int>(bidWall.size(), bidWall.data());
 
   auto o_Sij = platform->o_memPool.reserve<dfloat>(2 * nrs->NVfields * nrs->fieldOffset);
-  postProcessing::strainRate(nrs, true, o_Sij);
+  postProcessing::strainRate(nrs, true, nrs->o_U, o_Sij);
 
   const auto drag = postProcessing::viscousDrag(nrs, bidWall.size(), o_bidWall, o_Sij);
   o_Sij.free();

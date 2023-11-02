@@ -473,7 +473,6 @@ void timer_t::printRunStat(int step)
   
   const double tDiv = query("udfDiv", "DEVICE:MAX");
   printStatEntry("    udfDiv              ", "udfDiv", "DEVICE:MAX", tElapsedTimeSolve);
-  printStatEntry("      udfSEqnSource     ", "udfDiv::udfSEqnSource", "DEVICE:MAX", tDiv);
 
   const double tMakef = query("makef", "DEVICE:MAX");
   printStatEntry("    makef               ", "makef", "DEVICE:MAX", tElapsedTimeSolve);
@@ -552,7 +551,7 @@ void timer_t::printRunStat(int step)
   auto [tSEqnSourceCvode, nSEqnSourceCvode] = sumAllMatchingTags(cvodeUdfSEqnSourcePredicate, "DEVICE:MAX");
   
   auto cvodeLocalPointSourcePredicate = [](const std::string &tag) {
-    bool match = tag.find("cvode_t::") != std::string::npos && tag.find("localPointSource") != std::string::npos;
+    bool match = tag.find("cvode_t::") != std::string::npos && tag.find("pointSource") != std::string::npos;
     // ensure children of the timer aren't doubly counted
     return match;
   };

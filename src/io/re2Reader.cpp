@@ -21,7 +21,7 @@ void re2::nelg(const std::string& meshFile, int& nelgt, int& nelgv, MPI_Comm com
     int ndim;
     if(strcmp(ver, "#v004") == 0) {
       sscanf(buf, "%5s %d %d %d", ver, &nelgt, &ndim, &nelgv);
-    } else if(strcmp(ver, "#v002") == 0 || strcmp(ver, "#v003") == 0) { 
+    } else if(strcmp(ver, "#v001") == 0  || strcmp(ver, "#v002") == 0 || strcmp(ver, "#v003") == 0) { 
       sscanf(buf, "%5s %9d %1d %9d", ver, &nelgt, &ndim, &nelgv); 
     } else {
       nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "Unsupported re2 version %5s!\n", ver);

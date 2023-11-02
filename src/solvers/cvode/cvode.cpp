@@ -25,6 +25,8 @@
 #include "sundials/sundials_math.h"
 #include "cvode/cvode.h"
 
+#include <sunnonlinsol/sunnonlinsol_fixedpoint.h>
+
 #include "nvector/nvector_serial.h"
 #include "nvector/nvector_mpiplusx.h"
 
@@ -105,7 +107,7 @@ void cvode_t::defaultRHS(double time, double t0, const  LVector_t<dfloat> & o_y,
 {
 }
 
-void cvode_t::makeq(double time)
+void cvode_t::makeq(double time, occa::memory& o_FS)
 {
 }
 

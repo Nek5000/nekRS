@@ -18,21 +18,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D)(const int & Nelements,
-                                                  const int * __restrict__ elementList,
-                                                  const dfloat * __restrict__ cubD,
-                                                  const dfloat * __restrict__ cubInterpT,
-                                                  const int & offset,
-                                                  const int & cubatureOffset,
-                                                  const int & meshOffset,
-                                                  const dfloat * __restrict__ invLumpedMassMatrix,
-                                                  const dfloat * __restrict__ BdivW,
-                                                  const dfloat & c0,
-                                                  const dfloat & c1,
-                                                  const dfloat & c2,
-                                                  const dfloat * __restrict__ conv,
-                                                  const dfloat * __restrict__ Ud,
-                                                  dfloat * __restrict__ NU) {
+extern "C" void FUNC(subCycleStrongCubatureVolumeHex3D_v0)(const int & Nelements,
+                                                           const int * __restrict__ elementList,
+                                                           const dfloat * __restrict__ cubD,
+                                                           const dfloat * __restrict__ cubInterpT,
+                                                           const int & offset,
+                                                           const int & cubatureOffset,
+                                                           const int & meshOffset,
+                                                           const dfloat * __restrict__ invLumpedMassMatrix,
+                                                           const dfloat * __restrict__ BdivW,
+                                                           const dfloat & c0,
+                                                           const dfloat & c1,
+                                                           const dfloat & c2,
+                                                           const dfloat * __restrict__ conv,
+                                                           const dfloat * __restrict__ Ud,
+                                                           dfloat * __restrict__ NU) {
   // (phi, U.grad Ud)
   dfloat r_c[3] = {c0, c1,c2};
   dfloat s_cubD[p_cubNq][p_cubNq];

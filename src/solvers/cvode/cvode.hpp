@@ -36,7 +36,7 @@ public:
 
   using userPostNrsToCv_t = std::function<void(nrs_t *nrs,  LVector_t<dfloat> & o_LField, bool isYdot)>;
   using userPostCvToNrs_t = std::function<void(nrs_t *nrs, occa::memory o_EField, bool isYdot)>;
-  using userMakeq_t = std::function<void(nrs_t *nrs, double time)>;
+  using userMakeq_t = std::function<void(nrs_t *nrs, double time, occa::memory& o_FS)>;
   using userPreSolve_t = std::function<void(nrs_t *nrs)>;
   using userPostSolve_t = std::function<void(nrs_t *nrs)>;
 
@@ -58,8 +58,6 @@ public:
 
   void setUserPostSolve(userPostSolve_t _userPostSolve) { userPostSolve = _userPostSolve; }
 
-  void setQthermalFSCache(const occa::memory& o_qthermalFSCache_) { o_qthermalFSCache = o_qthermalFSCache_; }
-
   void printInfo(bool printVerboseInfo);
 
   bool isRhsEvaluation() const { return rhsEval; }
@@ -78,6 +76,7 @@ public:
   void rhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
   void jtvRhs(double time, const  LVector_t<dfloat> & o_y,  LVector_t<dfloat> & o_ydot);
   dlong numEquations() const { return nEq; }
+  int numScalars() const { return Nscalar; } 
 
   bool mixedPrecisionJtv() const { return mixedPrecisionJtvEnabled; }
 
@@ -88,6 +87,8 @@ public:
 
   void updateCounters();
   void resetCounters();
+
+
 
   long numSteps() const;
   long numRHSEvals() const;
@@ -169,8 +170,8 @@ private:
   bool isInitialized = false;
 
   double tprev = std::numeric_limits<double>::max();
-  occa::memory o_U;     // CVODE is responsible for correctly handling the fluid velocity state
-  occa::memory o_meshU; // CVODE is responsible for correctly handling the mesh velocity state
+  occa::memory o_U0;
+  occa::memory o_meshU0;
   occa::memory o_xyz0;
 
   void setupDirichletMask();
@@ -188,7 +189,7 @@ private:
   userPreSolve_t userPreSolve;
   userPostSolve_t userPostSolve;
 
-  void makeq(double time);
+  void makeq(double time, occa::memory& o_FS);
 
   static constexpr int maxTimestepperOrder = 3;
   std::array<dfloat, maxTimestepperOrder> _coeffBDF;
@@ -200,11 +201,9 @@ private:
 
   dfloat _g0;
 
-  dlong Nscalar;
+  int Nscalar;
 
-  occa::memory o_qthermalFSCache;
-
-  occa::memory o_invRhoCpAvg;
+  occa::memory o_rhoCpAvg;
 
   occa::memory o_coeffExt;
 

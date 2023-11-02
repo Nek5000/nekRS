@@ -88,6 +88,6 @@ void UDF_Setup(nrs_t *nrs)
 void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
 {
   if (nrs->isOutputStep) {
-    postProcessing::Qcriterion(nrs, nrs->cds->o_S);
+    postProcessing::Qcriterion(nrs, nrs->o_U, nrs->cds->o_S);
   }
 }

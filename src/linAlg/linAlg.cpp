@@ -41,24 +41,25 @@ void linAlg_t::runTimers()
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
 
-  const auto fields = 1;
-  const auto Nlocal = nel * (N + 1) * (N + 1) * (N + 1);
-  auto o_weight = platform->device.malloc<dfloat>(Nlocal);
-  auto o_r = platform->device.malloc<dfloat>(Nlocal);
-  auto o_z = platform->device.malloc<dfloat>(Nlocal);
-
   const auto Nrep = 20;
 
+  auto run = [&](int fields) 
   {
+    const auto Nlocal = nel * (N + 1) * (N + 1) * (N + 1);
+    const auto offset = Nlocal;
+    auto o_weight = platform->device.malloc<dfloat>(Nlocal);
+    auto o_r = platform->device.malloc<dfloat>(fields*Nlocal);
+    auto o_z = platform->device.malloc<dfloat>(fields*Nlocal);
+
     // warm-up
-    weightedInnerProdMany(Nlocal, fields, 1, o_weight, o_r, o_z, platform->comm.mpiComm);
+    weightedInnerProdMany(Nlocal, fields, offset, o_weight, o_r, o_z, platform->comm.mpiComm);
 
     std::vector<double> elapsed;
     for (int i = 0; i < Nrep; i++) {
       MPI_Barrier(platform->comm.mpiComm);
       const auto tStart = MPI_Wtime();
 
-      weightedInnerProdMany(Nlocal, fields, 1, o_weight, o_r, o_z, platform->comm.mpiComm);
+      weightedInnerProdMany(Nlocal, fields, offset, o_weight, o_r, o_z, platform->comm.mpiComm);
 
       elapsed.push_back((MPI_Wtime() - tStart));
     }
@@ -71,35 +72,40 @@ void linAlg_t::runTimers()
     MPI_Allreduce(MPI_IN_PLACE, &elapsedMin, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
     MPI_Allreduce(MPI_IN_PLACE, &elapsedAvg, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0) {
-      printf("wdotp min/avg/max: %.3es %.3es %.3es  ", 
-             elapsedMin, elapsedAvg/Nrep, elapsedMax);
+      printf("wdotp nFields=%02d min/avg/max: %.3es %.3es %.3es  ", 
+             fields, elapsedMin, elapsedAvg/Nrep, elapsedMax);
     }
-  }
 
-  if (platform->comm.mpiCommSize > 1) {
-    platform->device.finish();
-    MPI_Barrier(platform->comm.mpiComm);
-    const auto tStart = MPI_Wtime();
-    for (int i = 0; i < Nrep; i++) {
-      weightedInnerProdMany(Nlocal, fields, 1, o_weight, o_r, o_z, MPI_COMM_SELF);
+    if (platform->comm.mpiCommSize > 1) {
+      platform->device.finish();
+      MPI_Barrier(platform->comm.mpiComm);
+      const auto tStart = MPI_Wtime();
+      for (int i = 0; i < Nrep; i++) {
+        weightedInnerProdMany(Nlocal, fields, offset, o_weight, o_r, o_z, MPI_COMM_SELF);
+      }
+      platform->device.finish();
+      const auto elapsed = (MPI_Wtime() - tStart) / Nrep;
+      auto elapsedMax = 0.0;
+      MPI_Allreduce(&elapsed, &elapsedMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
+      if (platform->comm.mpiRank == 0)
+        printf("(avg local: %.3es / %.3eGB/s)\n", elapsedMax, (1 + 2*fields)*Nlocal*sizeof(dfloat)/elapsedMax/1e9);
     }
-    platform->device.finish();
-    const auto elapsed = (MPI_Wtime() - tStart) / Nrep;
-    auto elapsedMax = 0.0;
-    MPI_Allreduce(&elapsed, &elapsedMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
-      printf("(avg local: %.3es)\n", elapsedMax);
-  }
-  else {
-    if (platform->comm.mpiRank == 0) {
-      printf("\n");
+    else {
+      if (platform->comm.mpiRank == 0) {
+        printf("\n");
+      }
     }
+  };
+
+  for (int i: {1,3}) {
+    run(i);
   }
 
   if (platform->comm.mpiRank == 0) {
     std::cout << std::endl;
-  }
+  } 
 }
+
 
 linAlg_t *linAlg_t::getInstance()
 {

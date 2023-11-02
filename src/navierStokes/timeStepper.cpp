@@ -306,7 +306,7 @@ void initStep(nrs_t *nrs, double time, dfloat dt, int tstep)
     }
   }
 
-  computeUrst(nrs);
+  computeUrst(nrs, movingMesh && nrs->Nsubsteps, platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"));
 
   if (nrs->Nscalar) {
     if (cds->anyEllipticSolver) {
@@ -397,7 +397,7 @@ bool runStep(nrs_t *nrs, std::function<bool(int)> convergenceCheck, int stage)
     lagFields(nrs);
   }
 
-  applyDirichlet(nrs, timeNew);
+  applyDirichlet(nrs, timeNew); // actual + extrapolated solution
 
   if (nrs->Nscalar) {
     scalarSolve(nrs, timeNew, cds->o_S, stage);
@@ -564,6 +564,7 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
           cds->strongAdvectionCubatureVolumeKernel(cds->meshV->Nelements,
                                                    1,
                                                    0, /* weighted */
+                                                   0, /* sharedRho */
                                                    mesh->o_vgeo,
                                                    mesh->o_cubDiffInterpT,
                                                    mesh->o_cubInterpT,
@@ -608,6 +609,18 @@ void makeq(nrs_t *nrs, double time, int tstep, occa::memory o_FS, occa::memory o
                         cds->o_rho,
                         o_BF);
 
+    if (platform->verbose) {
+      const dfloat debugNorm = platform->linAlg->weightedNorm2Many(mesh->Nlocal,
+                                                                   nrs->NVfields,
+                                                                   nrs->fieldOffset,
+                                                                   mesh->ogs->o_invDegree,
+                                                                   o_BF,
+                                                                   platform->comm.mpiComm);
+      if (platform->comm.mpiRank == 0) {
+        printf("BF scalar=%d norm: %.15e\n", is, debugNorm);
+      }
+    }
+
     dfloat scalarSumMakef = (3 * cds->nEXT + 3) * static_cast<double>(mesh->Nlocal);
     scalarSumMakef += (cds->Nsubsteps) ? mesh->Nlocal : 3 * cds->nBDF * static_cast<double>(mesh->Nlocal);
     platform->flopCounter->add("scalarSumMakef", scalarSumMakef);
@@ -641,7 +654,7 @@ void scalarSolve(nrs_t *nrs, double time, occa::memory o_S, int stage)
                                 cds->g0 * cds->idt,
                                 cds->fieldOffsetScan[is],
                                 nrs->fieldOffset,
-                                (cds->o_BFDiag.size()) ? 1 : 0,
+                                static_cast<int>(cds->o_BFDiag.isInitialized()),
                                 cds->o_diff,
                                 cds->o_rho,
                                 cds->o_BFDiag,
@@ -788,10 +801,10 @@ void fluidSolve(nrs_t *nrs, double time, occa::memory o_P, occa::memory o_U, int
                                 nrs->g0 * nrs->idt,
                                 0 * nrs->fieldOffset,
                                 nrs->fieldOffset,
-                                0,
+                                static_cast<int>(nrs->o_BFDiag.isInitialized()),
                                 nrs->o_mue,
                                 nrs->o_rho,
-                                o_NULL,
+                                nrs->o_BFDiag,
                                 nrs->o_ellipticCoeff);
 
     occa::memory o_Unew = tombo::velocitySolve(nrs, time, stage);

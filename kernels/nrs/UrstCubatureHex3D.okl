@@ -1,4 +1,5 @@
 @kernel void UrstCubatureHex3D(const dlong Nelements,
+                               const int relative,
                                @ restrict const dfloat *cubvgeo,
                                @ restrict const dfloat *cubInterpT,
                                const dlong offset,
@@ -49,7 +50,7 @@
             dfloat Ue = U[id + 0 * offset];
             dfloat Ve = U[id + 1 * offset];
             dfloat We = U[id + 2 * offset];
-            if (p_relative) {
+            if (relative) {
               Ue -= W[id + 0 * offset];
               Ve -= W[id + 1 * offset];
               We -= W[id + 2 * offset];

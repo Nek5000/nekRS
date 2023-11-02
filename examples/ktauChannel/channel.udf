@@ -98,6 +98,17 @@ void uservp(nrs_t *nrs,
   scalarScaledAdd(mesh->Nlocal, conductivity, 1 / Pr_t, o_mue_t, o_temp_mue);
 }
 
+void UDF_LoadKernels(occa::properties& kernelInfo)
+{
+#if 0
+  {
+    auto props = kernelInfo;
+    props["defines/p_sigma_k"] = 0.6;
+    RANSktau::buildKernel(props);
+  }
+#endif
+}
+
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   options.getArgs("CI-MODE", ciMode);

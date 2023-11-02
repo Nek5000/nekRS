@@ -111,7 +111,7 @@ occa::memory pressureSolve(nrs_t* nrs, double time, int stage)
     o_pRhs);
   flopCount += static_cast<double>(mesh->Nelements) * (6 * mesh->Np * mesh->Nq + 18 * mesh->Np);
 
-  // need to add to o_rhs not overwrite!
+  // now adding to o_rhs
 
   nrs->pressureAddQtlKernel(
     mesh->Nlocal,

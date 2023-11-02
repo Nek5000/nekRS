@@ -25,8 +25,8 @@
  */
 
 @kernel void strongAdvectionVolumeHex3D(const dlong Nelements,
-                                        const dlong Nscalars,
-                                        const dlong weighted,
+                                        const int Nscalars,
+                                        const int weighted,
                                         @ restrict const dfloat *vgeo,
                                         @ restrict const dfloat *D,
                                         @ restrict const dlong *computeScalar,

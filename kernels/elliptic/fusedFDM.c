@@ -1,6 +1,5 @@
-
-
-extern "C" void FUNC(fusedFDM)(
+#if p_knl == 0
+extern "C" void FUNC(fusedFDM_v0)(
   const dlong& Nelements,
   const dlong *elementList,
   pfloat* __restrict__ Su,
@@ -222,3 +221,4 @@ extern "C" void FUNC(fusedFDM)(
 #undef getIdx
 #undef work1
 }
+#endif

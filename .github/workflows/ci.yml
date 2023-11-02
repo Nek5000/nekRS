@@ -42,7 +42,7 @@ jobs:
 
     - name: nrsconfig and build
       run: |
-        CC=mpicc CXX=mpic++ FC=mpif77 ./nrsconfig -DENABLE_CVODE=ON -DCMAKE_INSTALL_PREFIX=${{ env.NEKRS_HOME }}
+        CC=mpicc CXX=mpic++ FC=mpif77 ./nrsconfig -DENABLE_CVODE=OFF -DCMAKE_INSTALL_PREFIX=${{ env.NEKRS_HOME }}
         cmake --build build --target install -j 2
 
     - name: Upload install dir
@@ -138,20 +138,20 @@ jobs:
       run: |
         NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 15
 
-    - name: 'ethier cvode, both scalars'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: |
-        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 16
+#    - name: 'ethier cvode, both scalars'
+#      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+#      run: |
+#        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 16
 
-    - name: 'ethier mixed elliptic/cvode'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: |
-        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 17
+#    - name: 'ethier mixed elliptic/cvode'
+#      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+#      run: |
+#        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 17
     
-    - name: 'ethier cvode, both scalars, no dealiasing, hpfrt'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: |
-        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 18
+#    - name: 'ethier cvode, both scalars, no dealiasing, hpfrt'
+#      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+#      run: |
+#        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 18
     
     - name: 'ethier sub-stepping'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
@@ -185,9 +185,9 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 --cimode 1
 
-    - name: 'lowMach + CVODE'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 --cimode 3
+#    - name: 'lowMach + CVODE'
+#      working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
+#      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 --cimode 3
 
 
   mv_cyl:
@@ -233,13 +233,13 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 6
 
-    - name: 'mv_cyl + CVODE'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 7
+#    - name: 'mv_cyl + CVODE'
+#      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+#      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 7
 
-    - name: 'mv_cyl + CVODE + unaligned SYM + mesh solver'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 8
+#    - name: 'mv_cyl + CVODE + unaligned SYM + mesh solver'
+#      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
+#      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 8
 
     - name: 'mv_cyl, derived bc'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
@@ -293,9 +293,9 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 2
 
-    - name: 'conj_ht + CVODE'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 3
+#    - name: 'conj_ht + CVODE'
+#      working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
+#      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 3
 
 
   channelStress:

@@ -124,9 +124,13 @@
 #pragma unroll p_Nq
           for (int k = 0; k < p_Nq; k++) {
             const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+#if p_weightInputAdd
             dfloat value = r_GwJ[k] * Aq[id + fieldOffsetScan[scalarId]];
             value -= r_Aq[k];
             Aq[id + fieldOffsetScan[scalarId]] = value;
+#else
+            Aq[id + fieldOffsetScan[scalarId]] -= r_Aq[k];
+#endif
           }
         }
       }

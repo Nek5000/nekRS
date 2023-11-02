@@ -146,6 +146,9 @@ void outfld(const char *filename,
   // nek5000 uses lelv = lelt
   const dlong nekFieldOffset = nekData.lelt * mesh->Np;
 
+  const auto p0thSave = *(nekData.p0th);
+  *(nekData.p0th) = nrs->p0th[0];
+
   std::vector<dfloat> tmp1(Nlocal);
   std::vector<dfloat> tmp2(Nlocal);
   std::vector<dfloat> tmp3(Nlocal);
@@ -202,6 +205,7 @@ void outfld(const char *filename,
   platform->timer.toc("checkpointing");
 
   (*nek_restoresol_ptr)();
+  *(nekData.p0th) = p0thSave; 
 
   *(nekData.istep) = stepSave;
 }

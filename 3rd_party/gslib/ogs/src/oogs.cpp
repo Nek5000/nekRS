@@ -603,7 +603,7 @@ oogs_t *oogs::setup(ogs_t *ogs,
           printf(" %.2es ", elapsedTest);
         }
 
-        if (gs->mode == OOGS_LOCAL) {
+        if (gs->mode == OOGS_LOCAL && !callback) {
           double rowSizeSum = 0;
           for (dlong i = 0; i < ogs->NlocalGather; i++) {
             rowSizeSum += ogs->localGatherOffsets[i + 1] - ogs->localGatherOffsets[i];

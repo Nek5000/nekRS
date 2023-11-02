@@ -93,6 +93,8 @@ struct nrs_t {
   occa::memory o_idH;
 
   occa::memory o_BF;
+  occa::memory o_BFDiag;
+
   occa::memory o_FU;
 
   occa::memory o_prop, o_ellipticCoeff;

@@ -570,8 +570,9 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
   }
 
   const auto threshold = (sizeof(dfloat) == sizeof(double))
-                         ? 5e-12 : 1e-5;
+                         ? 2e-12 : 1e-5;
   for (auto &&err : {linfErrUx, linfErrUy, linfErrUz}) {
+    std::cout << err << std::endl;
     if (err > threshold) {
       CIFAIL;
     }
@@ -676,15 +677,17 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
   nrs->o_U.copyFrom(o_Usave, nrs->NVfields * nrs->fieldOffset);
   
   // test packing compactly, as in CVODE
-  std::vector<dlong> offsets(UL.nFields());
-  offsets[0] = 0;
-  dlong nEq = UL.Nlocal(0);
-  for(int fld = 1; fld < UL.nFields(); ++fld) {
-    offsets[fld] = offsets[fld-1] + UL.Nlocal(fld-1);
-    nEq += UL.Nlocal(fld);
+  std::vector<dlong> lengths_(nrs->NVfields, 0);
+  dlong nEq = 0;
+  for(int is = 0; is < nrs->NVfields; ++is){
+    const auto Nlocal = UL.Nlocal(is);
+    nEq += Nlocal;
+    lengths_[is] = Nlocal;
   }
+
   auto o_UL = platform->o_memPool.reserve<dfloat>(nEq);
-  UL.optr(offsets, o_UL);
+  UL.fieldOffsets(lengths_);
+  UL.optr(o_UL);
   
   UL.copyFromE(nrs->fieldOffset, nrs->o_U);
   platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0.0, nrs->o_U);
@@ -696,7 +699,8 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
   nrs->o_U.copyFrom(o_Usave, nrs->NVfields * nrs->fieldOffset);
 
   // test same packing, but with un-allocated version
-  VL.optr(offsets, o_UL);
+  VL.fieldOffsets(lengths_);
+  VL.optr(o_UL);
   VL.copyFromE(nrs->fieldOffset, nrs->o_U);
   platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0.0, nrs->o_U);
   VL.copyToE(nrs->fieldOffset, nrs->o_U);

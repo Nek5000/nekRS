@@ -143,11 +143,29 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
         detail::rtrim(variable);
         detail::ltrim(value);
 
-        bool inquotes = lowerValue && value.front() == '"' &&
-                        lowerValue && value.back() == '"';
-        if (lowerValue && !inquotes)
+        std::string::size_type start_position = 0;
+        std::string::size_type end_position = 0; 
+        std::string valueInQuotes;
+
+        start_position = value.find("\"");
+        if (start_position != std::string::npos)
+        {
+          ++start_position;
+          end_position = value.find("\"");
+          if (end_position != std::string::npos)
+          {
+            valueInQuotes = value.substr(start_position, end_position - start_position);
+          }    
+        }
+       
+        if (lowerValue) {
           transform(value.begin(), value.end(), value.begin(),
                     [](int c){return std::tolower(c);});
+        }
+
+        if (start_position != std::string::npos)
+          value.replace(start_position, end_position - start_position, valueInQuotes);
+
         value.erase(std::remove(value.begin(), value.end(), '"'), value.end());
 
         auto & sec = sections[section];

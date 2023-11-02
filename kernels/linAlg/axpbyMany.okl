@@ -33,15 +33,24 @@ SOFTWARE.
                        @ restrict dfloat *y)
 {
 
-  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
-    for (int fld = 0; fld < Nfields; ++fld) {
-      const dlong id = n + fld * offset;
-      if (beta != 0) {
-        y[id] = alpha * x[id] + beta * y[id];
-      }
-      else {
-        y[id] = alpha * x[id];
-      }
-    }
-  }
+ if (beta != 0) {
+
+   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+     for (int fld = 0; fld < Nfields; ++fld) {
+       const dlong id = n + fld * offset;
+       y[id] = alpha * x[id] + beta * y[id];
+     }
+   }
+
+ } else {
+
+   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+     for (int fld = 0; fld < Nfields; ++fld) {
+       const dlong id = n + fld * offset;
+       y[id] = alpha * x[id];
+     }
+   }
+
+ }
+
 }

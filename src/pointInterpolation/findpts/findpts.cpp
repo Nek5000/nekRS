@@ -1590,7 +1590,8 @@ void findpts_t::find(data_t *const findPtsData,
   o_xint.copyFrom(x_base, npt);
   o_yint.copyFrom(y_base, npt);
   o_zint.copyFrom(z_base, npt);
-  o_session.copyFrom(session, npt);
+  if(session)
+    o_session.copyFrom(session, npt);
 
   this->find(findPtsData, o_xint, o_yint, o_zint, o_session, sessionIdMatch, npt);
 

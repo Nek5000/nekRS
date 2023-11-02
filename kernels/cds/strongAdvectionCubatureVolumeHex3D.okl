@@ -1,6 +1,7 @@
 @kernel void strongAdvectionCubatureVolumeHex3D(const dlong Nelements,
-                                                const dlong Nfields,
-                                                const dlong weighted,
+                                                const int Nfields,
+                                                const int weighted,
+                                                const int sharedRho,
                                                 @ restrict const dfloat *vgeo,
                                                 @ restrict const dfloat *cubD,
                                                 @ restrict const dfloat *cubInterpT,
@@ -22,6 +23,8 @@
 
     @exclusive dfloat r_Uhat[p_cubNq], r_Vhat[p_cubNq], r_What[p_cubNq];
     @exclusive dfloat r_scale[p_Nq];
+    @exclusive dfloat r_rho[p_Nq];
+
 
     for (int j = 0; j < p_cubNq; ++j; @inner(1)) {
       for (int i = 0; i < p_cubNq; ++i; @inner(0)) {
@@ -57,6 +60,7 @@
               for (int c = 0; c < p_Nq; ++c) {
                 const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
                 s_tmp[c][b][a] = S[id + fieldOffsetScan[field]];
+                if(sharedRho && field < 2) r_rho[c] = RHO[id];
               }
             }
           }
@@ -265,8 +269,11 @@
 #pragma unroll p_Nq
               for (int c = 0; c < p_Nq; ++c) {
                 const dlong id = e * p_Np + c * p_Nq * p_Nq + b * p_Nq + a;
-                const dfloat rhoM = RHO[id + fieldOffsetScan[field]];
                 dfloat value = NS[id + fieldOffsetScan[field]];
+                dfloat rhoM = r_rho[c];
+                if(!sharedRho) {
+                  rhoM = RHO[id + fieldOffsetScan[field]];
+                }
                 value -= rhoM * r_scale[c] * s_tmp[c][b][a];
                 NS[id + fieldOffsetScan[field]] = value;
               }

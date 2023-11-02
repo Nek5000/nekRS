@@ -20,16 +20,33 @@ SOFTWARE.
 
 
 extern "C" void FUNC(axpbyMany)(const dlong & N, const dlong & Nfields, const dlong & offset, const dfloat & alpha, const dfloat * __restrict__ cpu_a, 
-                    const dfloat & beta, dfloat * __restrict__ cpu_b){
+                    const dfloat & beta, dfloat * __restrict__ cpu_b)
+{
+
+  if(beta != 0) {
 
 #ifdef __NEKRS__OMP__
 #pragma omp parallel for
 #endif
-  for(int fld=0;fld<Nfields;fld++) { 
-    for(dlong i=0;i<N;++i){
-      const dlong id = i + fld*offset;
-      cpu_b[id] = alpha * cpu_a[id] + beta * cpu_b[id];
+    for(int fld=0;fld<Nfields;fld++) { 
+      for(dlong i=0;i<N;++i){
+        const dlong id = i + fld*offset;
+        cpu_b[id] = alpha * cpu_a[id] + beta * cpu_b[id];
+      }
     }
+
+  } else {
+
+#ifdef __NEKRS__OMP__
+#pragma omp parallel for
+#endif
+    for(int fld=0;fld<Nfields;fld++) { 
+      for(dlong i=0;i<N;++i){
+        const dlong id = i + fld*offset;
+        cpu_b[id] = alpha * cpu_a[id];
+      }
+    }
+
   }
 
 }

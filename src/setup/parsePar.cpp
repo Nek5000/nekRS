@@ -597,9 +597,11 @@ void parseCvodeSolver(const int rank, setupAide &options, inipp::Ini *par)
   options.setArgs("CVODE GS TYPE", "CLASSICAL");
   std::string gstype;
   if (par->extract(parScope, "gstype", gstype)) {
-    if (gstype.find("classical") != std::string::npos) {
+    if (gstype == "classical") {
       options.setArgs("CVODE GS TYPE", "CLASSICAL");
-    } else if (gstype.find("modified") != std::string::npos) {
+    } else if (gstype == "classical1") {
+      options.setArgs("CVODE GS TYPE", "CLASSICAL1");
+    } else if (gstype == "modified") {
       options.setArgs("CVODE GS TYPE", "MODIFIED");
     } else {
       append_error("Invalid gsType for " + parScope);
@@ -1557,61 +1559,6 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *par, st
     options.setArgs(parPrefix + "REGULARIZATION METHOD", "NONE");
   }
 }
-void setDefaultSettings(setupAide &options, std::string casename, int rank)
-{
-  options.setArgs("FORMAT", std::string("1.0"));
-
-  options.setArgs("CONSTANT FLOW RATE", "FALSE");
-  options.setArgs("ELEMENT TYPE", std::string("12")); /* HEX */
-  options.setArgs("ELEMENT MAP", std::string("ISOPARAMETRIC"));
-  options.setArgs("MESH DIMENSION", std::string("3"));
-
-  options.setArgs("NUMBER OF SCALARS", "0");
-
-  options.setArgs("BDF ORDER", "2");
-  options.setArgs("EXT ORDER", "3");
-
-  options.setArgs("SUBCYCLING STEPS", "0");
-  options.setArgs("SUBCYCLING TIME ORDER", "4");
-  options.setArgs("SUBCYCLING TIME STAGE NUMBER", "4");
-
-  options.setArgs("CASENAME", casename);
-  options.setArgs("UDF OKL FILE", casename + ".oudf");
-  options.setArgs("UDF FILE", casename + ".udf");
-  options.setArgs("NEK USR FILE", casename + ".usr");
-  options.setArgs("MESH FILE", casename + ".re2");
-
-  options.setArgs("DEVICE NUMBER", "LOCAL-RANK");
-  options.setArgs("PLATFORM NUMBER", "0");
-
-  options.setArgs("VERBOSE", "FALSE");
-
-  options.setArgs("STDOUT PAR", "TRUE");
-  options.setArgs("STDOUT UDF", "TRUE");
-
-  options.setArgs("ADVECTION", "TRUE");
-  options.setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
-
-  options.setArgs("SOLUTION OUTPUT INTERVAL", "-1");
-  options.setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
-
-  options.setArgs("START TIME", "0.0");
-
-  options.setArgs("MIN ADJUST DT RATIO", "0.5");
-  options.setArgs("MAX ADJUST DT RATIO", "1.5");
-
-  options.setArgs("MESH SOLVER", "NONE");
-  options.setArgs("MOVING MESH", "FALSE");
-
-  options.setArgs("ENABLE GS COMM OVERLAP", "TRUE");
-
-  options.setArgs("VARIABLE DT", "FALSE");
-
-  options.setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
-
-  const auto dropTol = 5.0 * std::numeric_limits<pfloat>::epsilon();
-  options.setArgs("AMG DROP TOLERANCE", to_string_f(dropTol));
-}
 
 void parseBoomerAmgSection(const int rank, setupAide &options, inipp::Ini *par)
 {
@@ -2504,53 +2451,16 @@ void cleanupStaleKeys(const int rank, setupAide &options, inipp::Ini *par)
   }
 }
 
-void parRead(inipp::Ini *par, const std::string &_setupFile, MPI_Comm comm, setupAide &options)
+void parsePar(inipp::Ini *par, MPI_Comm comm, setupAide& options)
 {
   int rank;
   MPI_Comm_rank(comm, &rank);
 
-  setupFile = _setupFile;
-  const std::string casename = setupFile.substr(0, setupFile.find(".par"));
-  setDefaultSettings(options, casename, rank);
-
-  if (rank == 0) {
-    nrsCheck(!std::filesystem::exists(setupFile),
-             MPI_COMM_SELF,
-             EXIT_FAILURE,
-             "Cannot find setup file %s\n",
-             setupFile.c_str());
-  }
-
-  char *rbuf;
-  long fsize;
-  if (rank == 0) {
-    FILE *f = fopen(setupFile.c_str(), "rb");
-    fseek(f, 0, SEEK_END);
-    fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    rbuf = new char[fsize];
-    fread(rbuf, 1, fsize, f);
-    fclose(f);
-  }
-  MPI_Bcast(&fsize, sizeof(fsize), MPI_BYTE, 0, comm);
-  if (rank != 0)
-    rbuf = new char[fsize];
-  MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
-  std::stringstream is;
-  is.write(rbuf, fsize);
-
-  par->parse(is);
-  for (auto &error : par->errors) {
-    append_error(error);
-  }
-
-  par->interpolate();
   if (rank == 0)
     validateKeys(par->sections);
   if (rank == 0)
     printDeprecation(par->sections);
 
-  // parsing sections
 
   parseOccaSection(rank, options, par);
 
@@ -2612,17 +2522,4 @@ void parRead(inipp::Ini *par, const std::string &_setupFile, MPI_Comm comm, setu
     std::cout << "====================\n";
   }
 #endif
-}
-
-void parEcho()
-{
-  std::ifstream f(setupFile);
-  std::string text;
-  std::cout << std::endl;
-  while (!f.eof()) {
-    getline(f, text);
-    std::cout << "<<< " << text << "\n";
-  }
-  std::cout << std::endl;
-  f.close();
 }

@@ -25,7 +25,8 @@ static occa::kernel limitKernel;
   
 static occa::kernel SijMag2OiOjSkKernel;
 
-static bool setupCalled = 0;
+static bool buildKernelCalled = false;
+static bool setupCalled = false;
 
 static dfloat coeff[] = {
     0.6,       // sigma_k
@@ -48,6 +49,9 @@ static dfloat coeff[] = {
 
 void RANSktau::buildKernel(occa::properties _kernelInfo)
 {
+  static bool isInitialized = false;
+  if (isInitialized) return;
+  isInitialized = true;
 
   occa::properties kernelInfo;
   if (!kernelInfo.get<std::string>("defines/p_sigma_k").size())
@@ -121,10 +125,15 @@ void RANSktau::buildKernel(occa::properties _kernelInfo)
   nrsCheck(Nscalar < 2, platform->comm.mpiComm, EXIT_FAILURE,
            "%s\n", "Nscalar needs to be >= 2!");
   platform->options.setArgs("VELOCITY STRESSFORMULATION", "TRUE");
+
+  buildKernelCalled = true;
 }
 
 void RANSktau::updateProperties()
 {
+  nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
+           "%s\n", "called prior to tavg::setup()!");
+
   mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
@@ -139,6 +148,9 @@ occa::memory RANSktau::o_mue_t() { return o_mut; }
 
 void RANSktau::updateSourceTerms()
 {
+  nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
+           "%s\n", "called prior to tavg::setup()!");
+
   mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
@@ -149,7 +161,7 @@ void RANSktau::updateSourceTerms()
   occa::memory o_FS = cds->o_FS + cds->fieldOffsetScan[kFieldIndex];
   occa::memory o_BFDiag = cds->o_BFDiag + cds->fieldOffsetScan[kFieldIndex];
 
-  postProcessing::strainRotationRate(nrs, true, true, o_SijOij);
+  postProcessing::strainRotationRate(nrs, true, true, nrs->o_U, o_SijOij);
 
   SijMag2OiOjSkKernel(mesh->Nelements * mesh->Np, nrs->fieldOffset, 1, o_SijOij, o_OiOjSk, o_SijMag2);
     
@@ -169,8 +181,9 @@ void RANSktau::updateSourceTerms()
 
 void RANSktau::setup(nrs_t *nrsIn, dfloat mueIn, dfloat rhoIn, int ifld)
 {
-  if (setupCalled)
-    return;
+  static bool isInitialized = false;
+  if (isInitialized) return; 
+  isInitialized = true;
 
   nrs = nrsIn;
   mueLam = mueIn;
@@ -190,5 +203,5 @@ void RANSktau::setup(nrs_t *nrsIn, dfloat mueIn, dfloat rhoIn, int ifld)
     platform->linAlg->fill(cds->fieldOffsetSum, 0.0, cds->o_BFDiag);
   }
 
-  setupCalled = 1;
+  setupCalled = true;
 }

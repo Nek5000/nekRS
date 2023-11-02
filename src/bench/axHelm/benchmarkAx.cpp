@@ -65,7 +65,7 @@ occa::kernel benchmarkAx(int Nelements,
                          bool stressForm,
                          int verbosity,
                          T NtestsOrTargetTime,
-                         bool requiresBenchmark,
+                         bool runAutotuner,
                          std::string suffix)
 {
   if (platform->options.compareArgs("BUILD ONLY", "TRUE")) {
@@ -201,7 +201,7 @@ occa::kernel benchmarkAx(int Nelements,
     const std::string oklpath(getenv("NEKRS_KERNEL_DIR"));
 
     // only a single choice, no need to run benchmark
-    if (kernelVariants.size() == 1 || !requiresBenchmark) {
+    if ((kernelVariants.size() == 1 && !platform->serial) || !runAutotuner) {
 
       auto newProps = props;
       newProps["defines/p_knl"] = kernelVariants.front();
@@ -212,15 +212,15 @@ occa::kernel benchmarkAx(int Nelements,
       return std::make_pair(platform->device.buildKernel(fileName, newProps, suffix, true), -1.0);
     }
 
-    auto DrV = randomVector<FPType>(Nq * Nq);
-    auto ggeo = randomVector<FPType>(Np_g * Nelements * p_Nggeo);
-    auto vgeo = randomVector<FPType>(Np * Nelements * p_Nvgeo);
-    auto q = randomVector<FPType>((Ndim * Np) * Nelements);
-    auto Aq = randomVector<FPType>((Ndim * Np) * Nelements);
-    auto exyz = randomVector<FPType>((3 * Np_g) * Nelements);
-    auto gllwz = randomVector<FPType>(2 * Nq_g);
-    auto lambda0 = randomVector<FPType>(Np * Nelements);
-    auto lambda1 = randomVector<FPType>(Np * Nelements);
+    auto DrV = randomVector<FPType>(Nq * Nq, 0, 1, true);
+    auto ggeo = randomVector<FPType>(Np_g * Nelements * p_Nggeo, 0, 1, true);
+    auto vgeo = randomVector<FPType>(Np * Nelements * p_Nvgeo, 0, 1, true);
+    auto q = randomVector<FPType>((Ndim * Np) * Nelements, 0, 1, true);
+    auto Aq = randomVector<FPType>((Ndim * Np) * Nelements, 0, 1, true);
+    auto exyz = randomVector<FPType>((3 * Np_g) * Nelements, 0, 1, true);
+    auto gllwz = randomVector<FPType>(2 * Nq_g, 0, 1, true);
+    auto lambda0 = randomVector<FPType>(Np * Nelements, 0, 1, true);
+    auto lambda1 = randomVector<FPType>(Np * Nelements, 0, 1, true);
 
     // elementList[e] = e
     std::vector<dlong> elementList(Nelements);
@@ -286,18 +286,11 @@ occa::kernel benchmarkAx(int Nelements,
       kernelRunner(kernel);
       o_Aq.copyTo(results.data(), results.size() * sizeof(FPType));
 
-      double err = 0.0;
-      for (int i = 0; i < refResults.size(); ++i) {
-        err = std::max(err, (double) std::abs((refResults[i] - results[i])/refResults[i]));
-      }
-      MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
-  
-      const auto tol = 400. * std::numeric_limits<FPType>::epsilon();
-      if (err > tol) {
+      const auto err = maxRelErr<FPType>(refResults, results, platform->comm.mpiComm);
+      if (err > 400 * std::numeric_limits<FPType>::epsilon()) {
         if (platform->comm.mpiRank == 0 && verbosity > 1) {
-          std::cout << "Ax: Ignore kernel " << kernelVariant
-                    << " because error of " << err
-                    << " is too large compared to reference\n";
+          std::cout << "Ax: Ignore version " << kernelVariant
+                    << " as correctness check failed with " << err << std::endl;
         }
   
         // pass un-initialized kernel to skip this kernel variant
@@ -436,7 +429,7 @@ template occa::kernel benchmarkAx<int>(int Nelements,
                                        bool stressForm,
                                        int verbosity,
                                        int Ntests,
-                                       bool requiresBenchmark,
+                                       bool runAutotuner,
                                        std::string suffix);
 
 template occa::kernel benchmarkAx<double>(int Nelements,
@@ -450,5 +443,5 @@ template occa::kernel benchmarkAx<double>(int Nelements,
                                           bool stressForm,
                                           int verbosity,
                                           double targetTime,
-                                          bool requiresBenchmark,
+                                          bool runAutotuner,
                                           std::string suffix);

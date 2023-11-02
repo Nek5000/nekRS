@@ -1,4 +1,5 @@
 @kernel void UrstHex3D(const dlong Nelements,
+                       const int relative,
                        @ restrict const dfloat *vgeo,
                        const dlong offset,
                        @ restrict const dfloat *U,
@@ -33,7 +34,7 @@
           dfloat Un = U[id + 0 * offset];
           dfloat Vn = U[id + 1 * offset];
           dfloat Wn = U[id + 2 * offset];
-          if (p_relative) {
+          if (relative) {
             Un -= W[id + 0 * offset];
             Vn -= W[id + 1 * offset];
             Wn -= W[id + 2 * offset];

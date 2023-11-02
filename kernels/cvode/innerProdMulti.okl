@@ -28,35 +28,36 @@
                             const dlong N,
                             const dlong fieldOffset,
                             const dlong NVec,
-                            const dlong yOffset,
-                            @ restrict const pfloat *x,
-                            @ restrict const dfloat *y,
-                            @ restrict dfloat *wxy)
+                            const dlong offset,
+                            @ restrict const pfloat *V,
+                            @ restrict const dfloat *omg,
+                            @ restrict dfloat *dotp)
 {
   for (dlong b = 0; b < Nblock; ++b; @outer(0)) {
-    @shared dfloat s_wxy[p_vecBlockSize][p_blockSize+1];
+    @shared dfloat s_sum[p_vecBlockSize][p_blockSize+1];
 
     for (int bVec = 0; bVec < (NVec + p_vecBlockSize - 1) / p_vecBlockSize; ++bVec) {
       for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
 
 #pragma unroll
         for (int v = 0; v < p_vecBlockSize; ++v) {
-          s_wxy[v][t] = 0;
+          s_sum[v][t] = 0;
         }
 
         const dlong id = t + p_blockSize * b;
         if (id < N) {
-          const dfloat yi = y[id + yOffset];
+          const dfloat omega = omg[id + offset];
 #pragma unroll
           for (int v = 0; v < p_vecBlockSize; ++v) {
             const dlong vId = v + bVec*p_vecBlockSize;
-            if (vId < NVec) s_wxy[v][t] = x[id + fieldOffset * vId] * yi;
+            const dfloat vi = (vId < NVec - 1) ? V[id + fieldOffset * vId] : omega;
+            if (vId < NVec) s_sum[v][t] = vi * omega;
           }
         }
       }
       @barrier();
 
-      reduce(Nblock, p_blockSize, NVec, p_vecBlockSize, b, bVec, s_wxy, wxy);
+      reduce(Nblock, p_blockSize, NVec, p_vecBlockSize, b, bVec, s_sum, dotp);
     }
   }
 }

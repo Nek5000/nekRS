@@ -264,9 +264,15 @@ void setupField(std::vector<std::string> slist, std::string field)
   if (slist.size() == 0)
     return;
 
-  importFromNek = false;
-  lowerCase(field);
+  if (slist.size()) {
+    importFromNek = false;
 
+    if (slist.size() == 1 && slist[0] == "none") {
+      return;
+    } 
+  }
+
+  lowerCase(field);
   fields.insert(field);
 
   if (field.compare("velocity") == 0)

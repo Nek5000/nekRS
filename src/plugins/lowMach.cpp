@@ -11,7 +11,7 @@
 
 namespace {
 
-nrs_t *the_nrs = nullptr;
+nrs_t *_nrs = nullptr;
 linAlg_t *the_linAlg = nullptr;
 
 int qThermal = 0;
@@ -24,10 +24,18 @@ occa::memory o_bID;
 
 occa::kernel qtlKernel;
 occa::kernel p0thHelperKernel;
+
+static bool buildKernelCalled = false;
+static bool setupCalled = false;
+
 }
 
 void lowMach::buildKernel(occa::properties kernelInfo)
 {
+  static bool isInitialized = false;
+  if (isInitialized) return;
+  isInitialized = true;
+
   int rank = platform->comm.mpiRank;
   const std::string path = getenv("NEKRS_KERNEL_DIR") + std::string("/plugins/");
   std::string kernelName, fileName;
@@ -43,11 +51,16 @@ void lowMach::buildKernel(occa::properties kernelInfo)
   }
 
   platform->options.setArgs("LOWMACH", "TRUE");
+  buildKernelCalled = true;
 }
 
 void lowMach::setup(nrs_t *nrs, dfloat alpha_, occa::memory& o_beta_, occa::memory& o_kappa_)
 {
-  the_nrs = nrs;
+  static bool isInitialized = false;
+  if (isInitialized) return;
+  isInitialized = true;
+
+  _nrs = nrs;
 
   alpha0 = alpha_;
   nrs->alpha0Ref = alpha0;
@@ -73,13 +86,18 @@ void lowMach::setup(nrs_t *nrs, dfloat alpha_, occa::memory& o_beta_, occa::memo
     }
   }
   o_bID = platform->device.malloc<int>(bID.size());
-  o_bID.copyFrom(bID.data()); 
+  o_bID.copyFrom(bID.data());
+
+  setupCalled = true; 
 }
 
 void lowMach::qThermalSingleComponent(double time, occa::memory& o_div)
 {
+  nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
+           "%s\n", "called prior to tavg::setup()!");
+
   qThermal = 1;
-  nrs_t *nrs = the_nrs;
+  nrs_t *nrs = _nrs;
   cds_t *cds = nrs->cds;
   mesh_t *mesh = nrs->meshV;
   linAlg_t *linAlg = platform->linAlg;
@@ -211,7 +229,10 @@ void lowMach::qThermalSingleComponent(double time, occa::memory& o_div)
 
 void lowMach::dpdt(occa::memory& o_FU)
 {
-  nrs_t *nrs = the_nrs;
+  nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
+           "%s\n", "called prior to tavg::setup()!");
+
+  nrs_t *nrs = _nrs;
   mesh_t *mesh = nrs->meshV;
 
   if(nrs->cds->cvodeSolve[0]) return; // contribution is not applied here

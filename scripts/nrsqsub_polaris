@@ -111,6 +111,9 @@ echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE # >=lelt, large mpi-messsage fo
 
 if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
 echo "mpiexec -n 1 $bin --setup ${case} --backend ${backend} --device-id 0 --build-only $nn" >>$SFILE
+echo "if [ \$? -ne 0 ]; then" >> $SFILE
+echo "  exit" >> $SFILE
+echo "fi" >> $SFILE
 fi
 
 CMD=.lhelper

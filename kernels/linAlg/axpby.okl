@@ -33,10 +33,18 @@ SOFTWARE.
                    @ restrict dfloat *y)
 {
 
-  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
-    if (beta != 0)
+  if (beta != 0) { 
+
+    for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
       y[n + yOffset] = alpha * x[n + xOffset] + beta * y[n + yOffset];
-    else
+    }
+
+  } else {
+
+    for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
       y[n + yOffset] = alpha * x[n + xOffset];
+    }
+
   }
+
 }

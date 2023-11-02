@@ -2,8 +2,10 @@
 #include "udf.hpp"
 
 static dfloat P_EPS;
-static bool runBP5, runBPS5;
-static int bp5NReps, bps5NReps;
+static bool runBP5 = false;
+static bool runBPS5 = false;
+static bool runBP6 = false;;
+static int bp5NReps, bps5NReps, bp6NReps;
 
 #ifdef __okl__
 
@@ -20,9 +22,11 @@ void runBenchmarks(nrs_t *nrs)
     const dfloat lambda = 0;
     rhs[i] = (3 * M_PI * M_PI + lambda) * sin(M_PI * mesh->x[i]) * sin(M_PI * mesh->y[i]) * sin(M_PI * mesh->z[i]);
   }
-  auto o_rhs = platform->device.malloc<dfloat>(nrs->fieldOffset, rhs.data());
+  auto o_rhs = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  o_rhs.copyFrom(rhs.data(), nrs->fieldOffset, 0 * nrs->fieldOffset);
+  o_rhs.copyFrom(rhs.data(), nrs->fieldOffset, 1 * nrs->fieldOffset);
+  o_rhs.copyFrom(rhs.data(), nrs->fieldOffset, 2 * nrs->fieldOffset);
 
-  platform->linAlg->fill(2 * nrs->fieldOffset, 1.0, nrs->o_ellipticCoeff);
 
   std::vector<std::string> benchmarks;
   if (runBPS5) {
@@ -30,6 +34,10 @@ void runBenchmarks(nrs_t *nrs)
   }
   if (runBP5) {
     benchmarks.push_back("BP5");
+  }
+  if (runBP6) {
+    benchmarks.push_back("BP6");
+    benchmarks.push_back("BP6_PCGC");
   }
 
   if (platform->comm.mpiRank == 0) {
@@ -42,20 +50,53 @@ void runBenchmarks(nrs_t *nrs)
       std::cout << "\n" << benchmark << "\n";
     }
 
+    elliptic_t *solver;
+
     int Nrep;
     if (benchmark == "BP5") {
+      solver = nrs->pSolver;
+
       Nrep = bp5NReps;
-      nrs->pSolver->options.setArgs("PRECONDITIONER", "NONE");
-      nrs->pSolver->options.setArgs("SOLVER", "PCG");
-      nrs->pSolver->options.setArgs("MAXIMUM ITERATIONS", "1000");
-      nrs->pSolver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
-      ellipticPreconditionerSetup(nrs->pSolver, nrs->pSolver->ogs);
+      solver->options.setArgs("PRECONDITIONER", "NONE");
+      solver->options.setArgs("SOLVER", "PCG");
+      solver->options.setArgs("MAXIMUM ITERATIONS", "1000");
+      solver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
+      ellipticPreconditionerSetup(solver, solver->ogs);
     }
     if (benchmark == "BPS5") {
+      solver = nrs->pSolver;
+
       Nrep = bps5NReps;
-      nrs->pSolver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-8));
-      nrs->pSolver->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
+      solver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-8));
+      solver->options.setArgs("LINEAR SOLVER STOPPING CRITERION", "RELATIVE");
     }
+    if (benchmark == "BP6") {
+      solver = nrs->uvwSolver;
+
+      Nrep = bp6NReps;
+      solver->options.setArgs("PRECONDITIONER", "NONE");
+      solver->options.setArgs("BLOCK SOLVER", "TRUE");
+      solver->options.setArgs("SOLVER", "PCG");
+      solver->options.setArgs("MAXIMUM ITERATIONS", "1000");
+      solver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
+      ellipticPreconditionerSetup(solver, solver->ogs);
+    }
+    if (benchmark == "BP6_PCGC") {
+      solver = nrs->uvwSolver;
+
+      Nrep = bp6NReps;
+      solver->options.setArgs("PRECONDITIONER", "JACOBI");
+      solver->options.setArgs("BLOCK SOLVER", "TRUE");
+      solver->options.setArgs("SOLVER", "PCG+COMBINED");
+      solver->options.setArgs("MAXIMUM ITERATIONS", "1000");
+      solver->options.setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
+      ellipticPreconditionerSetup(solver, solver->ogs);
+    }
+
+    solver->resNormFactor = 1 / mesh->volume;
+    platform->linAlg->fill(nrs->fieldOffset, 1.0, solver->o_lambda0);
+    platform->linAlg->fill(nrs->fieldOffset, 1.0, solver->o_lambda1);
+
 
     std::vector<double> eTime;
     std::vector<double> precoTime;
@@ -63,30 +104,24 @@ void runBenchmarks(nrs_t *nrs)
     std::vector<double> crsTime;
 
     for (int i = 0; i < Nrep; i++) {
-      platform->linAlg->fill(nrs->fieldOffset, 0.0, nrs->o_P);
-
-      // warm-up
-      ellipticSolve(nrs->pSolver, o_rhs, nrs->o_P);
+      platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0.0, nrs->o_U);
 
       platform->timer.reset();
       platform->flopCounter->clear();
+
       platform->device.finish();
       MPI_Barrier(platform->comm.mpiComm);
 
-      platform->linAlg->fill(nrs->fieldOffset, 0.0, nrs->o_P);
-
       const auto tStart = MPI_Wtime();
-
-      ellipticSolve(nrs->pSolver, o_rhs, nrs->o_P);
-
+      ellipticSolve(solver, o_rhs, nrs->o_U);
       platform->device.finish();
-      platform->timer.set("pressureSolve", MPI_Wtime() - tStart);
+      platform->timer.set(solver->name + "Solve", MPI_Wtime() - tStart);
 
-      eTime.push_back(platform->timer.query("pressureSolve", "DEVICE:MAX"));
-      precoTime.push_back(platform->timer.query("pressure preconditioner", "DEVICE:MAX"));
+      eTime.push_back(platform->timer.query(solver->name + "Solve", "DEVICE:MAX"));
+      precoTime.push_back(platform->timer.query(solver->name + " preconditioner", "DEVICE:MAX"));
       for (int i = mesh->N; i > 0; i--) {
         const auto val =
-            platform->timer.query("pressure preconditioner smoother N=" + std::to_string(i), "DEVICE:MAX");
+            platform->timer.query(solver->name + " preconditioner smoother N=" + std::to_string(i), "DEVICE:MAX");
         if (val > 0) {
           smootherTime.push_back(val);
         }
@@ -97,14 +132,14 @@ void runBenchmarks(nrs_t *nrs)
       printf("\n");
     }
 
-    hlong Ntotal = mesh->Nelements * (mesh->N * mesh->N * mesh->N);
+    hlong Ntotal = mesh->Nelements * pow(mesh->N, nrs->dim);
     MPI_Allreduce(MPI_IN_PLACE, &Ntotal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
     const auto minEntry = std::distance(eTime.begin(), std::min_element(eTime.begin(), eTime.end()));
     const double solveTime = eTime.at(minEntry);
     const double solveTimeMax = *std::max_element(eTime.begin(), eTime.end());
     const double solveTimeAvg = std::accumulate(eTime.begin(), eTime.end(), 0.0) / Nrep;
-    const double throughput = ((nrs->pSolver->Nfields * Ntotal) / solveTime) / platform->comm.mpiCommSize;
+    const double throughput = ((solver->Nfields * Ntotal) / solveTime) / platform->comm.mpiCommSize;
     const double flopsPerSecond = platform->flopCounter->get(platform->comm.mpiComm) / solveTime;
 
     if (platform->comm.mpiRank == 0) {
@@ -113,22 +148,26 @@ void runBenchmarks(nrs_t *nrs)
       if (precoTime.at(minEntry) > 0) {
         printf("  preconditioner %gs\n", precoTime.at(minEntry));
       }
-      const auto mgLevels = smootherTime.size() / Nrep;
-      for (int i = 0; i < mgLevels; i++) {
-        const auto entry = minEntry * mgLevels + i;
-        if (smootherTime.at(entry) > 0) {
-          printf("    smoother %gs\n", smootherTime.at(entry));
+
+      if (smootherTime.size()) {
+        const auto mgLevels = smootherTime.size() / Nrep;
+        for (int i = 0; i < mgLevels; i++) {
+          const auto entry = minEntry * mgLevels + i;
+          if (smootherTime.at(entry) > 0) {
+            printf("    smoother %gs\n", smootherTime.at(entry));
+          }
+        }
+        if (crsTime.at(minEntry) > 0) {
+          printf("    coarse grid %gs\n", crsTime.at(minEntry));
         }
       }
-      if (crsTime.at(minEntry) > 0) {
-        printf("    coarse grid %gs\n", crsTime.at(minEntry));
-      }
-      printf("iterations: %d\n", nrs->pSolver->Niter);
-      printf("throughput: %g (DOF x iter)/s/rank\n", (double)nrs->pSolver->Niter * throughput);
+
+      printf("iterations: %d\n", solver->Niter);
+      printf("throughput: %g (DOF x iter)/s/rank\n", (double)solver->Niter * throughput);
       if (benchmark == "BPS5") {
         printf("throughput: %g DOF/s/rank\n", throughput);
       }
-      if (!nrs->pSolver->options.compareArgs("PRECONDITIONER", "SEMFEM")) {
+      if (!solver->options.compareArgs("PRECONDITIONER", "SEMFEM")) {
         printf("flops/rank: %g \n", flopsPerSecond / platform->comm.mpiCommSize);
       }
     }
@@ -146,6 +185,9 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
   platform->par->extract("casedata", "bps5", runBPS5);
   platform->par->extract("casedata", "bps5Repetitions", bps5NReps);
+
+  platform->par->extract("casedata", "bp6", runBP6);
+  platform->par->extract("casedata", "bp5Repetitions", bp6NReps);
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");

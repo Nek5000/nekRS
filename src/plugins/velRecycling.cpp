@@ -13,9 +13,6 @@ occa::memory o_wrk;
 occa::kernel setBCVectorValueKernel;
 occa::kernel maskCopyKernel;
 
-bool buildKernelCalled = 0;
-bool setupCalled = 0;
-
 pointInterpolation_t *interp;
 occa::memory o_Uint;
 occa::memory o_maskIds;
@@ -25,12 +22,19 @@ occa::memory o_bID;
 dfloat wbar;
 dfloat area;
 
+static bool buildKernelCalled = false;
+static bool setupCalled = false;
+
 int Nblock;
 } // namespace
 
 
 static void setup(nrs_t *nrs_, occa::memory& o_wrk_,  const int bID_, const dfloat wbar_)
 {
+  static bool isInitialized = false;
+  if (isInitialized) return;
+  isInitialized = true;
+
   nrs = nrs_;
   o_wrk = o_wrk_;
   bID = bID_;
@@ -51,10 +55,16 @@ static void setup(nrs_t *nrs_, occa::memory& o_wrk_,  const int bID_, const dflo
   auto o_tmp = platform->device.malloc<dfloat>(mesh->Nlocal);
   platform->linAlg->fill(mesh->Nlocal, 1.0, o_tmp);
   area = mesh->surfaceIntegral(o_bID.length(), o_bID, o_tmp).at(0);
+
+  setupCalled = true;
 }
 
 void velRecycling::buildKernel(occa::properties kernelInfo)
 {
+  static bool isInitialized = false;
+  if (isInitialized) return;
+  isInitialized = true;
+
   const std::string path = getenv("NEKRS_KERNEL_DIR") + std::string("/plugins/");
 
   std::string fileName, kernelName;
@@ -68,10 +78,15 @@ void velRecycling::buildKernel(occa::properties kernelInfo)
     fileName = path + kernelName + extension;
     maskCopyKernel = platform->device.buildKernel(fileName, kernelInfo, true);
   }
+
+  buildKernelCalled = true;
 }
 
 void velRecycling::copy()
 {
+  nrsCheck(!setupCalled || !buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
+           "%s\n", "called prior to tavg::setup()!");
+
   mesh_t *mesh = nrs->meshV;
 
   if (interp) {

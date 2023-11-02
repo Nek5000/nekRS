@@ -42,7 +42,7 @@ occa::kernel benchmarkFDM(int Nelements,
                           bool useRAS,
                           int verbosity,
                           T NtestsOrTargetTime,
-                          bool requiresBenchmark,
+                          bool runAutotuner,
                           std::string suffix)
 {
   if (platform->options.compareArgs("BUILD ONLY", "TRUE")) {
@@ -93,11 +93,9 @@ occa::kernel benchmarkFDM(int Nelements,
 
     const std::string oklpath(getenv("NEKRS_KERNEL_DIR"));
 
-    // only a single choice, no need to run benchmark
-    if (kernelVariants.size() == 1 || !requiresBenchmark) {
+    if (!runAutotuner) {
       auto newProps = props;
-      if (!platform->serial)
-        newProps["defines/p_knl"] = kernelVariants.front();
+      newProps["defines/p_knl"] = kernelVariants.front();
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
@@ -106,13 +104,13 @@ occa::kernel benchmarkFDM(int Nelements,
       return std::make_pair(platform->device.buildKernel(fileName, newProps, suffix, true), -1.0);
     }
 
-    auto Sx = randomVector<FPType>(Nelements * Nq_e * Nq_e);
-    auto Sy = randomVector<FPType>(Nelements * Nq_e * Nq_e);
-    auto Sz = randomVector<FPType>(Nelements * Nq_e * Nq_e);
-    auto invL = randomVector<FPType>(Nelements * Np_e);
-    auto Su = randomVector<FPType>(Nelements * Np_e);
-    auto u = randomVector<FPType>(Nelements * Np_e);
-    auto invDegree = randomVector<dfloat>(Nelements * Np_e);
+    auto Sx = randomVector<FPType>(Nelements * Nq_e * Nq_e, 0, 1, true);
+    auto Sy = randomVector<FPType>(Nelements * Nq_e * Nq_e, 0, 1, true);
+    auto Sz = randomVector<FPType>(Nelements * Nq_e * Nq_e, 0, 1, true);
+    auto invL = randomVector<FPType>(Nelements * Np_e, 0, 1, true);
+    auto Su = randomVector<FPType>(Nelements * Np_e, 0, 1, true);
+    auto u = randomVector<FPType>(Nelements * Np_e, 0, 1, true);
+    auto invDegree = randomVector<dfloat>(Nelements * Np_e, 0, 1, true);
 
     // elementList[e] = e
     std::vector<int> elementList(Nelements);
@@ -130,8 +128,7 @@ occa::kernel benchmarkFDM(int Nelements,
     occa::kernel referenceKernel;
     {
       auto newProps = props;
-      if (!platform->serial)
-        newProps["defines/p_knl"] = kernelVariants.front();
+      newProps["defines/p_knl"] = kernelVariants.front();
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
@@ -149,8 +146,7 @@ occa::kernel benchmarkFDM(int Nelements,
 
     auto fdmKernelBuilder = [&](int kernelVariant) {
       auto newProps = props;
-      if (!platform->serial)
-        newProps["defines/p_knl"] = kernelVariant;
+      newProps["defines/p_knl"] = kernelVariant;
 
       const std::string kernelName = "fusedFDM";
       const std::string ext = platform->serial ? ".c" : ".okl";
@@ -188,18 +184,11 @@ occa::kernel benchmarkFDM(int Nelements,
       kernelRunner(kernel);
       auto result = dumpResult();
 
-      double err = 0.0;
-      for (int i = 0; i < result.size(); ++i) {
-        err = std::max(err, (double) std::abs((result[i] - referenceResult[i])/referenceResult[i]));
-      }
-      MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
-
-      const auto tol = 100. * std::numeric_limits<FPType>::epsilon();
-      if (err > tol) {
+      const auto err = maxRelErr<FPType>(referenceResult, result, platform->comm.mpiComm);
+      if (err > 100. * std::numeric_limits<FPType>::epsilon()) {
         if (platform->comm.mpiRank == 0 && verbosity > 1) {
-          std::cout << "fdm: Ignore kernel " << kernelVariant
-                    << " because error of " << err
-                    << " is too large compared to reference\n";
+          std::cout << "fdm: Ignore version " << kernelVariant
+                    << " as correctness check failed with " << err << std::endl;
         }
 
         // pass un-initialized kernel to skip this kernel variant
@@ -301,7 +290,7 @@ template occa::kernel benchmarkFDM<int>(int Nelements,
                                         bool useRAS,
                                         int verbosity,
                                         int Ntests,
-                                        bool requiresBenchmark,
+                                        bool runAutotuner,
                                         std::string suffix);
 
 template occa::kernel benchmarkFDM<double>(int Nelements,
@@ -310,5 +299,5 @@ template occa::kernel benchmarkFDM<double>(int Nelements,
                                            bool useRAS,
                                            int verbosity,
                                            double targetTime,
-                                           bool requiresBenchmark,
+                                           bool runAutotuner,
                                            std::string suffix);

@@ -2,11 +2,11 @@
 #include "platform.hpp"
 
 namespace {
-  dfloat *sum;
-  dfloat *sumFace;
-  occa::memory o_sumFace;
-  occa::memory h_sumFace;
-}
+
+dfloat *sum;
+dfloat *sumFace;
+occa::memory o_sumFace;
+occa::memory h_sumFace;
 
 std::vector<dfloat> integral(mesh_t *mesh, int Nfields, int fieldOffset, bool vector, int nbID,
                              const occa::memory o_bID, const occa::memory& o_fld)
@@ -61,6 +61,8 @@ std::vector<dfloat> integral(mesh_t *mesh, int Nfields, int fieldOffset, bool ve
   
   return out;
 }
+
+} // private namespace
 
 std::vector<dfloat> mesh_t::surfaceIntegral(int nbID, const occa::memory& o_bID, const occa::memory& o_fld)
 {

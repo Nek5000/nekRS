@@ -114,6 +114,9 @@ echo "fi" >> $SFILE
 if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
 echo "# precompilation" >>$SFILE
 echo "srun -n 1 $bin --backend $backend --device-id 0 --setup $case --build-only $ntasks" >>$SFILE
+echo "if [ \$? -ne 0 ]; then" >> $SFILE
+echo "  exit" >> $SFILE
+echo "fi" >> $SFILE
 fi
 echo "" >> $SFILE
 

@@ -80,8 +80,10 @@
 #include <fcntl.h>
 #include <chrono>
 #include <csignal>
-#include "stacktrace.hpp"
 #include <filesystem>
+
+#include "inipp.hpp"
+#include "stacktrace.hpp"
 
 #include "nekrs.hpp"
 
@@ -260,6 +262,54 @@ cmdOptions* processCmdLineOptions(int argc, char** argv, const MPI_Comm &comm)
   return cmdOpt;
 }
 
+inipp::Ini* readPar(const std::string &_setupFile, MPI_Comm comm)
+{
+  auto par = new inipp::Ini();
+
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  const auto setupFile = _setupFile + ".par";
+
+  int err = 0;
+  if (rank == 0) {
+    if (!std::filesystem::exists(setupFile)) {
+      std::cerr << "Cannot find setup file " << setupFile << std::endl;
+      err++;
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_MAX, comm);
+  if (err) {
+    MPI_Abort(comm, EXIT_FAILURE);
+  }
+
+  char *rbuf;
+  long fsize;
+
+  if (rank == 0) {
+    FILE *f = fopen(setupFile.c_str(), "rb");
+    fseek(f, 0, SEEK_END);
+    fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    rbuf = new char[fsize];
+    fread(rbuf, 1, fsize, f);
+    fclose(f);
+  }
+  MPI_Bcast(&fsize, sizeof(fsize), MPI_BYTE, 0, comm);
+
+  if (rank != 0)
+    rbuf = new char[fsize];
+  MPI_Bcast(rbuf, fsize, MPI_CHAR, 0, comm);
+
+  std::stringstream is;
+  is.write(rbuf, fsize);
+
+  par->parse(is);
+  par->interpolate();
+
+  return par;
+}
+
 MPI_Comm setupSession(cmdOptions *cmdOpt, const MPI_Comm &comm)
 {
   int rank, size;
@@ -381,7 +431,6 @@ void signalHandlerUpdateFile(int signum)
   processUpdFile = 1;
 }
 
-
 } // namespace
 
 
@@ -461,155 +510,163 @@ int main(int argc, char** argv)
     MPI_Barrier(comm);
   }
 
-  try{
+  try {
 
-  if (cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);
-
-  { // change working dir
-    const size_t last_slash = cmdOpt->setupFile.rfind('/') + 1;
-    const std::string casepath = cmdOpt->setupFile.substr(0,last_slash);
-    chdir(casepath.c_str());
-    const std::string casename = cmdOpt->setupFile.substr(last_slash, cmdOpt->setupFile.length() - last_slash);
-    if(casepath.length() > 0) chdir(casepath.c_str());
-    cmdOpt->setupFile.assign(casename);
-  }
-
-  nekrs::setup(commGlobal, comm, 
-    	       cmdOpt->buildOnly, cmdOpt->sizeTarget,
-               cmdOpt->ciMode, cmdOpt->setupFile,
-               cmdOpt->backend, cmdOpt->deviceID,
-               cmdOpt->nSessions, cmdOpt->sessionID,
-               cmdOpt->debug);
-
-  if (cmdOpt->buildOnly) {
-    nekrs::finalize();
-    MPI_Finalize();
-    return EXIT_SUCCESS;
-  }
-
-  double time = nekrs::startTime();
-
-  double elapsedTime = 0;
-  {
-    MPI_Barrier(comm);
-    const auto timeStop = std::chrono::high_resolution_clock::now();
-    elapsedTime += std::chrono::duration<double, std::milli>(timeStop - timeStart).count() / 1e3;
-    MPI_Allreduce(MPI_IN_PLACE, &elapsedTime, 1, MPI_DOUBLE, MPI_MAX, comm);
-    nekrs::updateTimer("setup", elapsedTime);
-    if (rank == 0)
-      std::cout << "initialization took " << elapsedTime << " s" << std::endl;
-  }
-
-  int tStep = 0;
-  int isLastStep = nekrs::lastStep(nekrs::startTime(), tStep, elapsedTime);
-  nekrs::lastStep(isLastStep);
-
-  nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
-  nekrs::resetTimer("udfExecuteStep");
-
-  double elapsedStepSum = 0;
-
-  double tSolveStepMin = std::numeric_limits<double>::max();
-  double tSolveStepMax = std::numeric_limits<double>::min();
-
-  if (rank == 0) {
-    if (isLastStep)
-      std::cout << "endTime or numSteps reached already -> skip timestepping\n"; 
-    else if (nekrs::endTime() > nekrs::startTime())
-      std::cout << "\ntimestepping to time " << nekrs::endTime() << " ...\n";
-    else if (nekrs::numSteps() > tStep)
-      std::cout << "\ntimestepping for " << nekrs::numSteps() << " steps ...\n";
-  }
-
-  fflush(stdout);
-  MPI_Pcontrol(1);
-  while (!isLastStep) {
-    MPI_Barrier(comm);
-    const double timeStartStep = MPI_Wtime();
-
-    ++tStep;
-    isLastStep = nekrs::lastStep(time, tStep, elapsedTime);
-
-    double dt;
-    if (isLastStep && nekrs::endTime() > 0)
-      dt = nekrs::endTime() - time;
-    else
-      dt = nekrs::dt(tStep);
-
-    int outputStep = nekrs::outputStep(time + dt, tStep);
-    if (nekrs::writeInterval() == 0) outputStep = 0;
-    if (isLastStep) outputStep = 1;
-    if (nekrs::writeInterval() < 0) outputStep = 0;
-    nekrs::outputStep(outputStep);
-
-    if (tStep <= 1000) nekrs::verboseInfo(true); 
-
-    nekrs::initStep(time, dt, tStep);
-    
-    int corrector = 1;
-    bool converged = false;
-    do {
-      converged = nekrs::runStep(corrector++);
-    } while (!converged);
+    if (cmdOpt->debug) feraiseexcept(FE_ALL_EXCEPT);
  
-    time = nekrs::finishStep();
-
+    { // change working dir
+      const size_t last_slash = cmdOpt->setupFile.rfind('/') + 1;
+      const std::string casepath = cmdOpt->setupFile.substr(0,last_slash);
+      chdir(casepath.c_str());
+      const std::string casename = cmdOpt->setupFile.substr(last_slash, cmdOpt->setupFile.length() - last_slash);
+      if(casepath.length() > 0) chdir(casepath.c_str());
+      cmdOpt->setupFile.assign(casename);
+    }
+ 
+    auto par = readPar(cmdOpt->setupFile, comm);
+ 
+    nekrs::setup(commGlobal, 
+                 comm, 
+      	       cmdOpt->buildOnly, 
+                 cmdOpt->sizeTarget,
+                 cmdOpt->ciMode, 
+                 par,
+                 cmdOpt->setupFile,
+                 cmdOpt->backend, 
+                 cmdOpt->deviceID,
+                 cmdOpt->nSessions, 
+                 cmdOpt->sessionID,
+                 cmdOpt->debug);
+ 
+    if (cmdOpt->buildOnly) {
+      nekrs::finalize();
+      MPI_Finalize();
+      return EXIT_SUCCESS;
+    }
+ 
+    double time = nekrs::startTime();
+ 
+    double elapsedTime = 0;
     {
-      int read = processUpdFile;
-      MPI_Bcast(&read, 1, MPI_INT, 0, comm);
-      if(read) {
-        nekrs::processUpdFile();
-        processUpdFile = 0;
+      MPI_Barrier(comm);
+      const auto timeStop = std::chrono::high_resolution_clock::now();
+      elapsedTime += std::chrono::duration<double, std::milli>(timeStop - timeStart).count() / 1e3;
+      MPI_Allreduce(MPI_IN_PLACE, &elapsedTime, 1, MPI_DOUBLE, MPI_MAX, comm);
+      nekrs::updateTimer("setup", elapsedTime);
+      if (rank == 0)
+        std::cout << "initialization took " << elapsedTime << " s" << std::endl;
+    }
+ 
+    int tStep = 0;
+    int isLastStep = nekrs::lastStep(nekrs::startTime(), tStep, elapsedTime);
+    nekrs::lastStep(isLastStep);
+ 
+    nekrs::udfExecuteStep(time, tStep, /* outputStep */ 0);
+    nekrs::resetTimer("udfExecuteStep");
+ 
+    double elapsedStepSum = 0;
+ 
+    double tSolveStepMin = std::numeric_limits<double>::max();
+    double tSolveStepMax = std::numeric_limits<double>::min();
+ 
+    if (rank == 0) {
+      if (isLastStep)
+        std::cout << "endTime or numSteps reached already -> skip timestepping\n"; 
+      else if (nekrs::endTime() > nekrs::startTime())
+        std::cout << "\ntimestepping to time " << nekrs::endTime() << " ...\n";
+      else if (nekrs::numSteps() > tStep)
+        std::cout << "\ntimestepping for " << nekrs::numSteps() << " steps ...\n";
+    }
+ 
+    fflush(stdout);
+    MPI_Pcontrol(1);
+    while (!isLastStep) {
+      MPI_Barrier(comm);
+      const double timeStartStep = MPI_Wtime();
+ 
+      ++tStep;
+      isLastStep = nekrs::lastStep(time, tStep, elapsedTime);
+ 
+      double dt;
+      if (isLastStep && nekrs::endTime() > 0)
+        dt = nekrs::endTime() - time;
+      else
+        dt = nekrs::dt(tStep);
+ 
+      int outputStep = nekrs::outputStep(time + dt, tStep);
+      if (nekrs::writeInterval() == 0) outputStep = 0;
+      if (isLastStep) outputStep = 1;
+      if (nekrs::writeInterval() < 0) outputStep = 0;
+      nekrs::outputStep(outputStep);
+ 
+      if (tStep <= 1000) nekrs::verboseInfo(true); 
+ 
+      nekrs::initStep(time, dt, tStep);
+      
+      int corrector = 1;
+      bool converged = false;
+      do {
+        converged = nekrs::runStep(corrector++);
+      } while (!converged);
+  
+      time = nekrs::finishStep();
+ 
+      {
+        int read = processUpdFile;
+        MPI_Bcast(&read, 1, MPI_INT, 0, comm);
+        if(read) {
+          nekrs::processUpdFile();
+          processUpdFile = 0;
+        }
       }
+ 
+      if (nekrs::printInfoFreq()) {
+        if (tStep % nekrs::printInfoFreq() == 0)
+          nekrs::printInfo(time, tStep, false, true);
+      }
+ 
+      if (outputStep) nekrs::outfld(time, tStep);
+ 
+      MPI_Barrier(comm);
+      const double elapsedStep = MPI_Wtime() - timeStartStep;
+      tSolveStepMin = std::min(elapsedStep, tSolveStepMin);
+      tSolveStepMax = std::max(elapsedStep, tSolveStepMax);
+      nekrs::updateTimer("minSolveStep", tSolveStepMin);
+      nekrs::updateTimer("maxSolveStep", tSolveStepMax);
+ 
+      elapsedStepSum += elapsedStep;
+      elapsedTime += elapsedStep;
+      nekrs::updateTimer("elapsedStep", elapsedStep);
+      nekrs::updateTimer("elapsedStepSum", elapsedStepSum);
+      nekrs::updateTimer("elapsed", elapsedTime);
+ 
+      if (nekrs::printInfoFreq()) {
+        if (tStep % nekrs::printInfoFreq() == 0)
+          nekrs::printInfo(time, tStep, true, false);
+      }
+ 
+      if(nekrs::runTimeStatFreq()) {
+        if (tStep % nekrs::runTimeStatFreq() == 0 || isLastStep)
+          nekrs::printRuntimeStatistics(tStep);
+      }
+ 
+      if (tStep % 100 == 0) fflush(stdout);
     }
+    MPI_Pcontrol(0);
+ 
+    delete cmdOpt;
+ 
+    const int exitValue = nekrs::finalize();
+ 
+    MPI_Barrier(commGlobal);
+    MPI_Finalize();
+ 
+    if(exitValue)
+      return EXIT_FAILURE;
+    else
+      return EXIT_SUCCESS;
 
-    if (nekrs::printInfoFreq()) {
-      if (tStep % nekrs::printInfoFreq() == 0)
-        nekrs::printInfo(time, tStep, false, true);
-    }
-
-    if (outputStep) nekrs::outfld(time, tStep);
-
-    MPI_Barrier(comm);
-    const double elapsedStep = MPI_Wtime() - timeStartStep;
-    tSolveStepMin = std::min(elapsedStep, tSolveStepMin);
-    tSolveStepMax = std::max(elapsedStep, tSolveStepMax);
-    nekrs::updateTimer("minSolveStep", tSolveStepMin);
-    nekrs::updateTimer("maxSolveStep", tSolveStepMax);
-
-    elapsedStepSum += elapsedStep;
-    elapsedTime += elapsedStep;
-    nekrs::updateTimer("elapsedStep", elapsedStep);
-    nekrs::updateTimer("elapsedStepSum", elapsedStepSum);
-    nekrs::updateTimer("elapsed", elapsedTime);
-
-    if (nekrs::printInfoFreq()) {
-      if (tStep % nekrs::printInfoFreq() == 0)
-        nekrs::printInfo(time, tStep, true, false);
-    }
-
-    if(nekrs::runTimeStatFreq()) {
-      if (tStep % nekrs::runTimeStatFreq() == 0 || isLastStep)
-        nekrs::printRuntimeStatistics(tStep);
-    }
-
-    if (tStep % 100 == 0) fflush(stdout);
   }
-  MPI_Pcontrol(0);
-
-  delete cmdOpt;
-
-  const int exitValue = nekrs::finalize();
-
-  MPI_Barrier(commGlobal);
-  MPI_Finalize();
-
-  if(exitValue)
-    return EXIT_FAILURE;
-  else
-    return EXIT_SUCCESS;
-
-  } // try
   catch(const std::exception& ex)
   {
     std::cerr << ex.what() << std::endl;

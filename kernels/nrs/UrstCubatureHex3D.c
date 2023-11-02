@@ -1,4 +1,5 @@
 extern "C" void FUNC(UrstCubatureHex3D)(const dlong &Nelements,
+                                        const int &relative,
                                         const dfloat *__restrict__ cubvgeo,
                                         const dfloat *__restrict__ cubInterpT,
                                         const dlong &offset,
@@ -41,7 +42,7 @@ extern "C" void FUNC(UrstCubatureHex3D)(const dlong &Nelements,
             dfloat Ue = U[id + 0 * offset];
             dfloat Ve = U[id + 1 * offset];
             dfloat We = U[id + 2 * offset];
-            if (p_relative) {
+            if (relative) {
               Ue -= W[id + 0 * offset];
               Ve -= W[id + 1 * offset];
               We -= W[id + 2 * offset];

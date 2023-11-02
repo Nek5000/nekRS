@@ -182,8 +182,6 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     platform->kernels.add(section + kernelName, fileName, kernelInfoBC);
 
     occa::properties prop = meshProps;
-    const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-    prop["defines/p_relative"] = movingMesh && Nsubsteps;
     prop["defines/p_cubNq"] = cubNq;
     prop["defines/p_cubNp"] = cubNp;
     fileName = oklpath + "/nrs/Urst" + suffix + ".okl";
@@ -196,9 +194,10 @@ void registerNrsKernels(occa::properties kernelInfoBC)
     fileName = oklpath + "/nrs/" + kernelName + ".okl";
     platform->kernels.add(section + kernelName, fileName, prop);
 
+    const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+
     {
       occa::properties prop = meshProps;
-      const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
       prop["defines/p_MovingMesh"] = movingMesh;
       prop["defines/p_nEXT"] = nEXT;
       prop["defines/p_nBDF"] = nBDF;

@@ -9,8 +9,8 @@ namespace nekrs
 {
 void setup(MPI_Comm commg_in, MPI_Comm comm_in,
            int buildOnly, int commSizeTarget,
-           int ciMode, std::string _setupFile,
-           std::string _backend, std::string _deviceID,
+           int ciMode, inipp::Ini *par,
+           std::string casename, std::string _backend, std::string _deviceID,
            int _nSessions, int _sessionID,
            int debug);
 void copyFromNek(double time, int tstep);

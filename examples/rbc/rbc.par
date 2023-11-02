@@ -1,5 +1,5 @@
 [GENERAL] 
-polynomialOrder = 9
+polynomialOrder = 7
 #startFrom = "restart.fld"
 stopAt = endTime
 endTime = 100 

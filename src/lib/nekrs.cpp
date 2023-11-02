@@ -7,7 +7,7 @@
 #include "printHeader.hpp"
 #include "udf.hpp"
 #include "bcMap.hpp"
-#include "parReader.hpp"
+#include "parParser.hpp"
 #include "re2Reader.hpp"
 #include "configReader.hpp"
 #include "re2Reader.hpp"
@@ -27,7 +27,6 @@ platform_t *platform;
 namespace {
 
 static nrs_t *nrs;
-static setupAide options;
 
 static int rank, size;
 static MPI_Comm commg, comm;
@@ -38,6 +37,79 @@ static int firstOutfld = 1;
 static int enforceLastStep = 0;
 static int enforceOutputStep = 0;
 static bool initialized = false;
+
+void printFileStdout(std::string file)
+{
+  std::ifstream f(file);
+  std::string text;
+  std::cout << std::endl;
+  while (!f.eof()) {
+    getline(f, text);
+    std::cout << "<<< " << text << "\n";
+  }
+  std::cout << std::endl;
+  f.close();
+}
+
+setupAide* setDefaultSettings(std::string casename)
+{
+  auto options = new setupAide();
+
+  options->setArgs("FORMAT", std::string("1.0"));
+
+  options->setArgs("CONSTANT FLOW RATE", "FALSE");
+  options->setArgs("ELEMENT TYPE", std::string("12")); /* HEX */
+  options->setArgs("ELEMENT MAP", std::string("ISOPARAMETRIC"));
+  options->setArgs("MESH DIMENSION", std::string("3"));
+
+  options->setArgs("NUMBER OF SCALARS", "0");
+
+  options->setArgs("BDF ORDER", "2");
+  options->setArgs("EXT ORDER", "3");
+
+  options->setArgs("SUBCYCLING STEPS", "0");
+  options->setArgs("SUBCYCLING TIME ORDER", "4");
+  options->setArgs("SUBCYCLING TIME STAGE NUMBER", "4");
+
+  options->setArgs("CASENAME", casename);
+  options->setArgs("UDF OKL FILE", casename + ".oudf");
+  options->setArgs("UDF FILE", casename + ".udf");
+  options->setArgs("NEK USR FILE", casename + ".usr");
+  options->setArgs("MESH FILE", casename + ".re2");
+
+  options->setArgs("DEVICE NUMBER", "LOCAL-RANK");
+  options->setArgs("PLATFORM NUMBER", "0");
+
+  options->setArgs("VERBOSE", "FALSE");
+
+  options->setArgs("STDOUT PAR", "TRUE");
+  options->setArgs("STDOUT UDF", "TRUE");
+
+  options->setArgs("ADVECTION", "TRUE");
+  options->setArgs("ADVECTION TYPE", "CUBATURE+CONVECTIVE");
+
+  options->setArgs("SOLUTION OUTPUT INTERVAL", "-1");
+  options->setArgs("SOLUTION OUTPUT CONTROL", "STEPS");
+
+  options->setArgs("START TIME", "0.0");
+
+  options->setArgs("MIN ADJUST DT RATIO", "0.5");
+  options->setArgs("MAX ADJUST DT RATIO", "1.5");
+
+  options->setArgs("MESH SOLVER", "NONE");
+  options->setArgs("MOVING MESH", "FALSE");
+
+  options->setArgs("ENABLE GS COMM OVERLAP", "TRUE");
+
+  options->setArgs("VARIABLE DT", "FALSE");
+
+  options->setArgs("CHECKPOINT OUTPUT MESH", "FALSE");
+
+  const auto dropTol = 5.0 * std::numeric_limits<pfloat>::epsilon();
+  options->setArgs("AMG DROP TOLERANCE", to_string_f(dropTol));
+
+  return options;
+}
 
 }
 
@@ -63,7 +135,8 @@ void setup(MPI_Comm commg_in,
            int buildOnly,
            int commSizeTarget,
            int ciMode,
-           std::string _setupFile,
+           inipp::Ini *par,
+           std::string casename,
            std::string _backend,
            std::string _deviceID,
            int nSessions,
@@ -87,37 +160,34 @@ void setup(MPI_Comm commg_in,
 
   configRead(comm);
 
+  auto options = setDefaultSettings(casename);
+  parsePar(par, comm, *options);
+
   if(nSessions > 1) {
-    options.setArgs("NEKNEK NUMBER OF SESSIONS", std::to_string(nSessions));
-    options.setArgs("NEKNEK SESSION ID", std::to_string(sessionID));
+    options->setArgs("NEKNEK NUMBER OF SESSIONS", std::to_string(nSessions));
+    options->setArgs("NEKNEK SESSION ID", std::to_string(sessionID));
   }
 
-  options.setArgs("BUILD ONLY", "FALSE");
+  options->setArgs("BUILD ONLY", "FALSE");
   if (buildOnly) {
-    options.setArgs("BUILD ONLY", "TRUE");
-    options.setArgs("NP TARGET", std::to_string(commSizeTarget));
+    options->setArgs("BUILD ONLY", "TRUE");
+    options->setArgs("NP TARGET", std::to_string(commSizeTarget));
     if (rank == 0) {
       std::cout << "jit-compiling for >=" << commSizeTarget << " MPI tasks ...\n" << std::endl;
     }
     fflush(stdout);
   }
 
-  auto par = new inipp::Ini();
-  if (rank == 0)
-    std::cout << "reading par file ...\n";
-  parRead(par, _setupFile + ".par", comm, options);
-
   // precedence: cmd arg, par, env-var
-  if (options.getArgs("THREAD MODEL").length() == 0)
-    options.setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
+  if (options->getArgs("THREAD MODEL").length() == 0)
+    options->setArgs("THREAD MODEL", getenv("NEKRS_OCCA_MODE_DEFAULT"));
   if (!_backend.empty())
-    options.setArgs("THREAD MODEL", _backend);
+    options->setArgs("THREAD MODEL", _backend);
   if (!_deviceID.empty())
-    options.setArgs("DEVICE NUMBER", _deviceID);
+    options->setArgs("DEVICE NUMBER", _deviceID);
 
   // setup platform (requires THREAD MODEL)
-  platform_t *_platform = platform_t::getInstance(options, commg, comm);
-  platform = _platform;
+  platform = platform_t::getInstance(*options, commg, comm);
   platform->par = par;
 
   if (debug)
@@ -133,13 +203,13 @@ void setup(MPI_Comm commg_in,
     std::cout << "using OCCA_CACHE_DIR: " << occa::env::OCCA_CACHE_DIR << std::endl << std::endl;
   }
 
-  options.setArgs("CI-MODE", std::to_string(ciMode));
+  platform->options.setArgs("CI-MODE", std::to_string(ciMode));
   if (rank == 0 && ciMode)
     std::cout << "enabling continous integration mode " << ciMode << "\n";
 
   {
     int nelgt, nelgv;
-    re2::nelg(options.getArgs("MESH FILE"), nelgt, nelgv, comm);
+    re2::nelg(platform->options.getArgs("MESH FILE"), nelgt, nelgv, comm);
     nrsCheck(size > nelgv, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "MPI tasks > number of elements!");
   }
 
@@ -149,26 +219,26 @@ void setup(MPI_Comm commg_in,
 
   // jit compile udf
   std::string udfFile;
-  options.getArgs("UDF FILE", udfFile);
+  platform->options.getArgs("UDF FILE", udfFile);
   if (!udfFile.empty()) {
-    udfBuild(udfFile, options);
+    udfBuild(udfFile, platform->options);
     udfLoad();
   }
 
   // here we might access some nek variables
   if (udf.setup0)
-    udf.setup0(comm, options);
+    udf.setup0(comm, platform->options);
 
   if (rank == 0) {
-    if (!buildOnly && options.compareArgs("STDOUT PAR", "TRUE"))
-      parEcho();
-    if (!buildOnly && options.compareArgs("STDOUT UDF", "TRUE"))
+    if (!buildOnly && platform->options.compareArgs("STDOUT PAR", "TRUE"))
+      printFileStdout(casename + ".par");
+    if (!buildOnly && platform->options.compareArgs("STDOUT UDF", "TRUE"))
       udfEcho();
   }
 
   compileKernels();
 
-  oogs::overlap(options.compareArgs("ENABLE GS COMM OVERLAP", "FALSE") ? 0 : 1);
+  oogs::overlap(platform->options.compareArgs("ENABLE GS COMM OVERLAP", "FALSE") ? 0 : 1);
 
   if (buildOnly) {
     MPI_Barrier(platform->comm.mpiComm);
@@ -197,14 +267,14 @@ void setup(MPI_Comm commg_in,
     nrs->multiSession = (result == MPI_UNEQUAL);
   }
 
-  nrsSetup(comm, options, nrs);
+  nrsSetup(comm, platform->options, nrs);
   if (neknekCoupled()) {
     new neknek_t(nrs, nSessions, sessionID);
   }
 
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if (rank == 0) {
-    std::cout << "\nsettings:\n" << std::endl << options << std::endl;
+    std::cout << "\nsettings:\n" << std::endl << platform->options << std::endl;
 
     std::cout << "memoryPool size: " << platform->o_memPool.size() / 1e9 << " GB" << std::endl;
     std::cout << "occa memory usage: " << platform->device.occaDevice().memoryAllocated() / 1e9 << " GB"

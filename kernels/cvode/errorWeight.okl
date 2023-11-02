@@ -6,7 +6,6 @@
   @ restrict const dfloat *y,
   @ restrict dfloat *ewt)
 {
-
   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
     for (dlong fld = 0; fld < Nfields; ++fld) {
       ewt[n + fld * N] = 1 / (relTol * fabs(y[n + fld * N]) + absTol[fld]);

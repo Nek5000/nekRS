@@ -214,7 +214,7 @@ configFile                  <string>                                   AmgX JSON
 [CVODE]
 solver                      cbGMRES [D], GMRES                         linear solver
                               +nVector=<int>                           dimension of Krylov space
-gsType                      classical [D], modified
+gsType                      classical [D], classical1, modified
 relativeTol                 <float>                                    relative tolerance
                             1e-4 [D]
 epsLin                      <float>                                    ratio between linear and nonlinear tolerances

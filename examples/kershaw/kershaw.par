@@ -1,8 +1,8 @@
 [GENERAL] 
 #verbose = true
 polynomialOrder = 7
-dealiasing = false
-timeStepper = tombo1
+timeStepper = tombo2
+subCyclingSteps = 1
 stopAt = numSteps
 numSteps = 0
 
@@ -34,7 +34,6 @@ initialGuess = previous
 
 [VELOCITY]
 boundaryTypeMap = zeroGradient #zeroValue 
-preconditioner = none
 density = 1.0
 viscosity = 1.0
 
@@ -61,3 +60,6 @@ bp5Repetitions = 10
 bps5 = true
 bps5Repetitions = 20
 eps = 0.3
+
+bp6 = true
+bp6Repetitions = 10

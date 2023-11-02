@@ -22,8 +22,8 @@ static occa::kernel EXYKernel;
 static occa::kernel EXYZKernel;
 static occa::kernel E4Kernel;
 
-static bool buildKernelCalled = 0;
-static bool setupCalled = 0;
+static bool buildKernelCalled = false;
+static bool setupCalled = false;
 
 static int counter = 0;
 
@@ -65,6 +65,9 @@ static void E4(dlong N, dfloat a, dfloat b, int nflds, occa::memory o_1, occa::m
 
 void tavg::buildKernel(occa::properties kernelInfo)
 {
+  static bool isInitialized = false;
+  if (isInitialized) return;
+  isInitialized = true;
 
   const std::string path = getenv("NEKRS_KERNEL_DIR") + std::string("/plugins/");
   std::string kernelName, fileName;
@@ -87,7 +90,7 @@ void tavg::buildKernel(occa::properties kernelInfo)
     E4Kernel = platform->device.buildKernel(fileName, kernelInfo, true);
 
   }
-  buildKernelCalled = 1;
+  buildKernelCalled = true;
 }
 
 void tavg::reset()
@@ -195,8 +198,10 @@ void tavg::setup(nrs_t *nrs_, const fields& flds)
 
 void tavg::setup(nrs_t *nrs_)
 {
-  nrsCheck(setupCalled, MPI_COMM_SELF, EXIT_FAILURE,
-           "%s\n", "invalid second call");
+  static bool isInitialized = false;
+  if (isInitialized) return;
+  isInitialized = true;
+
 
   nrsCheck(!buildKernelCalled, MPI_COMM_SELF, EXIT_FAILURE,
            "%s\n", "called prior tavg::buildKernel()!");
@@ -228,7 +233,7 @@ void tavg::setup(nrs_t *nrs_)
     o_AVG = platform->device.malloc<dfloat>(userFieldList.size()*nrs->fieldOffset); 
   }
 
-  setupCalled = 1;
+  setupCalled = true;
 }
 
 void tavg::outfld(int _outXYZ, int FP64)

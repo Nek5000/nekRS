@@ -1,19 +1,15 @@
 #include "Urst.hpp"
 #include "nrs.hpp"
 
-void computeUrst(nrs_t *nrs, bool cvode)
+void computeUrst(nrs_t *nrs, bool relative, bool cubature)
 {
-  const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-  const bool relative = movingMesh && (nrs->Nsubsteps || cvode);
   occa::memory &o_Urst = relative ? nrs->o_relUrst : nrs->o_Urst;
   auto mesh = nrs->meshV;
   double flopCount = 0.0;
 
-  const auto cubature = (cvode) ? platform->options.compareArgs("CVODE ADVECTION TYPE", "CUBATURE") :
-                        platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"); 
-
   if (cubature) {
     nrs->UrstCubatureKernel(mesh->Nelements,
+                            static_cast<int>(relative),
                             mesh->o_cubvgeo,
                             mesh->o_cubInterpT,
                             nrs->fieldOffset,
@@ -29,11 +25,12 @@ void computeUrst(nrs_t *nrs, bool cvode)
   }
   else {
     nrs->UrstKernel(mesh->Nelements,
-        mesh->o_vgeo,
-        nrs->fieldOffset,
-        nrs->o_U,
-        mesh->o_U,
-        o_Urst);
+                    static_cast<int>(relative),
+                    mesh->o_vgeo,
+                    nrs->fieldOffset,
+                    nrs->o_U,
+                    mesh->o_U,
+                    o_Urst);
     flopCount += 24 * static_cast<double>(mesh->Nlocal);
   }
   platform->flopCounter->add("Urst", flopCount);

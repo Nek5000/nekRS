@@ -3,7 +3,7 @@ include(config/mesh.cmake)
 include(config/elliptic.cmake)
 include(config/gslib.cmake)
 
-set(SRC 
+set(NRS_SRC 
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
     src/io/fileUtils.cpp
@@ -41,7 +41,7 @@ set(SRC
     src/navierStokes/constantFlowRate.cpp
     src/navierStokes/Urst.cpp
     src/cds/cdsSolve.cpp
-    src/setup/parReader.cpp
+    src/setup/parsePar.cpp
     src/io/re2Reader.cpp
     src/setup/configReader.cpp
     src/core/timer.cpp
@@ -81,6 +81,42 @@ set(SRC
     ${FINDPTS_SOURCES}
 )
 
+set(NRS_INCLUDE
+    src
+    src/setup
+    src/bdry
+    src/core
+    src/utils
+    src/lib
+    src/io
+    src/udf
+    src/regularization
+    src/linAlg
+    src/navierStokes
+    src/neknek
+    src/cds
+    src/pointInterpolation/findpts
+    src/postProcessing
+    src/pointInterpolation
+    src/solvers/cvode
+    src/lns
+    ${BENCH_SOURCE_DIR}
+    ${BENCH_SOURCE_DIR}/core
+    ${BENCH_SOURCE_DIR}/fdm
+    ${BENCH_SOURCE_DIR}/axHelm
+    ${BENCH_SOURCE_DIR}/advsub
+    ${MESH_SOURCE_DIR}
+    ${NEKINTERFACEDIR}
+    ${OGS_SOURCE_DIR}/include
+    ${OGS_SOURCE_DIR}
+    ${FINDPTS_SOURCE_DIR}
+    ${ELLIPTIC_SOURCE_DIR}
+    PRIVATE
+    ${ELLIPTIC_SOURCE_DIR}/amgSolver/hypre
+    ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx
+    ${ELLIPTIC_SOURCE_DIR}/MG
+)
+
 set_property(
    SOURCE src/core/printHeader.cpp 
    APPEND PROPERTY COMPILE_DEFINITIONS
@@ -90,52 +126,34 @@ set_property(
    NEKRS_PATCHVERSION=${PROJECT_VERSION_PATCH}
 )
 
-add_library(nekrs-lib SHARED ${SRC})
+add_library(nekrs-lib SHARED ${NRS_SRC})
+if (NEKRS_BUILD_FLOAT)
+  add_library(nekrs-lib-fp32 SHARED ${NRS_SRC})
+endif()
+
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
+if (NEKRS_BUILD_FLOAT)
+  set_target_properties(nekrs-lib-fp32 PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-fp32)
+endif()
 
-target_include_directories(nekrs-lib 
-  PUBLIC 
-  ${CMAKE_CURRENT_BINARY_DIR}
-  src
-  src/setup
-  src/bdry
-  src/core
-  src/utils
-  src/lib
-  src/io
-  src/udf
-  src/regularization
-  src/linAlg
-  src/navierStokes
-  src/neknek
-  src/cds
-  src/pointInterpolation/findpts
-  src/postProcessing
-  src/pointInterpolation
-  src/solvers/cvode
-  src/lns
-  ${BENCH_SOURCE_DIR}
-  ${BENCH_SOURCE_DIR}/core
-  ${BENCH_SOURCE_DIR}/fdm
-  ${BENCH_SOURCE_DIR}/axHelm
-  ${BENCH_SOURCE_DIR}/advsub
-  ${MESH_SOURCE_DIR}
-  ${NEKINTERFACEDIR}
-  ${OGS_SOURCE_DIR}/include
-  ${OGS_SOURCE_DIR}
-  ${FINDPTS_SOURCE_DIR}
-  ${ELLIPTIC_SOURCE_DIR}
-  PRIVATE
-  ${ELLIPTIC_SOURCE_DIR}/amgSolver/hypre
-  ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx
-  ${ELLIPTIC_SOURCE_DIR}/MG
-)
+target_include_directories(nekrs-lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${NRS_INCLUDE}) 
+if (NEKRS_BUILD_FLOAT)
+  target_include_directories(nekrs-lib-fp32 PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${NRS_INCLUDE}) 
+endif()
 
-if(NEKRS_USE_DFLOAT_FLOAT)
-  target_compile_definitions(nekrs-lib PUBLIC -DNEKRS_USE_DFLOAT_FLOAT)
-  target_compile_definitions(nekrs-lib PUBLIC -DOGS_USE_DFLOAT_FLOAT)
+if (NEKRS_BUILD_FLOAT)
+  target_compile_definitions(nekrs-lib-fp32 PUBLIC -DNEKRS_USE_DFLOAT_FLOAT)
+  target_compile_definitions(nekrs-lib-fp32 PUBLIC -DOGS_USE_DFLOAT_FLOAT)
 endif()
 
 add_executable(nekrs-bin src/main.cpp)
+if (NEKRS_BUILD_FLOAT)
+  add_executable(nekrs-bin-fp32 src/main.cpp)
+endif()
+
 target_include_directories(nekrs-bin PRIVATE src/lib src/utils)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
+if (NEKRS_BUILD_FLOAT)
+  target_include_directories(nekrs-bin-fp32 PRIVATE src/lib src/utils)
+  set_target_properties(nekrs-bin-fp32 PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-fp32)
+endif()
