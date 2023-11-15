@@ -66,10 +66,10 @@ static void (*nek_meshmetrics_ptr)(void);
 
 void noop_func(void) {}
 
-void check_error(const char *error)
+void check_error(const char *error, const char *function)
 {
   nrsCheck(error != NULL, MPI_COMM_SELF, EXIT_FAILURE,
-           "%s\n", error);
+           "Error: \"%s\" when loading function: %s\n", error, function);
 }
 
 namespace nek {
@@ -265,72 +265,71 @@ void set_usr_handles(const char *session_in, int verbose)
 #define fname(s) (strcpy(func, (s)), strcat(func, us), func)
 
   usrdat_ptr = (void (*)(void))dlsym(handle, fname("usrdat"));
-  check_error(dlerror());
+  check_error(dlerror(), "usrdat");
   usrdat2_ptr = (void (*)(void))dlsym(handle, fname("usrdat2"));
-  check_error(dlerror());
+  check_error(dlerror(), "usrdat2");
   usrdat3_ptr = (void (*)(void))dlsym(handle, fname("usrdat3"));
-  check_error(dlerror());
+  check_error(dlerror(), "usrdat3");
   userchk_ptr = (void (*)(void))dlsym(handle, fname("userchk"));
-  check_error(dlerror());
+  check_error(dlerror(), "userchk");
 
   nek_ptr_ptr = (void (*)(void **, char *, int *))dlsym(handle, fname("nekf_ptr"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_ptr");
   nek_scptr_ptr = (void (*)(int *, void *))dlsym(handle, fname("nekf_scptr"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_scptr");
   nek_bootstrap_ptr =
       (void (*)(int *, char *, char *, char *, int, int, int))dlsym(handle, fname("nekf_bootstrap"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_bootstrap");
   nek_setup_ptr =
       (void (*)(int *, int *, int *, int *, int *, double *, double *, double *, double *, double *, int *))
           dlsym(handle, fname("nekf_setup"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_setup");
   nek_uic_ptr = (void (*)(int *))dlsym(handle, fname("nekf_uic"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_uic");
   nek_end_ptr = (void (*)(void))dlsym(handle, fname("nekf_end"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_end");
   nek_outfld_ptr = (void (*)(char *, int))dlsym(handle, fname("nekf_outfld"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_outfld");
   nek_resetio_ptr = (void (*)(void))dlsym(handle, fname("nekf_resetio"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_resetio");
   nek_setio_ptr =
       (void (*)(double *, int *, int *, int *, int *, int *, int *))dlsym(handle, fname("nekf_setio"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_setio");
   nek_restart_ptr = (void (*)(char *, int *))dlsym(handle, fname("nekf_restart"));
-  check_error(dlerror());
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_restart");
   nek_uf_ptr = (void (*)(double *, double *, double *))dlsym(handle, fname("nekf_uf"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_uf");
   nek_lglel_ptr = (int (*)(int *))dlsym(handle, fname("nekf_lglel"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_lglel");
   nek_ifoutfld_ptr = (void (*)(int *))dlsym(handle, fname("nekf_ifoutfld"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_ifoutfld");
   nek_setics_ptr = (void (*)(void))dlsym(handle, fname("nekf_setics"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_setics");
   nek_bcmap_ptr = (int (*)(int *, int *, int *))dlsym(handle, fname("nekf_bcmap"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_bcmap");
   nek_gen_bcmap_ptr = (void (*)(void))dlsym(handle, fname("nekf_gen_bcmap"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_gen_bcmap");
   nek_map_m_to_n_ptr =
       (void (*)(double *, int *, double *, int *, int *, double *, int *))dlsym(handle, fname("map_m_to_n"));
-  check_error(dlerror());
+  check_error(dlerror(), "map_m_to_n");
   nek_nbid_ptr = (int (*)(int *))dlsym(handle, fname("nekf_nbid"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_nbid");
   nek_set_vert_ptr = (long long (*)(int *, int *))dlsym(handle, fname("nekf_set_vert"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_set_vert");
 
   nek_setbd_ptr = (void (*)(double *, double *, int *))dlsym(handle, fname("setbd"));
-  check_error(dlerror());
+  check_error(dlerror(), "setbd");
   nek_setabbd_ptr = (void (*)(double *, double *, int *, int *))dlsym(handle, fname("setabbd"));
-  check_error(dlerror());
+  check_error(dlerror(), "setabbd");
 
   nek_storesol_ptr = (void (*)(void))dlsym(handle, fname("nekf_storesol"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_storesol");
   nek_restoresol_ptr = (void (*)(void))dlsym(handle, fname("nekf_restoresol"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_restoresol");
   nek_updggeom_ptr = (void (*)(void))dlsym(handle, fname("nekf_updggeom"));
-  check_error(dlerror());
+  check_error(dlerror(), "nekf_updggeom");
   nek_meshmetrics_ptr = (void (*)(void))dlsym(handle, fname("mesh_metrics"));
-  check_error(dlerror());
+  check_error(dlerror(), "mesh_metrics");
 
 #define postfix(x) x##_ptr
 #define load_or_noop(s)                                                                                      \
