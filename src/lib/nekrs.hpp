@@ -4,6 +4,7 @@
 #include <mpi.h>
 #include <functional> 
 #include <string>
+#include "inipp.hpp"
 
 namespace nekrs
 {
