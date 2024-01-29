@@ -4,15 +4,19 @@ project(NekRS LANGUAGES C CXX Fortran VERSION 23.1.1)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
-  MESSAGE(FATAL_ERROR "In-place builds are not supported. Please create a separate build directory")
+  MESSAGE(FATAL_ERROR "In-place builds are not supported. "
+    "Please create a separate build directory")
 endif()
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/nekrs" CACHE PATH "installation directory" FORCE)
+  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/nekrs" CACHE PATH
+    "installation directory" FORCE)
 endif()
 
 if(${CMAKE_INSTALL_PREFIX} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
-    MESSAGE(FATAL_ERROR "The current CMAKE_INSTALL_PREFIX points at the build tree. In-place builds are not supported!")
+    MESSAGE(FATAL_ERROR
+      "The current CMAKE_INSTALL_PREFIX points at the build tree. "
+      "In-place builds are not supported!")
 endif()
 
 include(CheckCCompilerFlag)
@@ -90,7 +94,8 @@ string(COMPARE EQUAL "${CMAKE_CXX_COMPILER_ID}" "AppleClang" USING_APPLE_LLVM)
 string(COMPARE EQUAL "${CMAKE_CXX_COMPILER_ID}" "NVHPC" USING_NVHPC)
 
 if(USING_GNU OR USING_LLVM OR USING_APPLE_LLVM)
-  set(NEKRS_COMPILER_DEFAULT_FLAGS "-O2 -g -march=native -mtune=native -ftree-vectorize")
+  set(NEKRS_COMPILER_DEFAULT_FLAGS
+    "-O2 -g -march=native -mtune=native -ftree-vectorize")
   if (USING_GNU AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.1)
     message(FATAL_ERROR "GNU compiler version must be at least 9.1!")
   endif()
@@ -100,32 +105,47 @@ else()
   set(NEKRS_COMPILER_DEFAULT_FLAGS "-O2 -g")
 endif()
 
-set(NEKRS_CXX_FLAGS "${NEKRS_COMPILER_DEFAULT_FLAGS}" CACHE STRING "C++ compiler flags")
-set(NEKRS_C_FLAGS "${NEKRS_COMPILER_DEFAULT_FLAGS}" CACHE STRING "C compiler flags")
-set(NEKRS_Fortran_FLAGS "${NEKRS_COMPILER_DEFAULT_FLAGS}" CACHE STRING "Fortran compiler flags")
+set(NEKRS_CXX_FLAGS "${NEKRS_COMPILER_DEFAULT_FLAGS}" CACHE STRING
+  "C++ compiler flags")
+set(NEKRS_C_FLAGS "${NEKRS_COMPILER_DEFAULT_FLAGS}" CACHE STRING
+  "C compiler flags")
+set(NEKRS_Fortran_FLAGS "${NEKRS_COMPILER_DEFAULT_FLAGS}" CACHE STRING
+  "Fortran compiler flags")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO ${NEKRS_CXX_FLAGS})
 set(CMAKE_C_FLAGS_RELWITHDEBINFO ${NEKRS_C_FLAGS})
 set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO ${NEKRS_Fortran_FLAGS})
 
-set(OCCA_CXX "${MPI_UNDERLYING_COMPILER}" CACHE STRING "C++ compiler for OCCA JIT compile")
+set(OCCA_CXX "${MPI_UNDERLYING_COMPILER}" CACHE STRING
+  "C++ compiler for OCCA JIT compile")
 if(USING_INTEL_LLVM)
-  set(OCCA_CXXFLAGS "-w -O3 -g -xHost" CACHE STRING "C++ flags for OCCA JIT compile")
+  set(OCCA_CXXFLAGS "-w -O3 -g -xHost" CACHE STRING
+    "C++ flags for OCCA JIT compile")
 elseif(USING_GNU OR USING_LLVM OR USING_APPLE_LLVM)
-  set(OCCA_CXXFLAGS "-w -O3 -g -march=native -mtune=native -ffast-math" CACHE STRING "C++ flags for OCCA JIT compile")
+  set(OCCA_CXXFLAGS "-w -O3 -g -march=native -mtune=native -ffast-math" CACHE
+    STRING "C++ flags for OCCA JIT compile")
 elseif(USING_NVHPC)
-  set(OCCA_CXXFLAGS "-w -O3 -g -fast" CACHE STRING "C++ flags for OCCA JIT compile")
+  set(OCCA_CXXFLAGS "-w -O3 -g -fast" CACHE STRING
+    "C++ flags for OCCA JIT compile")
 else()
   set(OCCA_CXXFLAGS "-w -O3 -g" CACHE STRING "C++ flags for OCCA JIT compile")
 endif()
 
-set(OCCA_CUDA_COMPILER_FLAGS "-w -O3 -lineinfo --use_fast_math" CACHE STRING "CUDA flags for OCCA JIT compile")
+set(OCCA_CUDA_COMPILER_FLAGS "-w -O3 -lineinfo --use_fast_math" CACHE STRING
+  "CUDA flags for OCCA JIT compile")
 if(USING_NVHPC)
-  set(OCCA_CUDA_COMPILER_FLAGS "${OCCA_CUDA_COMPILER_FLAGS} -ccbin ${MPI_UNDERLYING_COMPILER}")
+  set(OCCA_CUDA_COMPILER_FLAGS
+    "${OCCA_CUDA_COMPILER_FLAGS} -ccbin ${MPI_UNDERLYING_COMPILER}")
 endif()
-set(OCCA_HIP_COMPILER_FLAGS "-w -O3 -g -ffp-contract=fast -funsafe-math-optimizations -ffast-math -munsafe-fp-atomics" CACHE STRING "HIP flags for OCCA JIT compile")
-set(OCCA_DPCPP_COMPILER_FLAGS "-w -O3 -fsycl -fdebug-info-for-profiling -gline-tables-only -ffp-contract=fast" CACHE STRING "DPC++ flags for OCCA JIT compile")
-set(OCCA_OPENCL_COMPILER_FLAGS "-w -cl-std=CL2.0 -cl-unsafe-math-optimizations -cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros" CACHE STRING "OPENCL flags for OCCA JIT compile")
+set(OCCA_HIP_COMPILER_FLAGS "-w -O3 -g -ffp-contract=fast "
+  "-funsafe-math-optimizations -ffast-math -munsafe-fp-atomics" CACHE STRING
+  "HIP flags for OCCA JIT compile")
+set(OCCA_DPCPP_COMPILER_FLAGS "-w -O3 -fsycl -fdebug-info-for-profiling "
+  "-gline-tables-only -ffp-contract=fast" CACHE STRING
+  "DPC++ flags for OCCA JIT compile")
+set(OCCA_OPENCL_COMPILER_FLAGS "-w -cl-std=CL2.0 -cl-unsafe-math-optimizations "
+  "-cl-fast-relaxed-math -cl-mad-enable -cl-no-signed-zeros" CACHE STRING
+  "OPENCL flags for OCCA JIT compile")
 
 set(OCCA_FOUND ON)
 
@@ -135,9 +155,12 @@ endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(powerpc|ppc)64le" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
   string(REPLACE "-march" "-mcpu" OCCA_CXXFLAGS ${OCCA_CXXFLAGS})
-  string(REPLACE "-march" "-mcpu" CMAKE_Fortran_FLAGS_RELWITHDEBINFO ${CMAKE_Fortran_FLAGS_RELWITHDEBINFO})
-  string(REPLACE "-march" "-mcpu" CMAKE_C_FLAGS_RELWITHDEBINFO ${CMAKE_C_FLAGS_RELWITHDEBINFO})
-  string(REPLACE "-march" "-mcpu" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+  string(REPLACE "-march" "-mcpu" CMAKE_Fortran_FLAGS_RELWITHDEBINFO
+    ${CMAKE_Fortran_FLAGS_RELWITHDEBINFO})
+  string(REPLACE "-march" "-mcpu" CMAKE_C_FLAGS_RELWITHDEBINFO
+    ${CMAKE_C_FLAGS_RELWITHDEBINFO})
+  string(REPLACE "-march" "-mcpu" CMAKE_CXX_FLAGS_RELWITHDEBINFO
+    ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
 endif()
 
 set(ENABLE_CUDA ON CACHE BOOL "Enable OCCA CUDA support")
@@ -243,9 +266,13 @@ foreach(DIR ${plugins})
   ELSE()
       CONTINUE()
   ENDIF()
-  set(UDF_LIBS "${UDF_LIBS} ${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${PLUGIN_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-  set(PLUGINS_RPATH "${PLUGINS_RPATH};${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/lib")
-  set(UDF_INCLUDES "${UDF_INCLUDES};${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/include")
+  set(UDF_LIBS "${UDF_LIBS} ${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/"
+    "lib/${CMAKE_SHARED_LIBRARY_PREFIX}${PLUGIN_NAME}"
+    "${CMAKE_SHARED_LIBRARY_SUFFIX}")
+  set(PLUGINS_RPATH "${PLUGINS_RPATH};${CMAKE_INSTALL_PREFIX}/3rd_party/"
+    "${PLUGIN_NAME}/lib")
+  set(UDF_INCLUDES "${UDF_INCLUDES};${CMAKE_INSTALL_PREFIX}/3rd_party/"
+    "${PLUGIN_NAME}/include")
 endforeach()
 
 # cvode
@@ -297,9 +324,11 @@ include(config/nek5000.cmake)
 include(config/nrs.cmake)
 
 # Link dependencies
-target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE nekrs-hypre nekrs-hypre-device gs ${GSLIB} blas lapack ${CMAKE_DL_LIBS})
+target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE nekrs-hypre
+  nekrs-hypre-device gs ${GSLIB} blas lapack ${CMAKE_DL_LIBS})
 if (NEKRS_BUILD_FLOAT)
-  target_link_libraries(nekrs-lib-fp32 PUBLIC libocca PRIVATE nekrs-hypre nekrs-hypre-device gs ${GSLIB} blas lapack ${CMAKE_DL_LIBS})
+  target_link_libraries(nekrs-lib-fp32 PUBLIC libocca PRIVATE
+    nekrs-hypre nekrs-hypre-device gs ${GSLIB} blas lapack ${CMAKE_DL_LIBS})
 endif()
 
 if(OpenMP_FOUND)
@@ -312,16 +341,19 @@ endif()
 if(ENABLE_AMGX AND OCCA_CUDA_ENABLED)
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_AMGX)
   target_link_libraries(nekrs-lib PUBLIC amgxsh amgx)
-  target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include 3rd_party/AMGX/core/include)
+  target_include_directories(nekrs-lib PUBLIC 3rd_party/AMGX/base/include
+    3rd_party/AMGX/core/include)
   if (NEKRS_BUILD_FLOAT)
     target_compile_definitions(nekrs-lib-fp32 PUBLIC -DENABLE_AMGX)
     target_link_libraries(nekrs-lib-fp32 PUBLIC amgxsh amgx)
-    target_include_directories(nekrs-lib-fp32 PUBLIC 3rd_party/AMGX/base/include 3rd_party/AMGX/core/include)
+    target_include_directories(nekrs-lib-fp32 PUBLIC 3rd_party/AMGX/base/include
+      3rd_party/AMGX/core/include)
   endif()
 endif()
 
 if (ENABLE_CVODE)
-  target_link_libraries (nekrs-lib PUBLIC SUNDIALS::cvode_shared SUNDIALS::nvecmpiplusx_shared SUNDIALS::nvecserial_shared)
+  target_link_libraries (nekrs-lib PUBLIC SUNDIALS::cvode_shared
+    SUNDIALS::nvecmpiplusx_shared SUNDIALS::nvecserial_shared)
   target_include_directories(nekrs-lib PUBLIC 3rd_party/cvode/include)
   target_compile_definitions(nekrs-lib PUBLIC -DENABLE_CVODE)
   if (OCCA_CUDA_ENABLED)
@@ -361,7 +393,6 @@ else(NEKRS_GPU_MPI)
   set(GPU_MPI "0")
 endif()
 
-
 configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/config/nekrs.conf.in
   ${CMAKE_INSTALL_PREFIX}/nekrs.conf
@@ -370,7 +401,8 @@ configure_file(
 file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/3rd_party)
 
 install(
-  TARGETS nekrs-lib nekrs-hypre nekrs-hypre-device nekrs-bin axhelm-bin advsub-bin fdm-bin
+  TARGETS nekrs-lib nekrs-hypre nekrs-hypre-device nekrs-bin axhelm-bin
+  advsub-bin fdm-bin
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -387,14 +419,19 @@ endif()
 
 # Trailing slash prevents parent directory from being copied
 install(DIRECTORY scripts/ DESTINATION bin
-  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-install(DIRECTORY kernels/ DESTINATION kernels FILES_MATCHING REGEX "\.okl$|\.c|\.h$|\.hpp$|")
-install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
+  FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
+  WORLD_READ WORLD_EXECUTE)
+install(DIRECTORY kernels/ DESTINATION kernels FILES_MATCHING REGEX
+  "\.okl$|\.c|\.h$|\.hpp$|")
+install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX
+  "\.hpp$|\.h$|\.tpp$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
-install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
+install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX
+  "\.hpp$|\.cpp$" EXCLUDE)
 install(FILES doc/parHelp.txt DESTINATION doc)
 
-# Examples will follow a different policy -- only copy if source tree is newer than install tree
+# Examples will follow a different policy -- only copy if source tree is newer
+# than install tree
 file(GLOB_RECURSE EXAMPLE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/examples/*)
 configure_file(${CMAKE_CURRENT_LIST_DIR}/config/install_examples.cmake.in
         ${CMAKE_CURRENT_BINARY_DIR}/install_examples.cmake @ONLY)
