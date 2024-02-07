@@ -62,6 +62,12 @@ static void (*nek_restoresol_ptr)(void);
 static void (*nek_updggeom_ptr)(void);
 static void (*nek_meshmetrics_ptr)(void);
 
+/* box solver */
+static void (*nek_box_crs_setup)(void);
+static void (*nek_box_map_vtx_to_box)(void);
+static void (*nek_box_map_box_to_vtx)(void);
+static void (*nek_box_crs_solve)(void);
+
 void noop_func(void) {}
 
 void check_error(const char *error)
@@ -382,6 +388,18 @@ void set_usr_handles(const char *session_in, int verbose)
   nek_meshmetrics_ptr = (void (*)(void))dlsym(handle, fname("mesh_metrics"));
   check_error(dlerror());
 
+ /* box solver */
+  nek_box_crs_setup = (void (*)(void))dlsym(handle, fname("nekf_box_crs_setup"));
+  check_error(dlerror());
+  nek_box_map_vtx_to_box = (void (*)())dlsym(handle,
+    fname("nekf_box_map_vtx_to_box"));
+  check_error(dlerror());
+  nek_box_map_box_to_vtx = (void (*)())dlsym(handle,
+    fname("nekf_box_map_box_to_vtx"));
+  check_error(dlerror());
+  nek_box_crs_solve = (void (*)())dlsym(handle, fname("nekf_box_crs_solve"));
+  check_error(dlerror());
+
 #define postfix(x) x##_ptr
 #define load_or_noop(s)                                                                                      \
 do {                                                                                                         \
@@ -599,7 +617,9 @@ void buildNekInterface(int ldimt, int N, int np, setupAide &options)
         lelt = nelgt;
 
       const std::string sizeFile = cache_dir + "/SIZE";
-      mkSIZE(N + 1, 1, lelt, nelgt, ndim, np, ldimt, options, sizeFile.c_str());
+      // FIXME TR: This is a temporary workaround till we port Fortran
+      // code to C.
+      mkSIZE(N + 1, 3*(N+1)/2, lelt, nelgt, ndim, np, ldimt, options, sizeFile.c_str());
 
       if (buildRequired)
         copyFile(usrFile.c_str(), usrFileCache.c_str());
@@ -858,6 +878,22 @@ int setup(nrs_t *nrs_in)
   nekData.wx = (double *)ptr("wx");
   nekData.wy = (double *)ptr("wy");
   nekData.wz = (double *)ptr("wz");
+
+  /* box solver */
+  nekData.box_e = (double*) ptr("box_e");
+  nekData.box_r = (double*) ptr("box_r");
+  nekData.box_mask = (double*) ptr("box_mask");
+  nekData.schwz_mask = (double*) ptr("schwz_mask");
+  nekData.schwz_amat = (double*) ptr("schwz_amat");
+  nekData.schwz_xyz = (double*) ptr("schwz_xyz");
+
+  nekData.schwz_ne = (int*) ptr("schwz_ne");
+  nekData.schwz_nw = (int*) ptr("schwz_nw");
+  nekData.schwz_ncr = (int*) ptr("schwz_ncr");
+  nekData.schwz_frontier = (int*) ptr("schwz_frontier");
+
+  nekData.schwz_vtx = (long long*) ptr("schwz_vtx");
+  nekData.schwz_eids = (long long*) ptr("schwz_eids");
 
   int cht = 0;
   if (nekData.nelv != nekData.nelt && nscal)
@@ -1160,4 +1196,20 @@ void recomputeGeometry() { (*nek_updggeom_ptr)(); }
 
 void printMeshMetrics() { (*nek_meshmetrics_ptr)(); }
 
+/* box solver */
+void box_crs_setup() {
+  (*nek_box_crs_setup)();
+}
+
+void box_map_vtx_to_box() {
+  (*nek_box_map_vtx_to_box)();
+}
+
+void box_map_box_to_vtx() {
+  (*nek_box_map_box_to_vtx)();
+}
+
+void box_crs_solve() {
+  (*nek_box_crs_solve)();
+}
 } // namespace nek

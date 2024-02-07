@@ -3,7 +3,7 @@ include(config/mesh.cmake)
 include(config/elliptic.cmake)
 include(config/gslib.cmake)
 
-set(NRS_SRC 
+set(NRS_SRC
     src/lib/nekrs.cpp
     src/io/writeFld.cpp
     src/io/fileUtils.cpp
@@ -114,11 +114,12 @@ set(NRS_INCLUDE
     PRIVATE
     ${ELLIPTIC_SOURCE_DIR}/amgSolver/hypre
     ${ELLIPTIC_SOURCE_DIR}/amgSolver/amgx
+    ${ELLIPTIC_SOURCE_DIR}/amgSolver/box
     ${ELLIPTIC_SOURCE_DIR}/MG
 )
 
 set_property(
-   SOURCE src/core/printHeader.cpp 
+   SOURCE src/core/printHeader.cpp
    APPEND PROPERTY COMPILE_DEFINITIONS
    GITCOMMITHASH="${GIT_COMMIT_HASH}"
    NEKRS_VERSION=${PROJECT_VERSION_MAJOR}
@@ -133,12 +134,15 @@ endif()
 
 set_target_properties(nekrs-lib PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 if (NEKRS_BUILD_FLOAT)
-  set_target_properties(nekrs-lib-fp32 PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-fp32)
+  set_target_properties(nekrs-lib-fp32 PROPERTIES LINKER_LANGUAGE CXX
+    OUTPUT_NAME nekrs-fp32)
 endif()
 
-target_include_directories(nekrs-lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${NRS_INCLUDE}) 
+target_include_directories(nekrs-lib PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
+  ${NRS_INCLUDE})
 if (NEKRS_BUILD_FLOAT)
-  target_include_directories(nekrs-lib-fp32 PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${NRS_INCLUDE}) 
+  target_include_directories(nekrs-lib-fp32 PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
+    ${NRS_INCLUDE})
 endif()
 
 if (NEKRS_BUILD_FLOAT)
@@ -155,5 +159,16 @@ target_include_directories(nekrs-bin PRIVATE src/lib src/utils)
 set_target_properties(nekrs-bin PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs)
 if (NEKRS_BUILD_FLOAT)
   target_include_directories(nekrs-bin-fp32 PRIVATE src/lib src/utils)
-  set_target_properties(nekrs-bin-fp32 PROPERTIES LINKER_LANGUAGE CXX OUTPUT_NAME nekrs-fp32)
+  set_target_properties(nekrs-bin-fp32 PROPERTIES LINKER_LANGUAGE CXX
+    OUTPUT_NAME nekrs-fp32)
+endif()
+
+if (ENABLE_SUITESPARSE)
+  target_link_libraries(nekrs-lib PRIVATE
+    ${SUITESPARSE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}cholmod${CMAKE_SHARED_LIBRARY_SUFFIX}
+    ${SUITESPARSE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}colamd${CMAKE_SHARED_LIBRARY_SUFFIX}
+    ${SUITESPARSE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}amd${CMAKE_SHARED_LIBRARY_SUFFIX}
+    ${SUITESPARSE_LIBDIR}/${CMAKE_SHARED_LIBRARY_PREFIX}suitesparseconfig${CMAKE_SHARED_LIBRARY_SUFFIX})
+  target_include_directories(nekrs-lib PRIVATE ${SUITESPARSE_INCDIR})
+  target_compile_definitions(nekrs-lib PRIVATE -DENABLE_SUITESPARSE)
 endif()

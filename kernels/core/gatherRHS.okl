@@ -1,0 +1,10 @@
+@kernel void gatherRHS(const dlong n, @ restrict const dlong *offsets,
+                       @ restrict const dlong *ids, @ restrict const float *rhs,
+                       @ restrict float *cx) {
+  for (dlong i = 0; i < n; ++i; @tile(p_blockSize, @outer, @inner))  {
+    float s = 0;
+    for (dlong j = offsets[i]; j < offsets[i + 1]; j++)
+      s += rhs[ids[j]];
+    cx[i] = s;
+  }
+}

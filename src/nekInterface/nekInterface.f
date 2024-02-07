@@ -129,6 +129,33 @@ c-----------------------------------------------------------------------
          ptr = loc(bfz(1,1,1,1))
       elseif (id .eq. 'bq') then
          ptr = loc(bq(1,1,1,1,1))
+C----------------------------------------------------------------------
+C     box solver
+C----------------------------------------------------------------------
+      elseif (id .eq. 'box_e') then
+         ptr = loc(box_e(1))
+      elseif (id .eq. 'box_r') then
+         ptr = loc(box_r(1))
+      elseif (id .eq. 'box_mask') then
+         ptr = loc(box_mask(1))
+      elseif (id .eq. 'schwz_ne') then
+         ptr = loc(schwz_ne)
+      elseif (id .eq. 'schwz_nw') then
+         ptr = loc(schwz_nw)
+      elseif (id .eq. 'schwz_ncr') then
+         ptr = loc(schwz_ncr)
+      elseif (id .eq. 'schwz_mask') then
+         ptr = loc(schwz_mask(1))
+      elseif (id .eq. 'schwz_amat') then
+         ptr = loc(schwz_amat(1))
+      elseif (id .eq. 'schwz_vtx') then
+         ptr = loc(schwz_vtx(1))
+      elseif (id .eq. 'schwz_eids') then
+         ptr = loc(schwz_eids(1))
+      elseif (id .eq. 'schwz_xyz') then
+         ptr = loc(schwz_xyz(1))
+      elseif (id .eq. 'schwz_frontier') then
+         ptr = loc(schwz_frontier(1))
       else
          write(6,*) 'ERROR: nek_ptr cannot find ', id
          call exitt 
@@ -1164,3 +1191,72 @@ C----------------------------------------------------------------------
 
       return
       end
+C----------------------------------------------------------------------
+C     box solver
+C----------------------------------------------------------------------
+      subroutine nekf_box_crs_setup()
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      integer null_space,nxc,ncr
+      integer ne,nv,nw
+      logical ifdbg
+
+      call setup_schwz_2l_crs
+      call set_coarse_mask(box_mask,null_space) ! This is the Q1 mask
+
+      nxc=2
+      nzc=1
+      if(if3d) then
+        nzc=nxc
+      endif
+
+      schwz_ne=nelv
+      nv=lvrs
+      call nrs_setup_schwarz_mat_mask(schwz_ne,nv,schwz_vtx,nxc,nzc,
+     $  schwz_amat,schwz_mask)
+
+      call nrs_init_elements(schwz_ne,schwz_eids,lvrs,schwz_xyz)
+
+      schwz_nw=0
+      ifdbg=.true.
+      call nrs_find_overlap_elements(schwz_ne,schwz_eids,nv,schwz_vtx,
+     $  schwz_xyz,schwz_amat,schwz_mask,schwz_nw,schwz_frontier,lelmrs,
+     $  ifdbg)
+
+      schwz_ncr=nxc*nxc*nxc
+
+      call nrs_set_global_crs(box_mask)
+
+      return
+      end
+C----------------------------------------------------------------------
+      subroutine nekf_box_map_vtx_to_box
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      call map_vtx_to_box(box_vb,box_r)
+
+      end
+C----------------------------------------------------------------------
+      subroutine nekf_box_crs_solve
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      call box_crs_solve_h1(box_ub,box_vb)
+
+      return
+      end
+C----------------------------------------------------------------------
+      subroutine nekf_box_map_box_to_vtx
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKINTF'
+
+      call map_box_to_vtx(box_e,box_ub)
+
+      end
+C----------------------------------------------------------------------

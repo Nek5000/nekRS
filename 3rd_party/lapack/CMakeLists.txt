@@ -274,7 +274,7 @@ message(STATUS "Build deprecated routines: ${BUILD_DEPRECATED}")
 # --------------------------------------------------
 # Precision to build
 # By default all precisions are generated
-option(BUILD_SINGLE "Build single precision real" OFF)
+option(BUILD_SINGLE "Build single precision real" ON)
 option(BUILD_DOUBLE "Build double precision real" ON)
 option(BUILD_COMPLEX "Build single precision complex" OFF)
 option(BUILD_COMPLEX16 "Build double precision complex" OFF)

@@ -125,6 +125,9 @@ void compileKernels() {
   kernelName = "copyPfloatToDfloat";
   platform->copyPfloatToDfloatKernel = platform->kernels.get(kernelName);
 
+  kernelName = "gatherRHS";
+  platform->gatherRHSKernel = platform->kernels.get(kernelName);
+
   MPI_Barrier(platform->comm.mpiComm);
   const double loadTime = MPI_Wtime() - tStart;
 

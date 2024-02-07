@@ -173,6 +173,7 @@ set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
 set(ENABLE_HYPRE_GPU OFF CACHE BOOL "Enable HYPRE GPU support")
 set(NEKRS_GPU_MPI ON CACHE BOOL "Enable GPU aware MPI")
 set(ENABLE_CVODE OFF CACHE BOOL "Enable CVODE support")
+set(ENABLE_GPU_BLAS ON CACHE BOOL "Enable GPU BLAS support")
 
 set(NEKRS_BUILD_FLOAT ON CACHE BOOL "Build dfloat = float version")
 
@@ -362,6 +363,17 @@ if (ENABLE_CVODE)
     target_link_libraries (nekrs-lib PUBLIC SUNDIALS::nveccuda_shared)
     target_compile_definitions(nekrs-lib PUBLIC -DENABLE_CUDA)
   endif()
+endif()
+
+# GPU Blas
+# FIXME TR: Temporary hack for now.
+if (ENABLE_GPU_BLAS)
+  find_package(CUDAToolkit REQUIRED)
+  #target_link_libraries(nekrs-lib PRIVATE CUDA::cublas)
+  #target_include_directories(nekrs-lib PRIVATE $ENV{BLAS_INC_DIR})
+  #target_link_libraries(nekrs-lib PRIVATE LAPACK::LAPACK BLAS::BLAS)
+  target_compile_definitions(nekrs-lib PRIVATE -DENABLE_BLAS)
+  target_compile_definitions(nekrs-lib PRIVATE -DENABLE_GPU_BLAS)
 endif()
 
 target_link_libraries(nekrs-bin PRIVATE nekrs-lib)

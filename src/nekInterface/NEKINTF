@@ -12,3 +12,28 @@
 
       common /INTNRS/ getu, getp, gett, getps, llelt, lldimt
       integer         getu, getp, gett, getps, llelt, lldimt
+
+C----------------------------------------------------------------------
+C     box solver
+C----------------------------------------------------------------------
+      integer lelmrs,lvrs
+      parameter(lelmrs=3*lelt+200, lvrs=2**ldim)
+
+      real box_e,box_r,box_mask,box_ub,box_vb,schwz_amat,
+     $  schwz_mask,schwz_xyz
+      integer*8 schwz_vtx, schwz_eids
+      integer schwz_frontier,schwz_ne,schwz_nw,schwz_ncr
+      common /BOXCRS/ box_e(lx1*ly1*lz1*lelmrs),
+     $                box_r(lx1*ly1*lz1*lelmrs),
+     $                box_mask(lvrs*lelmrs),
+     $                box_ub(lvrs*lelmrs),
+     $                box_vb(lvrs*lelmrs),
+     $                schwz_amat(lvrs*lvrs*lelmrs),
+     $                schwz_mask(lvrs*lelmrs),
+     $                schwz_vtx(lvrs*lelmrs),
+     $                schwz_eids(lelmrs),
+     $                schwz_xyz(ldim*lvrs*lelmrs),
+     $                schwz_frontier(lvrs*lelmrs),
+     $                schwz_ne,
+     $                schwz_nw,
+     $                schwz_ncr
