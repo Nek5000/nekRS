@@ -17,14 +17,11 @@
     }                                                                          \
   }
 
-#define BOX_XXT 1
-#define BOX_CHOLMOD 2
 #define BOX_GPU_BLAS 4
 
 struct box {
   // User input.
-  uint un;
-  uint ncr;
+  uint un, ncr;
   gs_dom dom;
   unsigned algo, mult;
   // Computed data structures for Schwarz.
@@ -42,19 +39,6 @@ struct box {
 };
 
 void box_debug(const int verbose, const char *fmt, ...);
-
-// ASM1: CHOLMOD, redundant API interface
-struct cholmod_csr;
-struct cholmod_csr *sparse_cholmod_factor(uint n, const uint *Arp,
-                                          const uint *Aj, const void *A,
-                                          gs_dom dom, buffer *bfr);
-void sparse_cholmod_solve(void *x, struct cholmod_csr *factor, const void *r);
-void sparse_cholmod_free(struct cholmod_csr *factor);
-
-// ASM1: CHOLMOD API interface.
-void asm1_cholmod_setup(struct csr *A, unsigned null_space, struct box *box);
-void asm1_cholmod_solve(void *x, struct box *box, const void *r);
-void asm1_cholmod_free(struct box *box);
 
 // ASM1: GPU BLAS interface.
 void asm1_gpu_blas_setup(struct csr *A, unsigned null_space, struct box *box,

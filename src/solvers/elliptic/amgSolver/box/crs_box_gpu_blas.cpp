@@ -1,5 +1,6 @@
 #if defined(ENABLE_GPU_BLAS)
 
+#include <stdio.h>
 #include <hip/hip_runtime.h>
 #include <hipblas/hipblas.h>
 #include <lapacke.h>

@@ -365,12 +365,10 @@ if (ENABLE_CVODE)
   endif()
 endif()
 
-# GPU Blas
 # FIXME TR: Temporary hack for now.
 if (ENABLE_GPU_BLAS)
   find_package(CUDAToolkit REQUIRED)
   #target_link_libraries(nekrs-lib PRIVATE CUDA::cublas)
-  #target_include_directories(nekrs-lib PRIVATE $ENV{BLAS_INC_DIR})
   #target_link_libraries(nekrs-lib PRIVATE LAPACK::LAPACK BLAS::BLAS)
   target_compile_definitions(nekrs-lib PRIVATE -DENABLE_BLAS)
   target_compile_definitions(nekrs-lib PRIVATE -DENABLE_GPU_BLAS)

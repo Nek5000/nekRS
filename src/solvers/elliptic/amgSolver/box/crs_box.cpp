@@ -179,27 +179,17 @@ static void crs_box_setup_aux(struct box *box, uint ne, const long long *vtx,
   }
   free(tmp_mask);
 
-  uint null_space = 1;
-  if (mask_min < 1e-10)
-    null_space = 0;
+  uint null_space = (mask_min < 1e-10) ? 0 : 1;
   assert(null_space == 0);
 
   box->cn = 0;
   box->u2c = NULL;
   box->ss = NULL;
 
-  if (box->algo == BOX_XXT) {
-    crs_xxt_setup_inter_comm(box->sn, tmp_vtx, nnz, ia, ja, va, null_space,
-                             inter_comm, box->dom, &box->local);
-  } else {
-    box->u2c = (int *)get_u2c(&box->cn, box->sn, tmp_vtx, &box->bfr);
-    struct csr *A = csr_setup(nnz, ia, ja, va, box->u2c, tol, &box->bfr);
-    if (box->algo == BOX_CHOLMOD)
-      asm1_cholmod_setup(A, null_space, box);
-    if (box->algo == BOX_GPU_BLAS)
-      asm1_gpu_blas_setup(A, null_space, box, platform->gatherRHSKernel);
-    csr_free(A);
-  }
+  box->u2c = (int *)get_u2c(&box->cn, box->sn, tmp_vtx, &box->bfr);
+  struct csr *A = csr_setup(nnz, ia, ja, va, box->u2c, tol, &box->bfr);
+  asm1_gpu_blas_setup(A, null_space, box, platform->gatherRHSKernel);
+  csr_free(A);
 
   free(ia), free(ja);
 
@@ -324,12 +314,6 @@ void crs_box_solve(void *x, struct box *box, const void *rhs) {
   // ASM1.
   timer_tic(c);
   switch (box->algo) {
-  case BOX_XXT:
-    crs_xxt_solve_inter_comm((double *)box->sx, (const double *)box->srhs);
-    break;
-  case BOX_CHOLMOD:
-    asm1_cholmod_solve(box->sx, box, box->srhs);
-    break;
   case BOX_GPU_BLAS:
     asm1_gpu_blas_solve(box->sx, box, box->srhs);
     break;
@@ -689,12 +673,6 @@ void crs_box_free(struct box *box) {
     return;
 
   switch (box->algo) {
-  case BOX_XXT:
-    crs_xxt_finalize_inter_comm();
-    break;
-  case BOX_CHOLMOD:
-    asm1_cholmod_free(box);
-    break;
   case BOX_GPU_BLAS:
     asm1_gpu_blas_free(box);
     break;
