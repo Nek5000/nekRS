@@ -31,6 +31,7 @@ set(ELLIPTIC_SOURCES
         ${ELLIPTIC_SOURCE_DIR}/MG/level.cpp
         ${ELLIPTIC_SOURCE_DIR}/MG/MGSolver.cpp
         ${ELLIPTIC_SOURCE_DIR}/ellipticZeroMean.cpp
+        ${ELLIPTIC_SOURCE_DIR}/amgSolver/box/nekrs_crs_aux.cpp
         ${ELLIPTIC_SOURCE_DIR}/amgSolver/box/nekrs_crs.cpp
         ${ELLIPTIC_SOURCE_DIR}/amgSolver/box/crs_box.cpp
         ${ELLIPTIC_SOURCE_DIR}/amgSolver/box/crs_box_csr.cpp
