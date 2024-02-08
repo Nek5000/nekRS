@@ -30,8 +30,8 @@ add_subdirectory(utils)
 
 option(LAPACKE_BUILD_SINGLE "Build LAPACKE single precision real" ON)
 option(LAPACKE_BUILD_DOUBLE "Build LAPACKE double precision real" ON)
-option(LAPACKE_BUILD_COMPLEX "Build LAPACKE single precision complex" ON)
-option(LAPACKE_BUILD_COMPLEX16 "Build LAPACKE double precision complex" ON)
+option(LAPACKE_BUILD_COMPLEX "Build LAPACKE single precision complex" OFF)
+option(LAPACKE_BUILD_COMPLEX16 "Build LAPACKE double precision complex" OFF)
 
 foreach(precision SINGLE DOUBLE COMPLEX COMPLEX16)
   if(LAPACKE_BUILD_${precision} AND NOT BUILD_${precision})
