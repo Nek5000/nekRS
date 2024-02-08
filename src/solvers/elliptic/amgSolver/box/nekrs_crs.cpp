@@ -56,13 +56,19 @@ static int get_local_crs_galerkin(double *a, int nc, mesh_t *mf,
                                   elliptic_t *ef) {
   int nelt = mf->Nelements, Np = mf->Np;
   size_t size = nelt * Np;
+  size_t ncrs = nc * Np;
 
-  dfloat *b = tcalloc(dfloat, nc * Np);
-  check_alloc(b);
+  double *b_ = tcalloc(double, ncrs);
+  dfloat *b = tcalloc(dfloat, ncrs);
+  check_alloc(b_), check_alloc(b);
   for (int j = 0; j < nc; j++)
-    gen_crs_basis(b, j, mf->gllz, mf->Nq, mf->Np);
+    gen_crs_basis(b_, j, mf->gllz, mf->Nq, mf->Np);
 
-  dfloat *u = tcalloc(dfloat, size), *w = tcalloc(dfloat, size);
+  for (size_t i = 0; i < ncrs; i++)
+    b[i] = b_[i];
+
+  dfloat *u = tcalloc(dfloat, size);
+  dfloat *w = tcalloc(dfloat, size);
   check_alloc(u), check_alloc(w);
 
   occa::memory o_u = platform->device.malloc(size * sizeof(dfloat), u);
@@ -82,15 +88,16 @@ static int get_local_crs_galerkin(double *a, int nc, mesh_t *mf,
     platform->copyPfloatToDfloatKernel(mf->Nlocal, o_wpf, o_w);
     o_w.copyTo(w);
 
-    for (e = 0; e < nelt; e++)
+    for (e = 0; e < nelt; e++) {
       for (i = 0; i < nc; i++) {
         a[i + j * nc + e * nc * nc] = 0.0;
         for (k = 0; k < Np; k++)
           a[i + j * nc + e * nc * nc] += b[k + i * Np] * w[k + e * Np];
       }
+    }
   }
 
-  free(b), free(w), free(u);
+  free(b), free(b_), free(w), free(u);
   o_u.free(), o_w.free(), o_upf.free(), o_wpf.free();
 
   return 0;
