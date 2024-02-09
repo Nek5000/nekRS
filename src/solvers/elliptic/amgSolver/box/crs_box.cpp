@@ -188,7 +188,7 @@ static void crs_box_setup_aux(struct box *box, uint ne, const long long *vtx,
 
   box->u2c = (int *)get_u2c(&box->cn, box->sn, tmp_vtx, &box->bfr);
   struct csr *A = csr_setup(nnz, ia, ja, va, box->u2c, tol, &box->bfr);
-  asm1_gpu_blas_setup(A, null_space, box, platform->gatherRHSKernel);
+  asm1_setup(A, null_space, box, platform->gatherRHSKernel);
   csr_free(A);
 
   free(ia), free(ja);
@@ -210,7 +210,7 @@ static void crs_box_setup_aux(struct box *box, uint ne, const long long *vtx,
   for (uint i = 0; i < box->sn; i++)
     box->inv_mul[i] = 1.0 / box->inv_mul[i];
 
-    // Allocate work arrays.
+// Allocate work arrays.
 #define allocate_work_arrays(T)                                                \
   {                                                                            \
     box->sx = malloc(sizeof(T) * 2 * box->sn);                                 \
@@ -315,7 +315,7 @@ void crs_box_solve(void *x, struct box *box, const void *rhs) {
   timer_tic(c);
   switch (box->algo) {
   case BOX_GPU_BLAS:
-    asm1_gpu_blas_solve(box->sx, box, box->srhs);
+    asm1_solve(box->sx, box, box->srhs);
     break;
   default:
     break;
@@ -338,7 +338,7 @@ void crs_box_solve(void *x, struct box *box, const void *rhs) {
   // mult_rhs_update.
   if (box->mult) {
     timer_tic(c);
-    // rhs = rhs - A*sx.
+// rhs = rhs - A*sx.
 #define update_rhs(T)                                                          \
   {                                                                            \
     const double *A = (const double *)nekData.schwz_amat;                      \
@@ -434,7 +434,7 @@ void crs_box_solve_no_gs(occa::memory &o_x, struct box *box,
   timer_tic(c);
   switch (box->algo) {
   case BOX_GPU_BLAS:
-    asm1_gpu_blas_solve((float *)box->sx, box, o_rhs);
+    asm1_solve((float *)box->sx, box, o_rhs);
     break;
   default:
     break;
@@ -571,7 +571,7 @@ void crs_box_solve2(occa::memory &o_x, struct box *box, occa::memory &o_rhs) {
 
   // ASM1.
   timer_tic(c);
-  asm1_gpu_blas_solve(box->sx, box, box->srhs);
+  asm1_solve(box->sx, box, box->srhs);
   timer_toc(ASM1);
 
   // crs_dsavg2.
@@ -674,7 +674,7 @@ void crs_box_free(struct box *box) {
 
   switch (box->algo) {
   case BOX_GPU_BLAS:
-    asm1_gpu_blas_free(box);
+    asm1_free(box);
     break;
   default:
     break;

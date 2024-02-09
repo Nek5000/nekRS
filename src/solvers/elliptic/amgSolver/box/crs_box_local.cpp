@@ -1,7 +1,5 @@
-#include <cstdlib>
 #include <cstdio>
-
-#if defined(ENABLE_GPU_BLAS)
+#include <cstdlib>
 
 #include <hip/hip_runtime.h>
 #include <hipblas/hipblas.h>
@@ -35,7 +33,7 @@ static occa::memory o_gs_off, o_gs_idx;
 static occa::memory o_cx;
 static occa::kernel gatherRHS;
 
-void asm1_gs_setup(int un, int *u2c) {
+static void asm1_gs_setup(int un, int *u2c) {
   struct map_t {
     uint u, c;
   };
@@ -52,9 +50,8 @@ void asm1_gs_setup(int un, int *u2c) {
   }
 
   if (map.n == 0) {
-    fprintf(stderr, "RHS is empty.\n");
-    fflush(stderr);
-    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    gs_n = 0;
+    return;
   }
 
   buffer bfr;
@@ -74,36 +71,30 @@ void asm1_gs_setup(int un, int *u2c) {
 
   dlong *gs_off = tcalloc(dlong, gs_n + 1);
   dlong *gs_idx = tcalloc(dlong, map.n);
-  gs_off[0] = 0;
-  gs_idx[0] = pm[0].u;
-  uint gs_n_ = 0;
+  gs_off[0] = 0, gs_idx[0] = pm[0].u;
+  uint count = 0;
   for (uint i = 1; i < map.n; i++) {
     if (pm[i].c != pm[i - 1].c) {
-      gs_n_++;
-      gs_off[gs_n_] = i;
+      count++;
+      gs_off[count] = i;
     }
     gs_idx[i] = pm[i].u;
   }
-  gs_n_++;
-
-  if (gs_n_ != gs_n) {
-    fprintf(stderr, "gs_n_ != gs_n\n");
-    fflush(stderr);
-    MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-  }
+  count++;
 
   o_gs_off = platform->device.malloc((gs_n + 1) * sizeof(dlong));
   o_gs_off.copyFrom(gs_off, sizeof(dlong) * (gs_n + 1), 0);
+
   o_gs_idx = platform->device.malloc(map.n * sizeof(dlong));
   o_gs_idx.copyFrom(gs_idx, sizeof(dlong) * map.n, 0);
-  free(gs_off);
-  free(gs_idx);
+
+  free(gs_off), free(gs_idx);
 
   array_free(&map);
 }
 
-void asm1_gpu_blas_setup(struct csr *A, unsigned null_space, struct box *box,
-                         occa::kernel &gatherRHS_) {
+void asm1_setup(struct csr *A, unsigned null_space, struct box *box,
+                occa::kernel &gatherRHS_) {
   nr = A->nr;
   double *B = tcalloc(double, A->nr * A->nr);
   for (uint i = 0; i < A->nr; i++) {
@@ -163,9 +154,9 @@ void asm1_gpu_blas_setup(struct csr *A, unsigned null_space, struct box *box,
   initialized = 1;
 }
 
-void asm1_gpu_blas_solve(float *x, struct box *box, occa::memory &o_r) {
+void asm1_solve(float *x, struct box *box, occa::memory &o_r) {
   if (!initialized) {
-    fprintf(stderr, "asm1_gpu_blas is not initialized !\n");
+    fprintf(stderr, "asm1 is not initialized !\n");
     fflush(stderr);
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
@@ -188,7 +179,7 @@ void asm1_gpu_blas_solve(float *x, struct box *box, occa::memory &o_r) {
     x[i] = 0;
 }
 
-void asm1_gpu_blas_solve_float(float *x, struct box *box, const float *r) {
+void asm1_solve_float(float *x, struct box *box, const float *r) {
   float *h_r_ = (float *)h_r;
   for (uint i = 0; i < nr; i++)
     h_r_[i] = 0;
@@ -215,7 +206,7 @@ void asm1_gpu_blas_solve_float(float *x, struct box *box, const float *r) {
   }
 }
 
-void asm1_gpu_blas_solve_double(double *x, struct box *box, const double *r) {
+void asm1_solve_double(double *x, struct box *box, const double *r) {
   double *h_r_ = (double *)h_r;
   for (uint i = 0; i < nr; i++)
     h_r_[i] = 0;
@@ -242,24 +233,24 @@ void asm1_gpu_blas_solve_double(double *x, struct box *box, const double *r) {
   }
 }
 
-void asm1_gpu_blas_solve(void *x, struct box *box, const void *r) {
+void asm1_solve(void *x, struct box *box, const void *r) {
   if (!initialized) {
     fprintf(stderr, "GPU BLAS not initialized.\n");
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
 
   if (box->dom == gs_float) {
-    asm1_gpu_blas_solve_float((float *)x, box, (const float *)r);
+    asm1_solve_float((float *)x, box, (const float *)r);
     return;
   }
 
   if (box->dom == gs_double) {
-    asm1_gpu_blas_solve_double((double *)x, box, (const double *)r);
+    asm1_solve_double((double *)x, box, (const double *)r);
     return;
   }
 }
 
-void asm1_gpu_blas_free(struct box *box) {
+void asm1_free(struct box *box) {
   check_hip_runtime(hipFree(d_A_inv));
   check_hip_runtime(hipFree(d_A_inv_f32));
   check_hip_runtime(hipFree(d_r));
@@ -272,22 +263,3 @@ void asm1_gpu_blas_free(struct box *box) {
 
   hipblasDestroy(handle);
 }
-
-#else
-
-void asm1_gpu_blas_setup(struct csr *A, unsigned null_space, struct box *box) {
-  fprintf(stderr, "GPU BLAS not enabled.\n");
-  exit(EXIT_FAILURE);
-}
-
-void asm1_gpu_blas_solve(void *x, struct box *box, const void *r) {
-  fprintf(stderr, "GPU BLAS not enabled.\n");
-  exit(EXIT_FAILURE);
-}
-
-void asm1_gpu_blas_free(struct box *box) {
-  fprintf(stderr, "GPU BLAS not enabled.\n");
-  exit(EXIT_FAILURE);
-}
-
-#endif

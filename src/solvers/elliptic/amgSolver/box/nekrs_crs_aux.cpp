@@ -3,7 +3,8 @@
 #include "nekrs_crs.hpp"
 
 static void check_alloc_(void *ptr, const char *file, unsigned line) {
-  if (ptr) return;
+  if (ptr)
+    return;
   fprintf(stderr, "check_alloc failure: %s:%d\n", file, line);
   exit(EXIT_FAILURE);
 }
