@@ -173,7 +173,6 @@ set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
 set(ENABLE_HYPRE_GPU OFF CACHE BOOL "Enable HYPRE GPU support")
 set(NEKRS_GPU_MPI ON CACHE BOOL "Enable GPU aware MPI")
 set(ENABLE_CVODE OFF CACHE BOOL "Enable CVODE support")
-set(ENABLE_GPU_BLAS ON CACHE BOOL "Enable GPU BLAS support")
 
 set(NEKRS_BUILD_FLOAT ON CACHE BOOL "Build dfloat = float version")
 

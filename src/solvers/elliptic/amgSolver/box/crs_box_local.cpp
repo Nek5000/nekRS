@@ -2,37 +2,15 @@
 #include <cstdlib>
 
 #include <lapacke.h>
-#include "crs_box_impl.hpp"
 #include <platform.hpp>
 
-#define check_hip_runtime(call)                                                \
-  {                                                                            \
-    hipError_t err = (call);                                                   \
-    if (err != hipSuccess) {                                                   \
-      fprintf(stderr, "HIP runtime error: %s\n", hipGetErrorString(err));      \
-      MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);                                 \
-    }                                                                          \
-  }
-
 #include "crs_box_impl.hpp"
-
-static int initialized = 0;
-static hipblasHandle_t handle = NULL;
-static int nr = 0;
-static double *d_A_inv = NULL;
-static float *d_A_inv_f32 = NULL;
-static void *d_r = NULL, *d_x = NULL;
-static void *h_r = NULL, *h_x = NULL;
-
-static double one = 1.0, zero = 0.0;
-static float one_f32 = 1.0f, zero_f32 = 0.0f;
+#include "gemv.h"
 
 static uint gs_n;
 static occa::memory o_gs_off, o_gs_idx;
-static occa::memory o_cx;
-static occa::kernel gatherRHS;
 
-static void asm1_gs_setup(int un, int *u2c) {
+static void setup_gather_rhs(int un, int *u2c) {
   struct map_t {
     uint u, c;
   };
@@ -92,9 +70,12 @@ static void asm1_gs_setup(int un, int *u2c) {
   array_free(&map);
 }
 
-void asm1_setup(struct csr *A, unsigned null_space, struct box *box,
-                occa::kernel &gatherRHS_) {
+static int nr = 0;
+static struct gemv_t *gemv = NULL;
+
+static void setup_gemv(const struct csr *A) {
   nr = A->nr;
+
   double *B = tcalloc(double, A->nr * A->nr);
   for (uint i = 0; i < A->nr; i++) {
     for (uint j = A->offs[i]; j < A->offs[i + 1]; j++)
@@ -104,15 +85,13 @@ void asm1_setup(struct csr *A, unsigned null_space, struct box *box,
   int *ipiv = tcalloc(int, A->nr);
   int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, A->nr, A->nr, B, A->nr, ipiv);
   if (info != 0) {
-    fprintf(stderr, "dgetrf failed !\n");
-    fflush(stderr);
+    fprintf(stderr, "dgetrf failed !\n"), fflush(stderr);
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
 
   info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, A->nr, B, A->nr, ipiv);
   if (info != 0) {
-    fprintf(stderr, "dgetri failed !\n");
-    fflush(stderr);
+    fprintf(stderr, "dgetri failed !\n"), fflush(stderr);
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
   free(ipiv);
@@ -123,53 +102,56 @@ void asm1_setup(struct csr *A, unsigned null_space, struct box *box,
       A_inv[i * A->nr + j] = B[i * A->nr + j];
   }
 
-  float *A_inv_f32 = tcalloc(float, A->nr * A->nr);
-  for (uint i = 0; i < A->nr; i++)
-    for (uint j = 0; j < A->nr; j++)
-      A_inv_f32[i * A->nr + j] = (float)B[i * A->nr + j];
+  gemv = gemv_init(NULL, NULL);
+  gemv_set_matrix(gemv, A_inv);
+  gemv_set_backend(gemv, platform->device.mode().c_str());
 
-  check_hip_runtime(hipMalloc(&d_A_inv, A->nr * A->nr * sizeof(double)));
-  check_hip_runtime(hipMemcpy(d_A_inv, A_inv, A->nr * A->nr * sizeof(double),
-                              hipMemcpyHostToDevice));
+  free(B), free(A_inv);
+}
 
-  check_hip_runtime(hipMalloc(&d_A_inv_f32, A->nr * A->nr * sizeof(float)));
-  check_hip_runtime(hipMemcpy(d_A_inv_f32, A_inv_f32,
-                              A->nr * A->nr * sizeof(float),
-                              hipMemcpyHostToDevice));
+static int initialized = 0;
+static float *h_r = NULL, *h_x = NULL;
+static occa::memory o_r, o_x, o_cx;
 
-  free(B), free(A_inv), free(A_inv_f32);
+void asm1_setup(struct csr *A, unsigned null_space, struct box *box) {
+  // Setup local assembly of the rhs.
+  setup_gather_rhs(box->un, box->u2c);
 
-  h_r = calloc(A->nr, sizeof(double));
-  h_x = calloc(A->nr, sizeof(double));
-  check_hip_runtime(hipMalloc(&d_r, A->nr * sizeof(double)));
-  check_hip_runtime(hipMalloc(&d_x, A->nr * sizeof(double)));
+  // Setup the gemv.
+  setup_gemv(A);
 
+  // Allocate work arrays.
+  h_r = (float *)calloc(A->nr, sizeof(float));
+  h_x = (float *)calloc(A->nr, sizeof(float));
   o_cx = platform->device.malloc(A->nr * sizeof(float));
-  gatherRHS = gatherRHS_;
-  asm1_gs_setup(box->un, box->u2c);
-
-  hipblasCreate(&handle);
+  o_x = platform->device.malloc(A->nr * sizeof(float));
+  o_r = platform->device.malloc(A->nr * sizeof(float));
 
   initialized = 1;
 }
 
 void asm1_solve(float *x, struct box *box, occa::memory &o_r) {
   if (!initialized) {
-    fprintf(stderr, "asm1 is not initialized !\n");
-    fflush(stderr);
+    fprintf(stderr, "asm1 is not initialized !\n"), fflush(stderr);
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
 
-  gatherRHS(gs_n, o_gs_off, o_gs_idx, o_r, o_cx);
-  hipblasSgemv(handle, HIPBLAS_OP_T, nr, nr, &one_f32, d_A_inv_f32, nr,
-               (float *)o_cx.ptr(), 1, &zero_f32, (float *)d_x, 1);
-  check_hip_runtime(
-      hipMemcpy(h_x, d_x, nr * sizeof(float), hipMemcpyDeviceToHost));
+  if (gs_n == 0)
+    return;
 
-  float *h_x_f32 = (float *)h_x;
+  platform->gatherRHSKernel(gs_n, o_gs_off, o_gs_idx, o_r, o_cx);
+
+  // hipblasSgemv(handle, HIPBLAS_OP_T, nr, nr, &one_f32, d_A_inv_f32, nr,
+  //              (float *)o_cx.ptr(), 1, &zero_f32, (float *)d_x, 1);
+  // check_hip_runtime(
+  //     hipMemcpy(h_x, d_x, nr * sizeof(float), hipMemcpyDeviceToHost));
+
+  gemv_run(o_x.ptr(), gemv, o_cx.ptr());
+  gemv_copy(h_x, o_x.ptr(), sizeof(float) * nr, GEMV_D2H);
+
   for (uint i = 0; i < box->un; i++) {
     if (box->u2c[i] >= 0)
-      x[i] = h_x_f32[box->u2c[i]];
+      x[i] = h_x[box->u2c[i]];
     else
       x[i] = 0;
   }
@@ -178,87 +160,46 @@ void asm1_solve(float *x, struct box *box, occa::memory &o_r) {
     x[i] = 0;
 }
 
-void asm1_solve_float(float *x, struct box *box, const float *r) {
-  float *h_r_ = (float *)h_r;
-  for (uint i = 0; i < nr; i++)
-    h_r_[i] = 0;
-  for (uint i = 0; i < box->sn; i++) {
-    if (box->u2c[i] >= 0)
-      h_r_[box->u2c[i]] += r[i];
-  }
-
-  check_hip_runtime(
-      hipMemcpy(d_r, h_r_, nr * sizeof(float), hipMemcpyHostToDevice));
-
-  hipblasSgemv(handle, HIPBLAS_OP_T, nr, nr, &one_f32, d_A_inv_f32, nr,
-               (float *)d_r, 1, &zero_f32, (float *)d_x, 1);
-
-  check_hip_runtime(
-      hipMemcpy(h_x, d_x, nr * sizeof(float), hipMemcpyDeviceToHost));
-
-  float *h_x_ = (float *)h_x;
-  for (uint i = 0; i < box->sn; i++) {
-    if (box->u2c[i] >= 0)
-      x[i] = h_x_[box->u2c[i]];
-    else
-      x[i] = 0;
-  }
-}
-
-void asm1_solve_double(double *x, struct box *box, const double *r) {
-  double *h_r_ = (double *)h_r;
-  for (uint i = 0; i < nr; i++)
-    h_r_[i] = 0;
-  for (uint i = 0; i < box->sn; i++) {
-    if (box->u2c[i] >= 0)
-      h_r_[box->u2c[i]] += r[i];
-  }
-
-  check_hip_runtime(
-      hipMemcpy(d_r, h_r_, nr * sizeof(double), hipMemcpyHostToDevice));
-
-  hipblasDgemv(handle, HIPBLAS_OP_T, nr, nr, &one, d_A_inv, nr, (double *)d_r,
-               1, &zero, (double *)d_x, 1);
-
-  check_hip_runtime(
-      hipMemcpy(h_x, d_x, nr * sizeof(double), hipMemcpyDeviceToHost));
-
-  double *h_x_ = (double *)h_x;
-  for (uint i = 0; i < box->sn; i++) {
-    if (box->u2c[i] >= 0)
-      x[i] = h_x_[box->u2c[i]];
-    else
-      x[i] = 0;
-  }
-}
-
-void asm1_solve(void *x, struct box *box, const void *r) {
+void asm1_solve(float *x, struct box *box, const float *r) {
   if (!initialized) {
-    fprintf(stderr, "GPU BLAS not initialized.\n");
+    fprintf(stderr, "asm1 is not initialized !\n"), fflush(stderr);
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
   }
 
-  if (box->dom == gs_float) {
-    asm1_solve_float((float *)x, box, (const float *)r);
+  if (gs_n == 0)
     return;
+
+  for (uint i = 0; i < nr; i++)
+    h_r[i] = 0;
+  for (uint i = 0; i < box->sn; i++) {
+    if (box->u2c[i] >= 0)
+      h_r[box->u2c[i]] += r[i];
   }
 
-  if (box->dom == gs_double) {
-    asm1_solve_double((double *)x, box, (const double *)r);
-    return;
+  // check_hip_runtime(
+  //     hipMemcpy(d_r, h_r, nr * sizeof(float), hipMemcpyHostToDevice));
+
+  // hipblasSgemv(handle, HIPBLAS_OP_T, nr, nr, &one_f32, d_A_inv_f32, nr,
+  //              (float *)d_r, 1, &zero_f32, (float *)d_x, 1);
+
+  // check_hip_runtime(
+  //     hipMemcpy(h_x, d_x, nr * sizeof(float), hipMemcpyDeviceToHost));
+
+  gemv_copy(o_r.ptr(), h_r, sizeof(float) * nr, GEMV_H2D);
+  gemv_run(o_x.ptr(), gemv, o_r.ptr());
+  gemv_copy(h_x, o_x.ptr(), sizeof(float) * nr, GEMV_D2H);
+
+  for (uint i = 0; i < box->sn; i++) {
+    if (box->u2c[i] >= 0)
+      x[i] = h_x[box->u2c[i]];
+    else
+      x[i] = 0;
   }
 }
 
 void asm1_free(struct box *box) {
-  check_hip_runtime(hipFree(d_A_inv));
-  check_hip_runtime(hipFree(d_A_inv_f32));
-  check_hip_runtime(hipFree(d_r));
-  check_hip_runtime(hipFree(d_x));
   free(h_r), h_r = NULL;
   free(h_x), h_x = NULL;
-
-  nr = 0;
-  initialized = 0;
-
-  hipblasDestroy(handle);
+  gs_n = nr = initialized = 0;
+  gemv_finalize(&gemv);
 }

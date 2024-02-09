@@ -39,14 +39,7 @@ struct box {
 
 void box_debug(const int verbose, const char *fmt, ...);
 
-// Local solver.
-void asm1_setup(struct csr *A, unsigned null_space, struct box *box,
-                occa::kernel &gatherRHSKernel);
-void asm1_solve(void *x, struct box *box, const void *r);
-void asm1_solve(float *x, struct box *box, occa::memory &o_r);
-void asm1_free(struct box *box);
-
-// CSR matrix for the local solver.
+// CSR matrix used to setup the local solver.
 struct csr {
   uint base, nr, *offs, *cols;
   double *vals;
@@ -57,6 +50,12 @@ struct csr *csr_setup(const unsigned nz, const unsigned *const ia,
                       const sint *const u2c, const double tol, buffer *bfr);
 
 void csr_free(struct csr *A);
+
+// Local solver.
+void asm1_setup(struct csr *A, unsigned null_space, struct box *box);
+void asm1_solve(float *x, struct box *box, occa::memory &o_r);
+void asm1_solve(void *x, struct box *box, const void *r);
+void asm1_free(struct box *box);
 
 // Timer routines.
 enum BOX_METRIC {

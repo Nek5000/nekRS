@@ -11,7 +11,6 @@
 
 // FIXME: Get rid of this once box solver is ported to C.
 #include "nekInterfaceAdapter.hpp"
-
 #include "crs_box_impl.hpp"
 
 static void crs_box_dump(uint n, const ulong *id, uint nnz, const uint *Ai,
@@ -188,7 +187,7 @@ static void crs_box_setup_aux(struct box *box, uint ne, const long long *vtx,
 
   box->u2c = (int *)get_u2c(&box->cn, box->sn, tmp_vtx, &box->bfr);
   struct csr *A = csr_setup(nnz, ia, ja, va, box->u2c, tol, &box->bfr);
-  asm1_setup(A, null_space, box, platform->gatherRHSKernel);
+  asm1_setup(A, null_space, box);
   csr_free(A);
 
   free(ia), free(ja);
