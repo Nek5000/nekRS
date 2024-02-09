@@ -1,4 +1,4 @@
-#include "crs_box_csr.hpp"
+#include "crs_box_impl.hpp"
 #include <stdlib.h>
 
 struct csr *csr_setup(const unsigned nz, const unsigned *const ia,

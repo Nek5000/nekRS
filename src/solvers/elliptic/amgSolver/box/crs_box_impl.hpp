@@ -2,8 +2,6 @@
 #define _CRS_BOX_IMPL_HPP_
 
 #include "crs_box.hpp"
-#include "crs_box_csr.hpp"
-#include "crs_box_timer.hpp"
 
 #define BOX_DOMAIN_SWITCH(dom, macro)                                          \
   {                                                                            \
@@ -19,6 +17,7 @@
 
 #define BOX_GPU_BLAS 4
 
+// Structure to keep track of data structures in the box solver.
 struct box {
   // User input.
   uint un, ncr;
@@ -40,11 +39,46 @@ struct box {
 
 void box_debug(const int verbose, const char *fmt, ...);
 
-// ASM1: GPU BLAS interface.
+// Local solver.
 void asm1_gpu_blas_setup(struct csr *A, unsigned null_space, struct box *box,
                          occa::kernel &gatherRHSKernel);
 void asm1_gpu_blas_solve(void *x, struct box *box, const void *r);
 void asm1_gpu_blas_solve(float *x, struct box *box, occa::memory &o_r);
 void asm1_gpu_blas_free(struct box *box);
+
+// CSR matrix for the local solver.
+struct csr {
+  uint base, nr, *offs, *cols;
+  double *vals;
+};
+
+struct csr *csr_setup(const unsigned nz, const unsigned *const ia,
+                      const unsigned *const ja, const double *const va,
+                      const sint *const u2c, const double tol, buffer *bfr);
+
+void csr_free(struct csr *A);
+
+// Timer routines.
+enum BOX_METRIC {
+  COPY_RHS = 0,
+  CRS_DSAVG1 = 1,
+  ASM1 = 2,
+  CRS_DSAVG2 = 3,
+  MULT_RHS_UPDATE = 4,
+  COPY_TO_NEK5000 = 5,
+  MAP_VTX_TO_BOX = 6,
+  ASM2 = 7,
+  MAP_BOX_TO_VTX = 8,
+  COPY_FROM_NEK5000 = 9,
+  CRS_DSAVG3 = 10,
+  COPY_SOLUTION = 11,
+  NONE = 100
+};
+
+void timer_init();
+void timer_tic(const struct comm *c);
+void timer_toc(BOX_METRIC m);
+void timer_dump(struct comm *c, unsigned interval);
+void timer_print(struct comm *c, unsigned interval);
 
 #endif
