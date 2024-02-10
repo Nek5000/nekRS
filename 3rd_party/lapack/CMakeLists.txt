@@ -429,7 +429,6 @@ unset(LAPACK_INSTALL_EXPORT_NAME_CACHE)
 
 add_subdirectory(LAPACKE)
 
-
 #-------------------------------------
 # BLAS++ / LAPACK++
 option(BLAS++ "Build BLAS++" OFF)
@@ -694,16 +693,4 @@ if(BUILD_HTML_DOCUMENTATION OR BUILD_MAN_DOCUMENTATION)
     endif()
 
     endif()
-endif()
-
-if (TARGET BLAS::BLAS)
-  add_library(nekrs::blas ALIAS BLAS::BLAS)
-else()
-  add_library(nekrs::blas ALIAS ${BLASLIB})
-endif()
-
-if (TARGET LAPACK::LAPACK)
-  add_library(nekrs::lapack ALIAS LAPACK::LAPACK)
-else()
-  add_library(nekrs::lapack ALIAS ${LAPACKELIB})
 endif()

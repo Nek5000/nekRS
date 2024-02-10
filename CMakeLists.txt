@@ -326,10 +326,10 @@ include(config/nrs.cmake)
 
 # Link dependencies
 target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE nekrs-hypre
-  nekrs-hypre-device gs ${GSLIB} blas lapack ${CMAKE_DL_LIBS})
+  nekrs-hypre-device gs ${GSLIB} blas lapack lapacke ${CMAKE_DL_LIBS})
 if (NEKRS_BUILD_FLOAT)
   target_link_libraries(nekrs-lib-fp32 PUBLIC libocca PRIVATE
-    nekrs-hypre nekrs-hypre-device gs ${GSLIB} blas lapack ${CMAKE_DL_LIBS})
+    nekrs-hypre nekrs-hypre-device gs ${GSLIB} blas lapack lapacke ${CMAKE_DL_LIBS})
 endif()
 
 if(OpenMP_FOUND)
@@ -363,11 +363,6 @@ if (ENABLE_CVODE)
     target_link_libraries (nekrs-lib PUBLIC SUNDIALS::nveccuda_shared)
     target_compile_definitions(nekrs-lib PUBLIC -DENABLE_CUDA)
   endif()
-endif()
-
-if (ENABLE_GPU_BLAS)
-  target_link_libraries(nekrs-lib PRIVATE nekrs::blas nekrs::lapack)
-  target_compile_definitions(nekrs-lib PRIVATE -DENABLE_BLAS -DENABLE_GPU_BLAS)
 endif()
 
 target_link_libraries(nekrs-bin PRIVATE nekrs-lib)

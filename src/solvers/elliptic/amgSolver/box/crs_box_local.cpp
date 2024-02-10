@@ -1,9 +1,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include <hip/hip_runtime.h>
-#include <hipblas/hipblas.h>
 #include <lapacke.h>
+#include "crs_box_impl.hpp"
 #include <platform.hpp>
 
 #define check_hip_runtime(call)                                                \
