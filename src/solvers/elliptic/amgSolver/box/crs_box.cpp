@@ -10,8 +10,8 @@
 #include <unistd.h>
 
 // FIXME: Get rid of this once box solver is ported to C.
-#include "nekInterfaceAdapter.hpp"
 #include "crs_box_impl.hpp"
+#include "nekInterfaceAdapter.hpp"
 
 static void crs_box_dump(uint n, const ulong *id, uint nnz, const uint *Ai,
                          const uint *Aj, const double *A, uint null_space,

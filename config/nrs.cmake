@@ -117,6 +117,7 @@ set(NRS_INCLUDE
     ${ELLIPTIC_SOURCE_DIR}/amgSolver/box
     ${ELLIPTIC_SOURCE_DIR}/MG
     ${CMAKE_BINARY_DIR}/3rd_party/lapack/include
+    3rd_party/gemv/include
 )
 
 set_property(
