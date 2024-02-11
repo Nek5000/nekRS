@@ -130,7 +130,7 @@ void asm1_setup(struct csr *A, unsigned null_space, struct box *box) {
   initialized = 1;
 }
 
-void asm1_solve(float *x, struct box *box, occa::memory &o_r) {
+void asm1_solve(void *x_, struct box *box, occa::memory &o_r) {
   if (!initialized) {
     fprintf(stderr, "asm1 is not initialized !\n"), fflush(stderr);
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
@@ -149,6 +149,7 @@ void asm1_solve(float *x, struct box *box, occa::memory &o_r) {
   gemv_run(o_x.ptr(), gemv, o_cx.ptr());
   gemv_copy(h_x, o_x.ptr(), sizeof(float) * nr, GEMV_D2H);
 
+  float *x = (float *)x_;
   for (uint i = 0; i < box->un; i++) {
     if (box->u2c[i] >= 0)
       x[i] = h_x[box->u2c[i]];
@@ -160,7 +161,7 @@ void asm1_solve(float *x, struct box *box, occa::memory &o_r) {
     x[i] = 0;
 }
 
-void asm1_solve(float *x, struct box *box, const float *r) {
+void asm1_solve(void *x_, struct box *box, const void *r_) {
   if (!initialized) {
     fprintf(stderr, "asm1 is not initialized !\n"), fflush(stderr);
     MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
@@ -169,6 +170,7 @@ void asm1_solve(float *x, struct box *box, const float *r) {
   if (gs_n == 0)
     return;
 
+  float *r = (float *)r_;
   for (uint i = 0; i < nr; i++)
     h_r[i] = 0;
   for (uint i = 0; i < box->sn; i++) {
@@ -189,6 +191,7 @@ void asm1_solve(float *x, struct box *box, const float *r) {
   gemv_run(o_x.ptr(), gemv, o_r.ptr());
   gemv_copy(h_x, o_x.ptr(), sizeof(float) * nr, GEMV_D2H);
 
+  float *x = (float *)x_;
   for (uint i = 0; i < box->sn; i++) {
     if (box->u2c[i] >= 0)
       x[i] = h_x[box->u2c[i]];

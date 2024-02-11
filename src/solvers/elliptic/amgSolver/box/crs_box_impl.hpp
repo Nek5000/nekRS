@@ -53,7 +53,7 @@ void csr_free(struct csr *A);
 
 // Local solver.
 void asm1_setup(struct csr *A, unsigned null_space, struct box *box);
-void asm1_solve(float *x, struct box *box, occa::memory &o_r);
+void asm1_solve(void *x, struct box *box, occa::memory &o_r);
 void asm1_solve(void *x, struct box *box, const void *r);
 void asm1_free(struct box *box);
 
