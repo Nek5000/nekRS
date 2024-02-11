@@ -80,6 +80,11 @@ struct nekdata_private {
 
   /* mesh velocities */
   double *wx, *wy, *wz;
+
+  /* box solver */
+  double *box_e, *box_r, *box_mask, *schwz_mask, *schwz_amat, *schwz_xyz;
+  int *schwz_ne, *schwz_nw, *schwz_ncr, *schwz_frontier;
+  long long *schwz_vtx, *schwz_eids;
 };
 
 extern nekdata_private nekData;
@@ -141,5 +146,11 @@ void extCoeff(dfloat *coeff, dfloat *dt, int nAB, int nBDF);
 void coeffAB(dfloat *coeff, dfloat *dt, int order);
 void recomputeGeometry();
 void printMeshMetrics();
+
+/* box solver */
+void box_crs_setup();
+void box_map_vtx_to_box();
+void box_map_box_to_vtx();
+void box_crs_solve();
 } // namespace nek
 #endif

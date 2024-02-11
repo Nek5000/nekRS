@@ -274,7 +274,7 @@ message(STATUS "Build deprecated routines: ${BUILD_DEPRECATED}")
 # --------------------------------------------------
 # Precision to build
 # By default all precisions are generated
-option(BUILD_SINGLE "Build single precision real" OFF)
+option(BUILD_SINGLE "Build single precision real" ON)
 option(BUILD_DOUBLE "Build double precision real" ON)
 option(BUILD_COMPLEX "Build single precision complex" OFF)
 option(BUILD_COMPLEX16 "Build double precision complex" OFF)
@@ -397,7 +397,7 @@ endif()
 
 # --------------------------------------------------
 # LAPACKE
-option(LAPACKE "Build LAPACKE" OFF)
+option(LAPACKE "Build LAPACKE" ON)
 
 # LAPACKE has also the interface to some routines from tmglib,
 # if LAPACKE_WITH_TMG is selected, we need to add those routines to LAPACKE
@@ -428,7 +428,6 @@ set(LAPACK_INSTALL_EXPORT_NAME ${LAPACK_INSTALL_EXPORT_NAME_CACHE})
 unset(LAPACK_INSTALL_EXPORT_NAME_CACHE)
 
 add_subdirectory(LAPACKE)
-
 
 #-------------------------------------
 # BLAS++ / LAPACK++

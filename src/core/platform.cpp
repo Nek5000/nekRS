@@ -177,6 +177,10 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
   fileName = oklpath + "/core/" + kernelName + extension;
   this->kernels.add(kernelName, fileName, this->kernelInfo);
 
+  kernelName = "gatherRHS";
+  fileName = oklpath + "/core/" + kernelName + extension;
+  this->kernels.add(kernelName, fileName, this->kernelInfo);
+
   occa::json properties;
   o_memPool = device.occaDevice().createMemoryPool(properties);
   o_memPool.setAlignment(ALIGN_SIZE);
