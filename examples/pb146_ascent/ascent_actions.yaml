@@ -1,0 +1,15 @@
+- 
+  action: "add_queries"
+  queries:
+    q1:
+      params:
+        expression: "cycle()"
+        name: "cycle"
+-
+  action: "add_triggers"
+  triggers:
+    t1:
+      params:
+        condition: "cycle % 2 == 0"
+        actions_file : "trigger_render.yaml"
+

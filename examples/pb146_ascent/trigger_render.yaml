@@ -1,0 +1,98 @@
+-
+  action: "add_pipelines"
+  pipelines:
+    pl1:
+      f1:
+        type: "composite_vector"
+        params:
+          field1: "vel_x"
+          field2: "vel_y"
+          field3: "vel_z"
+          output_name: "velocity"
+      f2:
+        type: "vector_magnitude"
+        params:
+          field: "velocity"
+          output_name: "vel_mag"
+      f3:
+        type: "contour"
+        params:
+          field: "vel_mag"
+          iso_values: [0.4]
+      f4:
+        type: "clip_with_field"
+        params:
+          field: "scalar01"
+          clip_value: 6.0
+          invert: "true"
+    pl2:
+      f1:
+        type: "slice"
+        params:
+          point:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          normal:
+            x: 1.0
+            y: 0.0
+            z: 0.0
+    pl3:
+      f1:
+        type: "slice"
+        params:
+          point:
+            x: 0.0
+            y: 0.0
+            z: 0.0
+          normal:
+            x: 0.0
+            y: 1.0
+            z: 0.0
+-
+  action: "add_scenes"
+  scenes:
+    s1:
+      plots:
+        p1:
+          type: "pseudocolor"
+          field: "temperature"
+          pipeline: "pl1"
+          color_table:
+            name: "Cool to Warm Extended"
+          min_value: -10.0
+          max_value: 80.0
+        p2:
+          type: "pseudocolor"
+          field: "vel_z"
+          pipeline: "pl2"
+          color_table:
+            name: "Rainbow Desaturated"
+          min_value: -1.0
+          max_value: 7.5
+        p3:
+          type: "pseudocolor"
+          field: "vel_z"
+          pipeline: "pl3"
+          color_table:
+            name: "Rainbow Desaturated"
+          min_value: -1.0
+          max_value: 7.5
+      renders:
+        r1:
+          camera:
+            position: [26.0, 26.0, 28.0]
+            look_at: [0.0, 0.0, 0.0]
+            up: [0.0, 0.0, 1.0]
+            zoom: 2.0
+          image_prefix: "img/pb_%06d"
+
+#          dataset_bounds: [0,0,0,0,0,0]
+          # default = 1024 x 1024
+          world_annotations: false
+          screen_annotations: false
+          # fg = colours you see on the screen before the background colours
+          #bg_color: [1.0, 1.0, 1.0] # FIXME: a bug
+          #fg_color: [0.0, 0.0, 0.0] 
+          image_width: 2048
+          image_height: 4096
