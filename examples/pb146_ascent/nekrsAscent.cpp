@@ -114,7 +114,7 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
 
 void nekrsAscent::run(const double time, const int tstep) { 
 
-  const double tStart = MPI_Wtime();
+  platform->timer.tic("insituAscentRun",1);
 
   conduit::Node mesh_data;
   mesh_data["state/cycle"] = tstep;
@@ -165,8 +165,31 @@ void nekrsAscent::run(const double time, const int tstep) {
   conduit::Node actions;
   mAscent.execute(actions);
 
-  const double tSetup = MPI_Wtime() - tStart;
-  platform->timer.set("insituAscentRun", tSetup); 
+  platform->timer.toc("insituAscentRun"); 
   // TODO, how to print this? nekrsAscent::stat?
+}
+
+void nekrsAscent::printStat(const int tstep) { //TODO: try to extract img info??
+
+  int freq = 500, numSteps = -1;
+  platform->options.getArgs("RUNTIME STATISTICS FREQUENCY", freq);
+  platform->options.getArgs("NUMBER TIMESTEPS", numSteps);
+
+  std::string tag = "insituAscentRun";
+  std::string name = "    insituAscentRun     ";
+  std::string type = "DEVICE:MAX";
+
+  if (freq && tstep>0) {
+    if (tstep % freq ==0 || tstep==numSteps) {
+      const long long int nCalls = platform->timer.count(tag);
+      const double tTag = platform->timer.query(tag, type);
+      if (tTag > 0) {
+        if (platform->comm.mpiRank == 0) {
+          std::cout << name << tTag << "s";
+          std::cout << "  " << nCalls << " calls\n";
+        }
+      }
+    }
+  }
 }
 
