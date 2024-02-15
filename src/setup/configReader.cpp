@@ -103,7 +103,8 @@ void configRead(MPI_Comm comm)
   if(!buf.empty()) setenv("NEKRS_UDF_INCLUDES", buf.c_str(), 1);
 
   ini.extract("general", "nekrs_udf_libs", buf);
-  if(getenv("NEKRS_UDF_LDFLAGS")) buf = std::string(getenv("NEKRS_UDF_LDFLAGS")) + " " + buf;
+  if(!buf.empty()) buf = " " + buf;
+  if(getenv("NEKRS_UDF_LDFLAGS")) buf = std::string(getenv("NEKRS_UDF_LDFLAGS")) + buf;
   if(!buf.empty()) setenv("NEKRS_UDF_LDFLAGS", buf.c_str(), 1);
 
   ini.extract("general", "occa_cxx", buf);
