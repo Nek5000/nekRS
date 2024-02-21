@@ -16,6 +16,7 @@ static occa::memory o_Ycoord;
 static occa::memory o_Zcoord;
 static occa::memory o_connectivity;
 static std::vector<unsigned int> ghosts;
+static bool setupCalled = false;
 } // namespace
 
 
@@ -33,6 +34,7 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
   Nfields = userFieldList.size();
   fieldOffset = fieldOffset_;
 
+  const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
   
   MPI_Comm comm;
   MPI_Comm_dup(platform->comm.mpiComm, &comm);
@@ -54,17 +56,17 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
     ascent_opts["runtime/backend"] = "openmp";
   }
 */
-
-  mAscent.open(ascent_opts);
-
-  if (platform->comm.mpiRank==0) {
-    std::cout << ascent::about() << std::endl; // TODO verbose?
+  if (verbose) { // FIXME: This doesn't do much?
+    ascent_opts["ascent_info"] = "verbose";
+    ascent_opts["messages"] = "verbose";
   }
+  mAscent.open(ascent_opts);
 
   const double tSetup = MPI_Wtime() - tStart; 
   platform->timer.set("insituAscentSetup", tSetup);
   if (platform->comm.mpiRank == 0) {
     printf("done (%gs)\n\n", tSetup);
+    std::cout << ascent::about() << std::endl; // TODO verbose?
   }
   fflush(stdout);
 
@@ -110,9 +112,14 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
       ghosts[mesh->haloGetNodeIds[n]] = 1;
     }
   }
+
+  setupCalled = true;
 }
 
 void nekrsAscent::run(const double time, const int tstep) { 
+
+  nrsCheck(!setupCalled, MPI_COMM_SELF, EXIT_FAILURE,
+           "%s\n", "called prior to nekrsAscent::setup()!");
 
   platform->timer.tic("insituAscentRun",1);
 
@@ -171,6 +178,7 @@ void nekrsAscent::run(const double time, const int tstep) {
 
 void nekrsAscent::printStat(const int tstep) { //TODO: try to extract img info??
 
+  const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
   int freq = 500, numSteps = -1;
   platform->options.getArgs("RUNTIME STATISTICS FREQUENCY", freq);
   platform->options.getArgs("NUMBER TIMESTEPS", numSteps);
@@ -191,5 +199,24 @@ void nekrsAscent::printStat(const int tstep) { //TODO: try to extract img info??
       }
     }
   }
+
+  if (verbose) {
+    if (platform->comm.mpiRank==0) { 
+      conduit::Node ascent_info;
+      mAscent.info(ascent_info);
+      ascent_info.print();
+          
+      conduit::Node opts;
+      opts["num_children_threshold"] = -1;
+      opts["num_elements_threshold"] = -1;
+      opts["depth"] = 1; 
+      ascent_info.to_summary_string_stream(std::cout,opts);
+      std::cout << std::endl;
+    }
+  }            
 }
 
+
+void nekrsAscent::finalize() {
+  mAscent.close();
+}
