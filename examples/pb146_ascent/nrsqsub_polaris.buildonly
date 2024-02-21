@@ -111,26 +111,9 @@ echo "export MPICH_OFI_NIC_POLICY=NUMA" >> $SFILE
 # https://github.com/Nek5000/Nek5000/issues/759
 echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE # >=lelt, large mpi-messsage for restart
 
-
 # set up ascent env
-s="helper.mak"
-echo "include $ASCENT_DIR/share/ascent/ascent_config.mk" > $s
-echo ".PHONY: printvars" >> $s
-echo "printvars:" >> $s
-echo -e "\t@echo \"ASCENT_INCLUDE_FLAGS=\\\"\$(ASCENT_INCLUDE_FLAGS)\\\"\"" >> $s
-echo -e "\t@echo \"ASCENT_LINK_RPATH=\\\"\$(ASCENT_LINK_RPATH)\\\"\"" >> $s
-echo -e "\t@echo \"ASCENT_MPI_LIB_FLAGS=\\\"\$(ASCENT_MPI_LIB_FLAGS)\\\"\"" >> $s
-
-echo "make -f $s printvars > make.tmp 2>/dev/null" >>$SFILE
-echo "source make.tmp" >>$SFILE
-
-echo "NEKRS_UDF_LDFLAGS=\"\${ASCENT_LINK_RPATH} \${ASCENT_MPI_LIB_FLAGS}\"" >>$SFILE 
-echo "NEKRS_UDF_LDFLAGS=\`echo \$NEKRS_UDF_LDFLAGS|awk '{\$1=\$1;print}'\`" >>$SFILE
-echo "NEKRS_UDF_INCLUDES=\"\$ASCENT_INCLUDE_FLAGS\"" >>$SFILE
-echo "NEKRS_UDF_INCLUDES=\`echo \$NEKRS_UDF_INCLUDES|sed 's/-I//g'|awk '{\$1=\$1;print}'|tr -s \" \"|sed 's/ /\;/g'\`" >>$SFILE
-
-echo "export NEKRS_UDF_INCLUDES=\"\$NEKRS_UDF_INCLUDES\"" >>$SFILE
-echo "export NEKRS_UDF_LDFLAGS=\"\$NEKRS_UDF_LDFLAGS\"" >>$SFILE
+echo "export NEKRS_ENABLE_ASCENT=1" >>$SFILE
+echo "export NEKRS_ASCENT_INSTALL_DIR=$ASCENT_DIR" >>$SFILE
 
 
 #if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then

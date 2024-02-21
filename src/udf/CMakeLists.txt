@@ -60,3 +60,12 @@ if(APPLE)
     target_link_libraries(UDF "-Wl,-undefined -Wl,dynamic_lookup")
 endif()
 target_link_libraries(UDF "$ENV{NEKRS_UDF_LDFLAGS}")
+
+# ascent
+if(DEFINED ENV{NEKRS_ENABLE_ASCENT})
+find_package(Ascent REQUIRED
+             NO_DEFAULT_PATH
+             PATHS $ENV{NEKRS_ASCENT_INSTALL_DIR})
+target_link_libraries(UDF ascent::ascent_mpi)
+endif() 
+

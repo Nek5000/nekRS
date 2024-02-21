@@ -6,6 +6,8 @@
 : ${ASCENT_DIR="/soft/visualization/ascent/develop/2024-01-08-492f9b0/ascent-develop"}
 : ${NEKRS_CACHE_BCAST:=1}
 : ${NEKRS_SKIP_BUILD_ONLY:=0}
+: ${BUILDONLY:=0}
+: ${DFLOAT_FP32:=0}
 
 if [ $# -ne 3 ]; then
   echo "usage: [PROJ_ID] [QUEUE] $0 <casename> <number of compute nodes> <hh:mm:ss>"
@@ -23,6 +25,9 @@ if [ -z "$QUEUE" ]; then
 fi
 
 bin=${NEKRS_HOME}/bin/nekrs
+if [ ${DFLOAT_FP32} -eq 1 ]; then
+  bin=${NEKRS_HOME}/bin/nekrs-fp32
+fi
 case=$1
 nodes=$2
 gpu_per_node=4
@@ -33,6 +38,20 @@ time=$3
 
 backend=CUDA
 NEKRS_GPU_MPI=1
+
+qnodes=$nodes
+prefix="nekRS_"
+if [ ${BUILDONLY} -eq 1 ]; then
+  qnode=1
+  prefix="nekRS_build_"
+fi
+
+time_fmt=`echo $time|tr ":" " "|awk '{print NF}'`
+if [ "$time_fmt" -ne "3" ]; then
+  echo "Warning: time is not in the format <hh:mm:ss>"
+  echo $time
+  exit 1
+fi
 
 if [ ! -f $bin ]; then
   echo "Cannot find" $bin
@@ -68,13 +87,16 @@ MPICH_MPIIO_HINTS="*:striping_unit=${striping_unit}:striping_factor=${striping_f
 
 # sbatch
 SFILE=s.bin
+if [ ${BUILDONLY} -eq 1 ]; then
+SFILE=s.bin.pre
+fi
 echo "#!/bin/bash" > $SFILE
 echo "#PBS -A $PROJ_ID" >>$SFILE
-echo "#PBS -N nekRS_$case" >>$SFILE
+echo "#PBS -N $prefix$case" >>$SFILE
 echo "#PBS -q $QUEUE" >>$SFILE
 echo "#PBS -l walltime=$time" >>$SFILE
 echo "#PBS -l filesystems=home:eagle:grand" >>$SFILE
-echo "#PBS -l select=$nodes:system=polaris" >>$SFILE
+echo "#PBS -l select=$qnodes:system=polaris" >>$SFILE
 echo "#PBS -l place=scatter" >>$SFILE
 echo "#PBS -k doe" >>$SFILE #write directly to the destination, doe=direct, output, error
 echo "#PBS -j eo" >>$SFILE  #oe=merge stdout/stderr to stdout
@@ -111,26 +133,13 @@ echo "export MPICH_OFI_NIC_POLICY=NUMA" >> $SFILE
 # https://github.com/Nek5000/Nek5000/issues/759
 echo "export FI_OFI_RXM_RX_SIZE=32768" >> $SFILE # >=lelt, large mpi-messsage for restart
 
-
 # set up ascent env
-s="helper.mak"
-echo "include $ASCENT_DIR/share/ascent/ascent_config.mk" > $s
-echo ".PHONY: printvars" >> $s
-echo "printvars:" >> $s
-echo -e "\t@echo \"ASCENT_INCLUDE_FLAGS=\\\"\$(ASCENT_INCLUDE_FLAGS)\\\"\"" >> $s
-echo -e "\t@echo \"ASCENT_LINK_RPATH=\\\"\$(ASCENT_LINK_RPATH)\\\"\"" >> $s
-echo -e "\t@echo \"ASCENT_MPI_LIB_FLAGS=\\\"\$(ASCENT_MPI_LIB_FLAGS)\\\"\"" >> $s
-
-echo "make -f $s printvars > make.tmp 2>/dev/null" >>$SFILE
-echo "source make.tmp" >>$SFILE
-
-echo "NEKRS_UDF_LDFLAGS=\"\${ASCENT_LINK_RPATH} \${ASCENT_MPI_LIB_FLAGS}\"" >>$SFILE 
-echo "NEKRS_UDF_LDFLAGS=\`echo \$NEKRS_UDF_LDFLAGS|awk '{\$1=\$1;print}'\`" >>$SFILE
-echo "NEKRS_UDF_INCLUDES=\"\$ASCENT_INCLUDE_FLAGS\"" >>$SFILE
-echo "NEKRS_UDF_INCLUDES=\`echo \$NEKRS_UDF_INCLUDES|sed 's/-I//g'|awk '{\$1=\$1;print}'|tr -s \" \"|sed 's/ /\;/g'\`" >>$SFILE
-
-echo "export NEKRS_UDF_INCLUDES=\"\$NEKRS_UDF_INCLUDES\"" >>$SFILE
-echo "export NEKRS_UDF_LDFLAGS=\"\$NEKRS_UDF_LDFLAGS\"" >>$SFILE
+# method 2
+echo "export NEKRS_ENABLE_ASCENT=1" >>$SFILE
+echo "export NEKRS_ASCENT_INSTALL_DIR=$ASCENT_DIR" >>$SFILE
+# method 3
+#echo "export NEKRS_UDF_LDFLAGS=\"-L${ASCENT_DIR}/lib -lascent_mpi\"" >>$SFILE
+#echo "export NEKRS_UDF_INCLUDES=\"${ASCENT_DIR}/../conduit-v0.8.8/include/conduit\\;${ASCENT_DIR}/../conduit-v0.8.8/include\\;${ASCENT_DIR}/include/ascent\"" >>$SFILE
 
 
 if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
@@ -140,14 +149,15 @@ echo "  exit" >> $SFILE
 echo "fi" >> $SFILE
 fi
 
+if [ $BUILDONLY -eq 0 ]; then
 CMD=.lhelper
 echo "#!/bin/bash" >$CMD
 echo "gpu_id=\$((${gpu_per_node} - 1 - \${PMI_LOCAL_RANK} % ${gpu_per_node}))" >>$CMD
 echo "export CUDA_VISIBLE_DEVICES=\$gpu_id" >>$CMD
 echo "$bin --setup ${case} --backend ${backend} --device-id 0" >>$CMD
 chmod 755 $CMD
-
 echo "mpiexec -n $nn -ppn $gpu_per_node -d $cores_per_numa --cpu-bind depth ./$CMD" >>$SFILE
+fi
 
 qsub -q $QUEUE $SFILE
 
