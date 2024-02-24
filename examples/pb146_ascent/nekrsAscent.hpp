@@ -17,14 +17,14 @@
 namespace nekrsAscent
 {
 typedef std::vector< std::tuple<std::string, occa::memory, dlong> > fields;
-// TODO: add another setup for all active fields
 void setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds);
+void setup(nrs_t *nrs_);
 void run(const double time, const int tstep);
-void printStat(const int tstep);
 void finalize();
 static ascent::Ascent mAscent;
-occa::memory o_avg(); // TODO, add interface to directly access the data?
-void finalize();
 }
+
+void initializeAscent();
+void printStat();
 
 #endif 

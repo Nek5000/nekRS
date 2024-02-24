@@ -6,22 +6,21 @@
 // private members
 namespace {
 nekrsAscent::fields userFieldList;
+conduit::Node mesh_data;
 static mesh_t *mesh;
 static int Nfields;
 static dlong fieldOffset;
-static dlong Nvertices;
 static occa::memory o_fields;
 static occa::memory o_Xcoord;
 static occa::memory o_Ycoord;
 static occa::memory o_Zcoord;
 static occa::memory o_connectivity;
-static std::vector<unsigned int> ghosts;
+static std::vector<unsigned int> ghosts; // FIXME
 static bool setupCalled = false;
+static bool updateMesh = true;
 } // namespace
 
-
-void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds) {
-// TODO add flag for initialized
+void initializeAscent() {
 
   const double tStart = MPI_Wtime();
   if (platform->comm.mpiRank == 0) {
@@ -29,13 +28,6 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
     fflush(stdout);
   }
 
-  mesh = mesh_;
-  userFieldList = flds;
-  Nfields = userFieldList.size();
-  fieldOffset = fieldOffset_;
-
-  const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
-  
   MPI_Comm comm;
   MPI_Comm_dup(platform->comm.mpiComm, &comm);
 
@@ -56,33 +48,48 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
     ascent_opts["runtime/backend"] = "openmp";
   }
 */
+  const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
   if (verbose) { // FIXME: This doesn't do much?
     ascent_opts["ascent_info"] = "verbose";
     ascent_opts["messages"] = "verbose";
   }
-  mAscent.open(ascent_opts);
+  nekrsAscent::mAscent.open(ascent_opts);
 
   const double tSetup = MPI_Wtime() - tStart; 
-  platform->timer.set("insituAscentSetup", tSetup);
+  platform->timer.set("insituAscentInitialize", tSetup);
   if (platform->comm.mpiRank == 0) {
     printf("done (%gs)\n\n", tSetup);
-    std::cout << ascent::about() << std::endl; // TODO verbose?
+    std::cout << ascent::about() << std::endl; 
   }
   fflush(stdout);
+}
+
+
+void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds) {
+// TODO add flag for initialized
+
+  const double tStart = MPI_Wtime();
+  if (platform->comm.mpiRank == 0) {
+    printf("Setup Ascent fields...\n");
+    fflush(stdout);
+  }
+
+  initializeAscent();
+
+  mesh = mesh_;
+  userFieldList = flds;
+  Nfields = userFieldList.size();
+  fieldOffset = fieldOffset_;
 
   dlong Ncells = mesh->Nelements * (mesh->Nq - 1) * (mesh->Nq - 1) * (mesh->Nq - 1);
-  Nvertices = Ncells * 8;
+  static dlong Nvertices = Ncells * 8;
 
+  // allocate fields arrays
   o_Xcoord = platform->device.malloc<dfloat>(fieldOffset);
   o_Ycoord = platform->device.malloc<dfloat>(fieldOffset);
   o_Zcoord = platform->device.malloc<dfloat>(fieldOffset);
   o_connectivity = platform->device.malloc<dlong>(Nvertices);
   o_fields = platform->device.malloc<dfloat>(Nfields*fieldOffset);
-
-  // Copy Mesh
-  o_Xcoord.copyFrom(mesh->o_x, mesh->Nlocal);
-  o_Ycoord.copyFrom(mesh->o_y, mesh->Nlocal);
-  o_Zcoord.copyFrom(mesh->o_z, mesh->Nlocal);
 
   // Calculate connectivity
   {
@@ -104,7 +111,6 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
           }
     o_connectivity.copyFrom(a_etov.data(), a_etov.size());
   }
-
   // halo node FIXME: ??
   if( mesh->totalHaloPairs ) {
     ghosts.resize(mesh->Nlocal, 0);
@@ -113,7 +119,73 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
     }
   }
 
+  // Setup pointers
+  mesh_data["coordsets/coords/type"] = "explicit";
+  mesh_data["coordsets/coords/values/x"].set_external((dfloat*)o_Xcoord.ptr(), mesh->Nlocal);
+  mesh_data["coordsets/coords/values/y"].set_external((dfloat*)o_Ycoord.ptr(), mesh->Nlocal);
+  mesh_data["coordsets/coords/values/z"].set_external((dfloat*)o_Zcoord.ptr(), mesh->Nlocal);
+
+  mesh_data["topologies/mesh/type"]           = "unstructured";
+  mesh_data["topologies/mesh/coordset"]       = "coords";
+  mesh_data["topologies/mesh/elements/shape"] = "hex";  // Note "hexs" - documentation on Ascent/Conduit webpage is incorrect TODO: double check this
+  mesh_data["topologies/mesh/elements/connectivity"].set_external((dlong*) o_connectivity.ptr(), Nvertices);
+
+  if( mesh->totalHaloPairs ) { // FIXME
+    mesh_data["fields/ghosts/association"] = "vertex";
+    mesh_data["fields/ghosts/topology"] = "mesh";
+    mesh_data["fields/ghosts/values"].set(ghosts);
+  }
+  
+  // fields
+  int ifld = 0;
+  for(auto& entry : userFieldList) {
+    std::string fieldName = std::get<0>(entry);
+    dlong fieldLength = std::get<2>(entry);
+
+    auto o_fld = o_fields.slice(ifld*fieldOffset);
+    mesh_data["fields/" + fieldName + "/association"]  = "vertex";
+    mesh_data["fields/" + fieldName + "/topology"]     = "mesh";
+    mesh_data["fields/" + fieldName + "/values"].set_external((dfloat*) o_fld.ptr(), fieldLength);
+    ifld++;
+  }
+
+  const double tSetup = MPI_Wtime() - tStart;  // TODO: add Nfields and size?
+  platform->timer.set("insituAscentSetup", tSetup);
+  if (platform->comm.mpiRank == 0) {
+    printf("done (%gs)\n\n", tSetup);
+    std::cout << ascent::about() << std::endl; 
+  }
+  fflush(stdout);
+
   setupCalled = true;
+}
+
+void nekrsAscent::setup(nrs_t *nrs_) { // setup aide to create fields list from active fields
+
+  cds_t *cds = nrs_->cds;
+  mesh_t *meshV = nrs_->meshV; 
+  mesh_t* meshT;
+  (nrs_->cds) ? meshT = cds->mesh[0] : meshT = meshV; // cht
+  
+  nekrsAscent::fields ascentFields;
+  
+  auto o_u = nrs_->o_U.slice(0 * nrs_->fieldOffset , nrs_->fieldOffset);
+  auto o_v = nrs_->o_U.slice(1 * nrs_->fieldOffset , nrs_->fieldOffset);
+  auto o_w = nrs_->o_U.slice(2 * nrs_->fieldOffset , nrs_->fieldOffset);
+  ascentFields.push_back(std::make_tuple("vel_x", o_u, meshV->Nlocal));
+  ascentFields.push_back(std::make_tuple("vel_y", o_v, meshV->Nlocal));
+  ascentFields.push_back(std::make_tuple("vel_z", o_w, meshV->Nlocal));
+
+  for (int is = 0; is < cds->NSfields; is++) {
+    const std::string sid = (is==0) ? "temperature" : "scalar" + scalarDigitStr(is);
+    
+    mesh_t *mesh;
+    (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
+    auto o_scalar = cds->o_S + cds->fieldOffsetScan[is];
+    ascentFields.push_back(std::make_tuple(sid, o_scalar, mesh->Nlocal));
+  }
+
+  nekrsAscent::setup(meshT, nrs_->fieldOffset, ascentFields);
 }
 
 void nekrsAscent::run(const double time, const int tstep) { 
@@ -123,87 +195,52 @@ void nekrsAscent::run(const double time, const int tstep) {
 
   platform->timer.tic("insituAscentRun",1);
 
-  conduit::Node mesh_data;
+  // copy data
   mesh_data["state/cycle"] = tstep;
   mesh_data["state/time"] = time;
 
-  // TODO: only copy mesh if moving mesh
-  o_Xcoord.copyFrom(mesh->o_x, mesh->Nlocal);
-  o_Ycoord.copyFrom(mesh->o_y, mesh->Nlocal);
-  o_Zcoord.copyFrom(mesh->o_z, mesh->Nlocal);
-
-  //coordinate system data
-  mesh_data["coordsets/coords/type"] = "explicit";
-  mesh_data["coordsets/coords/values/x"].set_external((dfloat*)o_Xcoord.ptr(), mesh->Nlocal);
-  mesh_data["coordsets/coords/values/y"].set_external((dfloat*)o_Ycoord.ptr(), mesh->Nlocal);
-  mesh_data["coordsets/coords/values/z"].set_external((dfloat*)o_Zcoord.ptr(), mesh->Nlocal);
-
-  // topology data
-  mesh_data["topologies/mesh/type"]           = "unstructured";
-  mesh_data["topologies/mesh/coordset"]       = "coords";
-  mesh_data["topologies/mesh/elements/shape"] = "hex";  // Note "hexs" - documentation on Ascent/Conduit webpage is incorrect TODO: double check this
-  mesh_data["topologies/mesh/elements/connectivity"].set_external((dlong*) o_connectivity.ptr(), Nvertices);
-
-  // halo nodes FIXME??
-  if( mesh->totalHaloPairs ) {
-    mesh_data["fields/ghosts/association"] = "vertex";
-    mesh_data["fields/ghosts/topology"] = "mesh";
-    mesh_data["fields/ghosts/values"].set(ghosts);
+  const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+  if (updateMesh || movingMesh) { // update mesh at first call or moving mesh
+    o_Xcoord.copyFrom(mesh->o_x, mesh->Nlocal);
+    o_Ycoord.copyFrom(mesh->o_y, mesh->Nlocal);
+    o_Zcoord.copyFrom(mesh->o_z, mesh->Nlocal);
+    updateMesh = false;
   }
-  
-  // fields
+
   platform->linAlg->fill(fieldOffset * Nfields, 0.0, o_fields);
   int ifld = 0;
   for(auto& entry : userFieldList) {
-    std::string fieldName = std::get<0>(entry);
     occa::memory o_fieldValue = std::get<1>(entry);
     dlong fieldLength = std::get<2>(entry);
 
     auto o_fld = o_fields.slice(ifld*fieldOffset);
     o_fld.copyFrom(o_fieldValue, fieldLength);
-
-    mesh_data["fields/" + fieldName + "/association"]  = "vertex";
-    mesh_data["fields/" + fieldName + "/topology"]     = "mesh";
-    mesh_data["fields/" + fieldName + "/values"].set_external((dfloat*) o_fieldValue.ptr(), fieldLength);
     ifld++;
   }
 
+  // call ascent
   mAscent.publish(mesh_data);
   conduit::Node actions;
   mAscent.execute(actions);
-
   platform->timer.toc("insituAscentRun"); 
-  // TODO, how to print this? nekrsAscent::stat?
-}
 
-void nekrsAscent::printStat(const int tstep) { //TODO: try to extract img info??
-
-  const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
+  // print stat
   int freq = 500, numSteps = -1;
   platform->options.getArgs("RUNTIME STATISTICS FREQUENCY", freq);
   platform->options.getArgs("NUMBER TIMESTEPS", numSteps);
+  if (freq && tstep>0)
+    if (tstep % freq ==0 || tstep==numSteps)
+      printStat();
+}
 
-  std::string tag = "insituAscentRun";
-  std::string name = "    insituAscentRun     ";
-  std::string type = "DEVICE:MAX";
+void printStat() { //TODO: try to extract img info??
 
-  if (freq && tstep>0) {
-    if (tstep % freq ==0 || tstep==numSteps) {
-      const long long int nCalls = platform->timer.count(tag);
-      const double tTag = platform->timer.query(tag, type);
-      if (tTag > 0) {
-        if (platform->comm.mpiRank == 0) {
-          std::cout << name << tTag << "s";
-          std::cout << "  " << nCalls << " calls\n";
-        }
-      }
-    }
-  }
+  const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
 
   if (verbose) {
     if (platform->comm.mpiRank==0) { 
       conduit::Node ascent_info;
-      mAscent.info(ascent_info);
+      nekrsAscent::mAscent.info(ascent_info);
       ascent_info.print();
           
       conduit::Node opts;
@@ -214,6 +251,18 @@ void nekrsAscent::printStat(const int tstep) { //TODO: try to extract img info??
       std::cout << std::endl;
     }
   }            
+
+  std::string tag = "insituAscentRun";
+  std::string name = "    insituAscentRun     ";
+  std::string type = "DEVICE:MAX";
+  const long long int nCalls = platform->timer.count(tag);
+  const double tTag = platform->timer.query(tag, type);
+  if (tTag > 0) {
+    if (platform->comm.mpiRank == 0) {
+      std::cout << name << tTag << "s";
+      std::cout << "  " << nCalls << " calls\n";
+    }
+  }
 }
 
 
