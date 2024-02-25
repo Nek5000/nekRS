@@ -6,8 +6,8 @@
 : ${ASCENT_DIR="/soft/visualization/ascent/develop/2024-01-08-492f9b0/ascent-develop"}
 : ${NEKRS_CACHE_BCAST:=1}
 : ${NEKRS_SKIP_BUILD_ONLY:=0}
-: ${BUILDONLY:=0}
-: ${DFLOAT_FP32:=0}
+: ${NEKRS_BUILD_ONLY:=0}
+: ${NEKRS_DFLOAT_FP32:=0}
 
 if [ $# -ne 3 ]; then
   echo "usage: [PROJ_ID] [QUEUE] $0 <casename> <number of compute nodes> <hh:mm:ss>"
@@ -25,7 +25,7 @@ if [ -z "$QUEUE" ]; then
 fi
 
 bin=${NEKRS_HOME}/bin/nekrs
-if [ ${DFLOAT_FP32} -eq 1 ]; then
+if [ ${NEKRS_DFLOAT_FP32} -eq 1 ]; then
   bin=${NEKRS_HOME}/bin/nekrs-fp32
 fi
 case=$1
@@ -40,10 +40,11 @@ backend=CUDA
 NEKRS_GPU_MPI=1
 
 qnodes=$nodes
-prefix="nekRS_"
-if [ ${BUILDONLY} -eq 1 ]; then
-  qnode=1
-  prefix="nekRS_build_"
+jobname="nekRS_"$case
+if [ ${NEKRS_BUILD_ONLY} -eq 1 ]; then
+  NEKRS_SKIP_BUILD_ONLY=0
+  qnodes=1
+  jobname="nekRS_build_"$case
 fi
 
 time_fmt=`echo $time|tr ":" " "|awk '{print NF}'`
@@ -87,9 +88,6 @@ MPICH_MPIIO_HINTS="*:striping_unit=${striping_unit}:striping_factor=${striping_f
 
 # sbatch
 SFILE=s.bin
-if [ ${BUILDONLY} -eq 1 ]; then
-SFILE=s.bin.pre
-fi
 echo "#!/bin/bash" > $SFILE
 echo "#PBS -A $PROJ_ID" >>$SFILE
 echo "#PBS -N $prefix$case" >>$SFILE
@@ -140,6 +138,7 @@ echo "export NEKRS_ASCENT_INSTALL_DIR=$ASCENT_DIR" >>$SFILE
 # method 3
 #echo "export NEKRS_UDF_LDFLAGS=\"-L${ASCENT_DIR}/lib -lascent_mpi\"" >>$SFILE
 #echo "export NEKRS_UDF_INCLUDES=\"${ASCENT_DIR}/../conduit-v0.8.8/include/conduit\\;${ASCENT_DIR}/../conduit-v0.8.8/include\\;${ASCENT_DIR}/include/ascent\"" >>$SFILE
+#echo "export NEKRS_UDF_DEFINES=\"-DENABLE_ASCENT\"" >>$SFILE
 
 
 if [ $NEKRS_SKIP_BUILD_ONLY -eq 0 ]; then
@@ -149,7 +148,7 @@ echo "  exit" >> $SFILE
 echo "fi" >> $SFILE
 fi
 
-if [ $BUILDONLY -eq 0 ]; then
+if [ $NEKRS_BUILD_ONLY -eq 0 ]; then
 CMD=.lhelper
 echo "#!/bin/bash" >$CMD
 echo "gpu_id=\$((${gpu_per_node} - 1 - \${PMI_LOCAL_RANK} % ${gpu_per_node}))" >>$CMD

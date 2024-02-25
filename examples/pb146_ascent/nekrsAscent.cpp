@@ -3,6 +3,8 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
+#ifdef ENABLE_ASCENT
+
 // private members
 namespace {
 nekrsAscent::fields userFieldList;
@@ -63,7 +65,6 @@ void initializeAscent() {
   }
   fflush(stdout);
 }
-
 
 void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds) {
 // TODO add flag for initialized
@@ -153,7 +154,6 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
   platform->timer.set("insituAscentSetup", tSetup);
   if (platform->comm.mpiRank == 0) {
     printf("done (%gs)\n\n", tSetup);
-    std::cout << ascent::about() << std::endl; 
   }
   fflush(stdout);
 
@@ -221,6 +221,7 @@ void nekrsAscent::run(const double time, const int tstep) {
   // call ascent
   mAscent.publish(mesh_data);
   conduit::Node actions;
+  // set yaml file name here?
   mAscent.execute(actions);
   platform->timer.toc("insituAscentRun"); 
 
@@ -269,3 +270,29 @@ void printStat() { //TODO: try to extract img info??
 void nekrsAscent::finalize() {
   mAscent.close();
 }
+
+#else
+
+void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds) {
+  if (platform->comm.mpiRank == 0) { 
+    printf("ERROR: Ascent not enabled! Recompile with -DENABLE_ASCENT\n");
+    fflush(stdout);
+  }
+}
+
+void nekrsAscent::setup(nrs_t *nrs_) {
+  if (platform->comm.mpiRank == 0) { 
+    printf("ERROR: Ascent not enabled! Recompile with -DENABLE_ASCENT\n");
+    fflush(stdout);
+  }
+}
+
+void nekrsAscent::run(const double time, const int tstep) {
+  const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
+  if (verbose && platform->comm.mpiRank == 0) { 
+    printf("Ascent not enabled!, do nothing ... \n");
+  }
+}
+void nekrsAscent::finalize();
+
+#endif

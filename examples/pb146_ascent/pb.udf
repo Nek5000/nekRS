@@ -57,6 +57,5 @@ void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep) {
   if (tstep==0)
     compRad(meshT->Nlocal, meshT->o_x, meshT->o_y, o_S1);
 
-  // insitu
   nekrsAscent::run(time, tstep);
 }

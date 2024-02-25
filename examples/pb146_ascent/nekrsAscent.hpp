@@ -8,11 +8,11 @@
 #include <vector>
 #include <tuple>
 
-#include <ascent.hpp>
-#include <mpi.h>
-
 #include "nrs.hpp"
 
+#ifdef ENABLE_ASCENT
+#include <ascent.hpp>
+#include <mpi.h>
 
 namespace nekrsAscent
 {
@@ -27,4 +27,15 @@ static ascent::Ascent mAscent;
 void initializeAscent();
 void printStat();
 
-#endif 
+#else
+
+namespace nekrsAscent
+{
+typedef std::vector< std::tuple<std::string, occa::memory, dlong> > fields;
+void setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds);
+void setup(nrs_t *nrs_);
+void run(const double time, const int tstep);
+void finalize();
+}
+#endif // ascent
+#endif // hpp

@@ -1,7 +1,8 @@
 #!/bin/bash
 : ${NEKRS_HOME:="/home/sean/.local/nekrs_next_ascent/bin/../"}
-: ${ASCENT_DIR="/home/sean/ascent_repo021424/install/ascent-develop/"}
-: ${COMPILE_METHOD=3}
+: ${NEKRS_ENABLE_ASCENT:=1}
+: ${ASCENT_DIR:="/home/sean/ascent_repo021424/install/ascent-develop/"}
+: ${COMPILE_METHOD:=3}
 
 echo "COMPILE_METHOD=$COMPILE_METHOD"
 
@@ -24,18 +25,24 @@ NEKRS_UDF_INCLUDES="$ASCENT_INCLUDE_FLAGS"
 NEKRS_UDF_INCLUDES=`echo $NEKRS_UDF_INCLUDES|sed 's/-I//g'|awk '{$1=$1;print}'|tr -s " "|sed 's/ /\;/g'`
 export NEKRS_UDF_INCLUDES="$NEKRS_UDF_INCLUDES"
 export NEKRS_UDF_LDFLAGS="$NEKRS_UDF_LDFLAGS"
-
+if [ $NEKRS_ENABLE_ASCENT -eq 1 ]; then
+export NEKRS_UDF_DEFINES="-DENABLE_ASCENT"
+fi
 
 # method 2: cmake (udf/CMakeList.txt)
 elif [ "$COMPILE_METHOD" -eq "2" ]; then
-export NEKRS_ENABLE_ASCENT=1
+export NEKRS_ENABLE_ASCENT=$NEKRS_ENABLE_ASCENT
 export NEKRS_ASCENT_INSTALL_DIR=$ASCENT_DIR
 
 
 # method 3
 elif [ "$COMPILE_METHOD" -eq "3" ]; then
+#export CMAKE_CXX_FLAGS="-DENABLE_ASCENT"
 export NEKRS_UDF_LDFLAGS="-L${ASCENT_DIR}/lib -lascent_mpi"
 export NEKRS_UDF_INCLUDES="${ASCENT_DIR}/../conduit-v0.8.8/include/conduit\;${ASCENT_DIR}/../conduit-v0.8.8/include\;${ASCENT_DIR}/include/ascent"
+if [ $NEKRS_ENABLE_ASCENT -eq 1 ]; then
+export NEKRS_UDF_DEFINES="-DENABLE_ASCENT"
+fi
 fi
 
 

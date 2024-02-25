@@ -98,6 +98,12 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "nekrs_mpi_underlying_compiler", buf);
   if(!getenv("NEKRS_MPI_UNDERLYING_COMPILER")) setenv("NEKRS_MPI_UNDERLYING_COMPILER", buf.c_str(), 1);
 
+  buf="";
+  ini.extract("general", "nekrs_udf_defines", buf);
+  if(!buf.empty()) buf = " " + buf;
+  if(getenv("NEKRS_UDF_DEFINES")) buf = std::string(getenv("NEKRS_UDF_DEFINES")) + buf;
+  if(!buf.empty()) setenv("NEKRS_UDF_DEFINES", buf.c_str(), 1);
+
   ini.extract("general", "nekrs_udf_includes", buf);
   if(!buf.empty()) buf = " " + buf;
   if(getenv("NEKRS_UDF_INCLUDES")) buf = std::string(getenv("NEKRS_UDF_INCLUDES")) + buf;
