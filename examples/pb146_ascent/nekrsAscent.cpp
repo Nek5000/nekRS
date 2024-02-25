@@ -67,7 +67,6 @@ void initializeAscent() {
 }
 
 void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds) {
-// TODO add flag for initialized
 
   const double tStart = MPI_Wtime();
   if (platform->comm.mpiRank == 0) {
@@ -128,7 +127,7 @@ void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& f
 
   mesh_data["topologies/mesh/type"]           = "unstructured";
   mesh_data["topologies/mesh/coordset"]       = "coords";
-  mesh_data["topologies/mesh/elements/shape"] = "hex";  // Note "hexs" - documentation on Ascent/Conduit webpage is incorrect TODO: double check this
+  mesh_data["topologies/mesh/elements/shape"] = "hex";
   mesh_data["topologies/mesh/elements/connectivity"].set_external((dlong*) o_connectivity.ptr(), Nvertices);
 
   if( mesh->totalHaloPairs ) { // FIXME
@@ -238,7 +237,7 @@ void printStat() { //TODO: try to extract img info??
 
   const int verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
 
-  if (verbose) {
+  if (verbose) { // This prints a lot...
     if (platform->comm.mpiRank==0) { 
       conduit::Node ascent_info;
       nekrsAscent::mAscent.info(ascent_info);
@@ -266,8 +265,12 @@ void printStat() { //TODO: try to extract img info??
   }
 }
 
-
 void nekrsAscent::finalize() {
+  o_fields.free();
+  o_Xcoord.free();
+  o_Ycoord.free();
+  o_Zcoord.free();
+  o_connectivity.free();
   mAscent.close();
 }
 
