@@ -12,37 +12,32 @@
 #endif
 
 void UDF_Setup(nrs_t *nrs) {
-/*
-  cds_t *cds = nrs->cds;
-  mesh_t *meshV = nrs->meshV; 
-  mesh_t* meshT;
-  (nrs->cds) ? meshT = cds->mesh[0] : meshT = meshV; // cht
 
+  /*
   {
+    cds_t *cds = nrs->cds;
+    mesh_t *meshV = nrs->meshV; 
+    mesh_t* meshT;
+    (nrs->cds) ? meshT = cds->mesh[0] : meshT = meshV; // cht
+
     std::vector< std::tuple<std::string, occa::memory, dlong> > ascentFields;
 
-    auto o_u    = nrs->o_U.slice(0 * nrs->fieldOffset , nrs->fieldOffset);
-    auto o_v    = nrs->o_U.slice(1 * nrs->fieldOffset , nrs->fieldOffset);
-    auto o_w    = nrs->o_U.slice(2 * nrs->fieldOffset , nrs->fieldOffset);
+    auto o_u  = nrs->o_U.slice(0 * nrs->fieldOffset , nrs->fieldOffset);
+    auto o_v  = nrs->o_U.slice(1 * nrs->fieldOffset , nrs->fieldOffset);
+    auto o_w  = nrs->o_U.slice(2 * nrs->fieldOffset , nrs->fieldOffset);
+    auto o_s0 = cds->o_S + cds->fieldOffsetScan[0];
+    auto o_s1 = cds->o_S + cds->fieldOffsetScan[1];
 
     ascentFields.push_back(std::make_tuple("vel_x", o_u, meshV->Nlocal));
     ascentFields.push_back(std::make_tuple("vel_y", o_v, meshV->Nlocal));
     ascentFields.push_back(std::make_tuple("vel_z", o_w, meshV->Nlocal));
+    ascentFields.push_back(std::make_tuple("temperature", o_s0, cds->mesh[0]->Nlocal));
+    ascentFields.push_back(std::make_tuple("scalar01", o_s1, meshV->Nlocal));
 
-//    ascentFields.push_back(std::make_tuple("radius", o_rad));
-
-    for (int is = 0; is < cds->NSfields; is++) {
-      const std::string sid = (is==0) ? "temperature" : "scalar" + scalarDigitStr(is);
-
-      mesh_t *mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
-      auto o_scalar = cds->o_S + cds->fieldOffsetScan[is];
-      ascentFields.push_back(std::make_tuple(sid, o_scalar, mesh->Nlocal));
-    }
-
-    nekrsAscent::setup(meshT, nrs->fieldOffset, ascentFields); // TODO: add order for map2reg;, Nlocal
+    nekrsAscent::setup(meshT, nrs->fieldOffset, ascentFields);
   }
-*/
+  */
+
   nekrsAscent::setup(nrs);
 }
 

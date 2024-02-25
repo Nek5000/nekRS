@@ -274,6 +274,12 @@ void nekrsAscent::finalize() {
   mAscent.close();
 }
 
+occa::memory nekrsAscent::o_getAscentFields() { // TODO: add string to get entity?
+  nrsCheck(!setupCalled, MPI_COMM_SELF, EXIT_FAILURE,
+           "%s\n", "called prior to nekrsAscent::setup()!");
+  return o_fields;
+}
+
 #else
 
 void nekrsAscent::setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds) {
@@ -297,5 +303,7 @@ void nekrsAscent::run(const double time, const int tstep) {
   }
 }
 void nekrsAscent::finalize();
+
+occa::memory nekrsAscent::o_getAscentFields();
 
 #endif

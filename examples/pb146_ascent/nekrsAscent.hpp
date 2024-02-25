@@ -21,6 +21,7 @@ void setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds);
 void setup(nrs_t *nrs_);
 void run(const double time, const int tstep);
 void finalize();
+occa::memory o_getAscentFields();
 static ascent::Ascent mAscent;
 }
 
@@ -36,6 +37,7 @@ void setup(mesh_t *mesh_, const dlong fieldOffset_, const fields& flds);
 void setup(nrs_t *nrs_);
 void run(const double time, const int tstep);
 void finalize();
+occa::memory o_getAscentFields();
 }
 #endif // ascent
 #endif // hpp
