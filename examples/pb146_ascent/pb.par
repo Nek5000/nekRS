@@ -1,0 +1,40 @@
+[OCCA]
+backend = serial
+
+[GENERAL]
+verbose = true
+polynomialOrder = 3 #7
+#startFrom = "restart.fld"
+#stopAt = endTime
+#endTime = 20
+stopAt = numSteps
+numSteps = 10
+
+dt = 2.0e-3
+timeStepper = tombo2
+subCyclingSteps = 2
+
+#writeControl = simulationTime 
+writeControl = steps
+writeInterval = -1 #2
+
+regularization = hpfrt + nModes=2 + scalingCoeff=20 
+
+[PRESSURE]
+residualTol = 1e-04
+
+[VELOCITY]
+boundaryTypeMap = inlet, outlet, wall, wall
+density = 1.0
+viscosity = -5000.0
+residualTol = 1e-06
+
+[TEMPERATURE]
+boundaryTypeMap = inlet, outlet, insulated, flux 
+residualTol = 1e-06
+rhoCp = 1.0
+conductivity = -5000
+
+[SCALAR01] # radius
+solver = none
+
