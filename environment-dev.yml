@@ -1,0 +1,13 @@
+name: gemv-dev
+channels:
+  - conda-forge
+  - anaconda
+dependencies:
+  - cmake=3.24
+  - clang-format=16.0
+  - clang-tools=16.0
+  - clangdev=16.0 # We need this since clang-tools don't install clang headers.
+  - doxygen=1.9.7
+  - pip
+  - pip:
+    - -r requirements-dev.txt
