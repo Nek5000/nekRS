@@ -1,3 +1,0 @@
-[submodule "3rd_party/gemv"]
-	path = 3rd_party/gemv
-	url = https://github.com/thilinarmtb/gemv
