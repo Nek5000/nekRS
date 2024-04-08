@@ -9,7 +9,7 @@ if(${CMAKE_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/nekrs" CACHE PATH
+  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/nekrs/frontier_add_schwarz_coarse_solver" CACHE PATH
     "installation directory" FORCE)
 endif()
 
