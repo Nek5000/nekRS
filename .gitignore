@@ -7,3 +7,7 @@ CMakeFiles
 plugin_config.cu
 *.swp
 .cache/
+
+# Docs
+doc/venv/*
+doc/source/doxygen/*

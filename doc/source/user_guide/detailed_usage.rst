@@ -1,0 +1,4 @@
+.. _detailed:
+
+Detailed Usage
+===================

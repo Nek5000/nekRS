@@ -1,0 +1,4 @@
+Sphinx==7.2.6
+breathe==4.35.0
+sphinx-rtd-theme==2.0.0
+sphinx_mdinclude==0.6.0
