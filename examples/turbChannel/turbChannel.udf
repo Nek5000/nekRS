@@ -43,7 +43,7 @@ void useric(nrs_t *nrs)
   platform->options.getArgs("VISCOSITY", mue);
 
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
-    for (int i = 1; i < mesh->Nlocal; i++) {
+    for (int i = 0; i < mesh->Nlocal; i++) {
       const auto x = mesh->x[i];
       const auto y = mesh->y[i];
       const auto z = mesh->z[i];
