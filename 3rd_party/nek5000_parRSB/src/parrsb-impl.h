@@ -1,15 +1,12 @@
 #ifndef _PARRSB_IMPL_H_
 #define _PARRSB_IMPL_H_
 
-#include "parRSB.h"
-#include <assert.h>
+#define _POSIX_C_SOURCE 200809L
+
 #include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+
+#include "parRSB.h"
 
 #ifdef scalar
 #undef scalar
@@ -22,15 +19,14 @@
 #define SCALAR_MAX DBL_MAX
 #define SCALAR_TOL 1e-12
 
-#define MAXDIM 3 // Maximum dimension of the mesh
-#define MAXNV 8  // Maximum number of vertices per element
+#define MAXDIM 3 // Maximum dimension of the mesh.
+#define MAXNV 8  // Maximum number of vertices per element.
 
 //------------------------------------------------------------------------------
-// RCB / RIB
+// RCB / RIB.
 // `struct rcb_element` is used for RCB and RIB partitioning.
-// `struct rsb_element` should be a superset of `struct rcb_element`
 struct rcb_element {
-  uint proc, origin, seq;
+  uint proc, origin;
   ulong globalId;
   scalar coord[MAXDIM], fiedler;
 };
@@ -41,17 +37,20 @@ int rib(struct array *elements, size_t unit_size, int ndim, struct comm *c,
         buffer *bfr);
 
 //------------------------------------------------------------------------------
-// RSB
-//
+// RSB.
+// `struct rsb_element` = `struct rcb_element` + vertices. Order is important.
 struct rsb_element {
-  uint proc, origin, seq;
+  uint proc, origin;
   ulong globalId;
   scalar coord[MAXDIM], fiedler;
   slong vertices[MAXNV];
 };
 
+void rsb(struct array *elements, int nv, const parrsb_options *const options,
+         const struct comm *comms, buffer *bfr);
+
 //------------------------------------------------------------------------------
-// Find number of components
+// Find number of components.
 //
 uint get_components(sint *component, struct array *elems, unsigned nv,
                     struct comm *c, buffer *buf, int verbose);
@@ -59,7 +58,21 @@ uint get_components_v2(sint *component, struct array *elems, unsigned nv,
                        const struct comm *ci, buffer *bfr, int verbose);
 
 //------------------------------------------------------------------------------
-// Laplacian
+// Dump partition statistics.
+//
+void parrsb_dump_stats_start(const uint nv_);
+
+void parrsb_dump_stats(const struct comm *const gc, const struct comm *const lc,
+                       const struct array *const elems, buffer *bfr);
+
+void parrsb_dump_stats_end(const struct comm *const gc, const char *prefix);
+
+uint parrsb_get_neighbors(const struct array *const elems, const unsigned nv,
+                          const struct comm *const gc,
+                          const struct comm *const lc, buffer *bfr);
+
+//------------------------------------------------------------------------------
+// Laplacian.
 //
 #define GS 1
 #define CSR 2
@@ -72,11 +85,11 @@ int laplacian(scalar *v, struct laplacian *l, scalar *u, buffer *buf);
 void laplacian_free(struct laplacian *l);
 
 //------------------------------------------------------------------------------
-// Misc
+// Misc.
 //
 int log2ll(long long n);
 
 void parrsb_barrier(struct comm *c);
 
-void debug_print(struct comm *c, int verbose, const char *fmt, ...);
+void parrsb_print(const struct comm *c, int verbose, const char *fmt, ...);
 #endif

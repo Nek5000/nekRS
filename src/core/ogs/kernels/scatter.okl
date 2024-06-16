@@ -1,0 +1,21 @@
+#define GENERATE(TN,T)                                                                                   \
+@kernel void scatter_##TN(const dlong Nscatter,                                                          \
+                         @ restrict const dlong *scatterStarts,                                          \
+                         @ restrict const dlong *scatterIds,                                             \
+                         @ restrict const T *q, @ restrict T *scatterq)                                  \
+{                                                                                                        \
+  for (dlong s = 0; s < Nscatter; ++s; @tile(p_blockSize, @outer, @inner)) {                             \
+    const dlong start = scatterStarts[s];                                                                \
+    const dlong end = scatterStarts[s+1];                                                                \
+    const T qs = q[s];                                                                                   \
+    for (dlong n = start; n < end; ++n) {                                                                \
+      const dlong id = scatterIds[n];                                                                    \
+      scatterq[id] = qs;                                                                                 \
+    }                                                                                                    \
+  }                                                                                                      \
+}
+
+GENERATE(float,float,)
+GENERATE(double,double)
+GENERATE(int,int)
+GENERATE(long_long,hlong)

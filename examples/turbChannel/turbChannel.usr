@@ -56,12 +56,9 @@ c-----------------------------------------------------------------------
       real           XLEN, ZLEN, BETAM
       COMMON /CASED/ XLEN, ZLEN, BETAM
 
-      COMMON /NRSSCPTR/ nrs_scptr(3)
-      integer*8         nrs_scptr
-
-      nrs_scptr(1) = loc(XLEN)
-      nrs_scptr(2) = loc(ZLEN)
-      nrs_scptr(3) = loc(BETAM)
+      call nekrs_registerPtr('xlen', XLEN)
+      call nekrs_registerPtr('zlen', ZLEN)
+      call nekrs_registerPtr('betam', BETAM)
 
       return
       end

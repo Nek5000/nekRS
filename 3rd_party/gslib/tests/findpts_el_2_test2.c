@@ -4,16 +4,7 @@
 #include <math.h>
 #include <float.h>
 #include <string.h>
-#include "c99.h"
-#include "types.h"
-#include "name.h"
-#include "fail.h"
-#include "mem.h"
-#include "tensor.h"
-#include "poly.h"
-#include "lob_bnd.h"
-#include "obbox.h"
-#include "findpts_el.h"
+#include "gslib.h"
 #include "rand_elt_test.h"
 
 #define REPEAT 10000

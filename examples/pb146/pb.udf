@@ -1,14 +1,13 @@
-//
-// nekRS User Defined File
-//
-#include "udf.hpp"
-
 #ifdef __okl__
 
 #include "pb.oudf"
 
 #endif
 
-void UDF_Setup(nrs_t *nrs) {}
+void UDF_Setup() 
+{
+}
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep) {}
+void UDF_ExecuteStep(double time, int tstep) 
+{
+}

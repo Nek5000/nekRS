@@ -106,6 +106,7 @@
 *>
 *> \param[in] LWORK
 *> \verbatim
+*>          LWORK is INTEGER
 *>          The dimension of the array WORK.  LWORK >= NB*N.
 *>          If LWORK = -1, then a workspace query is assumed; the routine
 *>          only calculates the optimal size of the WORK array, returns
@@ -160,6 +161,8 @@
 *>     SIAM J. Sci. Comput, vol. 34, no. 1, 2012
 *> \endverbatim
 *>
+*> \ingroup latsqr
+*>
 *  =====================================================================
       SUBROUTINE CLATSQR( M, N, MB, NB, A, LDA, T, LDT, WORK,
      $                    LWORK, INFO)
@@ -184,7 +187,8 @@
 *     ..
 *     .. EXTERNAL FUNCTIONS ..
       LOGICAL            LSAME
-      EXTERNAL           LSAME
+      REAL               SROUNDUP_LWORK
+      EXTERNAL           LSAME, SROUNDUP_LWORK
 *     .. EXTERNAL SUBROUTINES ..
       EXTERNAL    CGEQRT, CTPQRT, XERBLA
 *     .. INTRINSIC FUNCTIONS ..
@@ -214,7 +218,7 @@
         INFO = -10
       END IF
       IF( INFO.EQ.0)  THEN
-        WORK(1) = NB*N
+        WORK(1) = SROUNDUP_LWORK(NB*N)
       END IF
       IF( INFO.NE.0 ) THEN
         CALL XERBLA( 'CLATSQR', -INFO )
@@ -261,7 +265,7 @@
      $                  WORK, INFO )
        END IF
 *
-      work( 1 ) = N*NB
+      WORK( 1 ) = SROUNDUP_LWORK(N*NB)
       RETURN
 *
 *     End of CLATSQR

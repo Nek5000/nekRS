@@ -1,17 +1,4 @@
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include "c99.h"
-#include "name.h"
-#include "fail.h"
-#include "types.h"
-#include "comm.h"
-#include "mem.h"
-#include "sort.h"
-#include "sarray_sort.h"
-#include "crystal.h"
-#include "sarray_transfer.h"
+#include "gslib.h"
 
 typedef struct {
   double d;
@@ -27,7 +14,7 @@ int main(int narg, char *arg[])
   struct crystal crystal;
   struct array A, A0=null_array; r_work *row, *row_0;
   uint i;
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   MPI_Init(&narg,&arg);
   world = MPI_COMM_WORLD;
   MPI_Comm_size(world,&np);
@@ -85,7 +72,7 @@ int main(int narg, char *arg[])
   
   comm_free(&comm);
   
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   MPI_Finalize();
 #endif
 

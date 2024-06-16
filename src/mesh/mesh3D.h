@@ -76,7 +76,6 @@ void meshHaloExchangeFinish3D(mesh_t *mesh);
 // build list of nodes on each face of the reference element
 void meshBuildFaceNodes3D(mesh_t *mesh);
 void meshBuildFaceNodesHex3D(mesh_t *mesh);
-void interpolateHex3D(dfloat* Inter, dfloat* x, int N, dfloat* Ix, int M);
 
 /* offsets for geometric factors */
 #define RXID 0

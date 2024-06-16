@@ -11,6 +11,7 @@ namespace occa {
     name(name_),
     sourceFilename(sourceFilename_),
     properties(properties_) {
+    hash = properties.get<std::string>("hash");
     modeDevice->addKernelRef(this);
   }
 

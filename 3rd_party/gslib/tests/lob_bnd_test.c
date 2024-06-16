@@ -1,17 +1,10 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <float.h>
 #include <math.h>
 #include <string.h>
-#include "c99.h"
-#include "types.h"
-#include "name.h"
-#include "fail.h"
-#include "mem.h"
-#include "tensor.h"
-#include "poly.h"
-#include "lob_bnd.h"
-
+#include "gslib.h"
 
 #define RESFAC 4
 #define N  12

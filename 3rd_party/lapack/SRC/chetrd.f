@@ -139,7 +139,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complexHEcomputational
+*> \ingroup hetrd
 *
 *> \par Further Details:
 *  =====================
@@ -225,7 +225,8 @@
 *     .. External Functions ..
       LOGICAL            LSAME
       INTEGER            ILAENV
-      EXTERNAL           LSAME, ILAENV
+      REAL               SROUNDUP_LWORK
+      EXTERNAL           LSAME, ILAENV, SROUNDUP_LWORK
 *     ..
 *     .. Executable Statements ..
 *
@@ -250,7 +251,7 @@
 *
          NB = ILAENV( 1, 'CHETRD', UPLO, N, -1, -1, -1 )
          LWKOPT = N*NB
-         WORK( 1 ) = LWKOPT
+         WORK( 1 ) = SROUNDUP_LWORK(LWKOPT)
       END IF
 *
       IF( INFO.NE.0 ) THEN
@@ -367,7 +368,7 @@
      $                TAU( I ), IINFO )
       END IF
 *
-      WORK( 1 ) = LWKOPT
+      WORK( 1 ) = SROUNDUP_LWORK(LWKOPT)
       RETURN
 *
 *     End of CHETRD

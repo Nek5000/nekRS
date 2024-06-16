@@ -44,12 +44,16 @@
 
   ----------------------------------------------------------------------------*/
 
-#define sortv_ui  PREFIXED_NAME(sortv_ui)
-#define sortv_ul  PREFIXED_NAME(sortv_ul)
-#define sortv_ull PREFIXED_NAME(sortv_ull)
-#define sortp_ui  PREFIXED_NAME(sortp_ui)
-#define sortp_ul  PREFIXED_NAME(sortp_ul)
-#define sortp_ull PREFIXED_NAME(sortp_ull)
+#define sortv_ui     PREFIXED_NAME(sortv_ui)
+#define sortv_ul     PREFIXED_NAME(sortv_ul)
+#define sortv_ull    PREFIXED_NAME(sortv_ull)
+#define sortv_double PREFIXED_NAME(sortv_double)
+#define sortv_float PREFIXED_NAME(sortv_float)
+#define sortp_ui     PREFIXED_NAME(sortp_ui)
+#define sortp_ul     PREFIXED_NAME(sortp_ul)
+#define sortp_ull    PREFIXED_NAME(sortp_ull)
+#define sortp_double PREFIXED_NAME(sortp_double)
+#define sortp_float PREFIXED_NAME(sortp_float)
 
 #define sortv TYPE_LOCAL(sortv_ui,sortv_ul,sortv_ull)
 #define sortp TYPE_LOCAL(sortp_ui,sortp_ul,sortp_ull)
@@ -61,10 +65,20 @@ void sortv_ui(unsigned *out, const unsigned *A, uint n, unsigned stride,
 void sortv_ul(unsigned long *out,
               const unsigned long *A, uint n, unsigned stride,
               buffer *restrict buf);
+void sortv_double(double *out,
+              const double *A, uint n, unsigned stride,
+              buffer *restrict buf);
+void sortv_float(float *out,
+              const float *A, uint n, unsigned stride,
+              buffer *restrict buf);
 uint *sortp_ui(buffer *restrict buf, int start_perm,
                const unsigned *restrict A, uint n, unsigned stride);
 uint *sortp_ul(buffer *restrict buf, int start_perm,
                const unsigned long *restrict A, uint n, unsigned stride);
+uint *sortp_double(buffer *restrict buf, int start_perm,
+               const double *restrict A, uint n, unsigned stride);
+uint *sortp_float(buffer *restrict buf, int start_perm,
+               const float *restrict A, uint n, unsigned stride);
 #if defined(USE_LONG_LONG) || defined(GLOBAL_LONG_LONG)
 void sortv_ull(unsigned long long *out,
                const unsigned long long *A, uint n, unsigned stride,

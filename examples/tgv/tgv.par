@@ -13,8 +13,8 @@ dt = 3e-3
 #dt = targetCFL=2.5 + max=3e-3
 #subcyclingSteps = 1
 
-writeControl = simulationTime 
-writeInterval = 0
+checkpointControl = simulationTime 
+checkpointInterval = 0
 
 regularization = hpfrt + nModes=1 + scalingCoeff=1
 

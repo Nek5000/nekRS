@@ -80,6 +80,14 @@ else
 endif
 #=================================================
 
+PLACE_GENERATED_CODES := $(shell mkdir -p $(OCCA_DIR)/include/occa/core/codegen | \
+                                 mkdir -p $(OCCA_DIR)/src/core/codegen | \
+                                 mkdir -p $(OCCA_DIR)/src/occa/internal/utils/codegen | \
+                                 mkdir -p $(OCCA_DIR)/include/occa/defines/codegen)
+PLACE_GENERATED_CODES := $(shell cp $(OCCA_DIR)/scripts/codegen/kernelOperators.hpp_codegen.in $(OCCA_DIR)/include/occa/core/codegen/kernelOperators.hpp_codegen | \
+                                 cp $(OCCA_DIR)/scripts/codegen/kernelOperators.cpp_codegen.in $(OCCA_DIR)/src/core/codegen/kernelOperators.cpp_codegen | \
+                                 cp $(OCCA_DIR)/scripts/codegen/runFunction.cpp_codegen.in $(OCCA_DIR)/src/occa/internal/utils/codegen/runFunction.cpp_codegen | \
+                                 cp $(OCCA_DIR)/scripts/codegen/macros.hpp_codegen.in $(OCCA_DIR)/include/occa/defines/codegen/macros.hpp_codegen)
 
 #---[ Compile Library ]---------------------------
 # Setup compiled defines and force rebuild if defines changed
@@ -95,7 +103,9 @@ MAKE_COMPILED_DEFINES := $(shell cat "$(OCCA_DIR)/scripts/build/compiledDefinesT
                                       s,@@OCCA_HIP_ENABLED@@,$(OCCA_HIP_ENABLED),g;\
                                       s,@@OCCA_OPENCL_ENABLED@@,$(OCCA_OPENCL_ENABLED),g;\
                                       s,@@OCCA_METAL_ENABLED@@,$(OCCA_METAL_ENABLED),g;\
-				      												s,@@OCCA_DPCPP_ENABLED@@,$(OCCA_DPCPP_ENABLED),g;\
+                                      s,@@OCCA_DPCPP_ENABLED@@,$(OCCA_DPCPP_ENABLED),g;\
+                                      s,@@OCCA_THREAD_SHARABLE_ENABLED@@,$(OCCA_THREAD_SHARABLE_ENABLED),g;\
+                                      s,@@OCCA_MAX_ARGS@@,$(OCCA_MAX_ARGS),g;\
                                       s,@@OCCA_BUILD_DIR@@,$(OCCA_BUILD_DIR),g;"\
                                       > "$(NEW_COMPILED_DEFINES)")
 

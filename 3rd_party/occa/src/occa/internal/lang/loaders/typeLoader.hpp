@@ -23,8 +23,7 @@ namespace occa {
 
       bool loadType(vartype_t &vartype);
 
-      void loadVartypeQualifier(token_t *token,
-                                const qualifier_t &qualifier,
+      void loadVartypeQualifier(const qualifier_t &qualifier,
                                 vartype_t &vartype);
 
       void setVartypePointers(vartype_t &vartype);
@@ -32,7 +31,11 @@ namespace occa {
 
       void setVartypeReference(vartype_t &vartype);
 
+      void loadEnum(vartype_t &vartype);
+
       void loadStruct(vartype_t &vartype);
+
+      void loadUnion(vartype_t &vartype);
 
       friend bool loadType(tokenContext_t &tokenContext,
                            statementContext_t &smntContext,
@@ -44,7 +47,15 @@ namespace occa {
                                parser_t &parser,
                                vartype_t &vartype);
 
+      friend bool isLoadingEnum(tokenContext_t &tokenContext,
+                                  statementContext_t &smntContext,
+                                  parser_t &parser);
+
       friend bool isLoadingStruct(tokenContext_t &tokenContext,
+                                  statementContext_t &smntContext,
+                                  parser_t &parser);
+
+      friend bool isLoadingUnion(tokenContext_t &tokenContext,
                                   statementContext_t &smntContext,
                                   parser_t &parser);
     };
@@ -59,7 +70,15 @@ namespace occa {
                       parser_t &parser,
                       vartype_t &vartype);
 
+    bool isLoadingEnum(tokenContext_t &tokenContext,
+                         statementContext_t &smntContext,
+                         parser_t &parser);
+
     bool isLoadingStruct(tokenContext_t &tokenContext,
+                         statementContext_t &smntContext,
+                         parser_t &parser);
+
+    bool isLoadingUnion(tokenContext_t &tokenContext,
                          statementContext_t &smntContext,
                          parser_t &parser);
   }

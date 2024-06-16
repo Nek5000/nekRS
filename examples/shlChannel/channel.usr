@@ -43,6 +43,16 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
+      subroutine usrdat0 
+
+      include 'SIZE'
+      include 'CASEDATA'
+
+      call nekrs_registerPtr('p_rot', P_ROT)
+
+      return
+      end
+c-----------------------------------------------------------------------
       subroutine usrdat   ! This routine to modify element vertices
       include 'SIZE'      ! _before_ mesh is generated, which
       include 'TOTAL'     ! guarantees GLL mapping of mesh.
@@ -65,12 +75,7 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
       include 'CASEDATA'
 
-      common /scnrs/ sc_nrs(1)
-      real           sc_nrs
-
       real xpt, ypt
-
-      P_ROT = sc_nrs(1)
 
       call rescale_x(xm1,0.0,1.0)
       call rescale_x(ym1,-1.0,0.0)

@@ -233,7 +233,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup realOTHERauxiliary
+*> \ingroup laqr5
 *
 *> \par Contributors:
 *  ==================
@@ -306,8 +306,7 @@
       REAL               VT( 3 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           SGEMM, SLABAD, SLACPY, SLAQR1, SLARFG, SLASET,
-     $                   STRMM
+      EXTERNAL           SGEMM, SLACPY, SLAQR1, SLARFG, SLASET, STRMM
 *     ..
 *     .. Executable Statements ..
 *
@@ -353,7 +352,6 @@
 *
       SAFMIN = SLAMCH( 'SAFE MINIMUM' )
       SAFMAX = ONE / SAFMIN
-      CALL SLABAD( SAFMIN, SAFMAX )
       ULP = SLAMCH( 'PRECISION' )
       SMLNUM = SAFMIN*( REAL( N ) / ULP )
 *
@@ -558,10 +556,13 @@
 *                 .    Mth bulge. Exploit fact that first two elements
 *                 .    of row are actually zero. ====
 *
-                  REFSUM = V( 1, M )*V( 3, M )*H( K+3, K+2 )
-                  H( K+3, K   ) = -REFSUM
-                  H( K+3, K+1 ) = -REFSUM*V( 2, M )
-                  H( K+3, K+2 ) = H( K+3, K+2 ) - REFSUM*V( 3, M )
+                  T1 = V( 1, M )
+                  T2 = T1*V( 2, M )
+                  T3 = T1*V( 3, M )
+                  REFSUM = V( 3, M )*H( K+3, K+2 )
+                  H( K+3, K   ) = -REFSUM*T1
+                  H( K+3, K+1 ) = -REFSUM*T2
+                  H( K+3, K+2 ) = H( K+3, K+2 ) - REFSUM*T3
 *
 *                 ==== Calculate reflection to move
 *                 .    Mth bulge one step. ====
@@ -597,11 +598,13 @@
      $                            VT )
                      ALPHA = VT( 1 )
                      CALL SLARFG( 3, ALPHA, VT( 2 ), 1, VT( 1 ) )
-                     REFSUM = VT( 1 )*( H( K+1, K )+VT( 2 )*
-     $                        H( K+2, K ) )
+                     T1 = VT( 1 )
+                     T2 = T1*VT( 2 )
+                     T3 = T2*VT( 3 )
+                     REFSUM = H( K+1, K )+VT( 2 )*H( K+2, K )
 *
-                     IF( ABS( H( K+2, K )-REFSUM*VT( 2 ) )+
-     $                   ABS( REFSUM*VT( 3 ) ).GT.ULP*
+                     IF( ABS( H( K+2, K )-REFSUM*T2 )+
+     $                   ABS( REFSUM*T3 ).GT.ULP*
      $                   ( ABS( H( K, K ) )+ABS( H( K+1,
      $                   K+1 ) )+ABS( H( K+2, K+2 ) ) ) ) THEN
 *
@@ -619,7 +622,7 @@
 *                       .    Replace the old reflector with
 *                       .    the new one. ====
 *
-                        H( K+1, K ) = H( K+1, K ) - REFSUM
+                        H( K+1, K ) = H( K+1, K ) - REFSUM*T1
                         H( K+2, K ) = ZERO
                         H( K+3, K ) = ZERO
                         V( 1, M ) = VT( 1 )

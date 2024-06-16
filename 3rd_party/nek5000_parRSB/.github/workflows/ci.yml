@@ -57,6 +57,7 @@ jobs:
         shell: bash
         run: |
           export PARRSB_RSB_ALGO=0
+          export PARRSB_VERBOSE_LEVEL=2
 
           cp ${EXAMPLESDIR}/genmap ${CIDIR}/${{ matrix.test }}
           cd ${CIDIR}/${{ matrix.test }}
@@ -70,6 +71,7 @@ jobs:
         run: |
           export PARRSB_RSB_ALGO=1
           export PARRSB_RSB_MG_FACTOR=2
+          export PARRSB_VERBOSE_LEVEL=2
 
           cp ${EXAMPLESDIR}/genmap ${CIDIR}/${{ matrix.test }}
           cd ${CIDIR}/${{ matrix.test }}
@@ -83,20 +85,7 @@ jobs:
         run: |
           export PARRSB_RSB_ALGO=1
           export PARRSB_RSB_MG_FACTOR=4
-
-          cp ${EXAMPLESDIR}/genmap ${CIDIR}/${{ matrix.test }}
-          cd ${CIDIR}/${{ matrix.test }}
-
-          tol=(`cat test.txt | grep tol`); tol=${tol[2]}
-          ${MPIEXE} -np ${{ matrix.np }} ./genmap --mesh ${{ matrix.test }} \
-            --tol=${tol} --dump=0 --test=1
-      - name: genmap-mg-factor-4-smooth
-        if: always()
-        shell: bash
-        run: |
-          export PARRSB_RSB_ALGO=1
-          export PARRSB_RSB_MG_FACTOR=4
-          export PARRSB_RSB_MG_SMOOTH_AGGREGATION=1
+          export PARRSB_VERBOSE_LEVEL=2
 
           cp ${EXAMPLESDIR}/genmap ${CIDIR}/${{ matrix.test }}
           cd ${CIDIR}/${{ matrix.test }}

@@ -1,7 +1,3 @@
-//
-// nekRS User Defined File
-//
-#include "udf.hpp"
 #include "ci.inc"
 
 /* User Functions */
@@ -15,17 +11,17 @@ static dfloat visc;
 
 #endif
 
-void userf(nrs_t *nrs, double time, occa::memory o_U, occa::memory o_FU)
+void userf(double time)
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->meshV;
   const dfloat DP = 3.0 * visc;
-  cfill(mesh->Nlocal, nrs->fieldOffset, P_ROT, DP, o_FU);
+  cfill(mesh->Nlocal, nrs->fieldOffset, P_ROT, DP, nrs->o_NLT);
 }
 
-void UDF_LoadKernels(occa::properties &kernelInfo)
+void UDF_LoadKernels(deviceKernelProperties &kernelInfo)
 {
   platform->options.getArgs("VISCOSITY", visc);
-  kernelInfo["defines/p_visc"] = visc;
+  kernelInfo.define("p_visc") = visc;
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -36,22 +32,18 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   }
   platform->par->extract("casedata", "p_rot", P_ROT);
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
-    nek_cb_scnrs[0] = P_ROT;
+    *nek::ptr<double>("p_rot") = P_ROT;
   }
 }
 
-void UDF_Setup(nrs_t *nrs)
+void UDF_Setup()
 {
-  mesh_t *mesh = nrs->meshV;
-  cds_t *cds = nrs->cds;
-
-  udf.uEqnSource = &userf;
+  nrs->userVelocitySource = &userf;
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
+void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isOutputStep) {
+  if (nrs->isCheckpointStep) {
     nek::ocopyToNek(time, tstep);
     nek::userchk();
   }

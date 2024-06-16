@@ -117,12 +117,57 @@ if(BUILD_COMPLEX16)
 endif()
 list(REMOVE_DUPLICATES SOURCES)
 
-add_library(${CBLASLIB} ${SOURCES})
+add_library(${CBLASLIB}_obj OBJECT ${SOURCES})
+set_target_properties(${CBLASLIB}_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+if(BUILD_INDEX64_EXT_API)
+  # 64bit Integer Interface
+  # Define list of C files
+  set(SOURCES_64_C)
+  list(APPEND SOURCES_64_C ${SOURCES})
+  list(FILTER SOURCES_64_C  EXCLUDE REGEX "\.f$")
+  list(REMOVE_ITEM SOURCES_64_C cblas_globals.c)
+  # Define list of Fortran files
+  set(SOURCES_64_F)
+  list(APPEND SOURCES_64_F ${SOURCES})
+  list(FILTER SOURCES_64_F  INCLUDE REGEX "\.f$")
+  # Copy files so we can set source property specific to /${CBLASLIB}_64_obj target
+  file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${CBLASLIB}_64_fobj)
+  file(COPY ${SOURCES_64_F} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/${CBLASLIB}_64_fobj)
+  file(GLOB SOURCES_64_F ${CMAKE_CURRENT_BINARY_DIR}/${CBLASLIB}_64_fobj/*)
+  add_library(${CBLASLIB}_64_cobj OBJECT ${SOURCES_64_C})
+  add_library(${CBLASLIB}_64_fobj OBJECT ${SOURCES_64_F})
+  set_target_properties(${CBLASLIB}_64_cobj ${CBLASLIB}_64_fobj PROPERTIES
+          POSITION_INDEPENDENT_CODE ON
+          Fortran_PREPROCESS ON
+          LINKER_LANGUAGE C)
+  target_compile_options(${CBLASLIB}_64_cobj PRIVATE -DWeirdNEC -DCBLAS_API64)
+  target_compile_options(${CBLASLIB}_64_fobj PRIVATE ${FOPT_ILP64})
+  #Add suffix to all Fortran functions via macros
+  foreach(F IN LISTS SOURCES_64_F)
+      set(COPT_64_F)
+      file(STRINGS ${F} ${F}.lst)
+      list(FILTER ${F}.lst INCLUDE REGEX "subroutine|external")
+      foreach(FUNC IN LISTS ${F}.lst)
+        string(REGEX REPLACE "[ ]*(subroutine|external)[ ]*" "" FUNC ${FUNC})
+        string(REGEX REPLACE "[(][a-zA-Z0-9, ]*[)]" "" FUNC ${FUNC})
+        list(APPEND COPT_64_F "-D${FUNC}=${FUNC}_64")
+      endforeach()
+      set_source_files_properties(${F} PROPERTIES COMPILE_OPTIONS "${COPT_64_F}")
+  endforeach()
+endif()
+
+add_library(${CBLASLIB}
+        $<TARGET_OBJECTS:${CBLASLIB}_obj>
+        $<$<BOOL:${BUILD_INDEX64_EXT_API}>: $<TARGET_OBJECTS:${CBLASLIB}_64_cobj>>
+        $<$<BOOL:${BUILD_INDEX64_EXT_API}>: $<TARGET_OBJECTS:${CBLASLIB}_64_fobj>>)
+
 set_target_properties(
   ${CBLASLIB} PROPERTIES
   LINKER_LANGUAGE C
   VERSION ${LAPACK_VERSION}
   SOVERSION ${LAPACK_MAJOR_VERSION}
+  POSITION_INDEPENDENT_CODE ON
   )
 if(HAS_ATTRIBUTE_WEAK_SUPPORT)
   target_compile_definitions(${CBLASLIB} PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
@@ -131,5 +176,5 @@ target_include_directories(${CBLASLIB} PUBLIC
   $<BUILD_INTERFACE:${LAPACK_BINARY_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(${CBLASLIB} PRIVATE ${BLAS_LIBRARIES})
+target_link_libraries(${CBLASLIB} PUBLIC ${BLAS_LIBRARIES})
 lapack_install_library(${CBLASLIB})

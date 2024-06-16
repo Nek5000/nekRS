@@ -188,6 +188,17 @@ c-----------------------------------------------------------------------
         endif
       end
 c-----------------------------------------------------------------------
+      subroutine usrdat0
+        include 'SIZE'
+
+        real P_EPS
+        common /cbcase/ P_EPS
+
+        call nekrs_registerPtr('p_eps', P_EPS)
+
+        return
+      end
+c-----------------------------------------------------------------------
       subroutine usrdat
         include 'SIZE'
         include 'TOTAL'
@@ -195,11 +206,9 @@ c-----------------------------------------------------------------------
         real epsy, epsz
         real x, y, z, xx, yy, zz
         integer i
-        COMMON /SCNRS/ sc_nrs(10)
-        real                sc_nrs
+
         real P_EPS
-        
-        P_EPS = sc_nrs(1)
+        common /cbcase/ P_EPS
 
         epsy = P_EPS
         epsz = P_EPS

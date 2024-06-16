@@ -32,27 +32,18 @@
 
 void mesh_t::geometricFactors()
 {
-  auto o_J = platform->o_memPool.reserve<dfloat>(Nlocal * sizeof(dfloat)); 
+  auto o_J = platform->o_memPool.reserve<dfloat>(Nlocal * sizeof(dfloat));
 
-  geometricFactorsKernel(Nelements,
-                         o_D,
-                         o_gllw,
-                         o_x,
-                         o_y,
-                         o_z,
-                         o_LMM,
-                         o_vgeo,
-                         o_ggeo,
-                         o_J);
+  geometricFactorsKernel(Nelements, o_D, o_gllw, o_x, o_y, o_z, o_LMM, o_vgeo, o_ggeo, o_J);
 
+  const dfloat minJ = platform->linAlg->min(Nlocal, o_J, platform->comm.mpiComm);
+  const dfloat maxJ = platform->linAlg->max(Nlocal, o_J, platform->comm.mpiComm);
 
-  const dfloat minJ =
-      platform->linAlg->min(Nlocal, o_J, platform->comm.mpiComm);
-  const dfloat maxJ =
-      platform->linAlg->max(Nlocal, o_J, platform->comm.mpiComm);
-
-  nrsCheck(minJ < 0 || maxJ < 0, platform->comm.mpiComm, EXIT_FAILURE,
-           "%s\n", "Invalid element Jacobian < 0 found!");
+  nekrsCheck(minJ < 0 || maxJ < 0,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "%s\n",
+             "Invalid element Jacobian < 0 found!");
 
   double flopsCubatureGeometricFactors = 0.0;
   if (cubNq > 1) {
@@ -67,40 +58,4 @@ void mesh_t::geometricFactors()
   double flopsGeometricFactors = 18 * Np * Nq + 91 * Np;
   flopsGeometricFactors *= static_cast<double>(Nelements);
   platform->flopCounter->add("mesh_t::update", flopsGeometricFactors + flopsCubatureGeometricFactors);
-}
-
-void interpolateHex3D(dfloat* I, dfloat* x, int N, dfloat* Ix, int M)
-{
-  dfloat* Ix1 = (dfloat*) calloc(N * N * M, sizeof(dfloat));
-  dfloat* Ix2 = (dfloat*) calloc(N * M * M, sizeof(dfloat));
-
-  for(int k = 0; k < N; ++k)
-    for(int j = 0; j < N; ++j)
-      for(int i = 0; i < M; ++i) {
-        dfloat tmp = 0;
-        for(int n = 0; n < N; ++n)
-          tmp += I[i * N + n] * x[k * N * N + j * N + n];
-        Ix1[k * N * M + j * M + i] = tmp;
-      }
-
-  for(int k = 0; k < N; ++k)
-    for(int j = 0; j < M; ++j)
-      for(int i = 0; i < M; ++i) {
-        dfloat tmp = 0;
-        for(int n = 0; n < N; ++n)
-          tmp += I[j * N + n] * Ix1[k * N * M + n * M + i];
-        Ix2[k * M * M + j * M + i] = tmp;
-      }
-
-  for(int k = 0; k < M; ++k)
-    for(int j = 0; j < M; ++j)
-      for(int i = 0; i < M; ++i) {
-        dfloat tmp = 0;
-        for(int n = 0; n < N; ++n)
-          tmp += I[k * N + n] * Ix2[n * M * M + j * M + i];
-        Ix[k * M * M + j * M + i] = tmp;
-      }
-
-  free(Ix1);
-  free(Ix2);
 }

@@ -42,7 +42,7 @@ namespace occa {
       bool kernelHasValidReturnType(functionDeclStatement &kernelSmnt) {
         vartype_t &returnType = kernelSmnt.function().returnType;
 
-        if (returnType.qualifiers.size() || (*returnType.type != void_)) {
+        if (*returnType.type != void_) {
           returnType.printError(
             "[@kernel] functions must have a [void] return type"
           );
@@ -392,6 +392,7 @@ namespace occa {
         parser.addAttribute<attributes::shared>();
         parser.addAttribute<attributes::maxInnerDims>();
         parser.addAttribute<attributes::noBarrier>();
+        parser.addAttribute<attributes::simdLength>();
       }
 
       void setOklLoopIndices(functionDeclStatement &kernelSmnt) {

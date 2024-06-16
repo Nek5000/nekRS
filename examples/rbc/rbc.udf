@@ -1,28 +1,53 @@
-//
-// nekRS User Defined File
-//
-#include "udf.hpp"
-
 #ifdef __okl__
 
 #include "rbc.oudf"
 
 #endif
 
-void userf(nrs_t *nrs, double time, occa::memory o_U, occa::memory o_FU)
+static occa::memory o_hist;
+
+void weightedHistogram(dfloat uMin, dfloat uMax, dlong Nlocal, 
+                       const occa::memory& o_wght, const occa::memory& o_u, occa::memory& o_out)
 {
-  mesh_t *mesh = nrs->meshV;
-  cfill(mesh->Nlocal, nrs->fieldOffset, nrs->cds->o_S, nrs->o_FU);
+  const int N = o_out.size();
+  nekrsCheck(N > 2048, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "N > 2048");
+
+  const dfloat du = N / std::abs(uMax - uMin);
+
+  hist(Nlocal, N, uMin, du, o_wght, o_u, o_out);
 }
 
-void UDF_Setup(nrs_t *nrs)
+void userf(double time)
 {
-  udf.uEqnSource = &userf;
+  auto mesh = nrs->meshV;
+  auto o_zNLT = nrs->o_NLT + 2*nrs->fieldOffset;
+  platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->cds->o_S, 0.0, o_zNLT); 
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
+void UDF_Setup()
 {
-  if (nrs->isOutputStep) {
+  nrs->userVelocitySource = &userf;
+
+  const auto nBin = 256;
+  o_hist = platform->device.malloc<float>(nBin);
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  auto mesh = nrs->_mesh;
+
+  weightedHistogram(0.0, 1.0, mesh->Nlocal, mesh->o_Jw, nrs->cds->o_S, o_hist); 
+
+  if (nrs->isCheckpointStep) {
+    std::vector<float> hist(o_hist.size());
+    o_hist.copyTo(hist.data());
+    MPI_Allreduce(MPI_IN_PLACE, hist.data(), hist.size(), MPI_FLOAT, MPI_SUM, platform->comm.mpiComm);
+    if (platform->comm.mpiRank == 0) {
+      std::ofstream outputFile("temperature.pdf");
+      for (auto& entry : hist) outputFile << entry / mesh->volume << std::endl;
+      outputFile.close();
+    }
+
     nek::ocopyToNek(time, tstep);
     nek::userchk();
   }

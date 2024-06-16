@@ -37,7 +37,7 @@
 *>\verbatim
 *>
 *> DORBDB3 simultaneously bidiagonalizes the blocks of a tall and skinny
-*> matrix X with orthonomal columns:
+*> matrix X with orthonormal columns:
 *>
 *>                            [ B11 ]
 *>      [ X11 ]   [ P1 |    ] [  0  ]
@@ -172,7 +172,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleOTHERcomputational
+*> \ingroup unbdb3
 *
 *> \par Further Details:
 *  =====================

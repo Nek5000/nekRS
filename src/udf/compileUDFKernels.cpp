@@ -1,65 +1,76 @@
-#include <filesystem>
-#include "nrssys.hpp"
+#include "nekrsSys.hpp"
 #include "compileKernels.hpp"
 #include "udf.hpp"
 
-occa::properties compileUDFKernels()
+occa::properties registerUDFKernels()
 {
-  const bool buildNodeLocal = platform->cacheLocal;
+  const auto registerOnly = platform->options.compareArgs("REGISTER ONLY", "TRUE") ? true : false;
 
   std::string installDir;
   installDir.assign(getenv("NEKRS_HOME"));
   int N;
   platform->options.getArgs("POLYNOMIAL DEGREE", N);
-  occa::properties kernelInfo = platform->kernelInfo + meshKernelProperties(N);
-  kernelInfo["defines"].asObject();
-  kernelInfo["includes"].asArray();
-  kernelInfo["header"].asArray();
-  kernelInfo["flags"].asObject();
-  kernelInfo["okl/include_paths"].asArray();
+  deviceKernelProperties kernelInfo(platform->kernelInfo + meshKernelProperties(N));
 
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0 && !registerOnly) {
     std::cout << "loading udf kernels ... " << std::endl;
+  }
 
-  occa::properties kernelInfoBC = kernelInfo;
-  const std::string bcDataFile = installDir + "/include/bdry/bcData.h";
-  kernelInfoBC["includes"] += bcDataFile.c_str();
-
-  kernelInfoBC["okl/include_paths"].asArray();
-  kernelInfoBC["okl/include_paths"] += std::string(std::filesystem::current_path()).c_str();
+  const std::string bcDataFile = installDir + "/include/nrs/bdry/bcData.h";
+  kernelInfo.include() += bcDataFile.c_str();
+  kernelInfo.okl_include_paths() += std::string(fs::current_path()).c_str();
 
   if (udf.loadKernels) {
-    udf.loadKernels(kernelInfoBC);
-    // kernelInfoBC might now include user-defined props
+    udf.loadKernels(kernelInfo);
   }
+
+  // envoke after udf.loadKernels as the user may have modified kernelInfo
   if (udf.autoloadKernels) {
-    udf.autoloadKernels(kernelInfoBC);
+    udf.autoloadKernels(kernelInfo);
   }
 
   // internal BC kernels call device functions defined in this file
   std::string oklFileCache;
   platform->options.getArgs("OKL FILE CACHE", oklFileCache);
-  kernelInfoBC["includes"] += realpath(oklFileCache.c_str(), NULL);
+  kernelInfo.include() += realpath(oklFileCache.c_str(), NULL);
 
   udf.autoloadPlugins(kernelInfo);
 
-  // just to bail out early in case included source doesn't compile 
-  {
-   const std::string dummyKernelName = "compileUDFKernelsTest";
-   const std::string dummyKernelStr = std::string("@kernel void compileUDFKernelsTest(int N) {"
-                                                  "  for (int i = 0; i < N; ++i; @tile(64, @outer, @inner)) {}" "}");
-
-  if (platform->comm.mpiRank == 0)
-     platform->device.occaDevice().buildKernelFromString(dummyKernelStr, dummyKernelName, kernelInfo);
-  }
-
   MPI_Barrier(platform->comm.mpiComm);
   const double loadTime = MPI_Wtime() - tStart;
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0 && !registerOnly) {
     printf("done (%gs)\n", loadTime);
+  }
   fflush(stdout);
 
-  return kernelInfoBC;
+  return static_cast<occa::properties>(kernelInfo);
+}
+
+occa::kernel oudfBuildKernel(occa::properties kernelInfo, const std::string& kernelName)
+{
+  const auto registerOnly = platform->options.compareArgs("REGISTER ONLY", "TRUE") ? true : false;
+  const auto fileName = platform->options.getArgs("OKL FILE CACHE");
+  static std::vector<std::string> reqNames;
+ 
+  auto knl = [&] ()
+  {
+    if (registerOnly) {
+      // hash reqName as the user might call oudfBuildKernel using different props
+      const auto reqName = "udf::" + std::string(kernelInfo.hash().getString());
+      reqNames.push_back(reqName); 
+      platform->kernelRequests.add(reqName, fileName, kernelInfo);
+      return occa::kernel();
+    } else {
+      if (platform->verbose && platform->comm.mpiRank == 0) { 
+        std::cout << kernelName << std::endl; 
+      }
+      static int idx = 0;  
+      const auto reqName = reqNames[idx++];
+      return platform->kernelRequests.load(reqName, kernelName);
+    }
+  }();
+
+  return knl;
 }

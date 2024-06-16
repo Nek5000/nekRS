@@ -4,7 +4,7 @@ stopAt = numSteps
 numSteps = 300
 dt = 1e-03
 timeStepper = tombo2
-writeInterval = 100
+checkpointInterval = 100
 
 [PRESSURE]
 residualTol = 1e-08

@@ -1,12 +1,6 @@
-//
-// nekRS User Defined File
-//
-
-#include "udf.hpp"
-#include "plugins/lpm.hpp"
+#include "lpm.hpp"
 
 #include "ci.inc"
-#include <vector>
 #include "randomVector.hpp"
 #include "linspaceVector.hpp"
 
@@ -23,9 +17,10 @@ static dfloat P_OMEGA;
 static dfloat P_AMP;
 constexpr int nPartGlobal = 1000;
 
-occa::memory o_x0, o_y0, o_z0;
+deviceMemory<dfloat> o_x0, o_y0, o_z0;
 
 #ifdef __okl__
+
 @kernel void dpdx(const dlong Ntotal,
                   const double time,
                   @ restrict const dfloat *x,
@@ -109,7 +104,7 @@ void exact(dfloat *u,
   *(w) = -a * (ez * sxy + ey * czx) * e2t + p_W0;
 
   *(p) =
-      0.5 * a * a * e2t * e2t *
+      -0.5 * a * a * e2t * e2t *
       (ex * ex + 2.0 * sxy * czx * eyz + ey * ey + 2.0 * syz * cxy * ezx + ez * ez + 2.0 * szx * cyz * exy);
 }
 
@@ -260,19 +255,19 @@ void scalarNeumannConditions(bcData *bc)
 }
 #endif
 
-void userq(nrs_t *nrs, double time, occa::memory o_S, occa::memory o_FS)
+void userq(double time)
 {
+  auto nrs = dynamic_cast<nrs_t*>(platform->solver);
   mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
   const dlong Nlocal = nrs->meshV->Nelements * nrs->meshV->Np;
 
-  dpdx(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0 * cds->fieldOffset[0], o_FS);
-  dpdx(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1 * cds->fieldOffset[0], o_FS);
+  dpdx(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0 * cds->fieldOffset[0], nrs->cds->o_NLT);
+  dpdx(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1 * cds->fieldOffset[0], nrs->cds->o_NLT);
 }
 
-void UDF_LoadKernels(occa::properties &kernelInfo)
+void UDF_LoadKernels(deviceKernelProperties& kernelInfo)
 {
-  // called from all ranks, so MPI collectives are O.K.
   int maxRank = platform->comm.mpiRank;
   MPI_Allreduce(MPI_IN_PLACE, &maxRank, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
 
@@ -281,19 +276,20 @@ void UDF_LoadKernels(occa::properties &kernelInfo)
   dfloat mue, rho;
   options.getArgs("VISCOSITY", mue);
   options.getArgs("DENSITY", rho);
-  kernelInfo["defines/p_nu"] = mue / rho;
-  kernelInfo["defines/p_U0"] = P_U0;
-  kernelInfo["defines/p_V0"] = P_V0;
-  kernelInfo["defines/p_W0"] = P_W0;
-  kernelInfo["defines/p_A"] = P_A0 * M_PI;
-  kernelInfo["defines/p_D"] = P_D0 * M_PI;
-  kernelInfo["defines/p_amp"] = P_AMP;
-  kernelInfo["defines/p_omega"] = P_OMEGA;
-  kernelInfo["defines/p_pi"] = M_PI;
+  kernelInfo.define("p_nu") = mue / rho;
+  kernelInfo.define("p_U0") = P_U0;
+  kernelInfo.define("p_V0") = P_V0;
+  kernelInfo.define("p_W0") = P_W0;
+  kernelInfo.define("p_A") = P_A0 * M_PI;
+  kernelInfo.define("p_D") = P_D0 * M_PI;
+  kernelInfo.define("p_amp") = P_AMP;
+  kernelInfo.define("p_omega") = P_OMEGA;
+  kernelInfo.define("p_pi") = M_PI;
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
+  auto nrs = dynamic_cast<nrs_t*>(platform->solver);
 
   options.getArgs("CI-MODE", ciMode);
   if (ciMode) {
@@ -308,18 +304,18 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   platform->par->extract("casedata", "p_amp", P_AMP);
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
-    nek_cb_scnrs[0] = P_U0;
-    nek_cb_scnrs[1] = P_V0;
-    nek_cb_scnrs[2] = P_W0;
-    nek_cb_scnrs[3] = P_A0;
-    nek_cb_scnrs[4] = P_D0;
-    nek_cb_scnrs[5] = P_OMEGA;
-    nek_cb_scnrs[6] = P_AMP;
+    *nek::ptr<double>("p_u0") = P_U0;
+    *nek::ptr<double>("p_v0") = P_V0;
+    *nek::ptr<double>("p_w0") = P_W0;
+
+    *nek::ptr<double>("p_a0") = P_A0;
+    *nek::ptr<double>("p_d0") = P_D0;
+    *nek::ptr<double>("p_omega") = P_OMEGA;
+    *nek::ptr<double>("p_amp") = P_AMP;
   }
 }
 
-void particleRHS(nrs_t *nrs, lpm_t *lpm, double time, occa::memory o_y, void *userdata, occa::memory o_ydot)
+void particleRHS(nrs_t *nrs, lpm_t *lpm, double time, const deviceMemory<dfloat>& o_y, void *userdata, deviceMemory<dfloat>& o_ydot)
 {
   auto offset = lpm->fieldOffset();
 
@@ -333,7 +329,7 @@ void particleRHS(nrs_t *nrs, lpm_t *lpm, double time, occa::memory o_y, void *us
   }
 }
 
-int timeStepConverged(nrs_t *nrs, int stage)
+int timeStepConverged(int stage)
 {
   if(ciMode != 19) return 1;
   
@@ -341,15 +337,17 @@ int timeStepConverged(nrs_t *nrs, int stage)
   return stage > 1;
 }
 
-void UDF_Setup(nrs_t *nrs)
+void UDF_Setup()
 {
+  auto nrs = dynamic_cast<nrs_t*>(platform->solver);
+
   // only ciMode 1 exercises the particles
   if (ciMode == 1) {
 
     const dfloat newton_tol = 5e-13;
     const dfloat bb_tol = 0.01;
 
-    particles = new lpm_t(nrs, bb_tol, newton_tol);
+    particles = new lpm_t(bb_tol, newton_tol);
 
     particles->setSolver("AB");
 
@@ -411,17 +409,24 @@ void UDF_Setup(nrs_t *nrs)
 
     particles->initialize(np, t0, y0);
 
-    auto o_pid = platform->device.malloc<dfloat>(particles->numParticles(), pid0.data());
+    deviceMemory<dfloat> o_pid(pid0);
     particles->setProp("gid", o_pid);
   }
 
   mesh_t *mesh = nrs->meshV;
-  udf.sEqnSource = &userq;
-  udf.timeStepConverged = &timeStepConverged;
+
+  nrs->userScalarSource = &userq;
+  nrs->userConvergenceCheck = &timeStepConverged;
+
   if (platform->options.compareArgs("MOVING MESH", std::string("TRUE"))) {
-    o_x0 = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->o_x);
-    o_y0 = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->o_y);
-    o_z0 = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->o_z);
+    o_x0.resize(mesh->Nlocal);
+    o_x0.copyFrom(mesh->o_x);
+
+    o_y0.resize(mesh->Nlocal);
+    o_y0.copyFrom(mesh->o_y);
+
+    o_z0.resize(mesh->Nlocal);
+    o_z0.copyFrom(mesh->o_z);
   }
 }
 
@@ -444,27 +449,27 @@ void overwriteParticleSolution(nrs_t *nrs, double time)
     zp0_g[i] = zpg0[gid];
   }
 
-  auto o_y0 = platform->device.malloc<dfloat>(nrs->dim * xp0_g.size());
+  deviceMemory<dfloat> o_y0(nrs->meshV->dim * xp0_g.size());
 
   if (particles->numParticles() > 0) {
-    auto o_x0coord = o_y0 + 0 * xp0_g.size();
-    auto o_y0coord = o_y0 + 1 * yp0_g.size();
-    auto o_z0coord = o_y0 + 2 * zp0_g.size();
-    o_x0coord.copyFrom(xp0_g.data(), xp0_g.size());
-    o_y0coord.copyFrom(yp0_g.data(), yp0_g.size());
-    o_z0coord.copyFrom(zp0_g.data(), zp0_g.size());
+    auto o_x0coord = o_y0.slice(0 * xp0_g.size());
+    auto o_y0coord = o_y0.slice(1 * yp0_g.size());
+    auto o_z0coord = o_y0.slice(2 * zp0_g.size());
+    o_x0coord.copyFrom(xp0_g, xp0_g.size());
+    o_y0coord.copyFrom(yp0_g, yp0_g.size());
+    o_z0coord.copyFrom(zp0_g, zp0_g.size());
   }
 
   auto o_y = solveODE(nrs, 0.0, time, 1e-3 * nrs->dt[0], o_y0, exactUVWP, RK);
 
   if (particles->numParticles() > 0) {
-    auto o_xcoord = o_y + 0 * xp0_g.size();
-    auto o_ycoord = o_y + 1 * xp0_g.size();
-    auto o_zcoord = o_y + 2 * xp0_g.size();
+    auto o_xcoord = o_y.slice(0 * xp0_g.size());
+    auto o_ycoord = o_y.slice(1 * xp0_g.size());
+    auto o_zcoord = o_y.slice(2 * xp0_g.size());
 
     auto o_xp = particles->getDOF("x");
-    auto o_yp = static_cast<occa::memory>(particles->getDOF("y"));
-    auto o_zp = static_cast<occa::memory>(particles->getDOF("z"));
+    auto o_yp = particles->getDOF("y");
+    auto o_zp = particles->getDOF("z");
 
     o_xp.copyFrom(o_xcoord, xp0_g.size());
     o_yp.copyFrom(o_ycoord, yp0_g.size());
@@ -472,17 +477,15 @@ void overwriteParticleSolution(nrs_t *nrs, double time)
   }
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
+void UDF_ExecuteStep(double time, int tstep)
 {
-
+  auto nrs = dynamic_cast<nrs_t*>(platform->solver);
   mesh_t *mesh = nrs->meshV;
   cds_t *cds = nrs->cds;
 
   if (tstep <= 5) {
     exactUVWP(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
-    if (nrs->pSolver) {
-      ellipticZeroMean(nrs->pSolver, nrs->o_P);
-    }
+
     if (nrs->Nscalar > 0) {
       cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal, 0 * cds->fieldOffset[0]);
     }
@@ -504,7 +507,7 @@ void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
     userMeshVelocity(mesh->Nlocal, nrs->fieldOffset, time, o_x0, o_y0, o_z0, mesh->o_U);
   }
 
-  if (nrs->isOutputStep) {
+  if (nrs->isCheckpointStep) {
     nek::ocopyToNek(time, tstep);
     nek::userchk();
 

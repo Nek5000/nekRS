@@ -397,7 +397,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16GBcomputational
+*> \ingroup la_gbrfsx_extended
 *
 *  =====================================================================
       SUBROUTINE ZLA_GBRFSX_EXTENDED( PREC_TYPE, TRANS_TYPE, N, KL, KU,
@@ -651,7 +651,7 @@
             PREVNORMDX = NORMDX
             PREV_DZ_Z = DZ_Z
 *
-*           Update soluton.
+*           Update solution.
 *
             IF ( Y_PREC_STATE .LT. EXTRA_Y ) THEN
                CALL ZAXPY( N, (1.0D+0,0.0D+0), DY, 1, Y(1,J), 1 )

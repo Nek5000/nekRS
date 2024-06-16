@@ -75,7 +75,7 @@
 *>          triangular part of the matrix A, and the strictly upper
 *>          triangular part of A is not referenced.
 *>
-*>          On exit, L is stored below (or above) the subdiaonal blocks,
+*>          On exit, L is stored below (or above) the subdiagonal blocks,
 *>          when UPLO  is 'L' (or 'U').
 *> \endverbatim
 *>
@@ -152,7 +152,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleSYcomputational
+*> \ingroup hetrf_aa_2stage
 *
 *  =====================================================================
       SUBROUTINE DSYTRF_AA_2STAGE( UPLO, N, A, LDA, TB, LTB, IPIV,

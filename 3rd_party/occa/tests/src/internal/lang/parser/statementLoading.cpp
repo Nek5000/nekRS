@@ -30,8 +30,8 @@ int main(const int argc, const char **argv) {
   testNamespaceLoading();
   testStructLoading();
   // testClassLoading();
-  // testUnionLoading();
-  // testEnumLoading();
+  testEnumLoading();
+  testUnionLoading();
   testFunctionLoading();
   testIfLoading();
   testForLoading();
@@ -283,12 +283,188 @@ void testClassLoading() {
 }
 
 void testUnionLoading() {
-  // TODO: Add union tests
+  statement_t *statement = NULL;
+  union_t *unionType = NULL;
+  typedef_t *typedefType = NULL;
+
+#define declSmnt         statement->to<declarationStatement>()
+#define getDeclType      declSmnt.declarations[0].variable().vartype.type
+#define setUnionType()   unionType = (union_t*) getDeclType
+#define setTypedefType() typedefType = (typedef_t*) getDeclType
+
+  // Test default union
+  setStatement(
+    "union idx3 {\n"
+    "  int i, *j, &k;\n"
+    "};",
+    statementType::declaration
+  );
+
+  setUnionType();
+
+  ASSERT_EQ("idx3",
+            unionType->name());
+
+  ASSERT_EQ(3,
+            (int) unionType->fields.size());
+
+  ASSERT_EQ("i",
+            unionType->fields[0].name());
+  ASSERT_EQ(&int_,
+            unionType->fields[0].vartype.type);
+
+  ASSERT_EQ("j",
+            unionType->fields[1].name());
+  ASSERT_EQ(&int_,
+            unionType->fields[1].vartype.type);
+
+  ASSERT_EQ("k",
+            unionType->fields[2].name());
+  ASSERT_EQ(&int_,
+            unionType->fields[2].vartype.type);
+
+  // Test default typedef union
+  setStatement(
+    "typedef union idx3_t {\n"
+    "  int i, *j, &k;\n"
+    "} idx3;",
+    statementType::declaration
+  );
+
+  setTypedefType();
+
+  ASSERT_EQ("idx3",
+            typedefType->name());
+
+  ASSERT_EQ("idx3_t",
+            typedefType->baseType.name());
+
+  // Test typedef anonymous union
+  setStatement(
+    "typedef union {\n"
+    "  int i, *j, &k;\n"
+    "} idx3;",
+    statementType::declaration
+  );
+
+  setTypedefType();
+
+  ASSERT_EQ("idx3",
+            typedefType->name());
+
+  ASSERT_EQ(0,
+            (int) typedefType->baseType.name().size());
+
+#undef declSmnt
+#undef getDeclType
+#undef getUnionType
+#undef getTypedefType
 }
 
 void testEnumLoading() {
-  // TODO: Add enum tests
+  statement_t *statement = NULL;
+  enum_t *enumType = NULL;
+  typedef_t *typedefType = NULL;
 
+#define declSmnt         statement->to<declarationStatement>()
+#define getDeclType      declSmnt.declarations[0].variable().vartype.type
+#define setEnumType()    enumType = (enum_t*) getDeclType
+#define setTypedefType() typedefType = (typedef_t*) getDeclType
+
+  // Test default enum
+  setStatement(
+    "enum Foo {\n"
+    "  a,\n"
+    " b, c = 10,\n"
+    " d, e = 1, f,\n"
+    "g = 1 + 2,\n"
+    "h = c + g"
+    "};",
+    statementType::declaration
+  );
+
+  setEnumType();
+
+  ASSERT_EQ("Foo",
+            enumType->name());
+
+  ASSERT_EQ(8,
+            (int) enumType->enumerators.size());
+
+  ASSERT_EQ("a",
+            enumType->enumerators[0].source->value);
+
+  ASSERT_EQ("b",
+            enumType->enumerators[1].source->value);
+
+  ASSERT_EQ("c",
+            enumType->enumerators[2].source->value);
+  ASSERT_TRUE(enumType->enumerators[2].expr->canEvaluate());
+  ASSERT_EQ(10,
+            (int) enumType->enumerators[2].expr->evaluate());
+
+  ASSERT_EQ("d",
+            enumType->enumerators[3].source->value);
+
+  ASSERT_EQ("e",
+            enumType->enumerators[4].source->value);
+  ASSERT_TRUE(enumType->enumerators[4].expr->canEvaluate());
+  ASSERT_EQ(1,
+            (int) enumType->enumerators[4].expr->evaluate());
+
+  ASSERT_EQ("f",
+            enumType->enumerators[5].source->value);
+
+  ASSERT_EQ("g",
+            enumType->enumerators[6].source->value);
+  ASSERT_TRUE(enumType->enumerators[6].expr->canEvaluate());
+  ASSERT_EQ(3,
+            (int) enumType->enumerators[6].expr->evaluate());
+
+  // How use Assert to check evaluate() "h"?
+  ASSERT_EQ("h",
+            enumType->enumerators[7].source->value);
+  ASSERT_TRUE((strcmp(enumType->enumerators[7].expr->toString().c_str(), "c + g") == 0));
+
+  // Test default typedef enum
+  setStatement(
+    "typedef enum Bar_t {\n"
+    "  a, b,\n"
+    " c = 0,\n"
+    "d = c + 2\n"
+    "} Bar;",
+    statementType::declaration
+  );
+  setTypedefType();
+
+  ASSERT_EQ("Bar",
+            typedefType->name());
+
+  ASSERT_EQ("Bar_t",
+            typedefType->baseType.name());
+
+  // Test typedef anonymous enum
+  setStatement(
+    "typedef enum {\n"
+    "  a, b,\n"
+    " c = 0,\n"
+    "d = c + 2\n"
+    "} Bar;",
+    statementType::declaration
+  );
+
+  setTypedefType();
+
+  ASSERT_EQ("Bar",
+            typedefType->name());
+
+  ASSERT_EQ(0,
+            (int) typedefType->baseType.name().size());
+
+#undef declSmnt
+#undef getDeclType
+#undef getEnumType
+#undef getTypedefType
 }
 
 void testFunctionLoading() {
@@ -329,9 +505,8 @@ void testFunctionLoading() {
   setStatement("void foo3(int a, int b) { int x; int y; }",
                statementType::functionDecl);
   ASSERT_EQ("foo3",
- 
-            funcDecl.name()) ; 
- 
+            funcDecl.name()) ;
+
   ASSERT_EQ(&void_,
             funcDecl.returnType.type);
   ASSERT_EQ(2,

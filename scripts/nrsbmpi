@@ -1,16 +1,20 @@
 #!/bin/bash
+set -e
+source $NEKRS_HOME/bin/nrsqsub_utils
 
+set +e
 rm -f logfile
 mv $1.log.$2 $1.log1.$2 2>/dev/null
-
-ulimit -s unlimited 2>/dev/null
-export NEKRS_HOME=${NEKRS_HOME:="`dirname "$0"`/../"}
+set -e
 
 if [ $# -eq 0 ] || [ $# -lt 2 ] || [ "$1" == "-h" ] || [ "$1" == "-help" ]; then
   echo "usage: ${0##*/} casename #tasks [args]"
   exit 1
 fi
-nohup mpirun -np $2 $NEKRS_HOME/bin/nekrs --setup $1 ${@:3} >$1.log.$2 </dev/null 2>&1 &
+
+setup $# 0 
+
+nohup mpirun -np $2 $bin --setup $1 ${@:3} >$1.log.$2 </dev/null 2>&1 &
 
 ln -sf $1.log.$2 logfile
 echo "started job in background, redirecting output to ./logfile ..."

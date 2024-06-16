@@ -132,10 +132,7 @@ namespace occa {
   }
 
   udim_t memory::size() const {
-    if (modeMemory == NULL) {
-      return 0;
-    }
-    return modeMemory->size;
+    return length();
   }
 
   udim_t memory::length() const {
@@ -143,6 +140,11 @@ namespace occa {
       return 0;
     }
     return modeMemory->size / modeMemory->dtype_->bytes();
+  }
+
+  udim_t memory::byte_size() const {
+    if (modeMemory == NULL) return 0;
+    else return modeMemory->size;
   }
 
   bool memory::operator == (const occa::memory &other) const {
@@ -172,12 +174,12 @@ namespace occa {
                                       ? (length() - offset)
                                       : count);
 
-    OCCA_ERROR("Trying to allocate negative bytes (" << bytes << ")",
+    OCCA_ERROR("Trying to allocate negative elements (" << count << ")",
                bytes >= 0);
 
-    OCCA_ERROR("Cannot have offset and bytes greater than the memory size ("
-               << offset_ << " + " << bytes << " > " << size() << ")",
-               (offset_ + (dim_t) bytes) <= (dim_t) size());
+    OCCA_ERROR("Memory size is less than offset + count ("
+                << size() << " <" << offset << " + " << count << ")",
+               (offset + (dim_t) count) <= (dim_t) size());
 
     occa::memory m(modeMemory->slice(offset_, bytes));
     m.setDtype(dtype());
@@ -203,7 +205,7 @@ namespace occa {
 
     OCCA_ERROR("Destination memory has size [" << modeMemory->size << "],"
                << " trying to access [" << offset_ << ", " << (offset_ + bytes) << "]",
-               (bytes + offset_) <= modeMemory->size);
+               udim_t(bytes + offset_) <= modeMemory->size);
 
     modeMemory->copyFrom(src, bytes, offset_, props);
   }
@@ -213,7 +215,7 @@ namespace occa {
                         const dim_t destOffset,
                         const dim_t srcOffset,
                         const occa::json &props) {
-    if (!isInitialized() && !src.isInitialized()) return;
+   if (!isInitialized() && !src.isInitialized()) return;
     assertInitialized();
 
     const int dtypeSize = modeMemory->dtype_->bytes();
@@ -232,11 +234,11 @@ namespace occa {
 
     OCCA_ERROR("Source memory has size [" << src.modeMemory->size << "],"
                << " trying to access [" << srcOffset_ << ", " << (srcOffset_ + bytes) << "]",
-               (bytes + srcOffset_) <= src.modeMemory->size);
+               udim_t(bytes + srcOffset_) <= src.modeMemory->size);
 
     OCCA_ERROR("Destination memory has size [" << modeMemory->size << "],"
                << " trying to access [" << destOffset_ << ", " << (destOffset_ + bytes) << "]",
-               (bytes + destOffset_) <= modeMemory->size);
+               udim_t(bytes + destOffset_) <= modeMemory->size);
 
     modeMemory->copyFrom(src.modeMemory, bytes, destOffset_, srcOffset_, props);
   }
@@ -259,7 +261,7 @@ namespace occa {
 
     OCCA_ERROR("Source memory has size [" << modeMemory->size << "],"
                << " trying to access [" << offset_ << ", " << (offset_ + bytes) << "]",
-               (bytes + offset_) <= modeMemory->size);
+               udim_t(bytes + offset_) <= modeMemory->size);
 
     modeMemory->copyTo(dest, bytes, offset_, props);
   }
@@ -288,11 +290,11 @@ namespace occa {
 
     OCCA_ERROR("Source memory has size [" << modeMemory->size << "],"
                << " trying to access [" << srcOffset_ << ", " << (srcOffset_ + bytes) << "]",
-               (bytes + srcOffset_) <= modeMemory->size);
+               udim_t(bytes + srcOffset_) <= modeMemory->size);
 
     OCCA_ERROR("Destination memory has size [" << dest.modeMemory->size << "],"
                << " trying to access [" << destOffset_ << ", " << (destOffset_ + bytes) << "]",
-               (bytes + destOffset_) <= dest.modeMemory->size);
+               udim_t(bytes + destOffset_) <= dest.modeMemory->size);
 
     dest.modeMemory->copyFrom(modeMemory, bytes, destOffset_, srcOffset_, props);
   }
@@ -330,7 +332,7 @@ namespace occa {
 
     occa::memory mem = (
       occa::device(modeMemory->getModeDevice())
-      .malloc(size(), *this, properties())
+      .malloc(byte_size(), *this, properties())
     );
     mem.setDtype(dtype());
 

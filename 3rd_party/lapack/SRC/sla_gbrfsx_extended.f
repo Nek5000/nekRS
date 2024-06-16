@@ -397,7 +397,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup realGBcomputational
+*> \ingroup la_gbrfsx_extended
 *
 *  =====================================================================
       SUBROUTINE SLA_GBRFSX_EXTENDED( PREC_TYPE, TRANS_TYPE, N, KL, KU,
@@ -644,7 +644,7 @@
             PREVNORMDX = NORMDX
             PREV_DZ_Z = DZ_Z
 *
-*           Update soluton.
+*           Update solution.
 *
             IF (Y_PREC_STATE .LT. EXTRA_Y) THEN
                CALL SAXPY( N, 1.0, DY, 1, Y(1,J), 1 )

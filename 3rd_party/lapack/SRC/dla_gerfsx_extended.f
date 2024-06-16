@@ -384,7 +384,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleGEcomputational
+*> \ingroup la_gerfsx_extended
 *
 *  =====================================================================
       SUBROUTINE DLA_GERFSX_EXTENDED( PREC_TYPE, TRANS_TYPE, N, NRHS, A,
@@ -625,7 +625,7 @@
             PREVNORMDX = NORMDX
             PREV_DZ_Z = DZ_Z
 *
-*           Update soluton.
+*           Update solution.
 *
             IF ( Y_PREC_STATE .LT. EXTRA_Y ) THEN
                CALL DAXPY( N, 1.0D+0, DY, 1, Y( 1, J ), 1 )

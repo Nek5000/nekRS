@@ -1,0 +1,60 @@
+#define GENERATE(TN,T,OP)                                                       \
+@kernel void gatherScatter_##TN##_##OP(const dlong Nblocks,                     \
+                                      const int   Nentries,                     \
+                                      const int   Nvectors,                     \
+                                      const dlong stride,                       \
+                                      @restrict const dlong *blockStarts,       \
+                                      @restrict const dlong *gatherStarts,      \
+                                      @restrict const dlong *gatherIds,         \
+                                      @restrict           T *q)                 \
+{                                                                               \
+  for(dlong m=0;m<Nvectors;++m;@outer(2)){                                      \
+    for(dlong k=0;k<Nentries;++k;@outer(1)){                                    \
+      for(dlong b=0;b<Nblocks;++b;@outer(0)){                                   \
+        @exclusive dlong blockStart, blockEnd, gStart, sStart;                  \
+        @shared T gtemp[p_gatherNodesPerBlock];                                 \
+        @shared T stemp[p_gatherNodesPerBlock];                                 \
+                                                                                \
+        for(dlong n=0;n<p_blockSize;++n;@inner){                                \
+          blockStart = blockStarts[b];                                          \
+          blockEnd   = blockStarts[b+1];                                        \
+          gStart = gatherStarts[blockStart];                                    \
+          sStart = gStart;                                                      \
+                                                                                \
+          for (dlong id=gStart+n;id<gatherStarts[blockEnd];id+=p_blockSize) {   \
+            gtemp[id-gStart] = q[k+gatherIds[id]*Nentries+m*stride];            \
+          }                                                                     \
+        }                                                                       \
+        @barrier();                                                             \
+        for(dlong n=0;n<p_blockSize;++n;@inner){                                \
+          for (dlong row=blockStart+n;row<blockEnd;row+=p_blockSize) {          \
+            const dlong gRowStart = gatherStarts[row]  -gStart;                 \
+            const dlong gRowEnd   = gatherStarts[row+1]-gStart;                 \
+            const dlong sRowStart = gRowStart;                                  \
+            const dlong sRowEnd   = gRowEnd;                                    \
+            T gq = init_##TN##_##OP;                                            \
+            for (dlong i=gRowStart;i<gRowEnd;i++) {                             \
+              OGS_DO_##OP(gq,gtemp[i]);                                         \
+            }                                                                   \
+            for (dlong i=sRowStart;i<sRowEnd;i++) {                             \
+              stemp[i] = gq;                                                    \
+            }                                                                   \
+          }                                                                     \
+        }                                                                       \
+        @barrier();                                                             \
+                                                                                \
+        for(dlong n=0;n<p_blockSize;++n;@inner){                                \
+          for (dlong id=sStart+n;id<gatherStarts[blockEnd];id+=p_blockSize) {   \
+            q[k+gatherIds[id]*Nentries+m*stride] = stemp[id-sStart];            \
+          }                                                                     \
+        }                                                                       \
+        @barrier();                                                             \
+      }                                                                         \
+    }                                                                           \
+  }                                                                             \
+}
+
+GENERATE(float,float,add)
+GENERATE(double,double,add)
+GENERATE(double,double,min)
+GENERATE(double,double,max)

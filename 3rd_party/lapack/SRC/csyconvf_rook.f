@@ -183,7 +183,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complexSYcomputational
+*> \ingroup syconvf_rook
 *
 *> \par Contributors:
 *  ==================
@@ -520,7 +520,7 @@
 *
 *           Revert VALUE
 *           Assign subdiagonal entries of D from array E to
-*           subgiagonal entries of A.
+*           subdiagonal entries of A.
 *
             I = 1
             DO WHILE ( I.LE.N-1 )

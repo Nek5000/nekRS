@@ -40,8 +40,10 @@
 #include "name.h"
 #include "fail.h"
 #include "types.h"
+#include "gs_defs.h"
 #include "comm.h"
 #include "mem.h"
+#include <stdio.h>
 
 #define crystal_init   PREFIXED_NAME(crystal_init  )
 #define crystal_free   PREFIXED_NAME(crystal_free  )
@@ -131,6 +133,17 @@ void crystal_router(struct crystal *p)
     nl = (n+1)/2, bh = bl+nl;
     send_hi = id<bh;
     send_n = crystal_move(p,bh,send_hi);
+
+    slong send_n_long = send_n;
+    send_n_long *= sizeof(uint);
+    sint overflow = (send_n_long >= INT_MAX);
+    if (overflow) {
+      fprintf(stderr, "Error in crystal_router: rank = %d send_n = %lld (> "
+        "INT_MAX)\n", p->comm.id, send_n_long);
+      fflush(stderr);
+      MPI_Abort(p->comm.c, EXIT_FAILURE);
+    }
+
     recvn = 1, targ = n-1-(id-bl)+bl;
     if(id==targ) targ=bh, recvn=0;
     if(n&1 && id==bh) recvn=2;

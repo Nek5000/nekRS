@@ -6,11 +6,18 @@
 #include <occa/internal/modes.hpp>
 #include <occa/internal/utils/env.hpp>
 #include <occa/internal/utils/sys.hpp>
+#if ENABLE_THREAD_SHARABLE_OCCA
+#include <occa/utils/mutex.hpp>
+#endif
 
 namespace occa {
   //---[ Device Functions ]-------------
   device host() {
+#if ENABLE_THREAD_SHARABLE_OCCA
+    static device dev;
+#else
     thread_local device dev;
+#endif
     if (!dev.isInitialized()) {
       dev = occa::device({
         {"mode", "Serial"}
@@ -21,10 +28,20 @@ namespace occa {
   }
 
   device& getDevice() {
+#if ENABLE_THREAD_SHARABLE_OCCA
+    static device dev;
+    static mutex_t mutex;
+    mutex.lock();
+    if (!dev.isInitialized()) {
+      dev = host();
+    }
+    mutex.unlock();
+#else
     thread_local device dev;
     if (!dev.isInitialized()) {
       dev = host();
     }
+#endif
     return std::ref(dev);
   }
 
@@ -77,7 +94,7 @@ namespace occa {
     return getDevice().tagStream();
   }
 
-  experimental::memoryPool createMemoryPool(const occa::json &props) {
+  memoryPool createMemoryPool(const occa::json &props) {
     return getDevice().createMemoryPool(props);
   }
 
@@ -135,28 +152,28 @@ namespace occa {
   }
 
   void memcpy(memory dest, const void *src,
-              const dim_t bytes,
+              const dim_t count,
               const dim_t offset,
               const occa::json &props) {
 
-    dest.copyFrom(src, bytes, offset, props);
+    dest.copyFrom(src, count, offset, props);
   }
 
   void memcpy(void *dest, memory src,
-              const dim_t bytes,
+              const dim_t count,
               const dim_t offset,
               const occa::json &props) {
 
-    src.copyTo(dest, bytes, offset, props);
+    src.copyTo(dest, count, offset, props);
   }
 
   void memcpy(memory dest, memory src,
-              const dim_t bytes,
+              const dim_t count,
               const dim_t destOffset,
               const dim_t srcOffset,
               const occa::json &props) {
 
-    dest.copyFrom(src, bytes, destOffset, srcOffset, props);
+    dest.copyFrom(src, count, destOffset, srcOffset, props);
   }
 
   void memcpy(memory dest, const void *src,

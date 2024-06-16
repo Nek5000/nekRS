@@ -10,8 +10,10 @@
 
 namespace occa {
   class dtype_t;
-  class dtypeTuple_t;
+  class dtypeEnum_t;
   class dtypeStruct_t;
+  class dtypeTuple_t;
+  class dtypeUnion_t;
   class json;
 
   typedef std::map<std::string, const dtype_t*> dtypeGlobalMap_t;
@@ -40,8 +42,11 @@ namespace occa {
     int bytes_;
     bool registered;
 
-    dtypeTuple_t *tuple_;
+    dtypeEnum_t *enum_;
     dtypeStruct_t *struct_;
+    dtypeTuple_t *tuple_;
+    dtypeUnion_t *union_;
+
     mutable dtypeVector_t flatDtype;
 
   public:
@@ -99,27 +104,47 @@ namespace occa {
 
     bool isRegistered() const;
 
-    // Tuple methods
+    // Enum methods
     /**
-     * @startDoc{isTuple}
+     * @startDoc{isEnum}
      *
      * Description:
-     *   Returns `true` if the data type holds a tuple type.
-     *   For example: `occa::dtype::int2` is a tuple of two `int`s
+     *   Returns `true` if the data type represents a enum.
+     *   It's different that a tuple since it can keep distinct data types in its fields.
      *
      * @endDoc
      */
-    bool isTuple() const;
+    bool isEnum() const;
 
     /**
-     * @startDoc{tupleSize}
+     * @startDoc{enumEnumeratorCount}
      *
      * Description:
-     *   Return how big the tuple is, for example `int2` would return `2`
+     *   Returns how many enumerator are defined in the enum
      *
      * @endDoc
      */
-    int tupleSize() const;
+    int enumEnumeratorCount() const;
+
+    /**
+     * @startDoc{enumEnumeratorNames}
+     *
+     * Description:
+     *   Return the list of enumerator names for the enum
+     *
+     * @endDoc
+     */
+    const strVector& enumEnumeratorNames() const;
+
+    /**
+     * @startDoc{addEnumerator}
+     *
+     * Description:
+     *   Add a enumerator to the enum type
+     *
+     * @endDoc
+     */
+    dtype_t& addEnumerator(const std::string &enumerator);
 
     // Struct methods
     /**
@@ -152,6 +177,61 @@ namespace occa {
      * @endDoc
      */
     const strVector& structFieldNames() const;
+
+    // Tuple methods
+    /**
+     * @startDoc{isTuple}
+     *
+     * Description:
+     *   Returns `true` if the data type holds a tuple type.
+     *   For example: `occa::dtype::int2` is a tuple of two `int`s
+     *
+     * @endDoc
+     */
+    bool isTuple() const;
+
+    /**
+     * @startDoc{tupleSize}
+     *
+     * Description:
+     *   Return how big the tuple is, for example `int2` would return `2`
+     *
+     * @endDoc
+     */
+    int tupleSize() const;
+
+    // Union methods
+    /**
+     * @startDoc{isUnion}
+     *
+     * Description:
+     *   Returns `true` if the data type represents a union.
+     *   It's different that a tuple since it can keep distinct data types in its fields.
+     *
+     * @endDoc
+     */
+    bool isUnion() const;
+
+    /**
+     * @startDoc{unionFieldCount}
+     *
+     * Description:
+     *   Returns how many fields are defined in the union
+     *
+     * @endDoc
+     */
+    int unionFieldCount() const;
+
+    /**
+     * @startDoc{unionFieldNames}
+     *
+     * Description:
+     *   Return the list of field names for the union
+     *
+     * @endDoc
+     */
+    const strVector& unionFieldNames() const;
+
 
     /**
      * @startDoc{operator_bracket[0]}
@@ -186,7 +266,21 @@ namespace occa {
                       const int tupleSize_ = 1);
 
     // Dtype methods
+    /**
+     * @startDoc{setFlattenedDtype}
+     *
+     * Description:
+     *    Add flatten dtypes of each field.
+     * @endDoc
+     */
     void setFlattenedDtype() const;
+    /**
+     * @startDoc{addFlatDtypes}
+     *
+     * Description:
+     *    Add dtypes of each field.
+     * @endDoc
+     */
     void addFlatDtypes(dtypeVector_t &vec) const;
 
     /**
@@ -260,25 +354,28 @@ namespace occa {
                            const dtype_t &dtype);
 
 
-  //---[ Tuple ]------------------------
-  class dtypeTuple_t {
+  //---[ Enum ]-----------------------
+  class dtypeEnum_t {
     friend class dtype_t;
 
   private:
-    const dtype_t dtype;
-    int size;
+    strVector enumeratorNames;
 
-    dtypeTuple_t(const dtype_t &dtype_,
-                 const int size_);
+    dtypeEnum_t();
 
-    dtypeTuple_t* clone() const;
+    dtypeEnum_t* clone() const;
 
-    bool matches(const dtypeTuple_t &other) const;
+    bool matches(const dtypeEnum_t &other) const;
 
-    void addFlatDtypes(dtypeVector_t &vec) const;
+    int enumeratorCount() const;
+
+    const dtype_t& operator [] (const int enumerator) const;
+    const dtype_t& operator [] (const std::string &enumerator) const;
+
+    void addEnumerator(const std::string &enumerator);
 
     void toJson(json &j, const std::string &name = "") const;
-    static dtypeTuple_t fromJson(const json &j);
+    static dtypeEnum_t fromJson(const json &j);
 
     std::string toString(const std::string &varName = "") const;
   };
@@ -311,6 +408,63 @@ namespace occa {
 
     void toJson(json &j, const std::string &name = "") const;
     static dtypeStruct_t fromJson(const json &j);
+
+    std::string toString(const std::string &varName = "") const;
+  };
+  //====================================
+
+
+  //---[ Tuple ]------------------------
+  class dtypeTuple_t {
+    friend class dtype_t;
+
+  private:
+    const dtype_t dtype;
+    int size;
+
+    dtypeTuple_t(const dtype_t &dtype_,
+                 const int size_);
+
+    dtypeTuple_t* clone() const;
+
+    bool matches(const dtypeTuple_t &other) const;
+
+    void addFlatDtypes(dtypeVector_t &vec) const;
+
+    void toJson(json &j, const std::string &name = "") const;
+    static dtypeTuple_t fromJson(const json &j);
+
+    std::string toString(const std::string &varName = "") const;
+  };
+  //====================================
+
+
+  //---[ Union ]-----------------------
+  class dtypeUnion_t {
+    friend class dtype_t;
+
+  private:
+    strVector fieldNames;
+    dtypeNameMap_t fieldTypes;
+
+    dtypeUnion_t();
+
+    dtypeUnion_t* clone() const;
+
+    bool matches(const dtypeUnion_t &other) const;
+
+    int fieldCount() const;
+
+    const dtype_t& operator [] (const int field) const;
+    const dtype_t& operator [] (const std::string &field) const;
+
+    void addField(const std::string &field,
+                  const dtype_t &dtype);
+
+    void addFlatDtypes(dtypeVector_t &vec) const;
+
+    void toJson(json &j, const std::string &name = "") const;
+    static dtypeUnion_t fromJson(const json &j);
 
     std::string toString(const std::string &varName = "") const;
   };

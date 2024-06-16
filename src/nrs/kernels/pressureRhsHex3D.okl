@@ -1,0 +1,22 @@
+@kernel void pressureRhsHex3D(const dlong N,
+                              const dlong fieldOffset,
+                              @ restrict const dfloat *MUE,
+                              @ restrict const dfloat *iRHO,
+                              @ restrict const dfloat *BF,
+                              @ restrict const dfloat *CU,
+                              @ restrict const dfloat *gDIV,
+                              @ restrict dfloat *rhsU)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+      const dfloat factor = 4. / 3;
+      const dfloat sumX = -CU[n + 0 * fieldOffset] + factor * gDIV[n + 0 * fieldOffset];
+      const dfloat sumY = -CU[n + 1 * fieldOffset] + factor * gDIV[n + 1 * fieldOffset];
+      const dfloat sumZ = -CU[n + 2 * fieldOffset] + factor * gDIV[n + 2 * fieldOffset];
+
+      const dfloat invRho = iRHO[n];
+      const dfloat mue = MUE[n];
+      rhsU[n + 0 * fieldOffset] = invRho * (BF[n + 0 * fieldOffset] + mue * sumX);
+      rhsU[n + 1 * fieldOffset] = invRho * (BF[n + 1 * fieldOffset] + mue * sumY);
+      rhsU[n + 2 * fieldOffset] = invRho * (BF[n + 2 * fieldOffset] + mue * sumZ);
+  }
+}

@@ -1,14 +1,17 @@
 #if !defined(compile_kernels_hpp_)
 #define compile_kernels_hpp_
 
-#include <occa.hpp>
-#include <string>
+#include "platform.hpp"
 
-occa::properties compileUDFKernels();
+occa::properties registerUDFKernels();
+void loadUDFKernels();
+
+void registerCoreKernels();
 void registerLinAlgKernels();
 void registerPostProcessingKernels();
+void registerPointInterpolationKernels();
 void registerNekNekKernels();
-void registerCvodeKernels(occa::properties kernelInfoBC);
+void registerCvodeKernels();
 void registerMeshKernels(occa::properties kernelInfoBC);
 void registerNrsKernels(occa::properties kernelInfoBC);
 void registerCdsKernels(occa::properties kernelInfoBC);

@@ -374,7 +374,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complexPOcomputational
+*> \ingroup la_porfsx_extended
 *
 *  =====================================================================
       SUBROUTINE CLA_PORFSX_EXTENDED( PREC_TYPE, UPLO, N, NRHS, A, LDA,
@@ -625,7 +625,7 @@
             PREVNORMDX = NORMDX
             PREV_DZ_Z = DZ_Z
 *
-*           Update soluton.
+*           Update solution.
 *
             IF (Y_PREC_STATE .LT. EXTRA_Y) THEN
                CALL CAXPY( N, CMPLX(1.0), DY, 1, Y(1,J), 1 )

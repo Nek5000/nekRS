@@ -229,7 +229,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16SYcomputational
+*> \ingroup hetrf_rk
 *
 *> \par Further Details:
 *  =====================
@@ -310,7 +310,7 @@
 *        Determine the block size
 *
          NB = ILAENV( 1, 'ZSYTRF_RK', UPLO, N, -1, -1, -1 )
-         LWKOPT = N*NB
+         LWKOPT = MAX( 1, N*NB )
          WORK( 1 ) = LWKOPT
       END IF
 *

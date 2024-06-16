@@ -4,7 +4,7 @@ polynomialOrder = 7
 numSteps = 100
 dt = 1e-03
 timeStepper = tombo2
-writeInterval = 0
+checkpointInterval = 0
 
 [PROBLEMTYPE]
 equation = Stokes+variableViscosity

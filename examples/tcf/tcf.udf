@@ -1,5 +1,3 @@
-#include "udf.hpp"
-
 #ifdef __okl__
 
 void velocityDirichletConditions(bcData *bc)
@@ -25,9 +23,9 @@ magSqr(const dlong Ntotal, const dlong offset, @ restrict const dfloat *U, @ res
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options) {}
 
-void UDF_Setup(nrs_t *nrs)
+void UDF_Setup()
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->meshV;
 
   dfloat eta;
   dfloat Ri;
@@ -85,9 +83,9 @@ void UDF_Setup(nrs_t *nrs)
   }
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
+void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isOutputStep) {
-    postProcessing::Qcriterion(nrs, nrs->o_U, nrs->cds->o_S);
+  if (nrs->isCheckpointStep) {
+    nrs->Qcriterion(nrs->o_U, nrs->cds->o_S);
   }
 }

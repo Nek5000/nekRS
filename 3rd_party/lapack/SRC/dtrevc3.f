@@ -215,7 +215,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleOTHERcomputational
+*> \ingroup trevc3
 *
 *> \par Further Details:
 *  =====================
@@ -275,7 +275,7 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DAXPY, DCOPY, DGEMV, DLALN2, DSCAL, XERBLA,
-     $                   DGEMM, DLASET, DLABAD, DLACPY
+     $                   DGEMM, DLASET, DLACPY
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, MAX, SQRT
@@ -298,7 +298,7 @@
 *
       INFO = 0
       NB = ILAENV( 1, 'DTREVC', SIDE // HOWMNY, N, -1, -1, -1 )
-      MAXWRK = N + 2*N*NB
+      MAXWRK = MAX( 1, N + 2*N*NB )
       WORK(1) = MAXWRK
       LQUERY = ( LWORK.EQ.-1 )
       IF( .NOT.RIGHTV .AND. .NOT.LEFTV ) THEN
@@ -381,7 +381,6 @@
 *
       UNFL = DLAMCH( 'Safe minimum' )
       OVFL = ONE / UNFL
-      CALL DLABAD( UNFL, OVFL )
       ULP = DLAMCH( 'Precision' )
       SMLNUM = UNFL*( N / ULP )
       BIGNUM = ( ONE-ULP ) / SMLNUM

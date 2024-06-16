@@ -6,7 +6,6 @@
 #include <set>
 
 namespace occa {
-  using experimental::memoryPool;
 
   class modeMemoryPool_t : public modeBuffer_t {
    public:
@@ -29,6 +28,7 @@ namespace occa {
     modeBuffer_t* buffer;
 
     bool verbose;
+    bool resize_through_host;
 
     modeMemoryPool_t(modeDevice_t *modeDevice_,
                      const occa::json &json_);

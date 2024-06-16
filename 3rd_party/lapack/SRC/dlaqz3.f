@@ -229,7 +229,7 @@
 *
 *> \date May 2020
 *
-*> \ingroup doubleGEcomputational
+*> \ingroup laqz3
 *>
 *  =====================================================================
       RECURSIVE SUBROUTINE DLAQZ3( ILSCHUR, ILQ, ILZ, N, ILO, IHI, NW,
@@ -260,7 +260,7 @@
       DOUBLE PRECISION :: S, SMLNUM, ULP, SAFMIN, SAFMAX, C1, S1, TEMP
 
 *     External Functions
-      EXTERNAL :: XERBLA, DTGEXC, DLABAD, DLAQZ0, DLACPY, DLASET,
+      EXTERNAL :: XERBLA, DTGEXC, DLAQZ0, DLACPY, DLASET,
      $            DLAQZ2, DROT, DLARTG, DLAG2, DGEMM
       DOUBLE PRECISION, EXTERNAL :: DLAMCH
 
@@ -302,7 +302,6 @@
 *     Get machine constants
       SAFMIN = DLAMCH( 'SAFE MINIMUM' )
       SAFMAX = ONE/SAFMIN
-      CALL DLABAD( SAFMIN, SAFMAX )
       ULP = DLAMCH( 'PRECISION' )
       SMLNUM = SAFMIN*( DBLE( N )/ULP )
 

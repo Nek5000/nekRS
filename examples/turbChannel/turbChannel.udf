@@ -1,9 +1,3 @@
-//
-// nekRS User Defined File
-//
-#include <math.h>
-#include "udf.hpp"
-
 static dfloat ReTau;
 static dfloat zLength;
 static dfloat xLength;
@@ -15,16 +9,16 @@ static dfloat betaY;
 
 /* User Functions */
 
-void userf(nrs_t *nrs, double time, occa::memory o_U, occa::memory o_FU)
+void userf(double time)
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->meshV;
   dfloat mue, rho;
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho);
   const dfloat RE_B = rho / mue;
   const dfloat DPDX = (ReTau / RE_B) * (ReTau / RE_B);
 
-  occa::memory o_FUx = o_FU + 0 * nrs->fieldOffset;
+  auto o_FUx = nrs->o_NLT + 0 * nrs->fieldOffset;
   platform->linAlg->fill(mesh->Nlocal, DPDX, o_FUx);
 }
 
@@ -43,7 +37,7 @@ void useric(nrs_t *nrs)
   platform->options.getArgs("VISCOSITY", mue);
 
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
-    for (int i = 1; i < mesh->Nlocal; i++) {
+    for (int i = 0; i < mesh->Nlocal; i++) {
       const auto x = mesh->x[i];
       const auto y = mesh->y[i];
       const auto z = mesh->z[i];
@@ -69,28 +63,21 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   platform->par->extract("casedata", "xLength", xLength);
   platform->par->extract("casedata", "betaY", betaY);
 
-  *((double *)nek::scPtr(1)) = xLength;
-  *((double *)nek::scPtr(2)) = zLength;
-  *((double *)nek::scPtr(3)) = betaY;
+  *nek::ptr<double>("xlen") = xLength;
+  *nek::ptr<double>("zlen") = zLength;
+  *nek::ptr<double>("betam") = betaY;
 }
 
-void UDF_Setup(nrs_t *nrs)
+void UDF_Setup()
 {
   if (platform->options.compareArgs("CONSTANT FLOW RATE", "FALSE")) {
-    // assign function pointer to drive flow by constant mean pressure gradient
-    udf.uEqnSource = &userf;
+    nrs->userVelocitySource = &userf;
   }
 
   useric(nrs);
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
+void UDF_ExecuteStep(double time, int tstep)
 {
 
-#if 0
-  if (nrs->isOutputStep) {
-    nek::ocopyToNek(time, tstep);
-    nek::userchk();
-  }
-#endif
 }

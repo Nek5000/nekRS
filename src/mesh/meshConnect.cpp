@@ -31,13 +31,12 @@
 // structure used to encode vertices that make
 // each face, the element/face indices, and
 // the neighbor element/face indices (if any)
-struct face_t
-{
+struct face_t {
   dlong element;
   int face;
 
   dlong elementNeighbor; // neighbor element
-  int faceNeighbor;    // neighbor face
+  int faceNeighbor;      // neighbor face
 
   int NfaceVertices;
 
@@ -46,15 +45,18 @@ struct face_t
 
 // comparison function that orders vertices
 // based on their combined vertex indices
-int compareVertices(const void* a,
-                    const void* b)
+int compareVertices(const void *a, const void *b)
 {
-  face_t* fa = (face_t*) a;
-  face_t* fb = (face_t*) b;
+  face_t *fa = (face_t *)a;
+  face_t *fb = (face_t *)b;
 
-  for(int n = 0; n < fa->NfaceVertices; ++n) {
-    if(fa->v[n] < fb->v[n]) return -1;
-    if(fa->v[n] > fb->v[n]) return +1;
+  for (int n = 0; n < fa->NfaceVertices; ++n) {
+    if (fa->v[n] < fb->v[n]) {
+      return -1;
+    }
+    if (fa->v[n] > fb->v[n]) {
+      return +1;
+    }
   }
 
   return 0;
@@ -62,33 +64,39 @@ int compareVertices(const void* a,
 
 /* comparison function that orders element/face
    based on their indexes */
-int compareFaces(const void* a,
-                 const void* b)
+int compareFaces(const void *a, const void *b)
 {
-  face_t* fa = (face_t*) a;
-  face_t* fb = (face_t*) b;
+  face_t *fa = (face_t *)a;
+  face_t *fb = (face_t *)b;
 
-  if(fa->element < fb->element) return -1;
-  if(fa->element > fb->element) return +1;
+  if (fa->element < fb->element) {
+    return -1;
+  }
+  if (fa->element > fb->element) {
+    return +1;
+  }
 
-  if(fa->face < fb->face) return -1;
-  if(fa->face > fb->face) return +1;
+  if (fa->face < fb->face) {
+    return -1;
+  }
+  if (fa->face > fb->face) {
+    return +1;
+  }
 
   return 0;
 }
 
 /* routine to find EToE (Element To Element)
    and EToF (Element To Local Face) connectivity arrays */
-void meshConnect(mesh_t* mesh)
+void meshConnect(mesh_t *mesh)
 {
   /* build list of faces */
-  face_t* faces =
-    (face_t*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(face_t));
+  face_t *faces = (face_t *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(face_t));
 
   dlong cnt = 0;
   for (dlong e = 0; e < mesh->Nelements; ++e) {
-    for(int f = 0; f < mesh->Nfaces; ++f) {
-      for(int n = 0; n < mesh->NfaceVertices; ++n) {
+    for (int f = 0; f < mesh->Nfaces; ++f) {
+      for (int n = 0; n < mesh->NfaceVertices; ++n) {
         dlong vid = e * mesh->Nverts + mesh->faceVertices[f * mesh->NfaceVertices + n];
         faces[cnt].v[n] = mesh->EToV[vid];
       }
@@ -108,10 +116,7 @@ void meshConnect(mesh_t* mesh)
   }
 
   /* sort faces by their vertex number pairs */
-  qsort(faces,
-        mesh->Nelements * mesh->Nfaces,
-        sizeof(face_t),
-        compareVertices);
+  qsort(faces, mesh->Nelements * mesh->Nfaces, sizeof(face_t), compareVertices);
 
   /* scan through sorted face lists looking for adjacent
      faces that have the same vertex ids */
@@ -127,24 +132,31 @@ void meshConnect(mesh_t* mesh)
   }
 
   /* resort faces back to the original element/face ordering */
-  qsort(faces,
-        mesh->Nelements * mesh->Nfaces,
-        sizeof(face_t),
-        compareFaces);
+  qsort(faces, mesh->Nelements * mesh->Nfaces, sizeof(face_t), compareFaces);
 
   /* extract the element to element and element to face connectivity */
-  mesh->EToE = (dlong*) calloc(mesh->Nelements * mesh->Nfaces, sizeof(dlong));
-  mesh->EToF = (int*)   calloc(mesh->Nelements * mesh->Nfaces, sizeof(int  ));
+  mesh->EToE = (dlong *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(dlong));
+  mesh->EToF = (int *)calloc(mesh->Nelements * mesh->Nfaces, sizeof(int));
 
   cnt = 0;
   for (dlong e = 0; e < mesh->Nelements; ++e) {
-    for(int f = 0; f < mesh->Nfaces; ++f) {
+    for (int f = 0; f < mesh->Nfaces; ++f) {
       mesh->EToE[cnt] = faces[cnt].elementNeighbor;
       mesh->EToF[cnt] = faces[cnt].faceNeighbor;
-      nrsCheck(mesh->EToE[cnt] >= mesh->Nelements, MPI_COMM_SELF, EXIT_FAILURE,
-               "Invalid EToE(%d,%d) = %d \n", e,f, mesh->EToE[cnt]);
-      nrsCheck(mesh->EToF[cnt] >= mesh->Nfaces, MPI_COMM_SELF, EXIT_FAILURE,
-               "Invalid EToF(%d,%d) = %d \n", e,f, mesh->EToF[cnt]);
+      nekrsCheck(mesh->EToE[cnt] >= mesh->Nelements,
+                 MPI_COMM_SELF,
+                 EXIT_FAILURE,
+                 "Invalid EToE(%d,%d) = %d \n",
+                 e,
+                 f,
+                 mesh->EToE[cnt]);
+      nekrsCheck(mesh->EToF[cnt] >= mesh->Nfaces,
+                 MPI_COMM_SELF,
+                 EXIT_FAILURE,
+                 "Invalid EToF(%d,%d) = %d \n",
+                 e,
+                 f,
+                 mesh->EToF[cnt]);
       ++cnt;
     }
   }

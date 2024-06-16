@@ -1,5 +1,7 @@
 #include "con-impl.h"
 
+#include <math.h>
+
 //==============================================================================
 // Handle periodic BCs
 //
@@ -26,9 +28,9 @@ static int compressPeriodicVertices(Mesh mesh, struct comm *c, buffer *bfr) {
   Point points = mesh->elements.ptr;
   uint npoints = mesh->elements.n;
 
-  sint i, nunique = 0;
+  uint i, nunique = 0;
   if (npoints > 0) {
-    slong current = points[0].globalId;
+    ulong current = points[0].globalId;
     points[0].globalId = nunique;
     for (i = 1; i < npoints; i++)
       if (points[i].globalId == current)
@@ -47,8 +49,7 @@ static int compressPeriodicVertices(Mesh mesh, struct comm *c, buffer *bfr) {
   comm_scan(out, c, gs_long, gs_add, in, 1, buf);
   slong start = out[0][0];
 
-  for (i = 0; i < npoints; i++)
-    points[i].globalId += start;
+  for (i = 0; i < npoints; i++) points[i].globalId += start;
 
   return 0;
 }
@@ -56,8 +57,7 @@ static int compressPeriodicVertices(Mesh mesh, struct comm *c, buffer *bfr) {
 static ulong findMinBelowI(ulong min, uint I, struct array *arr) {
   struct mpair_t *ptr = (struct mpair_t *)arr->ptr;
   for (uint i = 0; i < I; i++)
-    if (ptr[i].orig == min)
-      return ptr[i].min;
+    if (ptr[i].orig == min) return ptr[i].min;
   return min;
 }
 
@@ -69,43 +69,34 @@ static int renumberPeriodicVertices(Mesh mesh, struct comm *c,
         *mcur = tcalloc(slong, size1);
 
   struct point_t *pe = (struct point_t *)mesh->elements.ptr;
-  for (uint i = 0; i < size1; i++)
-    mids[i] = pe[i].globalId;
+  for (uint i = 0; i < size1; i++) mids[i] = pe[i].globalId;
   struct mpair_t *pm = (struct mpair_t *)matched->ptr;
-  for (uint i = 0; i < size2; i++)
-    mids[size1 + i] = pm[i].orig;
+  for (uint i = 0; i < size2; i++) mids[size1 + i] = pm[i].orig;
   struct gs_data *gsh = gs_setup(mids, size1 + size2, c, 0, gs_pairwise, 0);
 
-  for (uint i = 0; i < size1; i++)
-    mnew[i] = pe[i].globalId;
-  for (uint i = 0; i < size2; i++)
-    mnew[size1 + i] = pm[i].min;
+  for (uint i = 0; i < size1; i++) mnew[i] = pe[i].globalId;
+  for (uint i = 0; i < size2; i++) mnew[size1 + i] = pm[i].min;
   gs(mnew, gs_long, gs_min, 0, gsh, bfr);
 
   sint changed, wrk;
   do {
-    for (uint i = 0; i < size1; i++)
-      mcur[i] = mnew[i];
-    for (uint i = 0; i < size2; i++)
-      mids[size1 + size2 + i] = -mnew[size1 + i];
+    for (uint i = 0; i < size1; i++) mcur[i] = mnew[i];
+    for (uint i = 0; i < size2; i++) mids[size1 + size2 + i] = -mnew[size1 + i];
     struct gs_data *gsh1 =
         gs_setup(mids, size1 + 2 * size2, c, 0, gs_pairwise, 0);
 
     gs(mnew, gs_long, gs_min, 0, gsh1, bfr);
     gs_free(gsh1);
 
-    for (uint i = 0; i < size2; i++)
-      mnew[size1 + i] = mnew[size1 + size2 + i];
+    for (uint i = 0; i < size2; i++) mnew[size1 + i] = mnew[size1 + size2 + i];
     gs(mnew, gs_long, gs_min, 0, gsh, bfr);
 
     changed = 0;
-    for (uint i = 0; i < size1; i++)
-      changed += (mnew[i] != mcur[i]);
+    for (uint i = 0; i < size1; i++) changed += (mnew[i] != mcur[i]);
     comm_allreduce(c, gs_int, gs_max, &changed, 1, &wrk);
   } while (changed);
 
-  for (uint i = 0; i < size1; i++)
-    pe[i].globalId = mcur[i];
+  for (uint i = 0; i < size1; i++) pe[i].globalId = mcur[i];
 
   gs_free(gsh);
   free(mids), free(mnew), free(mcur);
@@ -187,7 +178,8 @@ static int findConnectedPeriodicFaces(Mesh mesh, struct array *matched) {
 
   for (i = 0; i < bSize - 1; i++) {
     for (j = i + 1; j < bSize; j++)
-      if (ptr[j].bc[0] == ptr[i].elementId && ptr[j].bc[1] == ptr[i].faceId) {
+      if ((ulong)ptr[j].bc[0] == ptr[i].elementId &&
+          (ulong)ptr[j].bc[1] == ptr[i].faceId) {
         findConnectedPeriodicPairs(mesh, &ptr[i], &ptr[j], matched);
       }
   }
@@ -195,7 +187,7 @@ static int findConnectedPeriodicFaces(Mesh mesh, struct array *matched) {
 }
 
 static int gatherMatchingPeriodicFaces(Mesh mesh, struct comm *c) {
-  int size = c->np, rank = c->id;
+  uint size = c->np;
 
   BoundaryFace bPtr = mesh->boundary.ptr;
   int nFaces = mesh->boundary.n;
@@ -208,7 +200,7 @@ static int gatherMatchingPeriodicFaces(Mesh mesh, struct comm *c) {
   sint i;
   slong eid;
   for (i = 0; i < nFaces; i++) {
-    eid = MAX(bPtr[i].bc[0], bPtr[i].elementId);
+    eid = MAX((ulong)bPtr[i].bc[0], bPtr[i].elementId);
     if (eid < N)
       bPtr[i].proc = eid / nelt;
     else
@@ -226,13 +218,11 @@ static int gatherMatchingPeriodicFaces(Mesh mesh, struct comm *c) {
 static int setPeriodicFaceCoordinates(Mesh mesh, struct comm *c, buffer *buf) {
   BoundaryFace bPtr = mesh->boundary.ptr;
   sint bSize = mesh->boundary.n;
-  if (bSize == 0)
-    return 0;
+  if (bSize == 0) return 0;
 
   Point ePtr = mesh->elements.ptr;
   sint eSize = mesh->elements.n;
-  if (eSize == 0)
-    return 0;
+  if (eSize == 0) return 0;
 
   /* Need boundary array to be sorted by elementId */
   sarray_sort(struct boundary_t, bPtr, bSize, elementId, 1, buf);
@@ -249,8 +239,7 @@ static int setPeriodicFaceCoordinates(Mesh mesh, struct comm *c, buffer *buf) {
   sint i = 0, k = 0;
   int nv = mesh->nv, nvf = mesh->nv / 2, j;
   while (i < bSize) {
-    while (k < eSize && ePtr[k].elementId < bPtr[i].elementId)
-      k += nv;
+    while (k < eSize && ePtr[k].elementId < bPtr[i].elementId) k += nv;
     // copy vertices to boundary face
     if (k < eSize && ePtr[k].elementId == bPtr[i].elementId) {
       int faceId = bPtr[i].faceId;
@@ -263,19 +252,33 @@ static int setPeriodicFaceCoordinates(Mesh mesh, struct comm *c, buffer *buf) {
   return 0;
 }
 
-int matchPeriodicFaces(Mesh mesh, struct comm *c, buffer *bfr) {
+int match_periodic_faces(Mesh mesh, struct comm *c, int verbose, buffer *bfr) {
+  const char *functions[6] = {
+      "set_periodic_face_coords      ", "gather_matching_periodic_faces",
+      "find_connected_periodic_faces ", "renumber_periodic_vertices    ",
+      "compress_periodic_vertices    ", "send_back                     "};
+
+  parrsb_print(c, verbose, "\t\t%s ...", functions[0]);
   setPeriodicFaceCoordinates(mesh, c, bfr);
+
+  parrsb_print(c, verbose, "\t\t%s ...", functions[1]);
   gatherMatchingPeriodicFaces(mesh, c);
 
   struct array matched;
   array_init(struct mpair_t, &matched, 10);
   matched.n = 0;
 
+  parrsb_print(c, verbose, "\t\t%s ...", functions[2]);
   findConnectedPeriodicFaces(mesh, &matched);
+
+  parrsb_print(c, verbose, "\t\t%s ...", functions[3]);
   renumberPeriodicVertices(mesh, c, &matched, bfr);
   array_free(&matched);
 
+  parrsb_print(c, verbose, "\t\t%s ...", functions[4]);
   compressPeriodicVertices(mesh, c, bfr);
+
+  parrsb_print(c, verbose, "\t\t%s ...", functions[5]);
   send_back(mesh, c, bfr);
 
   return 0;

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 nfld=0
 sfld=1

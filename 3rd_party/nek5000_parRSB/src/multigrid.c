@@ -1,6 +1,10 @@
 #include "multigrid.h"
 #include <math.h>
 
+#ifndef M_PI
+#define M_PI 3.141592653589793
+#endif
+
 struct mg_lvl {
   uint npres, nposts;
   scalar over;
@@ -8,13 +12,10 @@ struct mg_lvl {
 
   struct gs_data *Q; // gs handle for matrix vector product
   struct par_mat *M; // Operator
-
-  struct gs_data *Qs, *Qst; // gs handle for matrix vector product
-  struct par_mat *S, *St;   // Smooth aggregation
 };
 
 struct mg {
-  uint sagg, nlevels, *level_off;
+  uint nlevels, *level_off;
   struct mg_lvl **levels;
   scalar *buf;
 };
@@ -29,7 +30,7 @@ static scalar sigma_cheb(int k, int n, scalar lmin, scalar lmax) {
   return 1 / lamk;
 }
 
-static void inline set_proc(struct mij *m, uint nelt, uint nrem, uint np) {
+inline static void set_proc(struct mij *m, uint nelt, uint nrem, uint np) {
   assert(m->r > 0);
 
   if (nrem == 0) {
@@ -43,129 +44,94 @@ static void inline set_proc(struct mij *m, uint nelt, uint nrem, uint np) {
       m->p = s + (m->r - (t + 1)) / (nelt + 1);
   }
 
-  assert(m->p >= 0 && m->p < np);
+  assert(m->p < np);
 }
 
-extern int sparse_gemm(struct par_mat *WG, const struct par_mat *W,
+static int sparse_gemm(struct par_mat *WG, const struct par_mat *W,
                        const struct par_mat *G, int diag_wg, struct crystal *cr,
-                       buffer *bfr);
+                       buffer *bfr) {
+  // W is in CSR, G is in CSC; we multiply rows of W by shifting
+  // the columns of G from processor to processor. This is not scalable
+  // at all -- need to do a 2D partition of the matrices W and G.
+  assert(IS_CSR(W) && !IS_DIAG(W));
+  assert(IS_CSC(G));
 
-static uint mg_setup_aux(struct mg *d, const int factor, const int sagg,
-                         struct crystal *cr, struct array *mijs, buffer *bfr) {
+  // Put G into an array to transfer from processor to processor
+  struct array gij, sij;
+  array_init(struct mij, &gij, 100);
+  array_init(struct mij, &sij, 100);
+
+  struct mij m = {.r = 0, .c = 0, .idx = 0, .p = cr->comm.id, .v = 0};
+  uint i, j, je;
+  for (i = 0; i < G->cn; i++) {
+    m.c = G->cols[i];
+    for (j = G->adj_off[i], je = G->adj_off[i + 1]; j != je; j++) {
+      m.r = G->rows[G->adj_idx[j]];
+      m.v = G->adj_val[j];
+      array_cat(struct mij, &gij, &m, 1);
+    }
+  }
+  if (IS_DIAG(G)) {
+    for (i = 0; i < G->cn; i++) {
+      m.c = m.r = G->cols[i];
+      m.v = G->diag_val[i];
+      array_cat(struct mij, &gij, &m, 1);
+    }
+  }
+
+  sarray_sort_2(struct mij, gij.ptr, gij.n, c, 1, r, 1, bfr);
+  struct mij *pg = (struct mij *)gij.ptr;
+  for (i = 0; i < gij.n; i++) pg[i].idx = i;
+
+  for (uint p = 0; p < cr->comm.np; p++) {
+    // Calculate dot product of each row of W with columns of G
+    for (i = 0; i < W->rn; i++) {
+      m.r = W->rows[i];
+      uint s = 0, e = 0;
+      while (s < gij.n) {
+        m.c = pg[s].c, m.v = 0;
+        for (j = W->adj_off[i], je = W->adj_off[i + 1]; j < je; j++) {
+          ulong k = W->cols[W->adj_idx[j]];
+          while (e < gij.n && pg[s].c == pg[e].c && pg[e].r < k) e++;
+          if (e < gij.n && pg[s].c == pg[e].c && pg[e].r == k)
+            m.v += W->adj_val[j] * pg[e].v;
+        }
+        while (e < gij.n && pg[s].c == pg[e].c) e++;
+        if (fabs(m.v) > 1e-12) array_cat(struct mij, &sij, &m, 1);
+        s = e;
+      }
+    }
+
+    sint next = (cr->comm.id + 1) % cr->comm.np;
+    for (i = 0; i < gij.n; i++) pg[i].p = next;
+    sarray_transfer(struct mij, &gij, p, 0, cr);
+
+    sarray_sort(struct mij, gij.ptr, gij.n, idx, 0, bfr);
+    pg = gij.ptr;
+  }
+
+  par_csr_setup(WG, &sij, diag_wg, bfr);
+  array_free(&gij), array_free(&sij);
+
+  return 0;
+}
+
+static uint mg_setup_aux(struct mg *d, const int factor, struct crystal *cr,
+                         struct array *mijs, buffer *bfr) {
   uint lvl = d->nlevels;
   struct mg_lvl *l = d->levels[lvl - 1];
 
-  struct par_mat *Ml = l->M;
-  uint nnz = ((Ml->rn > 0) ? (Ml->adj_off[Ml->rn] + Ml->rn) : 0);
+  struct par_mat *M = l->M;
+  uint nnz = ((M->rn > 0) ? (M->adj_off[M->rn] + M->rn) : 0);
 
   struct mij m = {.r = 0, .c = 0, .idx = 0, .p = 0, .v = 0};
   array_reserve(struct mij, mijs, nnz);
-
-  struct comm *c = &cr->comm;
-  const double sigma = 0.65;
-  struct par_mat *M;
-  // Replace M by the following if smooth aggregation is used:
-  // S = (I - sigma * D^{-1} * Ml)
-  // M = ST * Ml * S
-  if (sagg) {
-    // This is very hacky and not optimal at all. Should be rewritten.
-    // Create S is in CSR format, with separate diagonal. Then convert
-    // to CSC with no separate diagonal in order to do the mat-vec.
-    mijs->n = 0;
-    for (uint i = 0; i < Ml->rn; i++) {
-      m.c = m.r = Ml->rows[i], m.v = 1 - sigma;
-      array_cat(struct mij, mijs, &m, 1);
-      double di = 1.0 / Ml->diag_val[i];
-      for (uint j = Ml->adj_off[i], je = Ml->adj_off[i + 1]; j < je; j++) {
-        m.c = Ml->cols[Ml->adj_idx[j]];
-        m.v = -sigma * di * Ml->adj_val[j];
-        array_cat(struct mij, mijs, &m, 1);
-      }
-    }
-    l->S = tcalloc(struct par_mat, 1);
-    par_mat_setup(l->S, mijs, 1, 1, bfr);
-    l->Qs = setup_Q(l->S, c, bfr);
-
-    struct par_mat S;
-    par_csr_to_csc(&S, l->S, 0, cr, bfr);
-
-    // Create N = M in CSR format, no separate diagonal.
-    mijs->n = 0;
-    for (uint i = 0; i < Ml->rn; i++) {
-      m.c = m.r = Ml->rows[i], m.v = Ml->diag_val[i];
-      array_cat(struct mij, mijs, &m, 1);
-      for (uint j = Ml->adj_off[i], je = Ml->adj_off[i + 1]; j < je; j++) {
-        m.c = Ml->cols[Ml->adj_idx[j]];
-        m.v = Ml->adj_val[j];
-        array_cat(struct mij, mijs, &m, 1);
-      }
-    }
-    struct par_mat N;
-    par_mat_setup(&N, mijs, 1, 0, bfr);
-
-    // T = N * S, CSR format, no separate diagonal.
-    struct par_mat T;
-    sparse_gemm(&T, &N, &S, 0, cr, bfr);
-    par_mat_free(&N), par_mat_free(&S);
-
-    // N = T, CSC format, no separate diagonal.
-    par_csr_to_csc(&N, &T, 0, cr, bfr);
-    par_mat_free(&T);
-
-    // Setup S^t, CSR format, no separate diagonal.
-    mijs->n = 0;
-    for (uint i = 0; i < Ml->rn; i++) {
-      m.c = m.r = Ml->rows[i], m.v = 1 - sigma;
-      array_cat(struct mij, mijs, &m, 1);
-      double di = 1.0 / Ml->diag_val[i];
-      for (uint j = Ml->adj_off[i], je = Ml->adj_off[i + 1]; j < je; j++) {
-        m.r = Ml->cols[Ml->adj_idx[j]];
-        m.v = -sigma * di * Ml->adj_val[j];
-        array_cat(struct mij, mijs, &m, 1);
-      }
-    }
-    par_mat_setup(&T, mijs, 0, 0, bfr);
-    par_csc_to_csr(&S, &T, 0, cr, bfr);
-    par_mat_free(&T);
-
-    // M = ST * N
-    M = tcalloc(struct par_mat, 1);
-    sparse_gemm(M, &S, &N, 1, cr, bfr);
-    par_mat_free(&S), par_mat_free(&N);
-
-    // Normalize M by the largest value
-    double max = 0;
-    for (uint i = 0; i < M->rn; i++) {
-      for (uint j = M->adj_off[i], je = M->adj_off[i + 1]; j < je; j++)
-        if (fabs(M->adj_val[j]) > max)
-          max = fabs(M->adj_val[j]);
-      if (fabs(M->diag_val[i]) > max)
-        max = fabs(M->diag_val[i]);
-    }
-    double wrk[2];
-    comm_allreduce(c, gs_double, gs_max, &max, 1, wrk);
-
-    for (uint i = 0; i < M->rn; i++) {
-      for (uint j = M->adj_off[i], je = M->adj_off[i + 1]; j < je; j++)
-        M->adj_val[j] /= max;
-      M->diag_val[i] /= max;
-    }
-
-    par_mat_setup(&T, mijs, 0, 0, bfr);
-    l->St = tcalloc(struct par_mat, 1);
-    par_csc_to_csr(l->St, &T, 1, cr, bfr);
-    par_mat_free(&T);
-    l->Qst = setup_Q(l->St, c, bfr);
-  } else {
-    l->S = l->St = NULL;
-    l->Qs = l->Qst = NULL;
-    M = Ml;
-  }
 
   // Now we interpolate to find the coarse operator Mc = J^T M J
   // Calculate coarse level parameters: ngc, npc, nelt, nrem
   uint size = (M->rn > 0 ? (M->rows[M->rn - 1] - M->rows[0] + 1) : 0);
   slong ng = size, wrk[2][1];
+  struct comm *c = &cr->comm;
   comm_allreduce(c, gs_long, gs_add, &ng, 1, wrk);
 
   // ng > 1 based on while condition in mg_setup(). so ngc >= 1
@@ -197,11 +163,6 @@ static uint mg_setup_aux(struct mg *d, const int factor, const int sagg,
     array_cat(struct mij, mijs, &m, 1);
   }
 
-  if (sagg) {
-    par_mat_free(M);
-    free(M);
-  }
-
   sarray_transfer(struct mij, mijs, p, 0, cr);
   sarray_sort_2(struct mij, mijs->ptr, mijs->n, r, 1, c, 1, bfr);
 
@@ -212,8 +173,7 @@ static uint mg_setup_aux(struct mg *d, const int factor, const int sagg,
 
   // Setup gs ids for coarse level (rhs interpolation )
   ids = (slong *)trealloc(slong, ids, k + M->rn);
-  for (i = 0; i < M->rn; i++)
-    ids[k++] = M->rows[i];
+  for (i = 0; i < M->rn; i++) ids[k++] = M->rows[i];
   d->levels[lvl - 1]->J = gs_setup(ids, k, c, 0, gs_pairwise, 0);
   free(ids);
 
@@ -221,14 +181,13 @@ static uint mg_setup_aux(struct mg *d, const int factor, const int sagg,
   return lvl;
 }
 
-struct mg *mg_setup(const struct par_mat *M, const int factor, const int sagg,
+struct mg *mg_setup(const struct par_mat *M, const int factor,
                     struct crystal *cr, buffer *bfr) {
   assert(IS_CSR(M));
   assert(M->rn == 0 || IS_DIAG(M));
 
   // Allocate memory for struct mg
   struct mg *d = (struct mg *)tcalloc(struct mg, 1);
-  d->sagg = sagg;
 
   // Setup Level 1, keeps a pointer to input matrix
   d->nlevels = 1;
@@ -254,7 +213,7 @@ struct mg *mg_setup(const struct par_mat *M, const int factor, const int sagg,
   slong wrk[2], ng = size;
   comm_allreduce(c, gs_long, gs_add, &ng, 1, wrk);
   while (ng > 1) {
-    uint l = mg_setup_aux(d, factor, sagg, cr, &mijs, bfr);
+    uint l = mg_setup_aux(d, factor, cr, &mijs, bfr);
     struct par_mat *Ml = d->levels[l]->M;
     if (Ml->rn > 0 && Ml->adj_off[Ml->rn] + Ml->rn > nnz)
       nnz = Ml->adj_off[Ml->rn] + Ml->rn;
@@ -283,20 +242,17 @@ struct mg *mg_setup(const struct par_mat *M, const int factor, const int sagg,
 //
 void mg_vcycle(scalar *u1, scalar *rhs, struct mg *d, struct comm *c,
                buffer *bfr) {
-  if (d->nlevels == 0)
-    return;
+  if (d->nlevels == 0) return;
 
   uint *lvl_off = d->level_off, nnz = lvl_off[d->nlevels];
   scalar *r = d->buf;
-  for (uint i = 0; i < 4 * nnz; i++)
-    r[i] = 0;
-  for (uint i = 0; i < lvl_off[1]; i++)
-    r[i] = rhs[i];
+  for (uint i = 0; i < 4 * nnz; i++) r[i] = 0;
+  for (uint i = 0; i < lvl_off[1]; i++) r[i] = rhs[i];
 
   scalar *s = r + nnz, *Gs = s + nnz, *u = Gs + nnz, *wrk = u + nnz;
 
   uint i, j, n, off;
-  for (int lvl = 0; lvl < d->nlevels - 1; lvl++) {
+  for (uint lvl = 0; lvl < d->nlevels - 1; lvl++) {
     off = lvl_off[lvl];
     n = lvl_off[lvl + 1] - off;
 
@@ -305,15 +261,13 @@ void mg_vcycle(scalar *u1, scalar *rhs, struct mg *d, struct comm *c,
 
     // u = sigma * inv(D) * rhs
     scalar sigma = sigma_cheb(1, l->npres + 1, 1, 2);
-    for (j = 0; j < n; j++)
-      u[off + j] = sigma * r[off + j] / M->diag_val[j];
+    for (j = 0; j < n; j++) u[off + j] = sigma * r[off + j] / M->diag_val[j];
 
     // G*u
     mat_vec_csr(Gs + off, u + off, M, l->Q, wrk, bfr);
 
     // r = rhs - Gu
-    for (j = 0; j < n; j++)
-      r[off + j] = r[off + j] - Gs[off + j];
+    for (j = 0; j < n; j++) r[off + j] = r[off + j] - Gs[off + j];
 
     for (i = 1; i <= l->npres - 1; i++) {
       sigma = sigma_cheb(i + 1, l->npres + 1, 1, 2);
@@ -327,13 +281,8 @@ void mg_vcycle(scalar *u1, scalar *rhs, struct mg *d, struct comm *c,
 
       // r = r - Gs
       mat_vec_csr(Gs + off, s + off, M, l->Q, wrk, bfr);
-      for (j = 0; j < n; j++)
-        r[off + j] = r[off + j] - Gs[off + j];
+      for (j = 0; j < n; j++) r[off + j] = r[off + j] - Gs[off + j];
     }
-
-    // Apply S^T
-    if (d->sagg)
-      mat_vec_csr(r + off, r + off, l->St, l->Qst, wrk, bfr);
 
     // Interpolate to coarser level
     gs(r + off, gs_double, gs_add, 1, l->J, bfr);
@@ -342,7 +291,6 @@ void mg_vcycle(scalar *u1, scalar *rhs, struct mg *d, struct comm *c,
   // Coarsest level
   off = lvl_off[d->nlevels - 1];
   n = lvl_off[d->nlevels] - off;
-
   if (n == 1) {
     struct mg_lvl *l = d->levels[d->nlevels - 1];
     struct par_mat *M = l->M;
@@ -353,55 +301,34 @@ void mg_vcycle(scalar *u1, scalar *rhs, struct mg *d, struct comm *c,
     r[off] = u[off];
   }
 
-  for (int lvl = d->nlevels - 2; lvl >= 0; lvl--) {
+  for (int lvl = (int)d->nlevels - 2; lvl >= 0; lvl--) {
     struct mg_lvl *l = d->levels[lvl];
     off = lvl_off[lvl];
     // J*e
     gs(r + off, gs_double, gs_add, 0, l->J, bfr);
 
-    // Apply S
-    if (d->sagg)
-      mat_vec_csr(r + off, r + off, l->S, l->Qs, wrk, bfr);
-
     // u = u + over*S*J*e
     n = lvl_off[lvl + 1] - off;
-    for (j = 0; j < n; j++)
-      r[off + j] = l->over * r[off + j] + u[off + j];
+    for (j = 0; j < n; j++) r[off + j] = l->over * r[off + j] + u[off + j];
   }
 
   // Avoid this
-  for (i = 0; i < lvl_off[1]; i++)
-    u1[i] = r[i];
+  for (i = 0; i < lvl_off[1]; i++) u1[i] = r[i];
 }
 
 void mg_free(struct mg *d) {
   if (d != NULL) {
     struct mg_lvl **l = d->levels;
     for (uint i = 0; i < d->nlevels; i++) {
-      if (i > 0 && l[i]->M != NULL)
-        par_mat_free(l[i]->M), free(l[i]->M);
-      if (l[i]->J != NULL)
-        gs_free(l[i]->J), l[i]->J = NULL;
-      if (l[i]->Q != NULL)
-        gs_free(l[i]->Q), l[i]->Q = NULL;
-      if (l[i]->Qs != NULL)
-        gs_free(l[i]->Qs), l[i]->Qs = NULL;
-      if (l[i]->Qst != NULL)
-        gs_free(l[i]->Qst), l[i]->Qst = NULL;
-      if (l[i]->S != NULL)
-        par_mat_free(l[i]->S), l[i]->S = NULL;
-      if (l[i]->St != NULL)
-        par_mat_free(l[i]->St), l[i]->St = NULL;
-      if (l[i] != NULL)
-        free(l[i]), l[i] = NULL;
+      if (i > 0 && l[i]->M != NULL) par_mat_free(l[i]->M), free(l[i]->M);
+      if (l[i]->J != NULL) gs_free(l[i]->J), l[i]->J = NULL;
+      if (l[i]->Q != NULL) gs_free(l[i]->Q), l[i]->Q = NULL;
+      if (l[i] != NULL) free(l[i]), l[i] = NULL;
     }
 
-    if (d->levels != NULL)
-      free(d->levels), d->levels = NULL;
-    if (d->level_off != NULL)
-      free(d->level_off), d->level_off = NULL;
-    if (d->buf != NULL)
-      free(d->buf), d->buf = NULL;
+    if (d->levels != NULL) free(d->levels), d->levels = NULL;
+    if (d->level_off != NULL) free(d->level_off), d->level_off = NULL;
+    if (d->buf != NULL) free(d->buf), d->buf = NULL;
     free(d);
   }
 }

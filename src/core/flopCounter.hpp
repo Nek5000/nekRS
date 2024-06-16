@@ -1,9 +1,11 @@
 #if !defined(nekrs_counter_hpp_)
 #define nekrs_counter_hpp_
-#include "nrssys.hpp"
+#include "nekrsSys.hpp"
 #include <map>
 #include <vector>
-class flopCounter_t {
+
+class flopCounter_t
+{
 public:
   // Not collective
   void clear();

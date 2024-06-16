@@ -3,7 +3,6 @@
 
 #include "parrsb-impl.h"
 #include "sort.h"
-#include <stdarg.h>
 
 /*
  Preprocessor Corner notation:      Symmetric Corner notation:
@@ -126,10 +125,10 @@ int send_back(Mesh mesh, struct comm *c, buffer *bfr);
 int find_unique_vertices(Mesh mesh, struct comm *c, scalar tol, int verbose,
                          buffer *bfr);
 
-int matchPeriodicFaces(Mesh mesh, struct comm *c, buffer *bfr);
+int match_periodic_faces(Mesh mesh, struct comm *c, int verbose, buffer *bfr);
 
-int elementCheck(Mesh mesh, struct comm *c, buffer *bfr);
+int element_check(Mesh mesh, struct comm *c, buffer *bfr);
 
-int faceCheck(Mesh mesh, struct comm *c, buffer *bfr);
+int face_check(Mesh mesh, struct comm *c, buffer *bfr);
 
 #endif // _CON_IMPL_H_

@@ -218,7 +218,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleGEeigen
+*> \ingroup ggev
 *
 *  =====================================================================
       SUBROUTINE DGGEV( JOBVL, JOBVR, N, A, LDA, B, LDB, ALPHAR, ALPHAI,
@@ -257,9 +257,8 @@
       LOGICAL            LDUMMA( 1 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DGEQRF, DGGBAK, DGGBAL, DGGHRD, DHGEQZ, DLABAD,
-     $                   DLACPY,DLASCL, DLASET, DORGQR, DORMQR, DTGEVC,
-     $                   XERBLA
+      EXTERNAL           DGEQRF, DGGBAK, DGGBAL, DGGHRD, DHGEQZ, DLACPY,
+     $                   DLASCL, DLASET, DORGQR, DORMQR, DTGEVC, XERBLA
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -358,7 +357,6 @@
       EPS = DLAMCH( 'P' )
       SMLNUM = DLAMCH( 'S' )
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
       SMLNUM = SQRT( SMLNUM ) / EPS
       BIGNUM = ONE / SMLNUM
 *

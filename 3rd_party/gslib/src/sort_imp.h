@@ -50,6 +50,7 @@ typedef struct { T v; uint i; } sort_data;
 
   ----------------------------------------------------------------------------*/
 
+#ifndef REALSORT
 #define STATIC_DIGIT_BUCKETS 1
 
 #define DIGIT_BITS   8
@@ -254,7 +255,7 @@ static void radix_sortp(
     radix_passp_e(src,src+n,shift[d],offsets[d],idx);
   }
 }
-
+#endif
 /*------------------------------------------------------------------------------
   
   Merge Sort
@@ -279,7 +280,7 @@ static void radix_sortp(
 #define MERGE_SORT() \
   do {                                                                 \
     uint i=0, n=An, odd=0, c=0, b=1;                                   \
-    sint base=-n;                                                      \
+    sint  base=-n;                                                     \
     for(;;) {                                                          \
       DATA *restrict p;                                                \
       if((c&1)==0) {                                                   \
@@ -443,7 +444,7 @@ static void heap_sortv(T *const restrict A, unsigned n)
     and the required scratch space
 
   ----------------------------------------------------------------------------*/
-
+#ifndef REALSORT
 void sortv(T *out, const T *A, uint n, unsigned stride, buffer *restrict buf)
 {
   if(n<DIGIT_VALUES) {
@@ -508,6 +509,42 @@ uint *sortp(buffer *restrict buf, int start_perm,
   }  
   return perm;
 }
+#else
+void sortv(T *out, const T *A, uint n, unsigned stride, buffer *restrict buf)
+{
+  if(n<2) {
+    if(n==0) return;
+    *out = *A;
+  } else {
+    if(out==A) {
+      if(stride!=sizeof(T))
+        fail(1,__FILE__,__LINE__,"in-place sort with non-unit stride");
+      heap_sortv(out,n);
+    } else {
+      buffer_reserve(buf,n*sizeof(T));
+      merge_sortv(out, A,n,stride, (T*)buf->ptr);
+    }
+  }
+}
+
+uint *sortp(buffer *restrict buf, int start_perm,
+            const T *restrict A, uint n, unsigned stride)
+{
+  uint *restrict perm;
+  sort_data *restrict work;
+  size_t work_off=align_as(sort_data,n*sizeof(uint));
+  buffer_reserve(buf,work_off+2*n*sizeof(sort_data));
+  perm = buf->ptr;
+  work = (sort_data*)((char*)buf->ptr+work_off);
+  if(n<2) {
+    if(n==1) *perm=0;
+  } else {
+    if(start_perm) merge_sortp (perm, A,n,stride, work);
+    else           merge_sortp0(perm, A,n,stride, work);
+  }
+  return perm;
+}
+#endif
 
 #undef STATIC_DIGIT_BUCKETS
 

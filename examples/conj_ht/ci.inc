@@ -52,14 +52,14 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, int tstep)
     return;
   }
 
-  auto interp = pointInterpolation_t(nrs);
+  auto interp = pointInterpolation_t(nrs->cds->mesh[0]);
 
   std::vector<dfloat> x = {4, 4, 4};
   std::vector<dfloat> y = {-0.25, 0.25, 1.0};
   std::vector<dfloat> z = {0.5, 0.5, 0.5};
 
   int nPoints = x.size();
-  interp.setPoints(nPoints, x.data(), y.data(), z.data());
+  interp.setPoints(x, y, z);
   const auto verbosity = pointInterpolation_t::VerbosityLevel::Basic;
   interp.find(verbosity);
 
@@ -91,12 +91,8 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, int tstep)
       std::cout << std::endl;
     }
 
-    // Test failed -- exit
-    CIFAIL;
-    if (platform->exitValue) {
-      nrsFinalize(nrs);
-      exit(platform->exitValue);
-    }
+    CiFailTest();
+    nekrsCheck(platform->exitValue, platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
   }
 }
 
@@ -120,7 +116,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   nek::ocopyToNek(time, tstep);
   nek::userchk();
 
-  double *err = (double *)nek::scPtr(1);
+  auto err = nek::ptr<double>("errors");
   double vxErr, sErr;
 
   vxErr = abs((err[0] - 2.06559) / err[0]);
@@ -130,7 +126,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
     printf("relative error to target: vx=%g s=%g\n", vxErr, sErr);
   }
 
-  (vxErr < EPS && sErr < EPS) ? (CIPASS) : (CIFAIL);
+  (vxErr < EPS && sErr < EPS) ? (CiPassTest()) : (CiFailTest());
 
   if (nrs->cds->cvode) {
     dfloat expectedCVODERHS = 13.11;
@@ -139,6 +135,6 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
              expectedCVODERHS,
              numCVODERHS);
     }
-    numCVODERHS > 1.1 * expectedCVODERHS ? (CIFAIL) : (CIPASS);
+    numCVODERHS > 1.1 * expectedCVODERHS ? (CiFailTest()) : (CiPassTest());
   }
 }

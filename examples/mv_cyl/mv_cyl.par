@@ -5,7 +5,7 @@ stopAt = numSteps
 numSteps = 100
 dt = 1e-3
 timeStepper = tombo3
-writeInterval = 50
+checkpointInterval = 50
 
 [MESH]
 boundaryTypeMap = codedFixedValue, zeroValue, sym
@@ -31,7 +31,6 @@ YLEN = 1.5
 ZLEN = 0.1
 
 P_GAMMA = 1.4
-P_DELTA = 0.2
 P_OMEGA = 3.141592653589793
 P_AMP = 1.5707963267948966
 P_ROT = 0.0

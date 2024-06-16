@@ -7,18 +7,24 @@
 
 namespace nekrs
 {
-void setup(MPI_Comm commg_in, MPI_Comm comm_in,
-           int buildOnly, int commSizeTarget,
-           int ciMode, inipp::Ini *par,
-           std::string casename, std::string _backend, std::string _deviceID,
-           int _nSessions, int _sessionID,
+void setup(MPI_Comm commg_in,
+           MPI_Comm comm_in,
+           int buildOnly,
+           int commSizeTarget,
+           int ciMode,
+           const std::map<std::string, std::map<std::string, std::string>>& parKeyValuePairs,
+           std::string casename,
+           std::string _backend,
+           std::string _deviceID,
+           int nSessions,
+           int sessionID,
            int debug);
 void copyFromNek(double time, int tstep);
-void udfExecuteStep(double time, int tstep, int isOutputStep);
-void outfld(double time, int step);
-void outfld(double time, int step, std::string suffix);
-int outputStep(double time, int tStep);
-void outputStep(int val);
+void udfExecuteStep(double time, int tstep, int isCheckpointStep);
+void writeCheckpoint(double time, int step);
+int checkpointStep(double time, int tStep);
+int checkpointStep(double time, double dt, int tStep);
+void checkpointStep(int val);
 int finalize();
 void nekUserchk(void);
 int runTimeStatFreq();
@@ -39,15 +45,18 @@ void processUpdFile();
 void printInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo);
 void verboseInfo(bool enabled);
 void updateTimer(const std::string &key, double time);
-void resetTimer(const std::string &key); 
-void* nrsPtr(void);
-void* nekPtr(const char* id);
+void resetTimer(const std::string &key);
+
+void* platformPtr(void);
+const auto& platform = platformPtr;
+
 void initStep(double time, double dt, int tstep);
 bool runStep(std::function<bool(int)> convergenceCheck, int corrector);
 bool runStep(int corrector);
 double finishStep();
 bool stepConverged();
-
+int timeStep();
+double finalTimeStepSize(double time);
 }
 
 #endif

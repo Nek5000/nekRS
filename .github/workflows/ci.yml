@@ -13,11 +13,7 @@ env:
   NEKRS_HOME: "${{ github.workspace }}/.local/nekrs"
   MPICH_FC: "gfortran"
   NEKRS_EXAMPLES: "${{ github.workspace }}/.local/nekrs/examples"
-  ENABLE_CUDA: "0"
-  ENABLE_HIP: "0"
-  NEKRS_COMPILER_FLAGS: "-O2 -march=x86-64-v3"
-  OCCA_CXXFLAGS: "-O2"
-  NEKRS_OCCA_MODE_DEFAULT: "SERIAL"
+  NEKRS_COMPILER_FLAGS: "-O2"
   NRSCONFIG_NOBUILD: "1"
   RUNNER_ARCH: "X64"
 
@@ -31,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -40,25 +36,30 @@ jobs:
         sudo apt -y update
         sudo apt install -y mpich libmpich-dev
 
-    - name: nrsconfig and build
+    - name: config and build
       run: |
-        CC=mpicc CXX=mpic++ FC=mpif77 ./nrsconfig -DENABLE_CVODE=OFF -DCMAKE_INSTALL_PREFIX=${{ env.NEKRS_HOME }}
-        cmake --build build --target install -j 2
+        CC=mpicc CXX=mpic++ FC=mpif77 ./build.sh -DENABLE_CVODE=OFF -DNEKRS_CXX_FLAGS=${{ env.NEKRS_COMPILER_FLAGS }} -DNEKRS_C_FLAGS=${{ env.NEKRS_COMPILER_FLAGS }} -DNEKRS_Fortran_FLAGS=${{ env.NEKRS_COMPILER_FLAGS }} -DCMAKE_INSTALL_PREFIX=${{ env.NEKRS_HOME }} -DOCCA_CXXFLAGS=${{ env.NEKRS_COMPILER_FLAGS }}
+        cmake --build build --target install -j 4
 
     - name: Upload install dir
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: install-dir
         retention-days: 2 
         path: ${{ env.NEKRS_HOME }}
         if-no-files-found: error
 
+#    - name: Setup tmate session
+#      uses: mxschmitt/action-tmate@v3
+#      timeout-minutes: 3 
+#      if: ${{ github.event_name == 'workflow_dispatch' }}
+
   ethier:
     needs: install
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -68,13 +69,18 @@ jobs:
         sudo apt install -y mpich libmpich-dev
 
     - name: Download install dir
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: install-dir
         path: ${{ env.NEKRS_HOME }}
 
     - name: Set install dir permissions
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
+
+    - name: 'ethier build-only'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: |
+        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --build-only
 
     - name: 'ethier default'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
@@ -85,11 +91,11 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 2
 
-    - name: 'ethier velocity and pressure projection'
+    - name: 'ethier velocity and pressure using SEMFEM with projection'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 3
 
-    - name: 'ethier (block) velocity and pressure projection with subcycling'
+    - name: 'ethier (block) velocity and pressure and projection with subcycling'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 4
 
@@ -101,7 +107,7 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 --cimode 6
 
-    - name: 'ethier gmres bug'
+    - name: 'ethier gmres + jacobi'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 7
 
@@ -158,12 +164,17 @@ jobs:
       run: |
         NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 19
 
+    - name: 'ethier FP32 cimode 2'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
+      run: |
+        NEKRS_FP32=1 NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 22 
+
   lowMach:
     needs: install
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -173,7 +184,7 @@ jobs:
         sudo apt install -y mpich libmpich-dev
 
     - name: Download install dir
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: install-dir
         path: ${{ env.NEKRS_HOME }}
@@ -181,9 +192,9 @@ jobs:
     - name: Set install dir permissions
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
-    - name: 'lowMach default'
+    - name: 'lowMach default single rank'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 --cimode 1
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 1 --cimode 1
 
 #    - name: 'lowMach + CVODE'
 #      working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
@@ -195,7 +206,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -205,7 +216,7 @@ jobs:
         sudo apt install -y mpich libmpich-dev
 
     - name: Download install dir
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: install-dir
         path: ${{ env.NEKRS_HOME }}
@@ -267,7 +278,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -277,7 +288,7 @@ jobs:
         sudo apt install -y mpich libmpich-dev
 
     - name: Download install dir
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: install-dir
         path: ${{ env.NEKRS_HOME }}
@@ -303,7 +314,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -313,7 +324,7 @@ jobs:
         sudo apt install -y mpich libmpich-dev
 
     - name: Download install dir
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: install-dir
         path: ${{ env.NEKRS_HOME }}
@@ -334,7 +345,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -344,7 +355,7 @@ jobs:
         sudo apt install -y mpich libmpich-dev
 
     - name: Download install dir
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: install-dir
         path: ${{ env.NEKRS_HOME }}
@@ -365,7 +376,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -375,7 +386,7 @@ jobs:
         sudo apt install -y mpich libmpich-dev
 
     - name: Download install dir
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: install-dir
         path: ${{ env.NEKRS_HOME }}
@@ -385,7 +396,10 @@ jobs:
 
     - name: 'eddyNekNek'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNek.sess 2 --cimode 1
+      run: |
+        ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNek.sess 2 --cimode 1
+        cat inside/logfile
+        cat outside/logfile
 
     - name: 'eddyNekNekMv'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
@@ -403,12 +417,16 @@ jobs:
       working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
       run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNekNekMv.sess 3 --cimode 2
 
+    - name: 'eddyNekNek, multirate timestepping'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
+      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNek.sess 2 --cimode 4
+
   ktauChannel:
     needs: install
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         clean: true
 
@@ -418,7 +436,7 @@ jobs:
         sudo apt install -y mpich libmpich-dev
 
     - name: Download install dir
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         name: install-dir
         path: ${{ env.NEKRS_HOME }}

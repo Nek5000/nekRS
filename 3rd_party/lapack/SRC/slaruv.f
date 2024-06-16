@@ -72,7 +72,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup OTHERauxiliary
+*> \ingroup laruv
 *
 *> \par Further Details:
 *  =====================
@@ -382,6 +382,11 @@
      $                   1537 /
 *     ..
 *     .. Executable Statements ..
+*
+*     Quick return for N < 1
+      IF ( N < 1 ) THEN
+         RETURN
+      END IF
 *
       I1 = ISEED( 1 )
       I2 = ISEED( 2 )

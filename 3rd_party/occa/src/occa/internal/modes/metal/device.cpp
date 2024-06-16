@@ -36,6 +36,8 @@ namespace occa {
 
       metalDevice = api::metal::getDevice(deviceID);
       metalCommandQueue = metalDevice.createCommandQueue();
+
+      arch = metalDevice.getName();
     }
 
     device::~device() {
@@ -239,7 +241,8 @@ namespace occa {
       k.launcherKernel = buildLauncherKernel(kernelHash,
                                              hashDir,
                                              kernelName,
-                                             launcherMetadata);
+                                             launcherMetadata,
+                                             kernelProps);
 
       // Find device kernels
       orderedKernelMetadata launchedKernelsMetadata = getLaunchedKernelsMetadata(

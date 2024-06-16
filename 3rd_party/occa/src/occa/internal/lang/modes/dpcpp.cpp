@@ -5,7 +5,78 @@
 #include <occa/internal/lang/builtins/attributes.hpp>
 #include <occa/internal/lang/builtins/types.hpp>
 #include <occa/internal/lang/expr.hpp>
-// #include <stringstream>
+#include <occa/internal/lang/attribute.hpp>
+
+namespace {
+
+class dpcppLambda_t : public occa::lang::lambda_t {
+public:
+  int simd_length{-1};
+
+  dpcppLambda_t(occa::lang::capture_t capture_, int simd_length_)
+   : lambda_t(capture_), simd_length(simd_length_) {}
+
+  dpcppLambda_t(const dpcppLambda_t& other) 
+    : lambda_t(other), simd_length(other.simd_length) {}
+
+  ~dpcppLambda_t() = default;
+
+  bool equals(const type_t &other) const override {
+    const dpcppLambda_t &other_ = other.to<dpcppLambda_t>();
+    if (simd_length != other_.simd_length) return false;
+    return lambda_t::equals(other);
+  }
+
+  void printDeclaration(occa::lang::printer &pout) const override {
+    pout << "[";
+
+    switch (this->capture) {
+    case occa::lang::capture_t::byValue:
+      pout << "=";
+      break;
+    case occa::lang::capture_t::byReference:
+      pout << "&";
+      break;
+    default:
+      pout << "???";
+      break;
+    }
+
+    pout << "](";
+    
+    if (!args.empty()) {
+      const std::string argIndent = pout.indentFromNewline();
+      args[0]->printDeclaration(pout);
+      for (std::size_t i = 1; i < args.size(); ++i) {
+        pout << ",\n" << argIndent;
+        args[i]->printDeclaration(pout);
+      }
+    }
+    pout << ") ";
+    
+    if (0 < simd_length) {
+      pout << "[[intel::reqd_sub_group_size("; 
+      pout.print(simd_length);
+      pout << ")]]";
+    }
+
+    pout << " {";
+
+    pout.printNewline();
+    pout.pushInlined(false);
+    pout.addIndentation();
+
+    body->print(pout);
+
+    pout.removeIndentation();
+    pout.popInlined();
+    pout.printNewline();
+    pout.printIndentation();
+    pout << "}\n";
+  }
+};
+
+}
 
 namespace occa
 {
@@ -20,6 +91,7 @@ namespace occa
             shared("auto", qualifierType::custom)
       {
         okl::addOklAttributes(*this);
+        simd_length_default = settings_.get("simd_length",-1);
       }
 
       void dpcppParser::onClear()
@@ -79,15 +151,7 @@ namespace occa
 
       std::string dpcppParser::launchBoundsAttribute(const int innerDims[3])
       {
-        std::stringstream ss; 
-        ss << "[[sycl::reqd_work_group_size("
-           << innerDims[2]
-           << ","
-           << innerDims[1]
-           << ","
-           << innerDims[0]
-           << ")]]\n";
-        return ss.str();
+        return "";
       }
 
       // @note: As of SYCL 2020 this will need to change from `CL/sycl.hpp` to `sycl.hpp`
@@ -167,33 +231,24 @@ namespace occa
                          function = &(k.function());
 
                          migrateLocalDecls(k);
-                         if (!success)
-                           return;
+                         if (!success) return;
+
+                         int simd_length = simd_length_default;
+                         if (k.hasAttribute("simd_length")) {
+                           const attributeToken_t& attr = k.attributes["simd_length"];
+                           simd_length = attr.args[0].expr->evaluate();
+                         }
 
                          variable_t sycl_nditem(syclNdItem, "item_");
 
-                         variable_t sycl_handler(syclHandler, "handler_");
-                         sycl_handler.vartype.setReferenceToken(
-                             new operatorToken(sycl_handler.source->origin, op::address));
-
-                         variable_t sycl_ndrange(syclNdRange, "range_");
-                         sycl_ndrange += pointer_t();
-
-                         variable_t sycl_queue(syclQueue, "queue_");
-                         sycl_queue += pointer_t();
-
-                         function->addArgumentFirst(sycl_ndrange);
-                         function->addArgumentFirst(sycl_queue);
-
-                         lambda_t &cg_function = *(new lambda_t(capture_t::byReference));
-                         cg_function.addArgument(sycl_handler);
-
-                         lambda_t &sycl_kernel = *(new lambda_t(capture_t::byValue));
+                         dpcppLambda_t& sycl_kernel = *(new dpcppLambda_t(capture_t::byValue, simd_length));
                          sycl_kernel.addArgument(sycl_nditem);
-
                          sycl_kernel.body->swap(k);
 
                          lambdaNode sycl_kernel_node(sycl_kernel.source, sycl_kernel);
+
+                         variable_t sycl_ndrange(syclNdRange, "range_");
+                         sycl_ndrange += pointer_t();
 
                          leftUnaryOpNode sycl_ndrange_node(
                              sycl_ndrange.source,
@@ -204,43 +259,39 @@ namespace occa
                          parallelfor_args.push_back(&sycl_ndrange_node);
                          parallelfor_args.push_back(&sycl_kernel_node);
 
+                         std::string parallelfor_name = "parallel_for<class ";
+                         std::string_view function_name = function->name();
+                         function_name.remove_prefix(6); // Remove _occa_ from start of kernel name
+                         parallelfor_name += function_name;
+
+                         const std::string hash_string = settings.get<std::string>("hash");
+                         if (!hash_string.empty()) {
+                          parallelfor_name += hash_string;
+                         }
+                         parallelfor_name += ">";
+
                          identifierNode parallelfor_node(
                              new identifierToken(originSource::builtin, "parfor"),
-                             "parallel_for");
+                             parallelfor_name);
 
                          callNode parallelfor_call_node(
                              parallelfor_node.token,
                              parallelfor_node,
                              parallelfor_args);
 
-                         binaryOpNode cgh_parallelfor(
-                             sycl_handler.source,
-                             op::dot,
-                             variableNode(sycl_handler.source, sycl_handler.clone()),
-                             parallelfor_call_node);
+                         variable_t sycl_queue(syclQueue, "queue_");
+                         sycl_queue += pointer_t();
 
-                         cg_function.body->add(*(new expressionStatement(nullptr, cgh_parallelfor)));
-
-                         lambdaNode cg_function_node(cg_function.source, cg_function);
-                         exprNodeVector submit_args;
-                         submit_args.push_back(&cg_function_node);
-
-                         identifierNode submit_node(
-                             new identifierToken(originSource::builtin, "qsub"),
-                             "submit");
-
-                         callNode submit_call_node(
-                             submit_node.token,
-                             submit_node,
-                             submit_args);
-
-                         binaryOpNode q_submit(
+                         binaryOpNode q_parallelfor(
                              sycl_queue.source,
                              op::arrow,
                              variableNode(sycl_queue.source, sycl_queue.clone()),
-                             submit_call_node);
+                             parallelfor_call_node);
 
-                         k.addFirst(*(new expressionStatement(nullptr, q_submit)));
+                         k.addFirst(*(new expressionStatement(nullptr, q_parallelfor)));
+
+                         function->addArgumentFirst(sycl_ndrange);
+                         function->addArgumentFirst(sycl_queue);
                        }
                        else
                        {
@@ -284,6 +335,7 @@ namespace occa
                 var.vartype.setType(auto_);
                 var.vartype.setReferenceToken(var.source);
                 var.vartype.arrays.clear();
+                var.vartype.qualifiers.clear();
               }
             });
       }

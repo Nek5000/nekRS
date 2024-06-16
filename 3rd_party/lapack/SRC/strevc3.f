@@ -215,7 +215,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup realOTHERcomputational
+*> \ingroup trevc3
 *
 *> \par Further Details:
 *  =====================
@@ -275,7 +275,7 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           SAXPY, SCOPY, SGEMV, SLALN2, SSCAL, XERBLA,
-     $                   SLACPY, SGEMM, SLABAD, SLASET
+     $                   SLACPY, SGEMM, SLASET
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, MAX, SQRT
@@ -298,7 +298,7 @@
 *
       INFO = 0
       NB = ILAENV( 1, 'STREVC', SIDE // HOWMNY, N, -1, -1, -1 )
-      MAXWRK = N + 2*N*NB
+      MAXWRK = MAX( 1, N + 2*N*NB )
       WORK(1) = MAXWRK
       LQUERY = ( LWORK.EQ.-1 )
       IF( .NOT.RIGHTV .AND. .NOT.LEFTV ) THEN
@@ -381,7 +381,6 @@
 *
       UNFL = SLAMCH( 'Safe minimum' )
       OVFL = ONE / UNFL
-      CALL SLABAD( UNFL, OVFL )
       ULP = SLAMCH( 'Precision' )
       SMLNUM = UNFL*( N / ULP )
       BIGNUM = ( ONE-ULP ) / SMLNUM

@@ -1,9 +1,11 @@
 ----------------------------------------------------------------------------------------------------------------------
 Key                         Value(s)                                   Description / Comment
 ----------------------------------------------------------------------------------------------------------------------
+userSections                <string>                                   user defined par sections
+
 [OCCA]
 
-backend                     SERIAL, CUDA, HIP, DPCPP, OPENCL           default defined by env var OCCA_MODE_DEFAULT
+backend                     SERIAL, CUDA, HIP, DPCPP, OPENCL           default defined in $NEKRS_HOME/nekrs.conf
 
 deviceNumber                <int>, LOCAL-RANK [D]
 
@@ -21,7 +23,15 @@ dealiasing                  true [D], false
   cubaturePolynomialOrder   <int>
                             3/2*(polynomialOrder+1) -1 [D] 
 
-startFrom                   "<string>"                                 name of restart file
+redirectOutputTo            <string>
+
+startFrom                   "<string>"
+                              + time=<float>                           reset to specified time 
+                              + x                                      read mesh coordinates 
+                              + u                                      read velocity 
+                              + t
+                              + s1 s2 s3 ...
+                              + int                                    interpolate restart data onto current mesh
 
 timeStepper                 tombo1, tombo2 [D], tombo3
 
@@ -41,9 +51,12 @@ dt                          <float> [D]
 subCyclingSteps             <int>, auto                                number of OIFS sub-steps for advection
                             0 [D]                             
 
-writeControl                steps [D], simulationTime,                 checkpoint frequency unit
+checkpointPrecision         <int>
+                            32[D], 64 
 
-writeInterval               <int>, <float>                             checkpoint frequency in writeControl units
+checkpointControl           steps [D], simulationTime,                 checkpoint frequency unit
+
+checkpointInterval          <int>, <float>                             checkpoint frequency in writeControl units
                             0 [D]                                      at the end of the simluation
                             -1                                         disable checkpointing 
 
@@ -67,6 +80,9 @@ nScalars                    <int>                                      number of
 boundaryEXTOrder            <int>                                      boundary extrapolation order
                             1 [D]                                      order unity extrapolation is unconditionally stable
                                                                        higher orders, however, may require additional corrector steps
+multirate                   true, false [D]                            use multirate time stepping
+                              +correctorSteps=<int>                    multirate corrector steps
+                              0 [D]                                    NOTE: boundaryEXTOrder > 1 requires correctorSteps > 0
 ----------------------------------------------------------------------------------------------------------------------
 [PROBLEMTYPE]
 equation                    stokes
@@ -81,6 +97,7 @@ solver                      none                                       linear so
                             user
                             cvode
                             PCG [D]
+                              +combined [D]
                               +block [D for VELOCITY]
                               +flexible
                             PFGMRES [D for PRESSURE] 
@@ -102,17 +119,17 @@ preconditioner              Jacobi [D]
                             multigrid [D for PRESSURE]                 polynomial multigrid + coarse grid correction
                               +additive
                             SEMFEM
+                              +nonSmoothed                            
 
 coarseGridDiscretization    FEM [D]                                    linear finite elment discretization
                               +Galerkin                                coarse grid matrix by Galerkin projection 
                             SEMFEM                                     linear FEM approx on high-order nodes
 
 coarseSolver/semfemSolver   smoother                                     
-                            AMGX                                       NVIDIA's AMG solver
                             boomerAMG [D]                              HYPRE's AMG solver
                               +cpu [D for multigrid]
                               +device [D for SEMFEM] 
-                                +overlap                                 overlap coarse grid solve in additive MG cycle
+                                +overlap                               overlap coarse grid solve in additive MG cycle
 
 pMGSchedule                 p=<int>, degree=<int>, ...                 custom polynomial order and Chebyshev order for each pMG level
 
@@ -127,20 +144,22 @@ smootherType                Jacobi
 boundaryTypeMap             <...>, <...>, ...                          boundary type for each boundary ID
 
                             none                                       not used or internal 
-                            zeroValue                                  zero Dirichlet (wall)
-                            codedFixedValue                            user specified Dirichlet (inlet)
-                            zeroXValue/zeroGradient                    symmetry x-normal plane
-                            zeroYValue/zeroGradient                    symmetry y-normal plane
-                            zeroZValue/zeroGradient                    symmetry z-normal plane
-                            zeroNValue/zeroGradient                    unaligned symmetry
-                            zeroXValue/codedFixedGradient              traction x-normal plane
-                            zeroYValue/codedFixedGradient              traction y-normal plane
-                            zeroZValue/codedFixedGradient              traction z-normal plane
-                            zeroNValue/codedFixedGradient              unaligned traction
-                            zeroXYValue/fixedGradient             
-                            zeroYZValue/fixedGradient             
-                            zeroXZValue/fixedGradient         
-                            fixedGradient                              open boundary (outflow), pr*n
+                            zeroValue                                  zero Dirichlet (w, wall)
+                            codedFixedValue                            user specified Dirichlet (v, t, inlet)
+                            interpolation                              neknek boundary (int)
+                            zeroXValue/zeroGradient                    symmetry x-normal plane (slipx, symx)
+                            zeroYValue/zeroGradient                    symmetry y-normal plane (slipy, symy)
+                            zeroZValue/zeroGradient                    symmetry z-normal plane (slipz, symz)
+                            zeroNValue/zeroGradient                    unaligned symmetry (slip, sym)
+                            zeroXValue/codedFixedGradient              traction x-normal plane (tractionx, shlx)
+                            zeroYValue/codedFixedGradient              traction y-normal plane (tractiony, shly)
+                            zeroZValue/codedFixedGradient              traction z-normal plane (tractionz, shlz)
+                            zeroNValue/codedFixedGradient              unaligned traction (traction, shl)
+                            zeroXYValue/fixedGradient                  (onx) 
+                            zeroYZValue/fixedGradient                  (ony)
+                            zeroXZValue/fixedGradient                  (onz)
+                            zeroGradient                               (I, insulated, O, outlet, outflow) 
+                            fixedGradient                              (f, flux, o, outlet, outflow)
 
 regularization                                                         
                             hpfrt                                      HPF stabilization
@@ -149,9 +168,7 @@ regularization
                             avm                                        artificial viscosity method
                               +c0                                      make viscosity C0 continous across elements
                               +scalingCoeff=<float>                    strength of artifical viscosity
-                              +hpfResidual                             use HPF Residual AVM
-                                +nModes=<int>                          number of modes
-                              +highestModalDecay                       use Persson's highest modal decay AVM
+                              +highestModalDecay                       use Persson's highest modal decay model 
                                 +threshold=<float>
                                 +activationWidth=<float>
 ----------------------------------------------------------------------------------------------------------------------
@@ -159,40 +176,42 @@ regularization
 
 partitioner                 rbc, rsb, rbc+rsb [D]                      partitioning method
 
+boundaryIDMap               <int>, <int>, ...                          map ids to 1,2,3,... 
+boundaryIDMapV              <int>, <int>, ...                          required for cht case 
+
 connectivityTol             <float>
                             0.2 [D]
 
 file                        "<string>"                                 name of .re2 file
-
-writeToFieldFile            true, false [D]                            output mesh in all field writes
 ----------------------------------------------------------------------------------------------------------------------
 [VELOCITY]
 
 density                     <float>                                    density
+rho
 
 viscosity                   <float>                                    dynamic viscosity
+mu
 ----------------------------------------------------------------------------------------------------------------------
 [TEMPERATURE]
 
-rhoCp                       <float>                                    rho*Cp 
+heatCapacity                <float>                                    rho*Cp 
+rhoCp
 
-conductivity                <float>                                    thermal conductivity 
+conductivity                <float>                                    thermal conductivity
+k 
 ----------------------------------------------------------------------------------------------------------------------
 [SCALAR]                                                               default scalar section, see general::nScalars
                                                                        all non-temperature scalars will have settings
                                                                        as set from this section, unless explicitly overriden
 
-rho                         <float>                                    density
+density                     <float>                                    density
+rho
 
-diffusivity                 <float>                                    diffusivity 
+diffusivity                 <float>                                    diffusivity
+D
 ----------------------------------------------------------------------------------------------------------------------
 [SCALAR01]
 
-rho                         <float>                                    density
-
-diffusivity                 <float>                                    diffusivity 
-----------------------------------------------------------------------------------------------------------------------
-[SCALAR02]
 ...
 ----------------------------------------------------------------------------------------------------------------------
 [BOOMERAMG]
@@ -207,21 +226,23 @@ aggressiveCoarseningLevels  <int>
 chebyshevRelaxOrder         <int>
 chebyshevFraction           <float>
 ----------------------------------------------------------------------------------------------------------------------
-[AMGX]
-
-configFile                  <string>                                   AmgX JSON configuration file
-----------------------------------------------------------------------------------------------------------------------
 [CVODE]
 solver                      cbGMRES [D], GMRES                         linear solver
                               +nVector=<int>                           dimension of Krylov space
-gsType                      classical [D], classical1, modified
+gsType                      classical [D], modified
 relativeTol                 <float>                                    relative tolerance
                             1e-4 [D]
 epsLin                      <float>                                    ratio between linear and nonlinear tolerances
                             0.5 [D]
-sigScale                    <float>                                    scaling coeff for Jv difference quotient 
-                            1.0 [D]
+dqSigma                     <float>                                    step size for Jv difference quotient 
+                            automatic [D]
 maxSteps                    <int>
 sharedRho                   true, false [D]                            use same "density" field for all but the first scalar
 jtvRecycleProperties        true [D], false                            recycle property (freeze) evaluation for Jv
 dealiasing                  true, false
+----------------------------------------------------------------------------------------------------------------------
+
+NOTES
+* section name and key/value pairs are treated as case insensitive
+* values enclosed within quotes maintain case sensitivity
+* values prefixed with 'env::' are interpreted as references to environment variables 

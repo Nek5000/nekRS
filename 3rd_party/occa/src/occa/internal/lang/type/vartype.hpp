@@ -73,11 +73,20 @@ namespace occa {
       void add(const fileOrigin &origin,
                const qualifier_t &qualifier);
 
+      void add(const fileOrigin &origin,
+               const qualifier_t &qualifier,
+               const exprNodeVector &args);
+
       void add(const qualifierWithSource &qualifier);
 
       void add(const int index,
                const fileOrigin &origin,
                const qualifier_t &qualifier);
+
+      void add(const int index,
+               const fileOrigin &origin,
+               const qualifier_t &qualifier,
+               const exprNodeVector &args);
 
       void add(const int index,
                const qualifierWithSource &qualifier);
@@ -96,7 +105,11 @@ namespace occa {
 
       vartype_t flatten() const;
 
+      bool definesEnum() const;
+
       bool definesStruct() const;
+
+      bool definesUnion() const;
 
       void printDeclaration(printer &pout,
                             const std::string &varName,

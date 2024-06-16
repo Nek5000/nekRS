@@ -1,0 +1,43 @@
+#define GENERATE(TN, T, OP)                                                                                  \
+@kernel void gatherMany_##TN##_##OP(const dlong Ngather,                                                     \
+                               const  int      Nentries,                                                     \
+                               const  dlong    stride,                                                       \
+                               const  dlong   gstride,                                                       \
+                               @ restrict const dlong *gatherStarts,                                         \
+                               @ restrict const dlong *gatherIds,                                            \
+                               @ restrict const T *q, @ restrict T *gatherq)                                 \
+{                                                                                                            \
+  for (dlong g = 0; g < Nentries*Ngather; ++g; @tile(p_blockSize, @outer, @inner)) {                         \
+    const dlong gid = g%Ngather;                                                                             \
+    const int k = g/Ngather;                                                                                 \
+    const dlong start = gatherStarts[gid];                                                                   \
+    const dlong end = gatherStarts[gid + 1];                                                                 \
+    T gq = init_##TN##_##OP;                                                                                 \
+    for (dlong n = start; n < end; ++n) {                                                                    \
+      const dlong id = gatherIds[n];                                                                         \
+      OGS_DO_##OP(gq,q[id+k*stride]);                                                                        \
+    }                                                                                                        \
+    gatherq[gid+k*gstride] = gq;                                                                             \
+  }                                                                                                          \
+}
+
+
+GENERATE(float,float,add)
+GENERATE(float,float,mul)
+GENERATE(float,float,min)
+GENERATE(float,float,max)
+
+GENERATE(double,double,add)
+GENERATE(double,double,mul)
+GENERATE(double,double,min)
+GENERATE(double,double,max)
+
+GENERATE(int,int,add)
+GENERATE(int,int,mul)
+GENERATE(int,int,min)
+GENERATE(int,int,max)
+
+GENERATE(long_long,hlong,add)
+GENERATE(long_long,hlong,mul)
+GENERATE(long_long,hlong,min)
+GENERATE(long_long,hlong,max)

@@ -8,8 +8,8 @@ endTime = 200
 dt = targetCFL=2 + max=1e-2 + initial=1e-3
 timeStepper = tombo2
 
-writeControl = simulationTime
-writeInterval = 20 
+checkpointControl = simulationTime
+checkpointInterval = 20 
 
 regularization = hpfrt + nModes=1 + scalingCoeff=10
 

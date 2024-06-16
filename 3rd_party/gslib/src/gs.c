@@ -30,6 +30,8 @@
 #define gs_free    PREFIXED_NAME(gs_free  )
 #define gs_unique  PREFIXED_NAME(gs_unique)
 #define gs_hf2c    PREFIXED_NAME(gs_hf2c  )
+#define pw_data_nmsg PREFIXED_NAME(pw_data_nmsg )
+#define pw_data_size PREFIXED_NAME(pw_data_size )
 
 GS_DEFINE_DOM_SIZES()
 
@@ -398,6 +400,7 @@ typedef void setup_fun(struct gs_remote *r, struct gs_topology *top,
 /*------------------------------------------------------------------------------
   Pairwise Execution
 ------------------------------------------------------------------------------*/
+
 struct pw_comm_data {
   uint n;      /* number of messages */
   uint *p;     /* message source/dest proc */
@@ -1005,10 +1008,10 @@ static void allreduce_exec_wait(
   unsigned unit_size = gs_dom_size[dom];
   char *ardbuf = buf+unit_size*gvn;
 
-  // Why do I need this? Ugly !!!
+  /* Why do I need this? Ugly */
   if (comm->np > 1)
     comm_wait(ard->req, 1);
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   memcpy(buf,ardbuf,gvn*gs_dom_size[dom]);
 #endif
   /* buffer -> user array */
@@ -1114,15 +1117,11 @@ static void auto_setup(struct gs_remote *r, struct gs_topology *top,
     struct gs_remote r_alt;
     double time[2][3];
 
-    // #define DRY_RUN(i,gsr,str) do { \
-    //   if(comm->id==0) printf("   " str ": "); \
-    //   dry_run_time(time[i],gsr,comm,buf); \
-    //   if(comm->id==0) \
-    //     printf("%g %g %g\n",time[i][0],time[i][1],time[i][2]); \
-    // } while(0)
-
     #define DRY_RUN(i,gsr,str) do { \
+      if(comm->id==0) printf("   " str ": "); \
       dry_run_time(time[i],gsr,comm,buf); \
+      if(comm->id==0) \
+        printf("%g %g %g\n",time[i][0],time[i][1],time[i][2]); \
     } while(0)
 
     #define DRY_RUN_CHECK(str,new_name) do { \
@@ -1147,7 +1146,7 @@ static void auto_setup(struct gs_remote *r, struct gs_topology *top,
     #undef DRY_RUN_CHECK
     #undef DRY_RUN
 
-    // if(comm->id==0) printf("   used all_to_all method: %s\n",name);
+    if(comm->id==0) printf("   used all_to_all method: %s\n",name);
   }
 }
 
@@ -1415,6 +1414,7 @@ static void gs_setup_aux(struct gs_data *gsh, const slong *id, uint n,
   gsh->handle_size += gsh->r.mem_size;
 
   if(verbose) { /* report memory usage */
+
     double avg[2],td[2]; uint min[2],max[2],ti[2];
     avg[0] = min[0] = max[0] = gsh->handle_size;
     avg[1] = min[1] = max[1] = sizeof(double)*gsh->r.buffer_size;
@@ -1432,6 +1432,7 @@ static void gs_setup_aux(struct gs_data *gsh, const slong *id, uint n,
 
   gs_topology_free(&top);
   crystal_free(&cr);
+  fflush(stdout);
 }
 
 struct gs_data *gs_setup(const slong *id, uint n, const struct comm *comm,
@@ -1461,6 +1462,22 @@ void gs_unique(slong *id, uint n, const struct comm *comm)
   make_topology_unique(&top,id,comm->id,&cr.data);
   gs_topology_free(&top);
   crystal_free(&cr);
+}
+
+void pw_data_nmsg(struct gs_data *gsh, int *n)
+{
+  struct gs_remote *r = &gsh->r;
+  const struct pw_data *pwd = r->data;
+  *n = pwd->comm[0].n;
+}
+
+void pw_data_size(struct gs_data *gsh, int *n)
+{
+  int i;
+  struct gs_remote *r = &gsh->r;
+  const struct pw_data *pwd = r->data;
+  int ns = pwd->comm[0].n;
+  for(i=0; i< ns; ++i) n[i] = pwd->comm[0].size[i];
 }
 
 /*------------------------------------------------------------------------------
@@ -1538,7 +1555,7 @@ static void fgs_check_handle(sint handle, const char *func, unsigned line)
     fail(1,__FILE__,line,"%s: invalid handle", func);
 }
 
-static const gs_dom fgs_dom[4] = { 0, gs_double, gs_sint, gs_slong };
+static const gs_dom fgs_dom[4] = { gs_float, gs_double, gs_sint, gs_slong };
 
 static void fgs_check_parms(sint handle, sint dom, sint op,
                             const char *func, unsigned line)

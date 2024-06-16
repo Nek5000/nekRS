@@ -13,10 +13,8 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
       include 'NEKUSE'
 
-      COMMON /SCNRS/ sc_nrs(10)
-      real           sc_nrs
-
-      zlen = sc_nrs(1)
+      real zlen
+      common /cbcase / zlen
 
       xr = x/0.5
       yr = y/0.5
@@ -59,7 +57,18 @@ c     Quick P-independent randomizer
       return
       end
 c-----------------------------------------------------------------------
-      subroutine usrdat
+      subroutine usrdat0
+
+      include 'SIZE'
+      real zlen
+      common /cbcase / zlen
+
+      call nekrs_registerPtr('zlen', zlen)
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat 
 
       return
       end
@@ -69,11 +78,11 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'TOTAL'
 
-      COMMON /SCNRS/ sc_nrs(10)
-      real           sc_nrs
+      real zlen
+      common /cbcase / zlen
 
       z0 = 0.0
-      z1 = sc_nrs(1) 
+      z1 = zlen
 
       call rescale_x(zm1,z0,z1)
 

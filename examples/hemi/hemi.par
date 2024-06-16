@@ -8,8 +8,8 @@ dt = 7e-3
 timeStepper = tombo2
 subCyclingSteps = 1
 
-writeControl = simulationTime 
-writeInterval = 1.0
+checkpointControl = simulationTime 
+checkpointInterval = 1.0
 
 regularization = hpfrt + nModes = 1 + scalingCoeff = 8
 

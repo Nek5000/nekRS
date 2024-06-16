@@ -10,6 +10,7 @@ namespace occa {
   class modeDevice_t {
    public:
     std::string mode;
+    std::string arch;
     occa::json properties;
     bool needsLauncherKernel;
 
@@ -20,7 +21,6 @@ namespace occa {
     gc::ring_t<modeStreamTag_t> streamTagRing;
 
     stream currentStream;
-    std::vector<modeStream_t*> streams;
 
     udim_t bytesAllocated;
     udim_t maxBytesAllocated;
@@ -103,6 +103,10 @@ namespace occa {
                                       const std::string &kernelName,
                                       const hash_t hash,
                                       const occa::json &props) = 0;
+
+    virtual void buildSource(const std::string& fileName, 
+                             const hash_t hash, 
+                             const occa::json& properties) = 0;
 
     virtual modeKernel_t* buildKernelFromBinary(const std::string &filename,
                                                 const std::string &kernelName,

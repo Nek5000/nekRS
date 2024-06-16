@@ -59,7 +59,7 @@ lapack_int LAPACKE_slarfb_work( int matrix_layout, char side, char trans,
 
         nrows_v = ( col && left ) ? m : ( ( col && !left ) ? n : ( !col ? k : 1) );
         ncols_v = ( !col && left ) ? m : ( ( !col && !left ) ? n : ( col ? k : 1 ) );
-        uplo = ( ( left && col ) || !( left || col ) ) ? 'l' : 'u';
+        uplo = ( ( forward && col ) || !( forward || col ) ) ? 'l' : 'u';
 
         ldc_t = MAX(1,m);
         ldt_t = MAX(1,k);
@@ -80,7 +80,7 @@ lapack_int LAPACKE_slarfb_work( int matrix_layout, char side, char trans,
             LAPACKE_xerbla( "LAPACKE_slarfb_work", info );
             return info;
         }
-        if( !forward && ( col && k > nrows_v ) || ( !col && k > ncols_v )) {
+        if( ( col && k > nrows_v ) || ( !col && k > ncols_v ) ) {
             info = -8;
             LAPACKE_xerbla( "LAPACKE_slarfb_work", info );
             return info;

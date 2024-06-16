@@ -59,10 +59,12 @@ namespace occa {
 
   private:
     modeKernel_t *modeKernel;
+    hash_t hash_;
 
   public:
     kernel();
-    kernel(modeKernel_t *modeKernel_);
+    explicit kernel(modeKernel_t *modeKernel_);
+    kernel(modeKernel_t* modeKernel_, const hash_t& hash);
 
     kernel(const kernel &k);
     kernel& operator = (const kernel &k);
@@ -218,7 +220,7 @@ namespace occa {
      *
      * @endDoc
      */
-    hash_t hash();
+    hash_t hash() const;
 
     int maxDims();
     dim maxOuterDims();
@@ -296,7 +298,7 @@ namespace occa {
      */
     void operator () () const;
 
-#include "kernelOperators.hpp_codegen"
+#include "codegen/kernelOperators.hpp_codegen"
 
     /**
      * @startDoc{free}

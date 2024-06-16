@@ -43,9 +43,9 @@
 *>
 *> \verbatim
 *>
-*> SLALSA is an itermediate step in solving the least squares problem
+*> SLALSA is an intermediate step in solving the least squares problem
 *> by computing the SVD of the coefficient matrix in compact form (The
-*> singular vectors are computed as products of simple orthorgonal
+*> singular vectors are computed as products of simple orthogonal
 *> matrices.).
 *>
 *> If ICOMPQ = 0, SLALSA applies the inverse of the left singular vector
@@ -250,7 +250,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup realOTHERcomputational
+*> \ingroup lalsa
 *
 *> \par Contributors:
 *  ==================

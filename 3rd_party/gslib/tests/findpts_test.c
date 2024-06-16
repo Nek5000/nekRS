@@ -4,18 +4,8 @@
 #include <string.h>
 #include <float.h>
 #include <math.h>
-#include "c99.h"
-#include "name.h"
-#include "fail.h"
-#include "types.h"
-#include "mem.h"
-#include "poly.h"
-#include "gs_defs.h"
-#include "comm.h"
+#include "gslib.h"
 #include "rand_elt_test.h"
-#include "findpts.h"
-#include "crystal.h"
-#include "sarray_transfer.h"
 
 #define D 3
 
@@ -301,7 +291,7 @@ int main(int narg, char *arg[])
   comm_ext world;
   struct comm comm;
   
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   MPI_Init(&narg,&arg);
   world = MPI_COMM_WORLD;
 #else
@@ -320,7 +310,7 @@ int main(int narg, char *arg[])
   
   comm_free(&comm);
 
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   MPI_Finalize();
 #endif
 

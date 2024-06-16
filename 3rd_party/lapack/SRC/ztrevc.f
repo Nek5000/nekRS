@@ -196,7 +196,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16OTHERcomputational
+*> \ingroup trevc
 *
 *> \par Further Details:
 *  =====================
@@ -253,7 +253,7 @@
       EXTERNAL           LSAME, IZAMAX, DLAMCH, DZASUM
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           XERBLA, ZCOPY, ZDSCAL, ZGEMV, ZLATRS, DLABAD
+      EXTERNAL           XERBLA, ZCOPY, ZDSCAL, ZGEMV, ZLATRS
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, DBLE, DCMPLX, DCONJG, DIMAG, MAX
@@ -319,7 +319,6 @@
 *
       UNFL = DLAMCH( 'Safe minimum' )
       OVFL = ONE / UNFL
-      CALL DLABAD( UNFL, OVFL )
       ULP = DLAMCH( 'Precision' )
       SMLNUM = UNFL*( N / ULP )
 *

@@ -1,0 +1,39 @@
+[GENERAL]
+polynomialOrder = 7
+cubaturePolynomialOrder = 9 
+
+#startFrom = "r.fld"+time=0
+stopAt = endTime
+endTime = 40 
+
+timeStepper = tombo2
+dt = targetCFL=4.0 + max=2e-2
+
+checkpointControl = simulationTime 
+checkpointInterval = 10
+
+regularization = hpfrt + nModes=1 + scalingCoeff=5
+
+[PRESSURE]
+residualTol = 1e-04
+
+solver = pfcg 
+smootherType = Jac+FourthOptChebyshev
+
+[VELOCITY]
+boundaryTypeMap = none
+density = 1.0
+
+viscosity = 1 / 60  # based on Taylor-scale Re  
+residualTol = 1e-06
+
+[SCALAR00]
+solver = none
+
+[CASEDATA]
+uPrime = 1.0
+
+[BOOMERAMG]
+#smootherType = 18
+iterations = 1
+chebyshevRelaxOrder = 1

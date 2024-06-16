@@ -60,12 +60,6 @@
 *> singular values which are less than RCOND times the largest singular
 *> value.
 *>
-*> The divide and conquer algorithm makes very mild assumptions about
-*> floating point arithmetic. It will work on machines with a guard
-*> digit in add/subtract, or on those binary machines without guard
-*> digits which subtract like the Cray X-MP, Cray Y-MP, Cray C-90, or
-*> Cray-2. It could conceivably fail on hexadecimal or decimal machines
-*> without guard digits, but we know of none.
 *> \endverbatim
 *
 *  Arguments:
@@ -210,7 +204,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16GEsolve
+*> \ingroup gelsd
 *
 *> \par Contributors:
 *  ==================
@@ -253,9 +247,9 @@
       DOUBLE PRECISION   ANRM, BIGNUM, BNRM, EPS, SFMIN, SMLNUM
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLABAD, DLASCL, DLASET, XERBLA, ZGEBRD, ZGELQF,
-     $                   ZGEQRF, ZLACPY, ZLALSD, ZLASCL, ZLASET, ZUNMBR,
-     $                   ZUNMLQ, ZUNMQR
+      EXTERNAL           DLASCL, DLASET, XERBLA, ZGEBRD, ZGELQF, ZGEQRF,
+     $                   ZLACPY, ZLALSD, ZLASCL, ZLASET, ZUNMBR, ZUNMLQ,
+     $                   ZUNMQR
 *     ..
 *     .. External Functions ..
       INTEGER            ILAENV
@@ -401,7 +395,6 @@
       SFMIN = DLAMCH( 'S' )
       SMLNUM = SFMIN / EPS
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
 *
 *     Scale A if max entry outside range [SMLNUM,BIGNUM].
 *

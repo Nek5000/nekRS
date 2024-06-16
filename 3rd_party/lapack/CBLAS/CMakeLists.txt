@@ -1,15 +1,20 @@
-message(STATUS "CBLAS enable")
+message(STATUS "CBLAS enabled")
 enable_language(C)
 
 set(LAPACK_INSTALL_EXPORT_NAME ${CBLASLIB}-targets)
 
 # Create a header file cblas.h for the routines called in my C programs
-include(FortranCInterface)
-## Ensure that the fortran compiler and c compiler specified are compatible
-FortranCInterface_VERIFY()
-FortranCInterface_HEADER(${LAPACK_BINARY_DIR}/include/cblas_mangling.h
-                         MACRO_NAMESPACE "F77_"
-                         SYMBOL_NAMESPACE "F77_")
+include(CheckLanguage)
+check_language(Fortran)
+if(CMAKE_Fortran_COMPILER)
+  enable_language(Fortran)
+  include(FortranCInterface)
+  ## Ensure that the fortran compiler and c compiler specified are compatible
+  FortranCInterface_VERIFY()
+  FortranCInterface_HEADER(${LAPACK_BINARY_DIR}/include/cblas_mangling.h
+                          MACRO_NAMESPACE "F77_"
+                          SYMBOL_NAMESPACE "F77_")
+endif()
 if(NOT FortranCInterface_GLOBAL_FOUND OR NOT FortranCInterface_MODULE_FOUND)
   message(WARNING "Reverting to pre-defined include/cblas_mangling.h")
     configure_file(include/cblas_mangling_with_flags.h.in
@@ -17,7 +22,7 @@ if(NOT FortranCInterface_GLOBAL_FOUND OR NOT FortranCInterface_MODULE_FOUND)
 endif()
 
 include(CheckCSourceCompiles)
-check_c_source_compiles("void __attribute__((weak)) main() {};"
+check_c_source_compiles("int __attribute__((weak)) main() {};"
                         HAS_ATTRIBUTE_WEAK_SUPPORT)
 
 include_directories(include ${LAPACK_BINARY_DIR}/include)

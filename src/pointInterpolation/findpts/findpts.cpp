@@ -25,9 +25,7 @@ SOFTWARE.
 */
 
 // for platform
-#include "nekInterfaceAdapter.hpp"
-#include "nrssys.hpp"
-#include "nrs.hpp"
+#include "platform.hpp"
 #include "tuple_for_each.hpp"
 
 #include <cstdlib>
@@ -54,10 +52,19 @@ struct hash_data_3 {
   double fac[findpts::dim];
   uint *offset;
 };
+
+struct findpts_dummy_ms_data {
+    unsigned int *nsid;
+    double       *distfint;
+};
+
 struct findpts_data_3 {
   struct crystal cr;
   struct findpts_local_data_3 local;
   struct hash_data_3 hash;
+  struct array savpt;
+  struct findpts_dummy_ms_data fdms;
+  uint   fevsetup;
 };
 
 auto *gslibFindptsSetup(MPI_Comm mpi_comm,
@@ -91,7 +98,7 @@ auto *gslibFindptsSetup(MPI_Comm mpi_comm,
     auto _x = _elx[0];
     auto _y = _elx[1];
     auto _z = _elx[2];
-    for(int i = 0; i < Nlocal; i++) {
+    for (int i = 0; i < Nlocal; i++) {
       x[i] = _x[i];
       y[i] = _y[i];
       z[i] = _z[i];
@@ -136,10 +143,13 @@ auto *gslibFindptsSetup(MPI_Comm mpi_comm,
 }
 } // extern "C"
 
-namespace findpts {
-namespace {
+namespace findpts
+{
+namespace
+{
 
-namespace pool {
+namespace pool
+{
 static occa::memory o_scratch;
 static occa::memory h_out;
 static occa::memory h_r;
@@ -155,8 +165,9 @@ static dlong *code;
 
 static void manageBuffers(dlong pn, dlong outputOffset, dlong nOutputFields)
 {
-  if (pn == 0)
+  if (pn == 0) {
     return;
+  }
 
   dlong Nbytes = 0;
   Nbytes += pn * sizeof(dlong);                            // code
@@ -169,65 +180,59 @@ static void manageBuffers(dlong pn, dlong outputOffset, dlong nOutputFields)
   Nbytes += dim * pn * sizeof(dfloat);                     // x,y,z coordinates
   Nbytes += nOutputFields * outputOffset * sizeof(dfloat); // output buffer
 
-  if (Nbytes > pool::o_scratch.size()) {
-    if (pool::o_scratch.size())
+  if (Nbytes > pool::o_scratch.byte_size()) {
+    if (pool::o_scratch.byte_size()) {
       pool::o_scratch.free();
+    }
     void *buffer = std::calloc(Nbytes, 1);
-    pool::o_scratch = platform->device.malloc(Nbytes, buffer);
+    pool::o_scratch = platform->device.malloc(Nbytes);
+    pool::o_scratch.copyFrom(buffer);
     std::free(buffer);
   }
 
-  occa::properties props;
-  props["host"] = true;
-
   const auto NbytesR = dim * pn * sizeof(dfloat);
   if (NbytesR > pool::h_r.size()) {
-    if (pool::h_r.size())
+    if (pool::h_r.size()) {
       pool::h_r.free();
-    void *buffer = std::calloc(NbytesR, 1);
-    pool::h_r = platform->device.malloc(NbytesR, buffer, props);
+    }
+    pool::h_r = platform->device.mallocHost(NbytesR);
     pool::r = (dfloat *)pool::h_r.ptr();
-    std::free(buffer);
   }
 
   const auto NbytesEl = pn * sizeof(dlong);
   if (NbytesEl > pool::h_el.size()) {
-    if (pool::h_el.size())
+    if (pool::h_el.size()) {
       pool::h_el.free();
-    void *buffer = std::calloc(NbytesEl, 1);
-    pool::h_el = platform->device.malloc(NbytesEl, buffer, props);
+    }
+    pool::h_el = platform->device.mallocHost(NbytesEl);
     pool::el = (dlong *)pool::h_el.ptr();
-    std::free(buffer);
   }
 
   const auto NbytesCode = pn * sizeof(dlong);
   if (NbytesCode > pool::h_code.size()) {
-    if (pool::h_code.size())
+    if (pool::h_code.size()) {
       pool::h_code.free();
-    void *buffer = std::calloc(NbytesCode, 1);
-    pool::h_code = platform->device.malloc(NbytesCode, buffer, props);
+    }
+    pool::h_code = platform->device.mallocHost(NbytesCode);
     pool::code = (dlong *)pool::h_code.ptr();
-    std::free(buffer);
   }
 
   const auto NbytesDist2 = pn * sizeof(dfloat);
   if (NbytesDist2 > pool::h_dist2.size()) {
-    if (pool::h_dist2.size())
+    if (pool::h_dist2.size()) {
       pool::h_dist2.free();
-    void *buffer = std::calloc(NbytesDist2, 1);
-    pool::h_dist2 = platform->device.malloc(NbytesDist2, buffer, props);
+    }
+    pool::h_dist2 = platform->device.mallocHost(NbytesDist2);
     pool::dist2 = (dfloat *)pool::h_dist2.ptr();
-    std::free(buffer);
   }
 
   const auto NbytesOut = nOutputFields * outputOffset * sizeof(dfloat);
   if (NbytesOut > pool::h_out.size() && NbytesOut > 0) {
-    if (pool::h_out.size())
+    if (pool::h_out.size()) {
       pool::h_out.free();
-    void *buffer = std::calloc(NbytesOut, 1);
-    pool::h_out = platform->device.malloc(NbytesOut, buffer, props);
+    }
+    pool::h_out = platform->device.mallocHost(NbytesOut);
     pool::out = (dfloat *)pool::h_out.ptr();
-    std::free(buffer);
   }
 }
 } // namespace pool
@@ -247,7 +252,7 @@ void findpts_t::findptsLocal(int *const code,
                              const int pn)
 {
   if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "findptsLocal", 1);
+    platform->timer.tic(timerName + "findptsLocal");
   }
 
   if (pn == 0) {
@@ -257,7 +262,7 @@ void findpts_t::findptsLocal(int *const code,
 
     // provide 0-time tic/toc to allow global reduction later in timer reporting
     if (timerLevel != TimerLevel::None) {
-      platform->timer.tic(timerName + "findptsLocal::localKernel", 0);
+      platform->timer.tic(timerName + "findptsLocal::localKernel");
       platform->timer.toc(timerName + "findptsLocal::localKernel");
     }
     return;
@@ -305,10 +310,9 @@ void findpts_t::findptsLocal(int *const code,
   }
 
   if (timerLevel != TimerLevel::None) {
-    platform->timer.tic(timerName + "findptsLocal::localKernel", 0);
+    platform->timer.tic(timerName + "findptsLocal::localKernel");
   }
-  dlong multiSess = useMultiSessionSupport;
-  this->localKernel(useMultiSessionSupport,
+  this->localKernel(static_cast<dlong>(useMultiSessionSupport),
                     sessionId,
                     sessionIdMatch,
                     pn,
@@ -369,7 +373,7 @@ void findpts_t::findptsLocal(int *const code,
                              const int pn)
 {
   if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "findptsLocal", 1);
+    platform->timer.tic(timerName + "findptsLocal");
   }
 
   if (pn == 0) {
@@ -378,7 +382,7 @@ void findpts_t::findptsLocal(int *const code,
     }
     // provide 0-time tic/toc to allow global reduction later in timer reporting
     if (timerLevel != TimerLevel::None) {
-      platform->timer.tic(timerName + "findptsLocal::localKernel", 0);
+      platform->timer.tic(timerName + "findptsLocal::localKernel");
       platform->timer.toc(timerName + "findptsLocal::localKernel");
     }
     return;
@@ -407,10 +411,10 @@ void findpts_t::findptsLocal(int *const code,
   byteOffset += sizeof(dfloat) * pn;
 
   if (timerLevel != TimerLevel::None) {
-    platform->timer.tic(timerName + "findptsLocal::localKernel", 0);
+    platform->timer.tic(timerName + "findptsLocal::localKernel");
   }
-  dlong multiSess = useMultiSessionSupport;
-  this->localKernel(useMultiSessionSupport,
+
+  this->localKernel(static_cast<dlong>(useMultiSessionSupport),
                     sessionId,
                     sessionIdMatch,
                     pn,
@@ -467,7 +471,7 @@ void findpts_t::findptsLocalEvalInternal(OutputType *opt,
                                          const occa::memory &o_in)
 {
   if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "findptsLocalEvalInternal", 1);
+    platform->timer.tic(timerName + "findptsLocalEvalInternal");
   }
 
   if (pn == 0) {
@@ -477,7 +481,7 @@ void findpts_t::findptsLocalEvalInternal(OutputType *opt,
 
     // provide 0-time tic/toc to allow global reduction later in timer reporting
     if (timerLevel != TimerLevel::None) {
-      platform->timer.tic(timerName + "findptsLocalEvalInternal::localEvalKernel", 0);
+      platform->timer.tic(timerName + "findptsLocalEvalInternal::localEvalKernel");
       platform->timer.toc(timerName + "findptsLocalEvalInternal::localEvalKernel");
     }
     return;
@@ -508,7 +512,7 @@ void findpts_t::findptsLocalEvalInternal(OutputType *opt,
   o_el.copyFrom(pool::el, pn * sizeof(dlong));
 
   if (timerLevel != TimerLevel::None) {
-    platform->timer.tic(timerName + "findptsLocalEvalInternal::localEvalKernel", 0);
+    platform->timer.tic(timerName + "findptsLocalEvalInternal::localEvalKernel");
   }
   this->localEvalKernel(pn, nFields, inputOffset, outputOffset, o_el, o_r, o_in, o_out);
   if (timerLevel != TimerLevel::None) {
@@ -543,7 +547,7 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
                                 crystal &cr)
 {
   if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "findptsEvalImpl", 1);
+    platform->timer.tic(timerName + "findptsEvalImpl");
   }
   static std::vector<dfloat> out_base;
 
@@ -555,7 +559,7 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
   struct array src, outpt;
   /* copy user data, weed out unfound points, send out */
   if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "findptsEvalImpl::copy data", 1);
+    platform->timer.tic(timerName + "findptsEvalImpl::copy data");
   }
   // avoid doing SoA -> AoS conversion for points that remain on the same rank
   {
@@ -565,14 +569,12 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
 
     int numSend = 0;
 
-    if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "findptsEvalImpl::copy data::count_num_send", 1);
-    }
     for (index = 0; index < npt; ++index) {
       numSend += (code_base[index] != CODE_NOT_FOUND && proc_base[index] != this->rank);
     }
+
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.toc(timerName + "findptsEvalImpl::copy data::count_num_send");
+      platform->timer.tic(timerName + "findptsEvalImpl::copy data::pack sarray_transfer buf");
     }
 
     evalSrcPt_t *pt;
@@ -597,9 +599,13 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
       el++;
     }
 
+    if (timerLevel == TimerLevel::Detailed) {
+      platform->timer.toc(timerName + "findptsEvalImpl::copy data::pack sarray_transfer buf");
+    }
+
     src.n = pt - (evalSrcPt_t *)src.ptr;
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "findptsEvalImpl::copy data::sarray_transfer", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::copy data::sarray_transfer");
     }
     sarray_transfer(evalSrcPt_t, &src, proc, 1, &cr);
     if (timerLevel == TimerLevel::Detailed) {
@@ -609,13 +615,13 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
 
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "findptsEvalImpl::copy data");
-    platform->timer.tic(timerName + "findptsEvalImpl::eval points", 1);
+    platform->timer.tic(timerName + "findptsEvalImpl::eval points");
   }
 
   /* evaluate points, send back */
   {
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "findptsEvalImpl::eval points::do allocation", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::eval points::do allocation");
     }
     int n = src.n;
     const evalSrcPt_t *spt;
@@ -634,7 +640,7 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
     timerName = timerNameSave;
 
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "findptsEvalImpl::eval points::copy index and proc", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::eval points::copy index and proc");
     }
     spt = (evalSrcPt_t *)src.ptr;
     opt = (OutputType *)outpt.ptr;
@@ -645,7 +651,7 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
     array_free(&src);
     if (timerLevel == TimerLevel::Detailed) {
       platform->timer.toc(timerName + "findptsEvalImpl::eval points::copy index and proc");
-      platform->timer.tic(timerName + "findptsEvalImpl::eval points::sarray_transfer", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::eval points::sarray_transfer");
     }
     sarray_transfer(OutputType, &outpt, proc, 1, &cr);
     if (timerLevel == TimerLevel::Detailed) {
@@ -655,7 +661,7 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
 
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "findptsEvalImpl::eval points");
-    platform->timer.tic(timerName + "findptsEvalImpl::copy results", 1);
+    platform->timer.tic(timerName + "findptsEvalImpl::copy results");
   }
 
   /* copy results to user data */
@@ -663,17 +669,24 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
     int n = outpt.n;
     OutputType *opt = (OutputType *)outpt.ptr;
 
+    if (timerLevel == TimerLevel::Detailed) {
+      platform->timer.tic(timerName + "findptsEvalImpl::copy results::unpack sarray_transfer buf");
+    }
     for (; n; --n, ++opt) {
       for (int field = 0; field < nFields; ++field) {
         out_base[opt->index + outputOffset * field] = opt->out[field];
       }
     }
-    if (outputOffset)
+    if (outputOffset) {
       o_out.copyFrom(out_base.data(), nFields * outputOffset * sizeof(dfloat));
+    }
+    if (timerLevel == TimerLevel::Detailed) {
+      platform->timer.toc(timerName + "findptsEvalImpl::copy results::unpack sarray_transfer buf");
+    }
 
     // launch local eval kernel on all points that can be evaluated on the current rank
     if (timerLevel != TimerLevel::None) {
-      platform->timer.tic(timerName + "findptsEvalImpl::localEvalKernel", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::copy results::localEvalKernel");
     }
     if (npt > 0) {
       this->localEvalMaskKernel(npt,
@@ -689,7 +702,7 @@ void findpts_t::findptsEvalImpl(occa::memory &o_out,
                                 o_out);
     }
     if (timerLevel != TimerLevel::None) {
-      platform->timer.toc(timerName + "findptsEvalImpl::localEvalKernel");
+      platform->timer.toc(timerName + "findptsEvalImpl::copy results::localEvalKernel");
     }
 
     array_free(&outpt);
@@ -715,7 +728,7 @@ void findpts_t::findptsEvalImpl(dfloat *out,
                                 crystal &cr)
 {
   if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "findptsEvalImpl", 1);
+    platform->timer.tic(timerName + "findptsEvalImpl");
   }
 
   static occa::memory o_in;
@@ -723,28 +736,32 @@ void findpts_t::findptsEvalImpl(dfloat *out,
 
   {
     const auto Nbytes = inputOffset * nFields * sizeof(dfloat);
-    if (o_in.size() < Nbytes) {
-      if (o_in.size()) o_in.free();
+    if (o_in.byte_size() < Nbytes) {
+      if (o_in.byte_size()) {
+        o_in.free();
+      }
       constexpr int growthFactor = 2;
       o_in = platform->device.malloc(growthFactor * Nbytes);
     }
+    o_in.copyFrom(in, Nbytes);
   }
 
   {
     const auto Nbytes = outputOffset * nFields * sizeof(dfloat);
-    if (o_out.size() < Nbytes) {
-      if (o_out.size()) o_out.free();
+    if (o_out.byte_size() < Nbytes) {
+      if (o_out.byte_size()) {
+        o_out.free();
+      }
       constexpr int growthFactor = 2;
       o_out = platform->device.malloc(growthFactor * Nbytes);
     }
   }
 
   struct array src, outpt;
-  /* copy user data, weed out unfound points, send out */
+  /* copy user data, weed out unfound or local points, send out */
   if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "findptsEvalImpl::copy data", 1);
+    platform->timer.tic(timerName + "findptsEvalImpl::copy data");
   }
-  // avoid doing SoA -> AoS conversion for points that remain on the same rank
   {
     int index;
     const int *code = code_base, *proc = proc_base, *el = el_base;
@@ -753,7 +770,7 @@ void findpts_t::findptsEvalImpl(dfloat *out,
     int numSend = 0;
 
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "findptsEvalImpl::copy data::count_num_send", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::copy data::count_num_send");
     }
     for (index = 0; index < npt; ++index) {
       numSend += (code_base[index] != CODE_NOT_FOUND && proc_base[index] != this->rank);
@@ -786,7 +803,7 @@ void findpts_t::findptsEvalImpl(dfloat *out,
 
     src.n = pt - (evalSrcPt_t *)src.ptr;
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "findptsEvalImpl::copy data::sarray_transfer", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::copy data::sarray_transfer");
     }
     sarray_transfer(evalSrcPt_t, &src, proc, 1, &cr);
     if (timerLevel == TimerLevel::Detailed) {
@@ -796,7 +813,7 @@ void findpts_t::findptsEvalImpl(dfloat *out,
 
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "findptsEvalImpl::copy data");
-    platform->timer.tic(timerName + "findptsEvalImpl::eval points", 1);
+    platform->timer.tic(timerName + "findptsEvalImpl::eval points");
   }
 
   /* evaluate points, send back */
@@ -822,7 +839,7 @@ void findpts_t::findptsEvalImpl(dfloat *out,
     }
     array_free(&src);
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "findptsEvalImpl::eval points::sarray_transfer", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::eval points::sarray_transfer");
     }
     sarray_transfer(OutputType, &outpt, proc, 1, &cr);
     if (timerLevel == TimerLevel::Detailed) {
@@ -832,7 +849,7 @@ void findpts_t::findptsEvalImpl(dfloat *out,
 
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "findptsEvalImpl::eval points");
-    platform->timer.tic(timerName + "findptsEvalImpl::copy results", 1);
+    platform->timer.tic(timerName + "findptsEvalImpl::copy results");
   }
 
   /* copy results to user data */
@@ -842,7 +859,7 @@ void findpts_t::findptsEvalImpl(dfloat *out,
 
     // launch local eval kernel on all points that can be evaluated on the current rank
     if (timerLevel != TimerLevel::None) {
-      platform->timer.tic(timerName + "findptsEvalImpl::localEvalKernel", 1);
+      platform->timer.tic(timerName + "findptsEvalImpl::localEvalKernel");
     }
     if (npt > 0) {
       this->localEvalMaskKernel(npt,
@@ -861,8 +878,9 @@ void findpts_t::findptsEvalImpl(dfloat *out,
       platform->timer.toc(timerName + "findptsEvalImpl::localEvalKernel");
     }
 
-    if (outputOffset)
+    if (outputOffset) {
       o_out.copyTo(out, nFields * outputOffset * sizeof(dfloat));
+    }
 
     for (; n; --n, ++opt) {
       for (int field = 0; field < nFields; ++field) {
@@ -944,6 +962,9 @@ findpts_t::findpts_t(MPI_Comm comm,
   const dfloat *elx[dim] = {x, y, z};
   const int n[dim] = {Nq, Nq, Nq};
   const int ms[dim] = {m, m, m};
+
+  if (platform->options.compareArgs("ENABLE FINDPTS DETAILED TIMER", "TRUE"))
+    this->timerLevel = TimerLevel::Detailed;
 
   this->_findptsData = gslibFindptsSetup(comm,
                                          elx,
@@ -1030,9 +1051,9 @@ findpts_t::findpts_t(MPI_Comm comm,
   this->o_hashMin.copyFrom(hashMin, dim * sizeof(dfloat));
   this->o_hashFac.copyFrom(hashFac, dim * sizeof(dfloat));
 
-  this->localEvalKernel = platform->kernels.get("findptsLocalEval");
-  this->localEvalMaskKernel = platform->kernels.get("findptsLocalEvalMask");
-  this->localKernel = platform->kernels.get("findptsLocal");
+  this->localEvalKernel = platform->kernelRequests.load("findptsLocalEval");
+  this->localEvalMaskKernel = platform->kernelRequests.load("findptsLocalEvalMask");
+  this->localKernel = platform->kernelRequests.load("findptsLocal");
 
   this->o_wtend_x = platform->device.malloc(6 * Nq * sizeof(dfloat));
   this->o_wtend_y = platform->device.malloc(6 * Nq * sizeof(dfloat));
@@ -1061,8 +1082,15 @@ findpts_t::~findpts_t()
   }
 }
 
-static slong lfloor(dfloat x) { return floor(x); }
-static slong lceil(dfloat x) { return ceil(x); }
+static slong lfloor(dfloat x)
+{
+  return floor(x);
+}
+
+static slong lceil(dfloat x)
+{
+  return ceil(x);
+}
 
 static ulong hash_index_aux(dfloat low, dfloat fac, ulong n, dfloat x)
 {
@@ -1083,15 +1111,16 @@ struct srcPt_t {
   dfloat x[dim];
   int index, proc, sessionId;
 };
+
 struct outPt_t {
   dfloat r[dim], dist2, disti;
   int index, code, el, proc, elsid;
 };
 
 void findpts_t::find(data_t *const findPtsData,
-                     const occa::memory& o_xintIn,
-                     const occa::memory& o_yintIn,
-                     const occa::memory& o_zintIn,
+                     const occa::memory &o_xintIn,
+                     const occa::memory &o_yintIn,
+                     const occa::memory &o_zintIn,
                      const dlong npt)
 {
   occa::memory o_NULL;
@@ -1112,7 +1141,7 @@ void findpts_t::find(data_t *const findPtsData,
   const auto o_session = o_sessIn.isInitialized() ? o_sessIn.cast(occa::dtype::byte) : o_sessIn;
 
   if (timerLevel != TimerLevel::None) {
-    platform->timer.tic(timerName + "find", 1);
+    platform->timer.tic(timerName + "find");
   }
 
   static std::vector<dfloat> x_base;
@@ -1143,7 +1172,7 @@ void findpts_t::find(data_t *const findPtsData,
     elsid.resize(growthFactor * npt);
   }
 
-  platform->timer.tic(timerName + "find::initial copy op", 1);
+  platform->timer.tic(timerName + "find::initial copy op");
   if (npt) {
     o_xint.copyTo(x_base.data(), npt * sizeof(dfloat));
     o_yint.copyTo(y_base.data(), npt * sizeof(dfloat));
@@ -1169,6 +1198,7 @@ void findpts_t::find(data_t *const findPtsData,
   /* look locally first */
   const auto timerNameSave = timerName;
   timerName = timerName + "find::";
+
   findptsLocal(code_base,
                el_base,
                elsid.data(),
@@ -1185,7 +1215,7 @@ void findpts_t::find(data_t *const findPtsData,
 
   /* send unfound and border points to global hash cells */
   if (timerLevel == TimerLevel::Detailed) {
-    platform->timer.tic(timerName + "find::unfound", 1);
+    platform->timer.tic(timerName + "find::unfound");
   }
   {
     int index;
@@ -1225,7 +1255,7 @@ void findpts_t::find(data_t *const findPtsData,
     }
     hash_pt.n = pt - (struct srcPt_t *)hash_pt.ptr;
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::unfound::sarray_transfer", 1);
+      platform->timer.tic(timerName + "find::unfound::sarray_transfer");
     }
     sarray_transfer(struct srcPt_t, &hash_pt, proc, 1, &cr);
     if (timerLevel == TimerLevel::Detailed) {
@@ -1235,20 +1265,20 @@ void findpts_t::find(data_t *const findPtsData,
 
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "find::unfound");
-    platform->timer.tic(timerName + "find::send unfound", 1);
+    platform->timer.tic(timerName + "find::send unfound");
   }
 
   /* look up points in hash cells, route to possible procs */
   {
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::send unfound::compute hash", 1);
+      platform->timer.tic(timerName + "find::send unfound::compute hash");
     }
     const unsigned int *const hash_offset = hash.offset;
     int count = 0, *proc, *proc_p;
     const struct srcPt_t *p = (struct srcPt_t *)hash_pt.ptr, *const pe = p + hash_pt.n;
     struct srcPt_t *q;
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::send unfound::compute hash::get count", 1);
+      platform->timer.tic(timerName + "find::send unfound::compute hash::get count");
     }
     for (; p != pe; ++p) {
       const int hi = hash_index_3(&hash, p->x) / np;
@@ -1257,14 +1287,14 @@ void findpts_t::find(data_t *const findPtsData,
     }
     if (timerLevel == TimerLevel::Detailed) {
       platform->timer.toc(timerName + "find::send unfound::compute hash::get count");
-      platform->timer.tic(timerName + "find::send unfound::compute hash::do allocations", 1);
+      platform->timer.tic(timerName + "find::send unfound::compute hash::do allocations");
     }
     proc = tmalloc(int, count);
     proc_p = proc;
     array_init(struct srcPt_t, &srcPt_t, count), q = (struct srcPt_t *)srcPt_t.ptr;
     if (timerLevel == TimerLevel::Detailed) {
       platform->timer.toc(timerName + "find::send unfound::compute hash::do allocations");
-      platform->timer.tic(timerName + "find::send unfound::compute hash::doubly nested loop", 1);
+      platform->timer.tic(timerName + "find::send unfound::compute hash::doubly nested loop");
     }
     p = (struct srcPt_t *)hash_pt.ptr;
     for (; p != pe; ++p) {
@@ -1273,8 +1303,9 @@ void findpts_t::find(data_t *const findPtsData,
       const int ie = hash_offset[hi + 1];
       for (; i != ie; ++i) {
         const int pp = hash_offset[i];
-        if (pp == p->proc)
+        if (pp == p->proc) {
           continue; /* don't send back to source proc */
+        }
         *proc_p++ = pp;
         *q++ = *p;
       }
@@ -1289,7 +1320,7 @@ void findpts_t::find(data_t *const findPtsData,
 #endif
     if (timerLevel == TimerLevel::Detailed) {
       platform->timer.toc(timerName + "find::send unfound::compute hash");
-      platform->timer.tic(timerName + "find::send unfound::sarray_transfer_ext", 1);
+      platform->timer.tic(timerName + "find::send unfound::sarray_transfer_ext");
     }
 
     sarray_transfer_ext(struct srcPt_t, &srcPt_t, reinterpret_cast<unsigned int *>(proc), sizeof(int), &cr);
@@ -1302,7 +1333,7 @@ void findpts_t::find(data_t *const findPtsData,
 
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "find::send unfound");
-    platform->timer.tic(timerName + "find::send back", 1);
+    platform->timer.tic(timerName + "find::send back");
   }
 
   /* look for other procs' points, send back */
@@ -1376,7 +1407,7 @@ void findpts_t::find(data_t *const findPtsData,
 
     /* group by code to eliminate unfound points */
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::send back::sarray_sort", 1);
+      platform->timer.tic(timerName + "find::send back::sarray_sort");
     }
 
     sarray_sort(struct outPt_t, opt, outPt_t.n, code, 0, &cr.data);
@@ -1385,14 +1416,15 @@ void findpts_t::find(data_t *const findPtsData,
       platform->timer.toc(timerName + "find::send back::sarray_sort");
     }
     n = outPt_t.n;
-    while (n && opt[n - 1].code == CODE_NOT_FOUND)
+    while (n && opt[n - 1].code == CODE_NOT_FOUND) {
       --n;
+    }
     outPt_t.n = n;
 #ifdef DIAGNOSTICS
     printf("(proc %u) sending back %u found points\n", id, (int)outPt_t.n);
 #endif
     if (timerLevel == TimerLevel::Detailed) {
-      platform->timer.tic(timerName + "find::send back::sarray_transfer", 1);
+      platform->timer.tic(timerName + "find::send back::sarray_transfer");
     }
 
     sarray_transfer(struct outPt_t, &outPt_t, proc, 1, &cr);
@@ -1404,7 +1436,7 @@ void findpts_t::find(data_t *const findPtsData,
 
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "find::send back");
-    platform->timer.tic(timerName + "find::merge", 1);
+    platform->timer.tic(timerName + "find::merge");
   }
 
   /* merge remote results with user data */
@@ -1532,12 +1564,12 @@ void findpts_t::find(data_t *const findPtsData,
   }
   if (timerLevel == TimerLevel::Detailed) {
     platform->timer.toc(timerName + "find::merge");
-    platform->timer.tic(timerName + "find::copy to device", 1);
+    platform->timer.tic(timerName + "find::copy to device");
   }
 
   if (npt) {
-    if (o_code.size() < npt * sizeof(dlong)) {
-      if (o_code.size()) {
+    if (o_code.byte_size() < npt * sizeof(dlong)) {
+      if (o_code.byte_size()) {
         o_code.free();
         o_el.free();
         o_r.free();
@@ -1590,8 +1622,9 @@ void findpts_t::find(data_t *const findPtsData,
   o_xint.copyFrom(x_base, npt);
   o_yint.copyFrom(y_base, npt);
   o_zint.copyFrom(z_base, npt);
-  if(session)
+  if (session) {
     o_session.copyFrom(session, npt);
+  }
 
   this->find(findPtsData, o_xint, o_yint, o_zint, o_session, sessionIdMatch, npt);
 
@@ -1603,7 +1636,7 @@ void findpts_t::find(data_t *const findPtsData,
   }
 }
 
-void findpts_t::eval(const dlong npt, const occa::memory& o_in, data_t *findPtsData, occa::memory& o_out)
+void findpts_t::eval(const dlong npt, const occa::memory &o_in, data_t *findPtsData, occa::memory &o_out)
 {
   this->eval(npt, 1, 0, npt, o_in, findPtsData, o_out);
 }
@@ -1617,15 +1650,15 @@ void findpts_t::eval(const dlong npt,
                      const dlong nFields,
                      const dlong inputOffset,
                      const dlong outputOffset,
-                     const occa::memory& o_fldIn,
+                     const occa::memory &o_fldIn,
                      data_t *findPtsData,
-                     occa::memory& o_fldOut)
+                     occa::memory &o_fldOut)
 {
   auto o_in = o_fldIn.isInitialized() ? o_fldIn.cast(occa::dtype::byte) : o_fldIn;
   auto o_out = o_fldOut.isInitialized() ? o_fldOut.cast(occa::dtype::byte) : o_fldOut;
 
   if (timerLevel != TimerLevel::None) {
-    platform->timer.tic(timerName + "eval", 1);
+    platform->timer.tic(timerName + "eval");
   }
 
   const auto timerNameSave = timerName;
@@ -1633,8 +1666,9 @@ void findpts_t::eval(const dlong npt,
 
   auto fieldSizesTuple = n_tuple<int, findpts_t::maxFields>{};
   tuple_for_each(fieldSizesTuple, [&](auto T) {
-    if (nFields != decltype(T)::value)
+    if (nFields != decltype(T)::value) {
       return;
+    }
     findptsEvalImpl<evalOutPt_t<decltype(T)::value>>(o_out,
                                                      findPtsData->code_base,
                                                      findPtsData->proc_base,
@@ -1649,12 +1683,12 @@ void findpts_t::eval(const dlong npt,
                                                      *this->cr);
   });
 
-  nrsCheck(nFields < 1 || nFields > findpts_t::maxFields,
-           platform->comm.mpiComm,
-           EXIT_FAILURE,
-           "Error: nFields = %d is not supported. nFields must be between 1 and %d.",
-           nFields,
-           findpts_t::maxFields);
+  nekrsCheck(nFields < 1 || nFields > findpts_t::maxFields,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "Error: nFields = %d is not supported. nFields must be between 1 and %d.",
+             nFields,
+             findpts_t::maxFields);
 
   timerName = timerNameSave;
 
@@ -1672,15 +1706,16 @@ void findpts_t::eval(const dlong npt,
                      dfloat *out)
 {
   if (timerLevel != TimerLevel::None) {
-    platform->timer.tic(timerName + "eval", 1);
+    platform->timer.tic(timerName + "eval");
   }
 
   const auto timerNameSave = timerName;
   timerName = timerName + "eval::";
   auto fieldSizesTuple = n_tuple<int, findpts_t::maxFields>{};
   tuple_for_each(fieldSizesTuple, [&](auto T) {
-    if (nFields != decltype(T)::value)
+    if (nFields != decltype(T)::value) {
       return;
+    }
 
     findptsEvalImpl<evalOutPt_t<decltype(T)::value>>(out,
                                                      findPtsData->code_base,
@@ -1696,12 +1731,12 @@ void findpts_t::eval(const dlong npt,
                                                      *this->cr);
   });
 
-  nrsCheck(nFields < 1 || nFields > findpts_t::maxFields,
-           platform->comm.mpiComm,
-           EXIT_FAILURE,
-           "Error: nFields = %d is not supported. nFields must be between 1 and %d.",
-           nFields,
-           findpts_t::maxFields);
+  nekrsCheck(nFields < 1 || nFields > findpts_t::maxFields,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "Error: nFields = %d is not supported. nFields must be between 1 and %d.",
+             nFields,
+             findpts_t::maxFields);
 
   timerName = timerNameSave;
 
@@ -1710,15 +1745,19 @@ void findpts_t::eval(const dlong npt,
   }
 }
 
-crystal *findpts_t::crystalRouter() { return this->cr; }
+crystal *findpts_t::crystalRouter()
+{
+  return this->cr;
+}
 
 void findpts_t::o_update(data_t &data)
 {
   auto npt = data.code.size();
-  if (npt == 0)
+  if (npt == 0) {
     return;
-  if (o_code.size() < npt * sizeof(dlong)) {
-    if (o_code.size()) {
+  }
+  if (o_code.byte_size() < npt * sizeof(dlong)) {
+    if (o_code.byte_size()) {
       o_code.free();
       o_el.free();
       o_r.free();

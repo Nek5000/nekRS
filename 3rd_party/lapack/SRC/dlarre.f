@@ -51,7 +51,7 @@
 *> DSTEMR to compute the eigenvectors of T.
 *> The accuracy varies depending on whether bisection is used to
 *> find a few eigenvalues or the dqds algorithm (subroutine DLASQ2) to
-*> conpute all and then discard any unwanted one.
+*> compute all and then discard any unwanted one.
 *> As an added benefit, DLARRE also outputs the n
 *> Gerschgorin intervals for the matrices L_i D_i L_i^T.
 *> \endverbatim
@@ -276,7 +276,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup OTHERauxiliary
+*> \ingroup larre
 *
 *> \par Further Details:
 *  =====================
@@ -367,6 +367,8 @@
 *
 
       INFO = 0
+      NSPLIT = 0
+      M = 0
 *
 *     Quick return if possible
 *
@@ -383,8 +385,6 @@
       ELSE IF( LSAME( RANGE, 'I' ) ) THEN
          IRANGE = INDRNG
       END IF
-
-      M = 0
 
 *     Get machine constants
       SAFMIN = DLAMCH( 'S' )

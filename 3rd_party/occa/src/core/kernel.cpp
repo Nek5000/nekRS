@@ -19,13 +19,19 @@ namespace occa {
     setModeKernel(modeKernel_);
   }
 
+  kernel::kernel(modeKernel_t* modeKernel_, const hash_t& hash) :
+    modeKernel(NULL), hash_{hash} {
+    setModeKernel(modeKernel_);
+  }
+
   kernel::kernel(const kernel &k) :
-    modeKernel(NULL) {
+    modeKernel(NULL) , hash_{k.hash_} {
     setModeKernel(k.modeKernel);
   }
 
   kernel& kernel::operator = (const kernel &k) {
     setModeKernel(k.modeKernel);
+    this->hash_ = k.hash_;
     return *this;
   }
 
@@ -126,10 +132,8 @@ namespace occa {
             : noBinaryFilename);
   }
 
-  hash_t kernel::hash() {
-    return (modeKernel
-            ? modeKernel->hash
-            : hash_t());
+  hash_t kernel::hash() const {
+    return hash_;
   }
 
   void kernel::setRunDims(occa::dim outerDims, occa::dim innerDims) {
@@ -189,7 +193,7 @@ namespace occa {
     self.run();
   }
 
-#include "kernelOperators.cpp_codegen"
+#include "codegen/kernelOperators.cpp_codegen"
 
   void kernel::free() {
     // ~modeKernel_t NULLs all wrappers

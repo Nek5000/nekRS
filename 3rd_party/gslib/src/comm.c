@@ -108,7 +108,7 @@ void comm_allreduce(const struct comm *com, gs_dom dom, gs_op op,
                           void *v, uint vn, void *buf)
 {
   if(vn==0) return;
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   {
     MPI_Datatype mpitype;
     MPI_Op mpiop;
@@ -134,7 +134,7 @@ void comm_allreduce(const struct comm *com, gs_dom dom, gs_op op,
     return;
   }
 #endif
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
 comm_allreduce_byhand:
   allreduce_imp(com,dom,op, v,vn, buf);
 #endif
@@ -144,7 +144,7 @@ void comm_iallreduce(comm_req *req, const struct comm *com, gs_dom dom, gs_op op
                           void *v, uint vn, void *buf)
 {
   if(vn==0) return;
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   {
     MPI_Datatype mpitype;
     MPI_Op mpiop;
@@ -165,11 +165,16 @@ void comm_iallreduce(comm_req *req, const struct comm *com, gs_dom dom, gs_op op
                  case gs_max: mpiop=MPI_MAX;  break;
                  default:        goto comm_allreduce_byhand;
     }
+#ifdef USE_NBC
     MPI_Iallreduce(v,buf,vn,mpitype,mpiop,com->c,req);
+#else
+    fail(1,"comm_iallreduce",__LINE__,"Invalid call to MPI_Iallreduce!\n");
+#endif
+
     return;
   }
 #endif
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
 comm_allreduce_byhand:
   allreduce_imp(com,dom,op, v,vn, buf);
 #endif

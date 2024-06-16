@@ -1,11 +1,15 @@
 #include <occa/internal/lang/builtins/types.hpp>
+#include <occa/internal/lang/loaders/enumLoader.hpp>
 #include <occa/internal/lang/loaders/structLoader.hpp>
+#include <occa/internal/lang/loaders/unionLoader.hpp>
 #include <occa/internal/lang/loaders/typeLoader.hpp>
 #include <occa/internal/lang/parser.hpp>
 #include <occa/internal/lang/statementContext.hpp>
 #include <occa/internal/lang/token.hpp>
 #include <occa/internal/lang/tokenContext.hpp>
+#include <occa/internal/lang/type/enum.hpp>
 #include <occa/internal/lang/type/struct.hpp>
+#include <occa/internal/lang/type/union.hpp>
 #include <occa/internal/lang/variable.hpp>
 
 namespace occa {
@@ -44,17 +48,18 @@ namespace occa {
         return true;
       }
 
-      const int tokenCount = tokenContext.size();
-      int tokenPos;
+      if (!tokenContext.size()) {
+        tokenContext.printError("Unable to load type");
+        return false;
+      }
 
-      for (tokenPos = 0; tokenPos < tokenCount; ++tokenPos) {
-        token_t *token = tokenContext[tokenPos];
-
-        if (token->type() & tokenType::comment) {
+      while (tokenContext.size()) {
+        if (tokenContext[0]->type() & tokenType::comment) {
+          ++tokenContext;
           continue;
         }
 
-        keyword_t &keyword = parser.keywords.get(smntContext, token);
+        keyword_t &keyword = parser.keywords.get(smntContext, tokenContext[0]);
         const int kType    = keyword.type();
         if (kType & keywordType::none) {
           break;
@@ -63,47 +68,35 @@ namespace occa {
         if (kType & keywordType::qualifier) {
           const qualifier_t &qualifier = keyword.to<qualifierKeyword>().qualifier;
           type_t *type = NULL;
-          if (qualifier == enum_) {
-            // TODO: type = loadEnum();
-            token->printError("Enums are not supported yet");
-            success = false;
-          } else if (qualifier == union_) {
-            // TODO: type = loadUnion();
-            token->printError("Unions are not supported yet");
-            success = false;
-          } else if (qualifier == class_) {
+          if (qualifier == class_) {
             // TODO: type = loadClass();
-            token->printError("Classes are not supported yet");
+            tokenContext[0]->printError("Classes are not supported yet");
             success = false;
           }
           if (!success) {
             return false;
           }
+
           if (!type) {
-            loadVartypeQualifier(token,
-                                 keyword.to<qualifierKeyword>().qualifier,
-                                 vartype);
+            loadVartypeQualifier(qualifier, vartype);
           } else {
             vartype.type = type;
             vartype.typeToken = (identifierToken*) type->source->clone();
+          }
+          if (!success) {
+            return false;
           }
           continue;
         }
         if ((kType & keywordType::type) &&
             !vartype.isValid()) {
           vartype.type = &(keyword.to<typeKeyword>().type_);
-          vartype.typeToken = (identifierToken*) token->clone();
+          vartype.typeToken = (identifierToken*) tokenContext[0]->clone();
+          ++tokenContext;
           continue;
         }
 
         break;
-      }
-
-      if (tokenPos) {
-        tokenContext += tokenPos;
-      } else {
-        tokenContext.printError("Unable to load type");
-        return false;
       }
 
       if (vartype.isValid()) {
@@ -115,19 +108,27 @@ namespace occa {
         vartype.type = &int_;
         return true;
       }
-
+      if (vartype.has(enum_)) {
+        loadEnum(vartype);
+        return success;
+      }
       if (vartype.has(struct_)) {
         loadStruct(vartype);
         return success;
       }
-
+      if (vartype.has(union_)) {
+        loadUnion(vartype);
+        return success;
+      }
       tokenContext.printError("Expected a type");
       return false;
     }
 
-    void typeLoader_t::loadVartypeQualifier(token_t *token,
-                                            const qualifier_t &qualifier,
+    void typeLoader_t::loadVartypeQualifier(const qualifier_t &qualifier,
                                             vartype_t &vartype) {
+      token_t *token = tokenContext[0];
+      ++tokenContext;
+
       // Handle long/long long case
       if (&qualifier == &long_) {
         if (vartype.has(long_)) {
@@ -146,13 +147,53 @@ namespace occa {
         return;
       }
 
-      // Non-long qualifiers
-      if (!vartype.has(qualifier)) {
+      // qualifier takes arguments
+      if (token_t::safeOperatorType(tokenContext[0]) & operatorType::parenthesesStart) {
+        tokenContext.pushPairRange();
+
+        exprNodeVector args;
+        tokenRangeVector argRanges;
+        getArgumentRanges(tokenContext, argRanges);
+
+        const int argCount = (int) argRanges.size();
+
+        for (int i = 0; i < argCount; ++i) {
+          tokenContext.push(argRanges[i].start,
+                            argRanges[i].end);
+
+          if (!tokenContext.size()) {
+            args.push_back(new emptyNode());
+            tokenContext.popAndSkip();
+            continue;
+          }
+
+          args.push_back(tokenContext.parseExpression(smntContext, parser));
+
+          if (!success) {
+            freeExprNodeVector(args);
+            return;
+          }
+
+          tokenContext.popAndSkip();
+        }
+
         vartype.add(token->origin,
-                    qualifier);
+                    qualifier,
+                    args);
+
+        freeExprNodeVector(args);
+        tokenContext.popAndSkip();
+
       } else {
-        token->printWarning("Ignoring duplicate qualifier");
+        // Non-long qualifiers
+        if (!vartype.has(qualifier)) {
+          vartype.add(token->origin,
+                      qualifier);
+        } else {
+          token->printWarning("Ignoring duplicate qualifier");
+        }
       }
+
     }
 
     void typeLoader_t::setVartypePointers(vartype_t &vartype) {
@@ -205,6 +246,45 @@ namespace occa {
       ++tokenContext;
     }
 
+    void typeLoader_t::loadEnum(vartype_t &vartype) {
+      enumLoader_t enumLoader(tokenContext, smntContext, parser);
+
+      // Load enum
+      enum_t *enumType = NULL;
+      success &= enumLoader.loadEnum(enumType);
+      if (!success) {
+        return;
+      }
+
+      if (!vartype.has(typedef_)) {
+        vartype.setType(*((identifierToken*) enumType->source),
+                        *enumType);
+        return;
+      }
+
+      // Load typedef name
+      if (!(token_t::safeType(tokenContext[0]) & tokenType::identifier)) {
+        tokenContext.printError("Expected typedef name");
+        success = false;
+        return;
+      }
+
+      identifierToken *nameToken = (identifierToken*) tokenContext[0];
+      ++tokenContext;
+
+      // Move the enum qualifier over
+      vartype_t enumVartype(*((identifierToken*) enumType->source),
+                              *enumType);
+      enumVartype += enum_;
+      vartype -= enum_;
+
+      typedef_t *typedefType = new typedef_t(enumVartype, *nameToken);
+      typedefType->declaredBaseType = true;
+
+      vartype.setType(*nameToken,
+                      *typedefType);
+    }
+
     void typeLoader_t::loadStruct(vartype_t &vartype) {
       structLoader_t structLoader(tokenContext, smntContext, parser);
 
@@ -244,6 +324,45 @@ namespace occa {
                       *typedefType);
     }
 
+    void typeLoader_t::loadUnion(vartype_t &vartype) {
+      unionLoader_t unionLoader(tokenContext, smntContext, parser);
+
+      // Load union
+      union_t *unionType = NULL;
+      success &= unionLoader.loadUnion(unionType);
+      if (!success) {
+        return;
+      }
+
+      if (!vartype.has(typedef_)) {
+        vartype.setType(*((identifierToken*) unionType->source),
+                        *unionType);
+        return;
+      }
+
+      // Load typedef name
+      if (!(token_t::safeType(tokenContext[0]) & tokenType::identifier)) {
+        tokenContext.printError("Expected typedef name");
+        success = false;
+        return;
+      }
+
+      identifierToken *nameToken = (identifierToken*) tokenContext[0];
+      ++tokenContext;
+
+      // Move the union qualifier over
+      vartype_t unionVartype(*((identifierToken*) unionType->source),
+                              *unionType);
+      unionVartype += union_;
+      vartype -= union_;
+
+      typedef_t *typedefType = new typedef_t(unionVartype, *nameToken);
+      typedefType->declaredBaseType = true;
+
+      vartype.setType(*nameToken,
+                      *typedefType);
+    }
+
     bool loadType(tokenContext_t &tokenContext,
                   statementContext_t &smntContext,
                   parser_t &parser,
@@ -260,6 +379,23 @@ namespace occa {
       return loader.loadBaseType(vartype);
     }
 
+    bool isLoadingEnum(tokenContext_t &tokenContext,
+                         statementContext_t &smntContext,
+                         parser_t &parser) {
+      tokenContext.push();
+      tokenContext.supressErrors = true;
+
+      vartype_t vartype;
+      loadType(tokenContext, smntContext, parser, vartype);
+
+      tokenContext.supressErrors = false;
+      tokenContext.pop();
+
+      return (!vartype.isValid()   && // Should not have a base type since we're defining it
+              vartype.has(enum_) &&  // Should have enum_
+              !vartype.has(typedef_)); // typedef enum is not loaded as a enum
+    }
+
     bool isLoadingStruct(tokenContext_t &tokenContext,
                          statementContext_t &smntContext,
                          parser_t &parser) {
@@ -272,9 +408,26 @@ namespace occa {
       tokenContext.supressErrors = false;
       tokenContext.pop();
 
-      return (!vartype.isValid()   &&  // Should not have a base type since we're defining it
+      return (!vartype.isValid()   && // Should not have a base type since we're defining it
               vartype.has(struct_) &&  // Should have struct_
               !vartype.has(typedef_)); // typedef struct is not loaded as a struct
+    }
+
+    bool isLoadingUnion(tokenContext_t &tokenContext,
+                         statementContext_t &smntContext,
+                         parser_t &parser) {
+      tokenContext.push();
+      tokenContext.supressErrors = true;
+
+      vartype_t vartype;
+      loadType(tokenContext, smntContext, parser, vartype);
+
+      tokenContext.supressErrors = false;
+      tokenContext.pop();
+
+      return (!vartype.isValid()   && // Should not have a base type since we're defining it
+              vartype.has(union_) &&  // Should have union_
+              !vartype.has(typedef_)); // typedef union is not loaded as a union
     }
   }
 }

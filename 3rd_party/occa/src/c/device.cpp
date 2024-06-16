@@ -43,6 +43,10 @@ occaJson occaDeviceGetProperties(occaDevice device) {
   return occa::c::newOccaType(props, false);
 }
 
+const char* occaDeviceArch(occaDevice device) {
+  return occa::c::device(device).arch().c_str();
+}
+
 occaJson occaDeviceGetKernelProperties(occaDevice device) {
   const occa::json &props = occa::c::device(device).kernelProperties();
   return occa::c::newOccaType(props, false);
@@ -259,7 +263,7 @@ occaMemoryPool occaDeviceCreateMemoryPool(occaDevice device,
                                           occaJson props) {
   occa::device device_ = occa::c::device(device);
 
-  occa::experimental::memoryPool memoryPool;
+  occa::memoryPool memoryPool;
   if (occa::c::isDefault(props)) {
     memoryPool = device_.createMemoryPool();
   } else {

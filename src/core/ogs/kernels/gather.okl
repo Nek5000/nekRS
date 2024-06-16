@@ -1,0 +1,37 @@
+#define GENERATE(TN, T, OP)                                                                                  \
+@kernel void gather_##TN##_##OP(const dlong Ngather,                                                         \
+                               @ restrict const dlong *gatherStarts,                                         \
+                               @ restrict const dlong *gatherIds,                                            \
+                               @ restrict const T *q, @ restrict T *gatherq)                                 \
+{                                                                                                            \
+  for (dlong g = 0; g < Ngather; ++g; @tile(p_blockSize, @outer, @inner)) {                                  \
+    const dlong start = gatherStarts[g];                                                                     \
+    const dlong end = gatherStarts[g+1];                                                                     \
+    T gq = init_##TN##_##OP;                                                                                 \
+    for (dlong n = start; n < end; ++n) {                                                                    \
+      const dlong id = gatherIds[n];                                                                         \
+      OGS_DO_##OP(gq,q[id]);                                                                                 \
+    }                                                                                                        \
+    gatherq[g] = gq;                                                                                         \
+  }                                                                                                          \
+}
+
+GENERATE(float,float,add)
+GENERATE(float,float,mul)
+GENERATE(float,float,min)
+GENERATE(float,float,max)
+
+GENERATE(double,double,add)
+GENERATE(double,double,mul)
+GENERATE(double,double,min)
+GENERATE(double,double,max)
+
+GENERATE(int,int,add)
+GENERATE(int,int,mul)
+GENERATE(int,int,min)
+GENERATE(int,int,max)
+
+GENERATE(long_long,hlong,add)
+GENERATE(long_long,hlong,mul)
+GENERATE(long_long,hlong,min)
+GENERATE(long_long,hlong,max)

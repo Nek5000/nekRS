@@ -44,8 +44,9 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
 
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     std::cout << "meshParallelGatherScatterSetup N=" << mesh->N << "\n";
+  }
   mesh->ogs = ogsSetup(N, globalIds, comm, verbose, platform->device.occaDevice());
 
   // use the gs to find what nodes are local to this rank
@@ -66,8 +67,9 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
                    mesh->ogs); // maxRank[n] contains the largest rank taking part in the gather of node n
 
   int overlap = 1;
-  if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "FALSE"))
+  if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "FALSE")) {
     overlap = 0;
+  }
 
   // count elements that contribute to global C0 gather-scatter
   dlong globalCount = 0;
@@ -111,10 +113,11 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
         }
       }
     }
-    if (isHalo)
+    if (isHalo) {
       mesh->globalGatherElementList[globalCount++] = e;
-    else
+    } else {
       mesh->localGatherElementList[localCount++] = e;
+    }
   }
 
   free(minRank);
@@ -125,13 +128,14 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
 
   mesh->o_elementList = platform->device.malloc<dlong>(mesh->Nelements, mesh->elementList);
 
-  if (globalCount)
+  if (globalCount) {
     mesh->o_globalGatherElementList =
         platform->device.malloc<dlong>(globalCount, mesh->globalGatherElementList);
+  }
 
-  if (localCount)
-    mesh->o_localGatherElementList =
-        platform->device.malloc<dlong>(localCount, mesh->localGatherElementList);
+  if (localCount) {
+    mesh->o_localGatherElementList = platform->device.malloc<dlong>(localCount, mesh->localGatherElementList);
+  }
 
   { // sanity check
     int err = 0;
@@ -148,8 +152,8 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
     hlong sum = 0;
     const dfloat eps = 0.1;
     for (int i = 0; i < mesh->Nlocal; i++) {
-      dfloat val = tmp[i]*mesh->ogs->invDegree[i];
-      hlong valInt = val/(abs(val)) * (abs(val)+0.5); // rounded to nearest integer
+      dfloat val = tmp[i] * mesh->ogs->invDegree[i];
+      hlong valInt = val / (abs(val)) * (abs(val) + 0.5); // rounded to nearest integer
       sum += valInt;
     }
     MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
@@ -157,6 +161,6 @@ void meshParallelGatherScatterSetup(mesh_t *mesh,
     if (sum - NpGlobal != 0) {
       err++;
     }
-    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "invDegree sanity check failed");
+    nekrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "invDegree sanity check failed");
   }
 }

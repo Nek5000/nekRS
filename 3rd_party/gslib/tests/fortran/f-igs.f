@@ -29,7 +29,7 @@
 
       neighbors=count-1
 !     gs_pairwise
-      call gs_setup_pick(handle,id,neighbors,mpi_comm_world,np,1)
+      call fgslib_gs_setup_pick(handle,id,neighbors,mpi_comm_world,np,1)
 
       if(np.eq.1) then
         answer(1)=1.0
@@ -45,8 +45,8 @@
         u(i)=1.0
       enddo
 
-      call igs_op(handle,u,1,1,0,hwait)
-      call gs_op_wait(hwait)
+      call fgslib_igs_op(handle,u,1,1,0,hwait)
+      call fgslib_gs_op_wait(hwait)
 
       do i=1,neighbors
         if(abs(u(i)-answer(id(i)))>1e-16) then

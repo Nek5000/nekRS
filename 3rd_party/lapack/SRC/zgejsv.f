@@ -52,10 +52,10 @@
 *> are computed and stored in the arrays U and V, respectively. The diagonal
 *> of [SIGMA] is computed and stored in the array SVA.
 *> \endverbatim
-*>
-*>  Arguments:
-*>  ==========
-*>
+*
+*  Arguments:
+*  ==========
+*
 *> \param[in] JOBA
 *> \verbatim
 *>          JOBA is CHARACTER*1
@@ -151,7 +151,7 @@
 *>         transposed A if A^* seems to be better with respect to convergence.
 *>         If the matrix is not square, JOBT is ignored. 
 *>         The decision is based on two values of entropy over the adjoint
-*>         orbit of A^* * A. See the descriptions of WORK(6) and WORK(7).
+*>         orbit of A^* * A. See the descriptions of RWORK(6) and RWORK(7).
 *>       = 'T': transpose if entropy test indicates possibly faster
 *>         convergence of Jacobi process if A^* is taken as input. If A is
 *>         replaced with A^*, then the row pivoting is included automatically.
@@ -209,11 +209,11 @@
 *> \verbatim
 *>          SVA is DOUBLE PRECISION array, dimension (N)
 *>          On exit,
-*>          - For WORK(1)/WORK(2) = ONE: The singular values of A. During the
-*>            computation SVA contains Euclidean column norms of the
+*>          - For RWORK(1)/RWORK(2) = ONE: The singular values of A. During
+*>            the computation SVA contains Euclidean column norms of the
 *>            iterated matrices in the array A.
-*>          - For WORK(1) .NE. WORK(2): The singular values of A are
-*>            (WORK(1)/WORK(2)) * SVA(1:N). This factored form is used if
+*>          - For RWORK(1) .NE. RWORK(2): The singular values of A are
+*>            (RWORK(1)/RWORK(2)) * SVA(1:N). This factored form is used if
 *>            sigma_max(A) overflows or if small singular values have been
 *>            saved from underflow by scaling the input matrix A.
 *>          - If JOBR='R' then some of the singular values may be returned
@@ -252,7 +252,7 @@
 *>          If JOBV = 'V', 'J' then V contains on exit the N-by-N matrix of
 *>                         the right singular vectors;
 *>          If JOBV = 'W', AND (JOBU = 'U' AND JOBT = 'T' AND M = N),
-*>                         then V is used as workspace if the pprocedure
+*>                         then V is used as workspace if the procedure
 *>                         replaces A with A^*. In that case, [U] is computed
 *>                         in V as right singular vectors of A^* and then
 *>                         copied back to the U array. This 'W' option is just
@@ -304,7 +304,7 @@
 *>            -> the minimal requirement is LWORK >= 3*N.
 *>            -> For optimal performance, 
 *>               LWORK >= max(N+(N+1)*NB, 2*N+N*NB)=2*N+N*NB,
-*>               where NB is the optimal block size for ZGEQP3, ZGEQRF, ZGELQ,
+*>               where NB is the optimal block size for ZGEQP3, ZGEQRF, ZGELQF,
 *>               ZUNMLQ. In general, the optimal length LWORK is computed as
 *>               LWORK >= max(N+LWORK(ZGEQP3), N+LWORK(ZGESVJ),
 *>                       N+LWORK(ZGELQF), 2*N+LWORK(ZGEQRF), N+LWORK(ZUNMLQ)).
@@ -313,7 +313,7 @@
 *>            -> the minimal requirement is LWORK >= 3*N.      
 *>            -> For optimal performance, 
 *>               LWORK >= max(N+(N+1)*NB, 2*N,2*N+N*NB)=2*N+N*NB,
-*>               where NB is the optimal block size for ZGEQP3, ZGEQRF, ZGELQ,
+*>               where NB is the optimal block size for ZGEQP3, ZGEQRF, ZGELQF,
 *>               ZUNMLQ. In general, the optimal length LWORK is computed as
 *>               LWORK >= max(N+LWORK(ZGEQP3), LWORK(ZPOCON), N+LWORK(ZGESVJ),
 *>                       N+LWORK(ZGELQF), 2*N+LWORK(ZGEQRF), N+LWORK(ZUNMLQ)).   
@@ -349,7 +349,7 @@
 *>
 *> \param[out] RWORK
 *> \verbatim
-*>          RWORK is DOUBLE PRECISION array, dimension (MAX(7,LWORK))
+*>          RWORK is DOUBLE PRECISION array, dimension (MAX(7,LRWORK))
 *>          On exit,
 *>          RWORK(1) = Determines the scaling factor SCALE = RWORK(2) / RWORK(1)
 *>                    such that SCALE*SVA(1:N) are the computed singular values
@@ -483,7 +483,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16GEsing
+*> \ingroup gejsv
 *
 *> \par Further Details:
 *  =====================
@@ -1821,7 +1821,7 @@
                IF ( CONDR2 .GE. COND_OK ) THEN
 *                 .. save the Householder vectors used for Q3
 *                 (this overwrites the copy of R2, as it will not be
-*                 needed in this branch, but it does not overwritte the
+*                 needed in this branch, but it does not overwrite the
 *                 Huseholder vectors of Q2.).
                   CALL ZLACPY( 'U', NR, NR, V, LDV, CWORK(2*N+1), N )
 *                 .. and the rest of the information on Q3 is in
@@ -1844,7 +1844,7 @@
             END IF
 *
 *        Second preconditioning finished; continue with Jacobi SVD
-*        The input matrix is lower trinagular.
+*        The input matrix is lower triangular.
 *
 *        Recover the right singular vectors as solution of a well
 *        conditioned triangular matrix equation.
@@ -1888,7 +1888,7 @@
             ELSE IF ( CONDR2 .LT. COND_OK ) THEN
 *
 *              The matrix R2 is inverted. The solution of the matrix equation
-*              is Q3^* * V3 = the product of the Jacobi rotations (appplied to
+*              is Q3^* * V3 = the product of the Jacobi rotations (applied to
 *              the lower triangular L3 from the LQ factorization of
 *              R2=L3*Q3), pre-multiplied with the transposed Q3.
                CALL ZGESVJ( 'L', 'U', 'N', NR, NR, V, LDV, SVA, NR, U,

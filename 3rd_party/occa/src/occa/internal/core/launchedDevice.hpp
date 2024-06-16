@@ -27,6 +27,10 @@ namespace occa {
                               const hash_t kernelHash,
                               const occa::json &kernelProps) override;
 
+    void buildSource(const std::string& fileName, 
+                     const hash_t hash, 
+                     const occa::json& properties) override;
+
     modeKernel_t* buildKernel(const std::string &filename,
                               const std::string &kernelName,
                               const hash_t kernelHash,
@@ -36,7 +40,8 @@ namespace occa {
     modeKernel_t* buildLauncherKernel(const hash_t kernelHash,
                                       const std::string &hashDir,
                                       const std::string &kernelName,
-                                      lang::sourceMetadata_t sourceMetadata);
+                                      lang::sourceMetadata_t sourceMetadata,
+                                      const occa::json& kernelProps);
 
     orderedKernelMetadata getLaunchedKernelsMetadata(
       const std::string &kernelName,

@@ -1,0 +1,96 @@
+// BF := -rho/dt * v^* = sum{beta_j * nlt^n-j} + rho/dt * sum{alpha_j * v^n-j}
+@kernel void sumMakef(const dlong N,
+                      const int isVelocity,
+                      @ restrict const dfloat *massMatrix,
+                      const dfloat idt,
+                      @ restrict const dfloat *coeffEXT,
+                      @ restrict const dfloat *coeffBDF,
+                      const dlong fieldOffset,
+                      const dlong fieldSumOffset,
+                      const dlong fieldOffsetJW,
+                      @ restrict const dfloat *RHO,
+                      @ restrict const dfloat *U,
+                      @ restrict const dfloat *NU,
+                      @ restrict const dfloat *FU,
+                      @ restrict dfloat *BF)
+{
+  if (isVelocity) {
+
+    for (dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)) {
+      dfloat JW = massMatrix[id];
+
+      dfloat bdfx = 0;
+      dfloat bdfy = 0;
+      dfloat bdfz = 0;
+#if p_SUBCYCLING
+      bdfx += NU[id + 0 * fieldOffset];
+      bdfy += NU[id + 1 * fieldOffset];
+      bdfz += NU[id + 2 * fieldOffset];
+#else
+
+#pragma unroll p_nBDF
+      for (int s = 0; s < p_nBDF; s++) {
+#if p_MovingMesh
+        JW = massMatrix[id + s * fieldOffsetJW];
+#endif
+        bdfx += coeffBDF[s] * JW * U[id + 0 * fieldOffset + s * fieldSumOffset];
+        bdfy += coeffBDF[s] * JW * U[id + 1 * fieldOffset + s * fieldSumOffset];
+        bdfz += coeffBDF[s] * JW * U[id + 2 * fieldOffset + s * fieldSumOffset];
+     }
+#endif
+      const dfloat rho = RHO[id];
+      dfloat nltx = 0;
+      dfloat nlty = 0;
+      dfloat nltz = 0;
+#pragma unroll p_nEXT
+      for (int s = 0; s < p_nEXT; s++) {
+#if p_MovingMesh
+        JW = massMatrix[id + s * fieldOffsetJW];
+#endif
+        // multiply by rho^n+1 here instead of using sum{beta_j * rho^n-j * nlt^n-j}
+        // relevant in case of a lowMach flow where rho^n+1 is only avaiable after solving for temperature
+        nltx += rho * JW * coeffEXT[s] * FU[id + 0 * fieldOffset + s * fieldSumOffset];
+        nlty += rho * JW * coeffEXT[s] * FU[id + 1 * fieldOffset + s * fieldSumOffset];
+        nltz += rho * JW * coeffEXT[s] * FU[id + 2 * fieldOffset + s * fieldSumOffset];
+      }
+
+      BF[id + 0 * fieldOffset] = nltx + rho * (idt * bdfx);
+      BF[id + 1 * fieldOffset] = nlty + rho * (idt * bdfy);
+      BF[id + 2 * fieldOffset] = nltz + rho * (idt * bdfz);
+    }
+
+  } else {
+
+    for (dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)) {
+      dfloat JW = massMatrix[id];
+
+      dfloat bdfx = 0;
+#if p_SUBCYCLING
+      bdfx += NU[id];
+#else
+
+#pragma unroll p_nBDF
+      for (int s = 0; s < p_nBDF; s++) {
+#if p_MovingMesh
+        JW = massMatrix[id + s * fieldOffsetJW];
+#endif
+        bdfx += coeffBDF[s] * JW * U[id + fieldOffset + s * fieldSumOffset];
+     }
+#endif
+
+      const dfloat rho = RHO[id + fieldOffset];
+      dfloat nltx = 0;
+#pragma unroll p_nEXT
+      for (int s = 0; s < p_nEXT; s++) {
+#if p_MovingMesh
+        JW = massMatrix[id + s * fieldOffsetJW];
+#endif
+        // FU already multiplied by rho
+        nltx += JW * coeffEXT[s] * FU[id + fieldOffset + s * fieldSumOffset];
+      }
+
+      BF[id + fieldOffset] = nltx + rho * (idt * bdfx);
+    }
+
+  }
+}

@@ -1,8 +1,3 @@
-//
-// nekRS User Defined File
-//
-#include "udf.hpp"
-
 static dfloat Re_tau;
 static dfloat zLength;
 static dfloat dt0;
@@ -15,16 +10,16 @@ static dfloat dt0;
 
 #endif
 
-void userf(nrs_t *nrs, double time, occa::memory o_U, occa::memory o_FU)
+void userf(double time)
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->meshV;
   dfloat mue, rho;
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho);
   const dfloat RE_B = rho / mue;
   const dfloat DPDZ = 4 * (2 * Re_tau / RE_B) * (2 * Re_tau / RE_B);
 
-  occa::memory o_FUz = o_FU + 2 * nrs->fieldOffset;
+  auto o_FUz = nrs->o_NLT + 2 * nrs->fieldOffset;
   platform->linAlg->fill(mesh->Nlocal, DPDZ, o_FUz);
 }
 
@@ -39,27 +34,26 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   }
 
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
-    nek_cb_scnrs[0] = zLength;
+    *nek::ptr<double>("zlen") = zLength;
   }
 
   platform->options.getArgs("DT", dt0);
 }
 
-void UDF_Setup(nrs_t *nrs)
+void UDF_Setup()
 {
   if (platform->options.compareArgs("CONSTANT FLOW RATE", "FALSE")) {
     // assign function pointer to drive flow by constant mean pressure gradient
-    udf.uEqnSource = &userf;
+    nrs->userVelocitySource = &userf;
   }
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
+void UDF_ExecuteStep(double time, int tstep)
 {
   if (tstep < 5) {
-    nrs->dt[0] = 0.25 * dt0;
+    platform->options.setArgs("DT", to_string_f(0.25 * dt0));
   } else {
-    nrs->dt[0] = dt0;
+    platform->options.setArgs("DT", to_string_f(dt0));
   }
 
   if (nrs->lastStep) {

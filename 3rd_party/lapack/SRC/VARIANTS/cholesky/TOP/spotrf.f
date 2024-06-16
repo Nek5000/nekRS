@@ -79,8 +79,8 @@ C> \verbatim
 C>          INFO is INTEGER
 C>          = 0:  successful exit
 C>          < 0:  if INFO = -i, the i-th argument had an illegal value
-C>          > 0:  if INFO = i, the leading minor of order i is not
-C>                positive definite, and the factorization could not be
+C>          > 0:  if INFO = i, the leading principal minor of order i
+C>                is not positive, and the factorization could not be
 C>                completed.
 C> \endverbatim
 C>
@@ -128,7 +128,7 @@ C> \ingroup variantsPOcomputational
       EXTERNAL           LSAME, ILAENV
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           SGEMM, SPOTF2, SSYRK, STRSM, XERBLA
+      EXTERNAL           SGEMM, SPOTRF2, SSYRK, STRSM, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          MAX, MIN
@@ -163,7 +163,7 @@ C> \ingroup variantsPOcomputational
 *
 *        Use unblocked code.
 *
-         CALL SPOTF2( UPLO, N, A, LDA, INFO )
+         CALL SPOTRF2( UPLO, N, A, LDA, INFO )
       ELSE
 *
 *        Use blocked code.
@@ -189,7 +189,7 @@ C> \ingroup variantsPOcomputational
 *              Update and factorize the current diagonal block and test
 *              for non-positive-definiteness.
 *
-               CALL SPOTF2( 'Upper', JB, A( J, J ), LDA, INFO )
+               CALL SPOTRF2( 'Upper', JB, A( J, J ), LDA, INFO )
                IF( INFO.NE.0 )
      $            GO TO 30
 
@@ -216,7 +216,7 @@ C> \ingroup variantsPOcomputational
 *              Update and factorize the current diagonal block and test
 *              for non-positive-definiteness.
 *
-               CALL SPOTF2( 'Lower', JB, A( J, J ), LDA, INFO )
+               CALL SPOTRF2( 'Lower', JB, A( J, J ), LDA, INFO )
                IF( INFO.NE.0 )
      $            GO TO 30
 

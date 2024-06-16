@@ -1,8 +1,4 @@
-//
-// nekRS User Defined File
-//
-#include "udf.hpp"
-#include "plugins/RANSktau.hpp"
+#include "RANSktau.hpp"
 
 #include "ci.inc"
 
@@ -14,14 +10,14 @@ static dfloat rho, mueLam;
 
 #endif
 
-void extractLine(nrs_t *nrs, double time, int tstep)
+void extractLine(nrs_t *nrs, double time)
 {
   const auto np = (platform->comm.mpiRank == 0) ? 200 : 0;
   const auto offset = np;
 
   static pointInterpolation_t *interpolator = nullptr;
   static std::vector<dfloat> xp, yp, zp;
-  static occa::memory o_Up;
+  static deviceMemory<dfloat> o_Up;
 
   if (!interpolator) {
     auto mesh = nrs->meshV;
@@ -47,10 +43,10 @@ void extractLine(nrs_t *nrs, double time, int tstep)
       xp.push_back(x0);
       yp.push_back(yMax);
       zp.push_back(z0);
-      o_Up = platform->device.malloc<dfloat>(nrs->NVfields * offset);
+      o_Up.resize(nrs->NVfields * offset);
     }
 
-    interpolator = new pointInterpolation_t(nrs);
+    interpolator = new pointInterpolation_t(nrs->meshV);
     interpolator->setPoints(np, xp.data(), yp.data(), zp.data());
     interpolator->find();
   }
@@ -59,7 +55,7 @@ void extractLine(nrs_t *nrs, double time, int tstep)
 
   if (platform->comm.mpiRank == 0) {
     std::vector<dfloat> Up(nrs->NVfields * np);
-    o_Up.copyTo(Up.data());
+    o_Up.copyTo(Up);
 
     std::ofstream f("profile.dat", std::ios::app);
     for (int i = 0; i < np; i++) {
@@ -70,40 +66,32 @@ void extractLine(nrs_t *nrs, double time, int tstep)
   }
 }
 
-void userq(nrs_t *nrs, double time, occa::memory o_S, occa::memory o_FS)
+void userq(double time)
 {
-  mesh_t *mesh = nrs->meshV;
-  cds_t *cds = nrs->cds;
-
   RANSktau::updateSourceTerms();
 }
 
-void uservp(nrs_t *nrs,
-            double time,
-            occa::memory o_U,
-            occa::memory o_S,
-            occa::memory o_UProp,
-            occa::memory o_SProp)
+void uservp(double time)
 {
-  mesh_t *mesh = nrs->meshV;
-  cds_t *cds = nrs->cds;
+  auto mesh = nrs->meshV;
+  auto cds = nrs->cds;
 
   RANSktau::updateProperties();
 
   dfloat conductivity;
   platform->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
   const dfloat Pr_t = 0.7;
-  occa::memory o_mue_t = RANSktau::o_mue_t();
-  occa::memory o_temp_mue = cds->o_diff + 0 * cds->fieldOffset[0];
+  auto o_mue_t = RANSktau::o_mue_t();
+  auto o_temp_mue = cds->o_diff + 0 * cds->fieldOffset[0];
   scalarScaledAdd(mesh->Nlocal, conductivity, 1 / Pr_t, o_mue_t, o_temp_mue);
 }
 
-void UDF_LoadKernels(occa::properties& kernelInfo)
+void UDF_LoadKernels(deviceKernelProperties& kernelInfo)
 {
 #if 0
   {
     auto props = kernelInfo;
-    props["defines/p_sigma_k"] = 0.6;
+    props.define("p_sigma_k") = 0.6;
     RANSktau::buildKernel(props);
   }
 #endif
@@ -117,27 +105,24 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   }
 }
 
-void UDF_Setup(nrs_t *nrs)
+void UDF_Setup()
 {
-  mesh_t *mesh = nrs->meshV;
-  cds_t *cds = nrs->cds;
-
-  udf.properties = &uservp;
-  udf.sEqnSource = &userq;
+  nrs->userProperties = &uservp;
+  nrs->userScalarSource = &userq;
 
   const int scalarFieldStart = 1;
   platform->options.getArgs("VISCOSITY", mueLam);
   platform->options.getArgs("DENSITY", rho);
 
-  RANSktau::setup(nrs, mueLam, rho, scalarFieldStart);
+  RANSktau::setup(mueLam, rho, scalarFieldStart);
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
+void UDF_ExecuteStep(double time, int tstep)
 {
   if (ciMode) {
     ciTestErrors(nrs, time, tstep);
   }
-  if (nrs->isOutputStep) {
-    extractLine(nrs, time, tstep);
+  if (nrs->isCheckpointStep) {
+    extractLine(nrs, time);
   }
 }

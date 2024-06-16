@@ -13,8 +13,7 @@ int main(int argc, char *argv[]) {
   int rank, size;
   MPI_Comm_rank(world, &rank);
   MPI_Comm_size(world, &size);
-  if (in->nactive > size)
-    in->nactive = size;
+  if (in->nactive > size) in->nactive = size;
 
   MPI_Comm comm;
   MPI_Comm_split(world, rank < in->nactive, rank, &comm);
@@ -51,7 +50,7 @@ int main(int argc, char *argv[]) {
     parrsb_check_error(part == NULL, comm);
 
     parrsb_options options = parrsb_default_options;
-    err = parrsb_part_mesh(part, NULL, vl, coord, nelt, nv, options, comm);
+    err = parrsb_part_mesh(part, vl, coord, NULL, nelt, nv, &options, comm);
     parrsb_check_error(err, comm);
 
     // Redistribute data based on identified partitions

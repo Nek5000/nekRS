@@ -13,7 +13,7 @@
 extern void userExitHandler(int status);
 #else
 #define USEREXIT 0
-void userExitHandler(int status) {};
+void userExitHandler(int status) {}
 #endif
 
 void die(int status)

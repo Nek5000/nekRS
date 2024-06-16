@@ -8,4 +8,4 @@ occa::kernel benchmarkFDM(int Nelements,
                           int verbosity,
                           T NtestsOrTargetTime,
                           bool requiresBenchmark,
-                          std::string suffix);
+                          std::string suffix = "");

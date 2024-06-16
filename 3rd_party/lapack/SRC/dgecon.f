@@ -105,7 +105,15 @@
 *> \verbatim
 *>          INFO is INTEGER
 *>          = 0:  successful exit
-*>          < 0:  if INFO = -i, the i-th argument had an illegal value
+*>          < 0:  if INFO = -i, the i-th argument had an illegal value.
+*>                NaNs are illegal values for ANORM, and they propagate to
+*>                the output parameter RCOND.
+*>                Infinity is illegal for ANORM, and it propagates to the output
+*>                parameter RCOND as 0.
+*>          = 1:  if RCOND = NaN, or
+*>                   RCOND = Inf, or
+*>                   the computed norm of the inverse of A is 0.
+*>                In the latter, RCOND = 0 is returned.
 *> \endverbatim
 *
 *  Authors:
@@ -116,7 +124,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleGEcomputational
+*> \ingroup gecon
 *
 *  =====================================================================
       SUBROUTINE DGECON( NORM, N, A, LDA, ANORM, RCOND, WORK, IWORK,
@@ -146,16 +154,16 @@
       LOGICAL            ONENRM
       CHARACTER          NORMIN
       INTEGER            IX, KASE, KASE1
-      DOUBLE PRECISION   AINVNM, SCALE, SL, SMLNUM, SU
+      DOUBLE PRECISION   AINVNM, SCALE, SL, SMLNUM, SU, HUGEVAL
 *     ..
 *     .. Local Arrays ..
       INTEGER            ISAVE( 3 )
 *     ..
 *     .. External Functions ..
-      LOGICAL            LSAME
+      LOGICAL            LSAME, DISNAN
       INTEGER            IDAMAX
       DOUBLE PRECISION   DLAMCH
-      EXTERNAL           LSAME, IDAMAX, DLAMCH
+      EXTERNAL           LSAME, IDAMAX, DLAMCH, DISNAN
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DLACN2, DLATRS, DRSCL, XERBLA
@@ -164,6 +172,8 @@
       INTRINSIC          ABS, MAX
 *     ..
 *     .. Executable Statements ..
+*
+      HUGEVAL = DLAMCH( 'Overflow' )
 *
 *     Test the input parameters.
 *
@@ -190,6 +200,13 @@
          RCOND = ONE
          RETURN
       ELSE IF( ANORM.EQ.ZERO ) THEN
+         RETURN
+      ELSE IF( DISNAN( ANORM ) ) THEN
+         RCOND = ANORM
+         INFO = -5
+         RETURN
+      ELSE IF( ANORM.GT.HUGEVAL ) THEN
+         INFO = -5
          RETURN
       END IF
 *
@@ -247,8 +264,17 @@
 *
 *     Compute the estimate of the reciprocal condition number.
 *
-      IF( AINVNM.NE.ZERO )
-     $   RCOND = ( ONE / AINVNM ) / ANORM
+      IF( AINVNM.NE.ZERO ) THEN
+         RCOND = ( ONE / AINVNM ) / ANORM
+      ELSE
+         INFO = 1
+         RETURN
+      END IF
+*
+*     Check for NaNs and Infs
+*
+      IF( DISNAN( RCOND ) .OR. RCOND.GT.HUGEVAL )
+     $   INFO = 1
 *
    20 CONTINUE
       RETURN

@@ -230,7 +230,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16GEeigen
+*> \ingroup geesx
 *
 *  =====================================================================
       SUBROUTINE ZGEESX( JOBVS, SORT, SELECT, SENSE, N, A, LDA, SDIM, W,
@@ -273,8 +273,8 @@
       DOUBLE PRECISION   DUM( 1 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLABAD, DLASCL, XERBLA, ZCOPY, ZGEBAK, ZGEBAL,
-     $                   ZGEHRD, ZHSEQR, ZLACPY, ZLASCL, ZTRSEN, ZUNGHR
+      EXTERNAL           DLASCL, XERBLA, ZCOPY, ZGEBAK, ZGEBAL, ZGEHRD,
+     $                   ZHSEQR, ZLACPY, ZLASCL, ZTRSEN, ZUNGHR
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -376,7 +376,6 @@
       EPS = DLAMCH( 'P' )
       SMLNUM = DLAMCH( 'S' )
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
       SMLNUM = SQRT( SMLNUM ) / EPS
       BIGNUM = ONE / SMLNUM
 *

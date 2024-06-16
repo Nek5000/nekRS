@@ -1,0 +1,20 @@
+@kernel void mapScalar(const dlong Nlocal,
+  const dlong Nscalar,
+  const dlong offset,
+  const dlong Nstates,
+  const dlong NscalarInterp,
+  @restrict const dlong * scalarIndices,
+  @restrict dfloat * S,
+  @restrict dfloat * interpS)
+{
+  for(int n = 0; n < Nlocal; ++n; @tile(p_blockSize, @outer, @inner)){
+    for(int scalar = 0; scalar < Nscalar; ++scalar){
+      const dlong scalarId = scalarIndices[scalar];
+      if(scalarId > -1){
+        for(int s = 0; s < Nstates; ++s){
+          interpS[n + scalarId * offset + s * NscalarInterp * offset] = S[n + scalar * offset + s * Nscalar * offset];
+        }
+      }
+    }
+  }
+}

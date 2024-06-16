@@ -1,6 +1,5 @@
 #include "platform.hpp"
 #include "comm.hpp"
-#include "nrs.hpp"
 
 comm_t::comm_t(MPI_Comm _commg, MPI_Comm _comm)
 {
@@ -15,46 +14,43 @@ comm_t::comm_t(MPI_Comm _commg, MPI_Comm _comm)
   MPI_Comm_size(mpiCommLocal, &mpiCommLocalSize);
 
   useGPUAware = true;
-  const char * gpuMPIEnv = getenv("NEKRS_GPU_MPI");
-  if(gpuMPIEnv){
-    if(std::stoi(gpuMPIEnv)){
+  const char *gpuMPIEnv = getenv("NEKRS_GPU_MPI");
+  if (gpuMPIEnv) {
+    if (std::stoi(gpuMPIEnv)) {
       useGPUAware = true;
     } else {
       useGPUAware = false;
     }
   }
-
 }
 
 MPI_Datatype comm_t::toMPI_Datatype(comm_t::type t) const
 {
-  switch(t)
-  {
-    case comm_t::type::dfloat:
-      return MPI_DFLOAT;
-    case comm_t::type::dlong:
-      return MPI_DLONG;
-    case comm_t::type::hlong:
-      return MPI_HLONG;
-    default:
-      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "Unkown datatype!");
+  switch (t) {
+  case comm_t::type::dfloat:
+    return MPI_DFLOAT;
+  case comm_t::type::dlong:
+    return MPI_DLONG;
+  case comm_t::type::hlong:
+    return MPI_HLONG;
+  default:
+    nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "Unkown datatype!");
   }
- 
+
   return 0;
 }
 
-MPI_Op comm_t::toMPI_Op(comm_t::op o)const
+MPI_Op comm_t::toMPI_Op(comm_t::op o) const
 {
-  switch(o)
-  {
-    case comm_t::op::sum:
-      return MPI_SUM;
-    case comm_t::op::max:
-      return MPI_MAX;
-    case comm_t::op::min:
-      return MPI_MIN;
-    default:
-      nrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "Unknown operation!");
+  switch (o) {
+  case comm_t::op::sum:
+    return MPI_SUM;
+  case comm_t::op::max:
+    return MPI_MAX;
+  case comm_t::op::min:
+    return MPI_MIN;
+  default:
+    nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "Unknown operation!");
   }
 
   return 0;
@@ -62,21 +58,30 @@ MPI_Op comm_t::toMPI_Op(comm_t::op o)const
 
 void comm_t::reallocScratch(size_t Nbytes) const
 {
-  if(useGPUAware) return;
-
-  if(h_recvBuf.size() < Nbytes){
-    if(h_recvBuf.size()) h_recvBuf.free();
-    if(h_sendBuf.size()) h_sendBuf.free();
-    h_recvBuf = platform->device.mallocHost(Nbytes);
-    h_sendBuf = platform->device.mallocHost(Nbytes);
-    recv = (void*) h_recvBuf.ptr();
-    send = (void*) h_sendBuf.ptr();
+  if (useGPUAware) {
+    return;
   }
 
+  if (h_recvBuf.size() < Nbytes) {
+    if (h_recvBuf.size()) {
+      h_recvBuf.free();
+    }
+    if (h_sendBuf.size()) {
+      h_sendBuf.free();
+    }
+    h_recvBuf = platform->device.mallocHost(Nbytes);
+    h_sendBuf = platform->device.mallocHost(Nbytes);
+    recv = (void *)h_recvBuf.ptr();
+    send = (void *)h_sendBuf.ptr();
+  }
 };
 
-int comm_t::allreduce(const void *sendbuf, void *recvbuf, int count,
-                comm_t::type datatype, comm_t::op op, MPI_Comm comm) const
+int comm_t::allreduce(const void *sendbuf,
+                      void *recvbuf,
+                      int count,
+                      comm_t::type datatype,
+                      comm_t::op op,
+                      MPI_Comm comm) const
 {
   auto mpiDataType = toMPI_Datatype(datatype);
   auto mpiOp = toMPI_Op(op);
@@ -84,8 +89,12 @@ int comm_t::allreduce(const void *sendbuf, void *recvbuf, int count,
   return MPI_Allreduce(sendbuf, recvbuf, count, mpiDataType, mpiOp, comm);
 }
 
-int comm_t::allreduce(occa::memory sendbuf, occa::memory recvbuf, int count,
-                comm_t::type datatype, comm_t::op op, MPI_Comm comm) const
+int comm_t::allreduce(occa::memory sendbuf,
+                      occa::memory recvbuf,
+                      int count,
+                      comm_t::type datatype,
+                      comm_t::op op,
+                      MPI_Comm comm) const
 {
   auto mpiDataType = toMPI_Datatype(datatype);
   auto mpiOp = toMPI_Op(op);
@@ -97,9 +106,9 @@ int comm_t::allreduce(occa::memory sendbuf, occa::memory recvbuf, int count,
 
   reallocScratch(Nbytes);
 
-  if(useGPUAware || platform->serial){
+  if (useGPUAware || platform->serial) {
     platform->device.finish();
-    return MPI_Allreduce((void*) sendbuf.ptr(), (void*) recvbuf.ptr(), count, mpiDataType, mpiOp, comm);
+    return MPI_Allreduce((void *)sendbuf.ptr(), (void *)recvbuf.ptr(), count, mpiDataType, mpiOp, comm);
   } else {
     int retVal = 0;
 
@@ -112,8 +121,11 @@ int comm_t::allreduce(occa::memory sendbuf, occa::memory recvbuf, int count,
 }
 
 // in place
-int comm_t::allreduce(occa::memory recvbuf, int count,
-                comm_t::type datatype, comm_t::op op, MPI_Comm comm) const
+int comm_t::allreduce(occa::memory recvbuf,
+                      int count,
+                      comm_t::type datatype,
+                      comm_t::op op,
+                      MPI_Comm comm) const
 {
   auto mpiDataType = toMPI_Datatype(datatype);
   auto mpiOp = toMPI_Op(op);
@@ -125,9 +137,9 @@ int comm_t::allreduce(occa::memory recvbuf, int count,
 
   reallocScratch(Nbytes);
 
-  if(useGPUAware || platform->serial){
+  if (useGPUAware || platform->serial) {
     platform->device.finish();
-    return MPI_Allreduce(MPI_IN_PLACE, (void*) recvbuf.ptr(), count, mpiDataType, mpiOp, comm);
+    return MPI_Allreduce(MPI_IN_PLACE, (void *)recvbuf.ptr(), count, mpiDataType, mpiOp, comm);
   } else {
     int retVal = 0;
 

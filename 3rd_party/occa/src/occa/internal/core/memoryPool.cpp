@@ -5,8 +5,6 @@
 
 namespace occa {
 
-  using experimental::memoryPool;
-
   modeMemoryPool_t::modeMemoryPool_t(modeDevice_t *modeDevice_,
                                      const occa::json &properties_) :
     modeBuffer_t(modeDevice_, 0, properties_),
@@ -14,6 +12,7 @@ namespace occa {
     reserved(0),
     buffer(nullptr) {
     verbose = properties_.get("verbose", false);
+    resize_through_host = properties_.get("resize_through_host", false);
   }
 
   modeMemoryPool_t::~modeMemoryPool_t() {
@@ -70,16 +69,21 @@ namespace occa {
 
     /*Remove this mem from the reservation list*/
     auto pos = reservations.find(mem);
+
     reservations.erase(pos);
 
     /*Find how much of this mem is removed from reserved space*/
     dim_t lo = (mem->offset / alignment) * alignment; //Round down to alignment
     dim_t hi = ((mem->offset + mem->size + alignment - 1)
                 / alignment) * alignment; //Round up
+
+    const auto mem_size = hi-lo;
+
     for (modeMemory_t* m : reservations) {
       const dim_t mlo = (m->offset / alignment) * alignment;
       const dim_t mhi = ((m->offset + m->size + alignment - 1)
                         / alignment) * alignment;
+
       if (mlo >= hi) break;
       if (mhi <= lo) continue;
 
@@ -92,6 +96,9 @@ namespace occa {
       if (lo == hi) break;
     }
     reserved -= hi-lo;
+    if (hi-lo) {
+      OCCA_ERROR("Invalid partial release of reserved memory", (mem_size == hi-lo)); 
+    }
   }
 
   bool modeMemoryPool_t::needsFree() const {
@@ -142,12 +149,10 @@ namespace occa {
                "(reserved: " << reserved << ", bytes: " << bytes << ")",
                reserved <= bytes);
 
-    if (size == bytes) return; /*Nothing to do*/
-
     const udim_t alignedBytes = ((bytes + alignment - 1) / alignment) * alignment;
 
     if (verbose) {
-      io::stdout << "MemoryPool: Resizing to " << alignedBytes << " bytes\n";
+      io::stdout << "MemoryPool: Resizing from " << size << " to " << alignedBytes << " bytes\n";
     }
 
     if (reservations.size() == 0) {
@@ -172,29 +177,51 @@ namespace occa {
       Make a new allocation and migrate reserved space to new allocation
       packing the space in the process
       */
-      modeBuffer_t* newBuffer = makeBuffer();
-      newBuffer->malloc(alignedBytes);
 
+      char* host_memory = nullptr;
+      modeBuffer_t* old_buffer = nullptr; 
+     
+      if (resize_through_host) {
+        host_memory = static_cast<char*>(sys::malloc(size));
+        buffer->slice(0,size)->copyTo(host_memory,size);
+        delete buffer;
+      } else {
+        old_buffer = buffer;
+      }
+
+      buffer = makeBuffer();
+      buffer->malloc(alignedBytes);
+      size = alignedBytes;
+      
       modeDevice->bytesAllocated += alignedBytes;
       modeDevice->maxBytesAllocated = std::max(
         modeDevice->maxBytesAllocated, modeDevice->bytesAllocated
       );
+
+      modeMemory_t* new_memory = nullptr;
+      if (resize_through_host) new_memory = buffer->slice(0,alignedBytes);
 
       /*Loop through the reservation list*/
       auto it = reservations.begin();
       modeMemory_t* m = *it;
       dim_t lo = m->offset;    /*Start point of current block*/
       dim_t hi = lo + m->size; /*End point of current block*/
-      dim_t offset = 0;
       udim_t newReserved = 0;
-      setPtr(m, newBuffer, offset);
+      dim_t offset = 0;
+      setPtr(m, buffer, offset);
+      
+      occa::json async_property({{"async", true}});
       do {
 
         it++;
 
         if (it == reservations.end()) {
           /*If this reservation is the last one, copy the block and we're done*/
-          memcpy(newBuffer, offset, buffer, lo, hi - lo);
+          if (resize_through_host) {
+            new_memory->copyFrom(host_memory + lo, hi-lo, offset, async_property);
+          } else {
+            memcpy(buffer,offset, old_buffer, lo, hi-lo);
+          }
           newReserved += ((hi - lo + alignment - 1) / alignment) * alignment;
         } else {
           /*Look at next reservation*/
@@ -206,7 +233,11 @@ namespace occa {
             If the start point of the next reservation is in a new block
             copy the last block to the new allocation
             */
-            memcpy(newBuffer, offset, buffer, lo, hi - lo);
+            if (resize_through_host) {
+              new_memory->copyFrom(host_memory + lo, hi-lo, offset, async_property);
+            } else {
+              memcpy(buffer, offset, old_buffer, lo, hi-lo);
+            }
             const udim_t reservationSize = ((hi - lo + alignment - 1) / alignment) * alignment;
             newReserved += reservationSize;
 
@@ -222,16 +253,18 @@ namespace occa {
             hi = std::max(hi, mhi);
           }
           /*Update the buffer of this reservation*/
-          setPtr(m, newBuffer, m->offset - (lo - offset));
+          setPtr(m, buffer, m->offset - (lo - offset));
         }
       } while (it != reservations.end());
 
-      /*Clean up old buffer*/
-      delete buffer;
-
-      buffer = newBuffer;
-      size = alignedBytes;
       reserved = newReserved;
+
+      if (host_memory) {
+        modeDevice->finish(); //wait for async copies to finish
+        sys::free(host_memory);
+      }
+
+      if (old_buffer) delete old_buffer;
     }
   }
 

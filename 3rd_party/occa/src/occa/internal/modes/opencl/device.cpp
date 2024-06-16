@@ -17,27 +17,10 @@
 
 namespace occa {
   namespace opencl {
-    device::device(const occa::json &properties_) :
-      occa::launchedModeDevice_t(properties_) {
+    device::device(const occa::json &properties_, cl_device_id clDevice_) :
+      occa::launchedModeDevice_t(properties_), clDevice(clDevice_) {
 
-      if (!properties.has("wrapped")) {
-        cl_int error;
-        OCCA_ERROR("[OpenCL] device not given a [platform_id] integer",
-                   properties.has("platform_id") &&
-                   properties["platform_id"].isNumber());
-
-        OCCA_ERROR("[OpenCL] device not given a [device_id] integer",
-                   properties.has("device_id") &&
-                   properties["device_id"].isNumber());
-
-        platformID = properties.get<int>("platform_id");
-        deviceID   = properties.get<int>("device_id");
-
-        clDevice = opencl::deviceID(platformID, deviceID);
-
-        clContext = clCreateContext(NULL, 1, &clDevice, NULL, NULL, &error);
-        OCCA_OPENCL_ERROR("Device: Creating Context", error);
-      }
+      clContext = createContextFromDevice(clDevice);
 
       occa::json &kernelProps = properties["kernel"];
       std::string compilerFlags;
@@ -55,7 +38,20 @@ namespace occa {
       }
       compilerFlags += " -cl-std=CL" + ocl_c_ver;
 
+      const bool includeOcca = kernelProps.get("kernel/include_occa", false);
+      const bool linkOcca    = kernelProps.get("kernel/link_occa", false);
+
+      if (includeOcca) {
+        compilerFlags += " -I" + env::OCCA_DIR + "include";
+        compilerFlags += " -I" + env::OCCA_INSTALL_DIR + "include";
+      }
+      if (linkOcca) {
+        compilerFlags += " -L" + env::OCCA_INSTALL_DIR + "lib -locca";
+      }
+
       kernelProps["compiler_flags"] = compilerFlags;
+
+      arch = opencl::deviceStrInfo(clDevice, CL_DEVICE_NAME);
     }
 
     device::~device() {
@@ -72,20 +68,25 @@ namespace occa {
 
     hash_t device::hash() const {
       if (!hash_.initialized) {
+        cl_platform_id platform_id = getPlatformFromDevice(clDevice);
         std::stringstream ss;
-        ss << "platform name: " << opencl::platformName(platformID)
-          << " platform vendor: " << opencl::platformVendor(platformID)
-          << " platform version: " << opencl::platformVersion(platformID)
-          << " device name: " << opencl::deviceName(platformID,deviceID)
-          << " device vendor: " << opencl::deviceVendor(platformID,deviceID)
-          << " device version: " << opencl::deviceVersion(platformID,deviceID);
+        ss << "platform name: "    << opencl::platformName(platform_id)
+          << " platform vendor: "  << opencl::platformVendor(platform_id)
+          << " platform version: " << opencl::platformVersion(platform_id)
+          << " device name: "      << opencl::deviceName(clDevice)
+          << " device vendor: "    << opencl::deviceVendor(clDevice)
+          << " device version: "   << opencl::deviceVersion(clDevice);
         hash_ = occa::hash(ss.str());
       }
       return hash_;
     }
 
     hash_t device::kernelHash(const occa::json &props) const {
-      return occa::hash(props["compiler_flags"]);
+      return (
+        occa::hash(props["compiler_flags"])
+        ^ props["kernel/include_occa"]
+        ^ props["kernel/link_occa"]
+      );
     }
 
     lang::okl::withLauncher* device::createParser(const occa::json &props) const {
@@ -196,6 +197,9 @@ namespace occa {
       opencl::saveProgramBinary(clInfo,
                                 binaryFilename);
 
+      const bool compile_only = kernelProps.get("build/compile_only",false);
+      if (compile_only) return nullptr;
+
       if (usingOkl) {
         return buildOKLKernelFromBinary(clInfo,
                                         kernelHash,
@@ -271,7 +275,8 @@ namespace occa {
       k.launcherKernel = buildLauncherKernel(kernelHash,
                                              hashDir,
                                              kernelName,
-                                             launcherMetadata);
+                                             launcherMetadata,
+                                             kernelProps);
       if (!k.launcherKernel) {
         delete &k;
         return NULL;

@@ -239,7 +239,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16OTHERcomputational
+*> \ingroup laed7
 *
 *  =====================================================================
       SUBROUTINE ZLAED7( N, CUTPNT, QSIZ, TLVLS, CURLVL, CURPBM, D, Q,
@@ -363,7 +363,7 @@
             RETURN
          END IF
 *
-*     Prepare the INDXQ sorting premutation.
+*     Prepare the INDXQ sorting permutation.
 *
          N1 = K
          N2 = N - K

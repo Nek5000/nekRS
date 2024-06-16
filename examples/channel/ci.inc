@@ -40,7 +40,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   nek::ocopyToNek(time, tstep);
   nek::userchk();
 
-  double *err = (double *)nek::scPtr(5);
+  auto err = nek::ptr<double>("errors");
 
   const double vxErr = abs((err[0] - 9.5942E-09) / err[0]);
   const double vyErr = abs((err[1] - 2.3012E-07) / err[1]);
@@ -49,5 +49,5 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
     printf("relative error to target: vx=%g vy=%g\n", vxErr, vyErr);
   }
 
-  (vxErr < EPS && vyErr < EPS) ? (CIPASS) : (CIFAIL);
+  (vxErr < EPS && vyErr < EPS) ? (CiPassTest()) : (CiFailTest());
 }

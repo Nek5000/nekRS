@@ -99,7 +99,8 @@ void meshOccaPopulateDeviceHex3D(mesh_t *mesh, setupAide &newOptions, occa::prop
   for(int j = 0; j < mesh->Nq; ++j)
     for(int i = 0; i < mesh->Nq; ++i)
       DT[i * mesh->Nq + j] = mesh->D[j * mesh->Nq + i];
-  mesh->o_DT = platform->device.malloc<dfloat>(mesh->Nq * mesh->Nq, DT); //dummy
+  mesh->o_DT = platform->device.malloc<dfloat>(mesh->Nq * mesh->Nq);
+  mesh->o_DT.copyFrom(DT);
   free(DT);
 
   mesh->o_vgeo =

@@ -154,7 +154,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleGEsolve
+*> \ingroup getsls
 *
 *  =====================================================================
       SUBROUTINE DGETSLS( TRANS, M, N, NRHS, A, LDA, B, LDB,
@@ -189,7 +189,7 @@
 *     .. External Functions ..
       LOGICAL            LSAME
       DOUBLE PRECISION   DLAMCH, DLANGE
-      EXTERNAL           LSAME, DLABAD, DLAMCH, DLANGE
+      EXTERNAL           LSAME, DLAMCH, DLANGE
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DGEQR, DGEMQR, DLASCL, DLASET,
@@ -294,7 +294,6 @@
 *
        SMLNUM = DLAMCH( 'S' ) / DLAMCH( 'P' )
        BIGNUM = ONE / SMLNUM
-       CALL DLABAD( SMLNUM, BIGNUM )
 *
 *     Scale A, B if max element outside range [SMLNUM,BIGNUM]
 *

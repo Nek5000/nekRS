@@ -102,7 +102,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16GEauxiliary
+*> \ingroup gesc2
 *
 *> \par Contributors:
 *  ==================
@@ -138,7 +138,7 @@
       COMPLEX*16         TEMP
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           ZLASWP, ZSCAL, DLABAD
+      EXTERNAL           ZLASWP, ZSCAL
 *     ..
 *     .. External Functions ..
       INTEGER            IZAMAX
@@ -155,7 +155,6 @@
       EPS = DLAMCH( 'P' )
       SMLNUM = DLAMCH( 'S' ) / EPS
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
 *
 *     Apply permutations IPIV to RHS
 *

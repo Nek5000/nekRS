@@ -26,12 +26,10 @@ void matrix_inverse(int N, double *A) {
   double *work = (double *)calloc(N * N, sizeof(double));
 
   FDGETRF(&N, &N, A, &N, ipiv, &info);
-  if (info != 0)
-    printf("dgetrf: %d\n", info);
+  if (info != 0) printf("dgetrf: %d\n", info);
 
   FDGETRI(&N, A, &N, ipiv, work, &size, &info);
-  if (info != 0)
-    printf("dgetri: %d\n", info);
+  if (info != 0) printf("dgetri: %d\n", info);
 
   free(ipiv);
   free(work);

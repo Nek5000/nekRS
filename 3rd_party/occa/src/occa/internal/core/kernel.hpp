@@ -14,8 +14,10 @@ namespace occa {
     std::string name;
     std::string sourceFilename, binaryFilename;
     occa::json properties;
-    hash_t hash;
+  private:
+    std::string hash;
 
+  public:
     // Requirements to launch kernel
     dim outerDims, innerDims;
     std::vector<kernelArgData> arguments;

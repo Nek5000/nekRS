@@ -6,10 +6,10 @@
 #include <set>
 #include <algorithm>
 
-namespace{
-
-struct LVectorMapping_t
+namespace
 {
+
+struct LVectorMapping_t {
   dlong Nlocal;
   occa::memory o_EToL;
   occa::memory o_EToLUnique;
@@ -21,27 +21,28 @@ struct LVectorMapping_t
 class LVectorMappingManager_t
 {
 public:
-  static LVectorMappingManager_t& instance()
+  static LVectorMappingManager_t &instance()
   {
     static LVectorMappingManager_t instance_;
     return instance_;
   }
 
-  LVectorMappingManager_t(const LVectorMappingManager_t&) = delete;
-  LVectorMappingManager_t& operator=(const LVectorMappingManager_t&) = delete;
-  
-  auto get(mesh_t* mesh)
+  LVectorMappingManager_t(const LVectorMappingManager_t &) = delete;
+  LVectorMappingManager_t &operator=(const LVectorMappingManager_t &) = delete;
+
+  auto get(mesh_t *mesh)
   {
     if (mappings_.count(mesh) == 0) {
       mappings_[mesh] = setup(mesh);
     }
-    
+
     return mappings_[mesh];
   }
 
 private:
   LVectorMappingManager_t() = default;
-  LVectorMapping_t setup(mesh_t * mesh)
+
+  LVectorMapping_t setup(mesh_t *mesh)
   {
     auto o_Lids = platform->o_memPool.reserve<dlong>(mesh->Nlocal);
     std::vector<dlong> Eids(mesh->Nlocal);
@@ -82,8 +83,7 @@ private:
     auto o_EToL = platform->device.malloc<dlong>(mesh->Nlocal, EToL.data());
 
     // construct L-vector version of inv degree, based on duplicated points in L-vector
-    auto [o_invDegreeL, o_invDegreeLPfloat] = [&]()
-    {
+    auto [o_invDegreeL, o_invDegreeLPfloat] = [&]() {
       std::vector<dfloat> degree(mesh->Nlocal, 0.0);
 
       for (int n = 0; n < mesh->Nlocal; ++n) {
@@ -106,15 +106,16 @@ private:
 
       // sanity check:
       // entries in invDegreeL are on (0,1]
-      bool allPositive =
-          std::all_of(invDegreeL.begin(), invDegreeL.end(), [](auto &&val) { return val > 0.0 && val <= 1.0; });
+      bool allPositive = std::all_of(invDegreeL.begin(), invDegreeL.end(), [](auto &&val) {
+        return val > 0.0 && val <= 1.0;
+      });
       int err = allPositive ? 0 : 1;
       MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-      nrsCheck(err,
-               platform->comm.mpiComm,
-               EXIT_FAILURE,
-               "%s\n",
-               "Encountered invDegreeL value outside of (0,1]");
+      nekrsCheck(err,
+                 platform->comm.mpiComm,
+                 EXIT_FAILURE,
+                 "%s\n",
+                 "Encountered invDegreeL value outside of (0,1]");
 
       // on a single processor, T-vector and L-vector are the same --> invDegreeL is unity everywhere
       if (platform->comm.mpiCommSize == 1) {
@@ -124,16 +125,16 @@ private:
         });
         int err = allUnity ? 0 : 1;
         MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-        nrsCheck(err,
-                 platform->comm.mpiComm,
-                 EXIT_FAILURE,
-                 "%s\n",
-                 "Encountered non-unity invDegreeL when P=1");
+        nekrsCheck(err,
+                   platform->comm.mpiComm,
+                   EXIT_FAILURE,
+                   "%s\n",
+                   "Encountered non-unity invDegreeL when P=1");
       }
 
       // construct pfloat version
       std::vector<pfloat> invDegreeLPfloat(NL, 1.0);
-      for(int n = 0; n < NL; ++n) {
+      for (int n = 0; n < NL; ++n) {
         invDegreeLPfloat[n] = static_cast<pfloat>(invDegreeL[n]);
       }
 
@@ -147,17 +148,17 @@ private:
     bool allNonNegative = std::all_of(EToL.begin(), EToL.end(), [](auto &&val) { return val >= 0; });
     int err = allNonNegative ? 0 : 1;
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "Encountered negative value in EToL mapping");
+    nekrsCheck(err,
+               platform->comm.mpiComm,
+               EXIT_FAILURE,
+               "%s\n",
+               "Encountered negative value in EToL mapping");
 
     // range of EToL is [0, NL)
     auto minmax = std::minmax_element(EToL.begin(), EToL.end());
     err = (*minmax.first == 0 && *minmax.second == NL - 1) ? 0 : 1;
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    nrsCheck(err,
-             platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "%s\n",
-             "EToL mapping is not in range [0, NL)");
+    nekrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "EToL mapping is not in range [0, NL)");
 
     // every value in [0,NL) is covered in the range of EToL
     std::set<dlong> uniqueOutputs;
@@ -166,48 +167,46 @@ private:
     }
     err = (uniqueOutputs.size() == NL) ? 0 : 1;
     MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "EToL mapping is not surjective");
+    nekrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "EToL mapping is not surjective");
 
     o_Lids.free();
 
     return LVectorMapping_t{NL, o_EToL, o_EToLUnique, o_invDegreeL, o_invDegreeLPfloat};
   }
-  
-  std::map<mesh_t*, LVectorMapping_t> mappings_;
+
+  std::map<mesh_t *, LVectorMapping_t> mappings_;
 };
 
-}
+} // namespace
 
-// =======================================================================================================
-template<typename FPType>
-LVector_t<FPType>::LVector_t(const std::vector<mesh_t*>& meshes, bool oallocate)
-: meshes_(meshes),
-  oallocate_(oallocate),
-  fieldOffset_(meshes.size(),0),
-  fieldOffsetScan_(meshes.size(),0),
-  Nlocals_(meshes.size(),0)
+template <typename FPType>
+LVector_t<FPType>::LVector_t(const std::vector<mesh_t *> &meshes, bool oallocate)
+    : meshes_(meshes), oallocate_(oallocate), fieldOffset_(meshes.size(), 0),
+      fieldOffsetScan_(meshes.size(), 0), Nlocals_(meshes.size(), 0)
 {
-  if(meshes.size() == 0) return; // empty LVector
+  if (meshes.size() == 0) {
+    return; // empty LVector
+  }
 
-  std::map<mesh_t*, std::vector<dlong>> meshToFields;
-  for(auto&& mesh : meshes){
+  std::map<mesh_t *, std::vector<dlong>> meshToFields;
+  for (auto &&mesh : meshes) {
     NfieldsMesh_[mesh] = 0;
     meshToFields[mesh] = std::vector<dlong>();
   }
 
   fieldOffsetSum_ = 0;
-  for(int fld = 0; fld < meshes.size(); ++fld){
+  for (int fld = 0; fld < meshes.size(); ++fld) {
     auto mesh = meshes[fld];
     auto mapping = LVectorMappingManager_t::instance().get(mesh);
     o_EToLs_[mesh] = mapping.o_EToL;
     o_EToLUniques_[mesh] = mapping.o_EToLUnique;
-    
-    if(std::is_same<FPType,dfloat>::value){
+
+    if (std::is_same<FPType, dfloat>::value) {
       o_invDegrees_[mesh] = mapping.o_invDegree;
     } else {
       o_invDegrees_[mesh] = mapping.o_invDegreePfloat;
     }
-    
+
     Nlocals_[fld] = mapping.Nlocal;
     fieldOffset_[fld] = alignStride<FPType>(mapping.Nlocal);
     fieldOffsetSum_ += fieldOffset_[fld];
@@ -216,42 +215,36 @@ LVector_t<FPType>::LVector_t(const std::vector<mesh_t*>& meshes, bool oallocate)
     meshToFields[mesh].push_back(fld);
   }
 
-  for(auto&& mesh : meshes)
-  {
+  for (auto &&mesh : meshes) {
     auto fields = meshToFields.at(mesh);
     fields_[mesh] = platform->device.malloc<dlong>(fields.size(), fields.data());
   }
 
   fieldOffsetScan_[0] = 0;
   for (int fld = 1; fld < meshes.size(); ++fld) {
-    fieldOffsetScan_[fld] = fieldOffsetScan_[fld-1] + fieldOffset_[fld-1];
+    fieldOffsetScan_[fld] = fieldOffsetScan_[fld - 1] + fieldOffset_[fld - 1];
   }
 
   o_fieldOffsetScan_ = platform->device.malloc<dlong>(meshes.size(), fieldOffsetScan_.data());
-  if(oallocate){
+  if (oallocate) {
     o_L_ = platform->device.malloc<FPType>(fieldOffsetSum_);
   }
 
   auto suffix = LVector_t<FPType>::FPTypeString();
-  this->EToLKernel_ = platform->kernels.get("EToL" + suffix);
-  this->LToEKernel_ = platform->kernels.get("LToE" + suffix);
+  this->EToLKernel_ = platform->kernelRequests.load("EToL" + suffix);
+  this->LToEKernel_ = platform->kernelRequests.load("LToE" + suffix);
 }
 
-// =======================================================================================================
-template<typename FPType>
-occa::memory & LVector_t<FPType>::optr()
+template <typename FPType> occa::memory &LVector_t<FPType>::optr()
 {
   return this->o_L_;
 }
 
-// =======================================================================================================
-template<typename FPType>
-const occa::memory & LVector_t<FPType>::optr() const
+template <typename FPType> const occa::memory &LVector_t<FPType>::optr() const
 {
   return this->o_L_;
 }
 
-// =======================================================================================================
 template <typename FPType>
 void LVector_t<FPType>::optr(const std::vector<dlong> &fieldOffsets, occa::memory &o_L)
 {
@@ -259,16 +252,14 @@ void LVector_t<FPType>::optr(const std::vector<dlong> &fieldOffsets, occa::memor
   this->optr(o_L);
 }
 
-// =======================================================================================================
-template<typename FPType>
-void LVector_t<FPType>::optr(occa::memory &o_L)
+template <typename FPType> void LVector_t<FPType>::optr(occa::memory &o_L)
 {
-  nrsCheck(o_L.size() <= this->size(),
-           platform->comm.mpiComm,
-           EXIT_FAILURE,
-           "LVector_t::optr o_L.size() = %ld, while expecting at least %d entries!\n",
-           o_L.size(),
-           this->size());
+  nekrsCheck(o_L.byte_size() <= this->size(),
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "LVector_t::optr o_L.byte_size() = %ld, while expecting at least %d entries!\n",
+             o_L.byte_size(),
+             this->size());
 
   if (this->o_L_.isInitialized() && oallocate_) {
     this->o_L_.free();
@@ -277,7 +268,6 @@ void LVector_t<FPType>::optr(occa::memory &o_L)
   this->o_L_ = o_L;
 }
 
-// =======================================================================================================
 template <typename FPType> void LVector_t<FPType>::fieldOffsets(const std::vector<dlong> &fieldOffsets)
 {
   if (this->nFields() == 0) {
@@ -285,12 +275,12 @@ template <typename FPType> void LVector_t<FPType>::fieldOffsets(const std::vecto
   }
 
   // offsets size _must_ match the number of fields
-  nrsCheck(fieldOffsets.size() != this->nFields(),
-           platform->comm.mpiComm,
-           EXIT_FAILURE,
-           "LVector_t::offsets offsets.size() = %ld, while expecting %d entries!\n",
-           fieldOffsets.size(),
-           this->nFields());
+  nekrsCheck(fieldOffsets.size() != this->nFields(),
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "LVector_t::offsets offsets.size() = %ld, while expecting %d entries!\n",
+             fieldOffsets.size(),
+             this->nFields());
 
   // check that each fieldOffset is at least as large as the corresponding Nlocal
   std::ostringstream errLogger;
@@ -302,7 +292,7 @@ template <typename FPType> void LVector_t<FPType>::fieldOffsets(const std::vecto
   }
 
   const auto errString = errLogger.str();
-  nrsCheck(errString.size() != 0, platform->comm.mpiComm, EXIT_FAILURE, "%s", errString.c_str());
+  nekrsCheck(errString.size() != 0, platform->comm.mpiComm, EXIT_FAILURE, "%s", errString.c_str());
 
   std::copy(fieldOffsets.begin(), fieldOffsets.end(), this->fieldOffset_.begin());
   this->fieldOffsetScan_[0] = 0;
@@ -314,32 +304,25 @@ template <typename FPType> void LVector_t<FPType>::fieldOffsets(const std::vecto
   this->o_fieldOffsetScan_.copyFrom(this->fieldOffsetScan_.data());
 }
 
-// =======================================================================================================
 template <typename FPType> const std::vector<dlong> &LVector_t<FPType>::fieldOffsets() const
 {
   return this->fieldOffset_;
 }
 
-// =======================================================================================================
 template <typename FPType> const std::vector<dlong> &LVector_t<FPType>::fieldOffsetScans() const
 {
   return this->fieldOffsetScan_;
 }
 
-// =======================================================================================================
-template<typename FPType>
-const occa::memory & LVector_t<FPType>::invDegree(int field) const
+template <typename FPType> const occa::memory &LVector_t<FPType>::invDegree(int field) const
 {
   return this->o_invDegrees_.at(meshes_.at(field));
 }
 
-// =======================================================================================================
-template<typename FPType>
-void LVector_t<FPType>::copyToE(const dlong EFieldOffset, occa::memory & o_E) const
+template <typename FPType> void LVector_t<FPType>::copyToE(const dlong EFieldOffset, occa::memory &o_E) const
 {
   // loop over unique mesh objects to minimize number of kernel calls
-  for(auto [uniqueMesh, _] : o_EToLs_)
-  {
+  for (auto [uniqueMesh, _] : o_EToLs_) {
     LToEKernel_(uniqueMesh->Nlocal,
                 NfieldsMesh_.at(uniqueMesh),
                 EFieldOffset,
@@ -351,13 +334,11 @@ void LVector_t<FPType>::copyToE(const dlong EFieldOffset, occa::memory & o_E) co
   }
 }
 
-// =======================================================================================================
-template<typename FPType>
-void LVector_t<FPType>::copyFromE(const dlong EFieldOffset, const occa::memory & o_E)
+template <typename FPType>
+void LVector_t<FPType>::copyFromE(const dlong EFieldOffset, const occa::memory &o_E)
 {
   // loop over unique mesh objects to minimize number of kernel calls
-  for(auto [uniqueMesh, _] : o_EToLs_)
-  {
+  for (auto [uniqueMesh, _] : o_EToLs_) {
     EToLKernel_(uniqueMesh->Nlocal,
                 NfieldsMesh_.at(uniqueMesh),
                 EFieldOffset,
@@ -369,61 +350,50 @@ void LVector_t<FPType>::copyFromE(const dlong EFieldOffset, const occa::memory &
   }
 }
 
-// =======================================================================================================
-template<typename FPType>
-dlong LVector_t<FPType>::nFields() const
+template <typename FPType> dlong LVector_t<FPType>::nFields() const
 {
   return this->meshes_.size();
 }
 
-// =======================================================================================================
-template<typename FPType>
-dlong LVector_t<FPType>::fieldOffset(int field) const
+template <typename FPType> dlong LVector_t<FPType>::fieldOffset(int field) const
 {
   return this->fieldOffset_.at(field);
 }
 
-// =======================================================================================================
-template<typename FPType>
-dlong LVector_t<FPType>::fieldOffsetScan(int field) const
+template <typename FPType> dlong LVector_t<FPType>::fieldOffsetScan(int field) const
 {
   return this->fieldOffsetScan_.at(field);
 }
 
-// =======================================================================================================
-template<typename FPType>
-dlong LVector_t<FPType>::Nlocal(int field) const
+template <typename FPType> dlong LVector_t<FPType>::Nlocal(int field) const
 {
   return this->Nlocals_.at(field);
 }
 
-// =======================================================================================================
 template <typename FPType> dlong LVector_t<FPType>::size() const
 {
   return this->fieldOffsetSum_;
 }
 
-// =======================================================================================================
-template<typename FPType>
-const std::vector<mesh_t*> &
-LVector_t<FPType>::meshes() const
+template <typename FPType> const std::vector<mesh_t *> &LVector_t<FPType>::meshes() const
 {
   return this->meshes_;
 }
 
-// =======================================================================================================
-template<typename FPType>
-void LVector_t<FPType>::registerKernels()
+template <typename FPType> void LVector_t<FPType>::registerKernels()
 {
   const std::string oklpath = getenv("NEKRS_KERNEL_DIR") + std::string("/core/");
 
   auto kernelInfo = platform->kernelInfo;
-  kernelInfo["defines/" "p_UNMAPPED"] = UNMAPPED;
+  kernelInfo["defines/"
+             "p_UNMAPPED"] = UNMAPPED;
 
-  if(std::is_same<FPType,dfloat>::value){
-    kernelInfo["defines/" "pfloat"] = "dfloat";
+  if (std::is_same<FPType, dfloat>::value) {
+    kernelInfo["defines/"
+               "pfloat"] = "dfloat";
   } else {
-    kernelInfo["defines/" "pfloat"] = "pfloat";
+    kernelInfo["defines/"
+               "pfloat"] = "pfloat";
   }
 
   auto suffix = LVector_t<FPType>::FPTypeString();
@@ -431,21 +401,19 @@ void LVector_t<FPType>::registerKernels()
   {
     auto kernelName = "EToL";
     auto fileName = oklpath + kernelName + ".okl";
-    platform->kernels.add(kernelName + suffix, fileName, kernelInfo);
+    platform->kernelRequests.add(kernelName + suffix, fileName, kernelInfo);
   }
 
   {
     auto kernelName = "LToE";
     auto fileName = oklpath + kernelName + ".okl";
-    platform->kernels.add(kernelName + suffix, fileName, kernelInfo);
+    platform->kernelRequests.add(kernelName + suffix, fileName, kernelInfo);
   }
 }
 
-// =======================================================================================================
-template<typename FPType>
-std::string LVector_t<FPType>::FPTypeString()
+template <typename FPType> std::string LVector_t<FPType>::FPTypeString()
 {
-  if(std::is_same<FPType,dfloat>::value){
+  if (std::is_same<FPType, dfloat>::value) {
     return "dfloat";
   } else {
     return "pfloat";

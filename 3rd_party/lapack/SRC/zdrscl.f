@@ -77,7 +77,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16OTHERauxiliary
+*> \ingroup rscl
 *
 *  =====================================================================
       SUBROUTINE ZDRSCL( N, SA, SX, INCX )
@@ -109,7 +109,7 @@
       EXTERNAL           DLAMCH
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLABAD, ZDSCAL
+      EXTERNAL           ZDSCAL
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS
@@ -125,7 +125,6 @@
 *
       SMLNUM = DLAMCH( 'S' )
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
 *
 *     Initialize the denominator to SA and the numerator to 1.
 *

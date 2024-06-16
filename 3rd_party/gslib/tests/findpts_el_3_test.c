@@ -4,13 +4,7 @@
 #include <float.h>
 #include <math.h>
 #include <string.h>
-#include "c99.h"
-#include "name.h"
-#include "types.h"
-#include "fail.h"
-#include "mem.h"
-#include "poly.h"
-#include "findpts_el.h"
+#include "gslib.h"
 
 #define NR 14
 #define NS 7

@@ -176,6 +176,13 @@ namespace occa {
     return modeDevice->properties;
   }
 
+  const std::string& device::arch() const {
+    static const std::string noArch = "No Arch";
+    return (modeDevice
+            ? modeDevice->arch
+            : noArch);
+  }
+
   const occa::json& device::kernelProperties() const {
     assertInitialized();
     return (const occa::json&) modeDevice->properties["kernel"];
@@ -381,18 +388,15 @@ namespace occa {
     const std::string hashDir = io::hashDir(realFilename, kernelHash);
     allProps["hash"] = kernelHash.getFullString();
 
-    kernel cachedKernel = modeDevice->buildKernel(realFilename,
-                                                  kernelName,
-                                                  kernelHash,
-                                                  allProps);
+    modeKernel_t* mode_kernel = modeDevice->buildKernel(realFilename,
+                                                        kernelName,
+                                                        kernelHash,
+                                                        allProps);
 
-    if (cachedKernel.isInitialized()) {
-      cachedKernel.modeKernel->hash = kernelHash;
-    } else {
-      sys::rmrf(hashDir);
-    }
-
-    return cachedKernel;
+    const bool compile_only = allProps.get("build/compile_only", false);
+    if (!compile_only && !mode_kernel) sys::rmrf(hashDir);
+  
+    return kernel(mode_kernel,kernelHash);
   }
 
   kernel device::buildKernelFromString(const std::string &content,

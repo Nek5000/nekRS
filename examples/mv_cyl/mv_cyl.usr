@@ -122,31 +122,31 @@ C   Set initial conditions
       END
 
 C=======================================================================
+      subroutine usrdat0
 
-      subroutine usrdat
+      include 'SIZE'
+      include 'TOTAL'
+      include 'CASEDATA'
+
+      call nekrs_registerPtr('xlen', XLEN)
+      call nekrs_registerPtr('ylen', YLEN)
+      call nekrs_registerPtr('zlen', ZLEN)
+
+      call nekrs_registerPtr('p_gamma', P_GAMMA)
+      call nekrs_registerPtr('p_omega', P_OMEGA)
+      call nekrs_registerPtr('p_amp', P_AMP)
+      call nekrs_registerPtr('p_rot', P_ROT)
+
+      call nekrs_registerPtr('dp0thdt', dp0thdt)
 
       return
       end
-
 C=======================================================================
       subroutine usrdat2()  ! This routine to modify mesh coordinates
 
       include 'SIZE'
       include 'TOTAL'
       include 'CASEDATA'
-      
-      common /scnrs/ sc_nrs(10)
-      real                sc_nrs
-
-      XLEN = sc_nrs(1)
-      YLEN = sc_nrs(2)
-      ZLEN = sc_nrs(3)
-
-      P_GAMMA = sc_nrs(4)
-      P_DELTA = sc_nrs(5)
-      P_OMEGA = sc_nrs(6)
-      P_AMP = sc_nrs(7)
-      P_ROT = sc_nrs(8)
 
       call rescale_x(xm1, 0.0,XLEN)
       call rescale_x(ym1,-1.0,-1.0+YLEN)
@@ -285,10 +285,8 @@ c
       real err(6)
       save err
       real ht(lx1, ly1, lz1, lelt)
-      COMMON /NRSSCPTR/ nrs_scptr(1)
-      integer*8         nrs_scptr
 
-      nrs_scptr(1) = loc(err)
+      call nekrs_registerPtr('errors', err)
 
       nxyz  = nx1*ny1*nz1
       ntotv = nxyz*nelv

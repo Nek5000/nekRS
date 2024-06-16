@@ -24,10 +24,7 @@
 
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "nrs.hpp"
+#include "platform.hpp"
 #include "nekInterfaceAdapter.hpp"
 
 void meshPhysicalNodesHex3D(mesh_t *mesh)

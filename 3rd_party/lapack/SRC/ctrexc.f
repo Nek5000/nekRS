@@ -40,7 +40,7 @@
 *>
 *> The Schur form T is reordered by a unitary similarity transformation
 *> Z**H*T*Z, and optionally the matrix Q of Schur vectors is updated by
-*> postmultplying it with Z.
+*> postmultiplying it with Z.
 *> \endverbatim
 *
 *  Arguments:
@@ -119,7 +119,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complexOTHERcomputational
+*> \ingroup trexc
 *
 *  =====================================================================
       SUBROUTINE CTREXC( COMPQ, N, T, LDT, Q, LDQ, IFST, ILST, INFO )

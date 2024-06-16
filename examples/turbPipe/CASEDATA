@@ -1,3 +1,0 @@
-      real zlength, nslabs, nelslab
-
-      common /casevars/ zlength, nslabs, nelslab

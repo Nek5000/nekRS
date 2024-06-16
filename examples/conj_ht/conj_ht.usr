@@ -20,12 +20,10 @@ c-----------------------------------------------------------------------
 
       real err(2)
       save err
-      COMMON /NRSSCPTR/ nrs_scptr(1)
-      integer*8         nrs_scptr
 
       real  wrk(lx1,ly1,lz1,lelt,3)
 
-      nrs_scptr(1) = loc(err(1))
+      call nekrs_registerPtr('errors', err)
 
       nv = nx1*ny1*nz1*nelv
       nt = nx1*ny1*nz1*nelt

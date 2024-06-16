@@ -6,8 +6,8 @@ stopAt = numSteps
 numSteps = 100 
 dt = 2e-03
 timeStepper = tombo3
-writeControl = simulationTime 
-writeInterval = 0.1
+checkpointControl = simulationTime 
+checkpointInterval = 0.1
 
 usr = "ethier.usr"
 oudf = "ethier.oudf"

@@ -252,15 +252,16 @@ endif
 
 
 #---[ Variable Dependencies ]---------------------
-fortranEnabled = 0
-mpiEnabled     = 0
-openmpEnabled  = 0
-cudaEnabled    = 0
-hipEnabled     = 0
-openclEnabled  = 0
-metalEnabled   = 0
-dpcppEnabled	 = 0
-
+fortranEnabled        = 0
+mpiEnabled            = 0
+openmpEnabled         = 0
+cudaEnabled           = 0
+hipEnabled            = 0
+openclEnabled         = 0
+metalEnabled          = 0
+dpcppEnabled          = 0
+threadSharableEnabled = 0
+maxArgs               = 128
 
 #---[ Fortran ]-------------------------
 ifdef OCCA_FORTRAN_ENABLED
@@ -330,10 +331,10 @@ ifdef OCCA_HIP_ENABLED
       hipPlatform = $(HIP_PLATFORM)
     endif
 
-    ifeq ($(hipPlatform),nvcc)
+    ifeq ($(hipPlatform),nvidia)
       linkerFlags += -lcuda
       linkerFlags += -lcudart
-    else ifeq ($(hipPlatform),$(filter $(hipPlatform),hcc amd))
+    else ifeq ($(hipPlatform),amd)
       #set HIP_COMPILER if not supplied by user
       ifeq (,$(HIP_COMPILER))
         hipCompiler = $(shell $(HIP_PATH)/bin/hipconfig --compiler)
@@ -341,10 +342,8 @@ ifdef OCCA_HIP_ENABLED
         hipCompiler = $(HIP_COMPILER)
       endif
 
-      #Select HCC or HIP Runtime
-      ifeq ($(hipCompiler),hcc)
-        linkerFlags += -lhip_hcc
-      else ifeq ($(hipCompiler),clang)
+      #Select HIP Runtime
+      ifeq ($(hipCompiler),clang)
         linkerFlags += -lamdhip64
       endif
     endif
@@ -366,10 +365,10 @@ else
       hipPlatform = $(HIP_PLATFORM)
     endif
 
-    ifeq ($(hipPlatform),nvcc)
+    ifeq ($(hipPlatform),nvidia)
       hipLibFlags  = $(call libraryFlagsFor,cuda)
       hipLibFlags += $(call libraryFlagsFor,cudart)
-    else ifeq ($(hipPlatform),$(filter $(hipPlatform),hcc amd))
+    else ifeq ($(hipPlatform),amd)
       #set HIP_COMPILER if not supplied by user
       ifeq (,$(HIP_COMPILER))
         hipCompiler = $(shell $(HIP_PATH)/bin/hipconfig --compiler)
@@ -377,10 +376,8 @@ else
         hipCompiler = $(HIP_COMPILER)
       endif
 
-      #Select HCC or HIP Runtime
-      ifeq ($(hipCompiler),hcc)
-        hipLibFlags = $(call libraryFlagsFor,hip_hcc)
-      else ifeq ($(hipCompiler),clang)
+      #Select HIP Runtime
+      ifeq ($(hipCompiler),clang)
         hipLibFlags = $(call libraryFlagsFor,amdhip64)
       endif
     endif
@@ -484,6 +481,15 @@ ifeq ($(usingMacOS),1)
   endif
 endif
 
+#---[ Other parameters ]---------------------------
+ifdef OCCA_THREAD_SHARABLE_ENABLED
+  threadSharableEnabled = $(OCCA_THREAD_SHARABLE_ENABLED)
+endif
+
+ifdef OCCA_MAX_ARGS
+  maxArgs = $(OCCA_MAX_ARGS)
+endif
+
 ifeq ($(cudaEnabled),1)
   compilerFlags += -Wno-c++11-long-long
 endif
@@ -495,11 +501,13 @@ else
   OCCA_CHECK_ENABLED := 0
 endif
 
-OCCA_FORTRAN_ENABLED := $(fortranEnabled)
-OCCA_OPENMP_ENABLED  := $(openmpEnabled)
-OCCA_CUDA_ENABLED    := $(cudaEnabled)
-OCCA_HIP_ENABLED     := $(hipEnabled)
-OCCA_OPENCL_ENABLED  := $(openclEnabled)
-OCCA_METAL_ENABLED   := $(metalEnabled)
-OCCA_DPCPP_ENABLED   := $(dpcppEnabled)
+OCCA_FORTRAN_ENABLED         := $(fortranEnabled)
+OCCA_OPENMP_ENABLED          := $(openmpEnabled)
+OCCA_CUDA_ENABLED            := $(cudaEnabled)
+OCCA_HIP_ENABLED             := $(hipEnabled)
+OCCA_OPENCL_ENABLED          := $(openclEnabled)
+OCCA_METAL_ENABLED           := $(metalEnabled)
+OCCA_DPCPP_ENABLED           := $(dpcppEnabled)
+OCCA_THREAD_SHARABLE_ENABLED := $(threadSharableEnabled)
+OCCA_MAX_ARGS                := $(maxArgs)
 #=================================================

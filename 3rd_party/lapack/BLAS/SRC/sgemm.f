@@ -166,7 +166,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup single_blas_level3
+*> \ingroup gemm
 *
 *> \par Further Details:
 *  =====================
@@ -183,7 +183,8 @@
 *> \endverbatim
 *>
 *  =====================================================================
-      SUBROUTINE SGEMM(TRANSA,TRANSB,M,N,K,ALPHA,A,LDA,B,LDB,BETA,C,LDC)
+      SUBROUTINE SGEMM(TRANSA,TRANSB,M,N,K,ALPHA,A,LDA,B,LDB,
+     +         BETA,C,LDC)
 *
 *  -- Reference BLAS level3 routine --
 *  -- Reference BLAS is a software package provided by Univ. of Tennessee,    --

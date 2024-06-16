@@ -78,7 +78,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup OTHERauxiliary
+*> \ingroup las2
 *
 *> \par Further Details:
 *  =====================
@@ -93,9 +93,7 @@
 *>  infinite.
 *>
 *>  Overflow will not occur unless the largest singular value itself
-*>  overflows, or is within a few ulps of overflow. (On machines with
-*>  partial overflow, like the Cray, overflow may occur if the largest
-*>  singular value is within a factor of 2 of overflow.)
+*>  overflows, or is within a few ulps of overflow.
 *>
 *>  Underflow is harmless if underflow is gradual. Otherwise, results
 *>  may correspond to a matrix modified by perturbations of size near

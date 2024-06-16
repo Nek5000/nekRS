@@ -87,7 +87,7 @@
 *>          triangular part of the matrix A, and the strictly upper
 *>          triangular part of A is not referenced.
 *>
-*>          On exit, L is stored below (or above) the subdiaonal blocks,
+*>          On exit, L is stored below (or above) the subdiagonal blocks,
 *>          when UPLO  is 'L' (or 'U').
 *> \endverbatim
 *>
@@ -177,7 +177,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16SYcomputational
+*> \ingroup hesv_aa_2stage
 *
 *  =====================================================================
       SUBROUTINE ZSYSV_AA_2STAGE( UPLO, N, NRHS, A, LDA, TB, LTB,

@@ -17,38 +17,16 @@ namespace occa
 {
   namespace dpcpp
   {
-    device::device(const occa::json &properties_)
-        : occa::launchedModeDevice_t(properties_)
+    device::device(const occa::json &properties_, 
+                   const ::sycl::device& device_)
+        : occa::launchedModeDevice_t(properties_), dpcppDevice(device_), dpcppContext(device_) 
     {
-      if (!properties.has("wrapped"))
-      {
-        OCCA_ERROR(
-            "[dpcpp] device not given a [platform_id] integer",
-            properties.has("platform_id") && properties["platform_id"].isNumber());
-
-        OCCA_ERROR(
-            "[dpcpp] device not given a [device_id] integer",
-            properties.has("device_id") && properties["device_id"].isNumber());
-
-        platformID = properties.get<int>("platform_id");
-        deviceID = properties.get<int>("device_id");
-
-        auto platforms{::sycl::platform::get_platforms()};
-        OCCA_ERROR(
-            "Invalid platform number (" + toString(platformID) + ")",
-            (static_cast<size_t>(platformID) < platforms.size()));
-
-        auto devices{platforms[platformID].get_devices()};
-        OCCA_ERROR(
-            "Invalid device number (" + toString(deviceID) + ")",
-            (static_cast<size_t>(deviceID) < devices.size()));
-
-        dpcppDevice = devices[deviceID];
-        dpcppContext = ::sycl::context(devices[deviceID]);
-      }
-
       occa::json &kernelProps = properties["kernel"];
       setCompilerLinkerOptions(kernelProps);
+      arch = dpcppDevice.get_info<::sycl::info::device::name>();
+      #ifdef SYCL_EXT_ONEAPI_BACKEND_LEVEL_ZERO
+        enable_timing = (::sycl::backend::ext_oneapi_level_zero != device_.get_backend());
+      #endif
     }
 
     hash_t device::hash() const
@@ -57,7 +35,7 @@ namespace occa
       {
         std::stringstream ss;
         auto p = dpcppDevice.get_platform();
-        ss << "platform name: " << p.get_info<::sycl::info::platform::name>() 
+        ss << "platform name: " << p.get_info<::sycl::info::platform::name>()
           << " platform vendor: " << p.get_info<::sycl::info::platform::vendor>()
           << " platform version: " << p.get_info<::sycl::info::platform::version>()
           << " device name: " << dpcppDevice.get_info<::sycl::info::device::name>()
@@ -71,7 +49,11 @@ namespace occa
     hash_t device::kernelHash(const occa::json &props) const
     {
       return (
-          occa::hash(props["compiler"]) ^ props["compiler_flags"]);
+          occa::hash(props["compiler"])
+          ^ props["compiler_flags"]
+          ^ props["kernel/include_occa"]
+          ^ props["kernel/link_occa"]
+      );
     }
 
     lang::okl::withLauncher *device::createParser(const occa::json &props) const
@@ -82,8 +64,8 @@ namespace occa
     //---[ Stream ]---------------------
     modeStream_t *device::createStream(const occa::json &props)
     {
-      ::sycl::queue q(dpcppContext, 
-                      dpcppDevice, 
+      ::sycl::queue q(dpcppContext,
+                      dpcppDevice,
                       {::sycl::property::queue::enable_profiling{},
                       ::sycl::property::queue::in_order{}
                       });
@@ -96,7 +78,7 @@ namespace occa
       return new stream(this, props, q);
     }
 
-    // Uses a oneAPI extension to enqueue a barrier. 
+    // Uses a oneAPI extension to enqueue a barrier.
     // When ombined with in-order queues, this provides
     // the execution required for `streamTag`s.
     occa::streamTag device::tagStream()
@@ -114,6 +96,8 @@ namespace occa
     double device::timeBetween(const occa::streamTag &startTag,
                                const occa::streamTag &endTag)
     {
+      if (!enable_timing) return 0;
+
       auto& dpcppStartTag{getDpcppStreamTag(startTag)};
       auto& dpcppEndTag{getDpcppStreamTag(endTag)};
 
@@ -123,7 +107,7 @@ namespace occa
       return (dpcppEndTag.endTime() - dpcppStartTag.endTime());
     }
 
-    
+
     //==================================
 
     //---[ Kernel ]---------------------
@@ -144,6 +128,9 @@ namespace occa
                     binaryFilename,
                     kernelProps);
 
+      const bool compile_only = kernelProps.get("build/compile_only",false);
+      if (compile_only) return nullptr;
+      
       if (usingOkl)
       {
         return buildOKLKernelFromBinary(kernelHash,
@@ -169,8 +156,9 @@ namespace occa
       }
     }
 
-    void device::setArchCompilerFlags(occa::json &kernelProps)
+    void device::setArchCompilerFlags(std::string& compilerFlags)
     {
+      setDeviceArchCompilerFlags(dpcppDevice, compilerFlags);
     }
 
     void device::compileKernel(const std::string &hashDir,
@@ -182,8 +170,6 @@ namespace occa
       occa::json allProps = kernelProps;
       const bool verbose = allProps.get("verbose", false);
 
-      setArchCompilerFlags(allProps);
-
       const bool compilingOkl = allProps.get("okl/enabled", true);
 
       const std::string compiler = allProps["compiler"];
@@ -191,10 +177,22 @@ namespace occa
       std::string compilerSharedFlags = kernelProps["compiler_shared_flags"];
       std::string compilerLinkerFlags = kernelProps["compiler_linker_flags"];
 
+      setArchCompilerFlags(compilerFlags);
+
       if (!compilingOkl)
       {
         sys::addCompilerIncludeFlags(compilerFlags);
         sys::addCompilerLibraryFlags(compilerFlags);
+      }
+
+      const bool includeOcca = kernelProps.get("kernel/include_occa", false);
+      const bool linkOcca    = kernelProps.get("kernel/link_occa", false);
+      if (includeOcca) {
+        compilerFlags += " -I" + env::OCCA_DIR + "include";
+        compilerFlags += " -I" + env::OCCA_INSTALL_DIR + "include";
+      }
+      if (linkOcca) {
+        compilerLinkerFlags += " -L" + env::OCCA_INSTALL_DIR + "lib -locca";
       }
 
       std::stringstream command;
@@ -237,7 +235,7 @@ namespace occa
       } else if (verbose) {
         io::stdout << "Output:\n\n" << commandOutput << "\n";
       }
-      
+
       io::sync(binaryFilename);
     }
 
@@ -261,7 +259,8 @@ namespace occa
       k.launcherKernel = buildLauncherKernel(kernelHash,
                                              hashDir,
                                              kernelName,
-                                             launcherMetadata);
+                                             launcherMetadata,
+                                             kernelProps);
       // Find device kernels
       orderedKernelMetadata launchedKernelsMetadata = getLaunchedKernelsMetadata(
           kernelName,
@@ -280,7 +279,7 @@ namespace occa
         arguments.erase(arguments.begin());
 
         occa::functionPtr_t kernel_function = sys::dlsym(dl_handle, metadata.name);
-       
+
         kernel *dpcppKernel = new dpcpp::kernel(this,
                                metadata.name,
                                sourceFilename,

@@ -3,7 +3,7 @@ language: c
 before_install:
    - export ROOT_DIR=`pwd`
    - sudo apt-get update -qq
-   - sudo apt-get install -y mpich2 libmpich2-dev
+   - sudo apt-get install -y libmpich-dev mpich 
 
 env:
   matrix:
@@ -15,8 +15,8 @@ env:
     - TEST=findpts_el_2_test2      NP=2
     - TEST=findpts_local_test      NP=2
     - TEST=findpts_test            NP=2
+    - TEST=findpts_test_ms         NP=2
     - TEST=gs_test                 NP=2
-    - TEST=gs_test_old             NP=2
     - TEST=gs_test_gop_nonblocking NP=2
     - TEST=gs_test_gop_blocking    NP=2
     - TEST=gs_unique_test          NP=2
@@ -32,5 +32,5 @@ install: true
 
 script:
   - cd $ROOT_DIR
-  - make CC=mpicc tests/$TEST
+  - make NBC=1 CC=mpicc tests/$TEST
   - mpiexec -np $NP ./tests/$TEST

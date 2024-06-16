@@ -208,7 +208,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleGEeigen
+*> \ingroup gees
 *
 *  =====================================================================
       SUBROUTINE DGEES( JOBVS, SORT, SELECT, N, A, LDA, SDIM, WR, WI,
@@ -251,7 +251,7 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           DCOPY, DGEBAK, DGEBAL, DGEHRD, DHSEQR, DLACPY,
-     $                   DLABAD, DLASCL, DORGHR, DSWAP, DTRSEN, XERBLA
+     $                   DLASCL, DORGHR, DSWAP, DTRSEN, XERBLA
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -338,7 +338,6 @@
       EPS = DLAMCH( 'P' )
       SMLNUM = DLAMCH( 'S' )
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
       SMLNUM = SQRT( SMLNUM ) / EPS
       BIGNUM = ONE / SMLNUM
 *

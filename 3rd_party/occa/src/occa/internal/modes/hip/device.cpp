@@ -22,7 +22,6 @@ namespace occa {
     device::device(const occa::json &properties_) :
       occa::launchedModeDevice_t(properties_) {
 
-      hipDeviceProp_t hipProps;
       if (!properties.has("wrapped")) {
         OCCA_ERROR("[HIP] device not given a [device_id] integer",
                    properties.has("device_id") &&
@@ -35,9 +34,6 @@ namespace occa {
 
         OCCA_HIP_ERROR("Device: Setting Device",
                        hipSetDevice(deviceID));
-
-        OCCA_HIP_ERROR("Getting device properties",
-                       hipGetDeviceProperties(&hipProps, deviceID));
       }
 
       p2pEnabled = false;
@@ -64,24 +60,7 @@ namespace occa {
       kernelProps["compiler"]       = compiler;
       kernelProps["compiler_flags"] = compilerFlags;
 
-      archMajorVersion = kernelProps.get<int>("arch/major", hipProps.major);
-      archMinorVersion = kernelProps.get<int>("arch/minor", hipProps.minor);
-
-      std::string arch = getDeviceArch(deviceID, archMajorVersion, archMinorVersion);
-      std::string archFlag;
-      if (startsWith(arch, "sm_")) {
-        archFlag = " -arch=" + arch;
-      } else if (startsWith(arch, "gfx")) {
-#if HIP_VERSION >= 305
-        archFlag = " --amdgpu-target=" + arch;
-#else
-        archFlag = " -t " + arch;
-#endif
-      } else {
-        OCCA_FORCE_ERROR("Unknown HIP arch");
-      }
-
-      kernelProps["compiler_flag_arch"] = archFlag;
+      arch = getDeviceArch(deviceID);
     }
 
     device::~device() { }
@@ -92,10 +71,7 @@ namespace occa {
 
     hash_t device::hash() const {
       if (!hash_.initialized) {
-        std::stringstream ss;
-        ss << "major: " << archMajorVersion << ' '
-           << "minor: " << archMinorVersion;
-        hash_ = occa::hash(ss.str());
+        hash_ = occa::hash(arch);
       }
       return hash_;
     }
@@ -105,6 +81,9 @@ namespace occa {
         occa::hash(props["compiler"])
         ^ props["compiler_flags"]
         ^ props["compiler_env_script"]
+        ^ props["hipcc_compiler_flags"]
+        ^ props["kernel/include_occa"]
+        ^ props["kernel/link_occa"]
       );
     }
 
@@ -200,6 +179,9 @@ namespace occa {
                     binaryFilename,
                     kernelProps);
 
+      const bool compile_only = kernelProps.get("build/compile_only",false);
+      if (compile_only) return nullptr;
+
       if (usingOkl) {
         return buildOKLKernelFromBinary(kernelHash,
                                         hashDir,
@@ -237,14 +219,19 @@ namespace occa {
       );
 
       if (hipccCompilerFlags.find("-arch=sm") == std::string::npos &&
-#if HIP_VERSION >= 305
-          hipccCompilerFlags.find("-t gfx") == std::string::npos
-#else
-          hipccCompilerFlags.find("--amdgpu-target=gfx") == std::string::npos
-#endif
-          ) {
-        kernelProps["hipcc_compiler_flags"] += " ";
-        kernelProps["hipcc_compiler_flags"] += kernelProps["compiler_flag_arch"];
+          hipccCompilerFlags.find("--offload-arch=gfx") == std::string::npos) {
+
+        std::string archString = kernelProps.get<std::string>("arch", arch);
+
+        std::string archFlag;
+        if (startsWith(archString, "sm_")) {
+          archFlag = " -arch=" + archString;
+        } else if (startsWith(archString, "gfx")) {
+          archFlag = " --offload-arch=" + archString;
+        } else {
+          OCCA_FORCE_ERROR("Unknown HIP arch");
+        }
+        kernelProps["hipcc_compiler_flags"] += archFlag;
       }
     }
 
@@ -277,19 +264,20 @@ namespace occa {
       //---[ Compiling Command ]--------
       command << compiler
               << " --genco"
-#if defined(__HIP_PLATFORM_NVCC___) || (HIP_VERSION >= 305)
               << ' ' << compilerFlags
-#else
-              << " -f=\\\"" << compilerFlags << "\\\""
-#endif
-              << ' ' << hipccCompilerFlags
-#if defined(__HIP_PLATFORM_NVCC___) || (HIP_VERSION >= 305)
-              << " -I"        << env::OCCA_DIR << "include"
-              << " -I"        << env::OCCA_INSTALL_DIR << "include"
-#endif
-              /* NC: hipcc doesn't seem to like linking a library in */
-              //<< " -L"        << env::OCCA_INSTALL_DIR << "lib -locca"
-              << ' '    << sourceFilename
+              << ' ' << hipccCompilerFlags;
+
+      const bool includeOcca = kernelProps.get("kernel/include_occa", false);
+      const bool linkOcca    = kernelProps.get("kernel/link_occa", false);
+      if (includeOcca) {
+        command << " -I"        << env::OCCA_DIR << "include"
+                << " -I"        << env::OCCA_INSTALL_DIR << "include";
+      }
+      if (linkOcca) {
+            /* NC: hipcc doesn't seem to like linking a library in */
+              //<< " -L"        << env::OCCA_INSTALL_DIR << "lib -locca";
+      }
+      command << ' '    << sourceFilename
               << " -o " << binaryFilename
               << " 2>&1";
 
@@ -314,7 +302,7 @@ namespace occa {
       } else if (verbose) {
           io::stdout << "Output:\n\n" << commandOutput << "\n";
       }
-      
+
       io::sync(binaryFilename);
     }
 
@@ -341,7 +329,8 @@ namespace occa {
       k.launcherKernel = buildLauncherKernel(kernelHash,
                                              hashDir,
                                              kernelName,
-                                             launcherMetadata);
+                                             launcherMetadata,
+                                             kernelProps);
 
       // Find device kernels
       orderedKernelMetadata launchedKernelsMetadata = getLaunchedKernelsMetadata(

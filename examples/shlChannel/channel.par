@@ -6,8 +6,8 @@ dt = 1e-03
 timeStepper = tombo2
 subcyclingSteps = 2
 
-writeControl = steps
-writeInterval = 100
+checkpointControl = steps
+checkpointInterval = 100
 
 [PRESSURE]
 residualTol = 1e-08

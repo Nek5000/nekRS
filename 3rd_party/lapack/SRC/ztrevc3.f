@@ -222,7 +222,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16OTHERcomputational
+*> \ingroup trevc3
 *
 *> \par Further Details:
 *  =====================
@@ -283,7 +283,7 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           XERBLA, ZCOPY, ZDSCAL, ZGEMV, ZLATRS,
-     $                   ZGEMM, DLABAD, ZLASET, ZLACPY
+     $                   ZGEMM, ZLASET, ZLACPY
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, DBLE, DCMPLX, CONJG, DIMAG, MAX
@@ -321,9 +321,9 @@
 *
       INFO = 0
       NB = ILAENV( 1, 'ZTREVC', SIDE // HOWMNY, N, -1, -1, -1 )
-      MAXWRK = N + 2*N*NB
+      MAXWRK = MAX( 1, N + 2*N*NB )
       WORK(1) = MAXWRK
-      RWORK(1) = N
+      RWORK(1) = MAX( 1, N )
       LQUERY = ( LWORK.EQ.-1 .OR. LRWORK.EQ.-1 )
       IF( .NOT.RIGHTV .AND. .NOT.LEFTV ) THEN
          INFO = -1
@@ -371,7 +371,6 @@
 *
       UNFL = DLAMCH( 'Safe minimum' )
       OVFL = ONE / UNFL
-      CALL DLABAD( UNFL, OVFL )
       ULP = DLAMCH( 'Precision' )
       SMLNUM = UNFL*( N / ULP )
 *

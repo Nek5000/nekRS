@@ -4,15 +4,7 @@
 #include <float.h>
 #include <math.h>
 #include <string.h>
-#include "c99.h"
-#include "name.h"
-#include "fail.h"
-#include "mem.h"
-#include "types.h"
-#include "poly.h"
-#include "obbox.h"
-#include "findpts_el.h"
-#include "findpts_local.h"
+#include "gslib.h"
 #include "rand_elt_test.h"
 
 #define D 3

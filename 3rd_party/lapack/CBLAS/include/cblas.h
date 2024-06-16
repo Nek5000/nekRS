@@ -47,6 +47,19 @@ typedef enum CBLAS_SIDE {CblasLeft=141, CblasRight=142} CBLAS_SIDE;
 #include "cblas_mangling.h"
 
 /*
+ * Integer specific API
+ */
+#ifndef API_SUFFIX
+#ifdef CBLAS_API64
+#define API_SUFFIX(a) a##_64
+#include "cblas_64.h"
+#else
+#define API_SUFFIX(a) a
+#endif
+#endif
+
+
+/*
  * ===========================================================================
  * Prototypes for level 1 BLAS functions (complex are recast as routines)
  * ===========================================================================
@@ -608,7 +621,11 @@ void cblas_zher2k(CBLAS_LAYOUT layout, CBLAS_UPLO Uplo,
                   const void *B, const CBLAS_INT ldb, const double beta,
                   void *C, const CBLAS_INT ldc);
 
-void cblas_xerbla(CBLAS_INT p, const char *rout, const char *form, ...);
+void
+#ifdef HAS_ATTRIBUTE_WEAK_SUPPORT
+__attribute__((weak))
+#endif
+cblas_xerbla(CBLAS_INT p, const char *rout, const char *form, ...);
 
 #ifdef __cplusplus
 }

@@ -363,7 +363,7 @@
 *>   an optimal implementation would do all necessary scaling before calling
 *>   CGESVD and the scaling in CGESVD can be switched off.
 *>   3. Other comments related to code optimization are given in comments in the
-*>   code, enlosed in [[double brackets]].
+*>   code, enclosed in [[double brackets]].
 *> \endverbatim
 *
 *> \par Bugs, examples and comments
@@ -404,7 +404,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complexGEsing
+*> \ingroup gesvdq
 *
 *  =====================================================================
       SUBROUTINE CGESVDQ( JOBA, JOBP, JOBR, JOBU, JOBV, M, N, A, LDA,

@@ -80,7 +80,7 @@ void scalarNeumannConditions(bcData *bc)
 
 @kernel void divStress(const dlong Nelements,
                        const dlong offset,
-                       @ restrict const dfloat *invLMM,
+                       @ restrict const dfloat *invAJw,
                        @ restrict const dfloat *vgeo,
                        @ restrict const dfloat *D,
                        @ restrict const dfloat *VISMF,
@@ -175,7 +175,7 @@ void scalarNeumannConditions(bcData *bc)
 #pragma unroll p_Nq
         for (int k = 0; k < p_Nq; ++k) {
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          const dfloat invlmm = invLMM[id];
+          const dfloat invlmm = invAJw[id];
           TAU[id + 0 * offset] = r_div[0][k] * invlmm;
           TAU[id + 1 * offset] = r_div[1][k] * invlmm;
           TAU[id + 2 * offset] = r_div[2][k] * invlmm;
@@ -189,7 +189,7 @@ void scalarNeumannConditions(bcData *bc)
                    @ restrict const dfloat *vgeo,
                    @ restrict const dfloat *D,
                    const dlong offset,
-                   @ restrict const dfloat *invLMM,
+                   @ restrict const dfloat *invAJw,
                    @ restrict const dfloat *P,
                    @ restrict dfloat *gradP)
 {
@@ -262,7 +262,7 @@ void scalarNeumannConditions(bcData *bc)
           }
 
           const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-          const dfloat w = invLMM[id] * vgeo[gid + p_JWID * p_Np];
+          const dfloat w = invAJw[id] * vgeo[gid + p_JWID * p_Np];
           gradP[id + 0 * offset] = w * (drdy * dp1dr + dsdy * dp1ds + dtdy * dp1dt);
           gradP[id + 1 * offset] = w * (drdy * dp2dr + dsdy * dp2ds + dtdy * dp2dt);
           gradP[id + 2 * offset] = w * (drdy * dp3dr + dsdy * dp3ds + dtdy * dp3dt);

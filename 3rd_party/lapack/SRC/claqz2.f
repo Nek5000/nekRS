@@ -209,6 +209,7 @@
 *>          REC is INTEGER
 *>             REC indicates the current recursion level. Should be set
 *>             to 0 on first call.
+*> \endverbatim
 *>
 *> \param[out] INFO
 *> \verbatim
@@ -224,7 +225,7 @@
 *
 *> \date May 2020
 *
-*> \ingroup complexGEcomputational
+*> \ingroup laqz2
 *>
 *  =====================================================================
       RECURSIVE SUBROUTINE CLAQZ2( ILSCHUR, ILQ, ILZ, N, ILO, IHI, NW,
@@ -257,7 +258,7 @@
       COMPLEX :: S, S1, TEMP
 
 *     External Functions
-      EXTERNAL :: XERBLA, CLAQZ0, CLAQZ1, SLABAD, CLACPY, CLASET, CGEMM,
+      EXTERNAL :: XERBLA, CLAQZ0, CLAQZ1, CLACPY, CLASET, CGEMM,
      $            CTGEXC, CLARTG, CROT
       REAL, EXTERNAL :: SLAMCH
 
@@ -296,7 +297,6 @@
 *     Get machine constants
       SAFMIN = SLAMCH( 'SAFE MINIMUM' )
       SAFMAX = ONE/SAFMIN
-      CALL SLABAD( SAFMIN, SAFMAX )
       ULP = SLAMCH( 'PRECISION' )
       SMLNUM = SAFMIN*( REAL( N )/ULP )
 

@@ -1,0 +1,17 @@
+#if !defined(nekrs_lowMach_hpp_)
+#define nekrs_lowMach_hpp_ 
+
+#include "nrs.hpp"
+#include "nekInterfaceAdapter.hpp"
+
+namespace lowMach
+{
+// alphaRef := p0thRef/(rhoRef * cpRef * TRef)
+// use alphaRef = 1 when solving for a dimensional formulation 
+void setup(dfloat alphaRef, const occa::memory& o_beta, const occa::memory& o_kappa);
+void buildKernel(occa::properties kernelInfo);
+void qThermalSingleComponent(double time);
+void dpdt(occa::memory& o_FU);
+}
+
+#endif

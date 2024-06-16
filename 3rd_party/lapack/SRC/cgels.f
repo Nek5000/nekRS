@@ -174,7 +174,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complexGEsolve
+*> \ingroup gels
 *
 *  =====================================================================
       SUBROUTINE CGELS( TRANS, M, N, NRHS, A, LDA, B, LDB, WORK, LWORK,
@@ -216,7 +216,7 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           CGELQF, CGEQRF, CLASCL, CLASET, CTRTRS, CUNMLQ,
-     $                   CUNMQR, SLABAD, XERBLA
+     $                   CUNMQR, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          MAX, MIN, REAL
@@ -296,7 +296,6 @@
 *
       SMLNUM = SLAMCH( 'S' ) / SLAMCH( 'P' )
       BIGNUM = ONE / SMLNUM
-      CALL SLABAD( SMLNUM, BIGNUM )
 *
 *     Scale A, B if max element outside range [SMLNUM,BIGNUM]
 *

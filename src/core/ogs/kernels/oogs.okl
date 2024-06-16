@@ -1,0 +1,86 @@
+#define GENERATE(TN, T, OP)                                                                                  \
+@kernel void packBuf_##TN##_##OP(const dlong N,                                                              \
+                                const int Nentries,                                                          \
+                                const dlong stride,                                                          \
+                                @restrict const  dlong *gatherStarts,                                        \
+                                @restrict const  dlong *gatherIds,                                           \
+                                @restrict const  dlong *scatterStarts,                                       \
+                                @restrict const  dlong *scatterIds,                                          \
+                                @restrict T *q,                                                              \
+                                @restrict T *qout)                                                           \
+{                                                                                                            \
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){                                          \
+    const dlong gid = g%N;                                                                                   \
+    const int k = g/N;                                                                                       \
+    const dlong startGather = gatherStarts[gid];                                                             \
+    const dlong endGather = gatherStarts[gid+1];                                                             \
+    const dlong startScatter = scatterStarts[gid];                                                           \
+    const dlong endScatter = scatterStarts[gid+1];                                                           \
+                                                                                                             \
+    T gq = init_##TN##_##OP;                                                                                 \
+    for(dlong n=startGather;n<endGather;++n){                                                                \
+      const dlong id = gatherIds[n];                                                                         \
+      OGS_DO_##OP(gq,q[id+k*stride]);                                                                        \
+    }                                                                                                        \
+    for(dlong n=startGather;n<endGather;++n){                                                                \
+      const dlong id = gatherIds[n];                                                                         \
+      q[id+k*stride] = gq;                                                                                   \
+    }                                                                                                        \
+                                                                                                             \
+    for(dlong n=startScatter;n<endScatter;++n){                                                              \
+      const dlong id = scatterIds[n];                                                                        \
+      qout[id*Nentries+k] = gq;                                                                              \
+    }                                                                                                        \
+  }                                                                                                          \
+}
+
+GENERATE(float,float,add)
+GENERATE(float,float,min)
+GENERATE(float,float,max)
+
+GENERATE(double,double,add)
+GENERATE(double,double,min)
+GENERATE(double,double,max)
+
+#undef GENERATE
+
+#define GENERATE(TN, T, OP)                                                                                  \
+@kernel void unpackBuf_##TN##_##OP(const dlong N,                                                            \
+                                  const int Nentries,                                                        \
+                                  const dlong stride,                                                        \
+                                  @restrict const  dlong *gatherStarts,                                      \
+                                  @restrict const  dlong *gatherIds,                                         \
+                                  @restrict const  dlong *scatterStarts,                                     \
+                                  @restrict const  dlong *scatterIds,                                        \
+                                  @restrict T *q,                                                            \
+                                  @restrict T *qout)                                                         \
+{                                                                                                            \
+  for(dlong g=0;g<N*Nentries;++g;@tile(p_blockSize,@outer,@inner)){                                          \
+    const dlong gid = g%N;                                                                                   \
+    const int k = g/N;                                                                                       \
+    const dlong startGather = gatherStarts[gid];                                                             \
+    const dlong endGather = gatherStarts[gid+1];                                                             \
+    const dlong startScatter = scatterStarts[gid];                                                           \
+    const dlong endScatter = scatterStarts[gid+1];                                                           \
+                                                                                                             \
+    T gq = init_##T##_##OP;                                                                                  \
+    for(dlong n=startGather;n<endGather;++n){                                                                \
+      const dlong id = gatherIds[n];                                                                         \
+      OGS_DO_##OP(gq,q[id*Nentries+k]);                                                                      \
+    }                                                                                                        \
+    for(dlong n=startScatter;n<endScatter;++n){                                                              \
+      const dlong id = scatterIds[n];                                                                        \
+      OGS_DO_##OP(qout[id+k*stride],gq);                                                                     \
+    }                                                                                                        \
+  }                                                                                                          \
+}
+
+GENERATE(float,float,add)
+GENERATE(float,float,mul)
+GENERATE(float,float,min)
+GENERATE(float,float,max)
+
+GENERATE(double,double,add)
+GENERATE(double,double,mul)
+GENERATE(double,double,min)
+GENERATE(double,double,max)

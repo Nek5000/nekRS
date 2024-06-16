@@ -116,17 +116,19 @@
 
 */  
 
-#define gs         PREFIXED_NAME(gs       )
-#define gs_vec     PREFIXED_NAME(gs_vec   )
-#define gs_many    PREFIXED_NAME(gs_many  )
-#define igs        PREFIXED_NAME(igs      )
-#define igs_vec    PREFIXED_NAME(igs_vec  )
-#define igs_many   PREFIXED_NAME(igs_many )
-#define gs_wait    PREFIXED_NAME(gs_wait  )
-#define gs_setup   PREFIXED_NAME(gs_setup )
-#define gs_free    PREFIXED_NAME(gs_free  )
-#define gs_unique  PREFIXED_NAME(gs_unique)
-#define gs_hf2c    PREFIXED_NAME(gs_hf2c  )
+#define gs           PREFIXED_NAME(gs       )
+#define gs_vec       PREFIXED_NAME(gs_vec   )
+#define gs_many      PREFIXED_NAME(gs_many  )
+#define igs          PREFIXED_NAME(igs      )
+#define igs_vec      PREFIXED_NAME(igs_vec  )
+#define igs_many     PREFIXED_NAME(igs_many )
+#define gs_wait      PREFIXED_NAME(gs_wait  )
+#define gs_setup     PREFIXED_NAME(gs_setup )
+#define gs_free      PREFIXED_NAME(gs_free  )
+#define gs_unique    PREFIXED_NAME(gs_unique)
+#define gs_hf2c      PREFIXED_NAME(gs_hf2c  )
+#define pw_data_nmsg PREFIXED_NAME(pw_data_nmsg )
+#define pw_data_size PREFIXED_NAME(pw_data_size )
 
 struct gs_data;
 typedef enum {gs_auto, gs_pairwise, gs_crystal_router, gs_all_reduce} gs_method;
@@ -151,5 +153,8 @@ struct gs_data *gs_setup(const slong *id, uint n, const struct comm *comm,
 void gs_free(struct gs_data *gsh);
 void gs_unique(slong *id, uint n, const struct comm *comm);
 struct gs_data* gs_hf2c(const sint gsh);
+
+void pw_data_nmsg(struct gs_data *gsh, int *n);
+void pw_data_size(struct gs_data *gsh, int *n);
 
 #endif

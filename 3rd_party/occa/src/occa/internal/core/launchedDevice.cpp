@@ -67,7 +67,7 @@ namespace occa {
                   kernelProps)
     );
 
-    if (usingOkl) {
+    if (usingOkl && kernel) {
       std::vector<modeKernel_t*> &deviceKernels = kernel->deviceKernels;
       const int kernelCount = (int) deviceKernels.size();
       for (int i = 0; i < kernelCount; ++i) {
@@ -85,20 +85,31 @@ namespace occa {
     return kernel;
   }
 
+  void launchedModeDevice_t::buildSource(const std::string& fileName, 
+                                         const hash_t hash, 
+                                         const occa::json& props) {
+    OCCA_FORCE_ERROR("launchedModeDevice_t::buildSource is not implemented");
+  }
+
   modeKernel_t* launchedModeDevice_t::buildKernel(const std::string &filename,
                                                   const std::string &kernelName,
                                                   const hash_t kernelHash,
                                                   const bool usingOkl,
                                                   const occa::json &kernelProps) {
     const std::string hashDir = io::hashDir(filename, kernelHash);
-    std::string sourceFilename = hashDir + kc::sourceFile;
+    std::string sourceFilename = hashDir + kc::cachedSourceFilename(filename);
     const std::string binaryFilename = hashDir + kc::binaryFile;
 
+    const bool verbose = kernelProps.get("verbose", false);
+    const bool compile_only = kernelProps.get("build/compile_only",false);
+    const bool load_only    = kernelProps.get("build/load_only",false);
+
+    OCCA_ERROR("[" + kernelName + "]: both compile_only and load_only were set", 
+      !(compile_only && load_only));
+    
     // Check if binary exists and is finished
     const bool foundBinary = io::isFile(binaryFilename);
-
-    const bool verbose = kernelProps.get("verbose", false);
-    if (foundBinary) {
+    if (!compile_only && foundBinary) {
       if (verbose) {
         io::stdout << "Loading cached ["
                    << kernelName
@@ -135,89 +146,95 @@ namespace occa {
       return k;
     }
 
-    lang::sourceMetadata_t launcherMetadata, deviceMetadata;
-    if (usingOkl) {
-      // Cache raw origin
-      sourceFilename = (
-        io::cacheFile(filename,
-                      kc::cppRawSourceFile,
-                      kernelHash,
-                      assembleKernelHeader(kernelProps))
-      );
-
-      const std::string outputFile = hashDir + kc::sourceFile;
-      const std::string launcherOutputFile = hashDir + kc::launcherSourceFile;
-      bool valid = parseFile(sourceFilename,
-                             outputFile,
-                             launcherOutputFile,
-                             kernelProps,
-                             launcherMetadata,
-                             deviceMetadata);
-      if (!valid) {
-        return NULL;
-      }
-      sourceFilename = outputFile;
-
-      buildLauncherKernel(kernelHash,
-                          hashDir,
-                          kernelName,
-                          launcherMetadata);
-
-      // No OKL means no build file is generated,
-      //   so we need to build it
-      host()
-        .getModeDevice()
-        ->writeKernelBuildFile(hashDir + kc::launcherBuildFile,
-                               kernelHash,
-                               occa::json(),
-                               launcherMetadata);
-
-      writeKernelBuildFile(hashDir + kc::buildFile,
-                           kernelHash,
-                           kernelProps,
-                           deviceMetadata);
-    } else {
-      // Cache in sourceFile to directly compile file
-      sourceFilename = (
-        io::cacheFile(filename,
-                      kc::sourceFile,
-                      kernelHash,
-                      assembleKernelHeader(kernelProps))
-      );
-    }
-
-    modeKernel_t *k;
-    io::stageFile(
-      binaryFilename,
-      false,
-      [&](const std::string &tempFilename) -> bool {
-        k = buildKernelFromProcessedSource(
-          kernelHash,
-          hashDir,
-          kernelName,
-          sourceFilename,
-          tempFilename,
-          usingOkl,
-          launcherMetadata,
-          deviceMetadata,
-          kernelProps
+    if (!load_only && !foundBinary) {
+      lang::sourceMetadata_t launcherMetadata, deviceMetadata;
+      if (usingOkl) {
+        // Cache raw origin
+        sourceFilename = (
+          io::cacheFile(filename,
+                        kc::cachedRawSourceFilename(filename),
+                        kernelHash,
+                        assembleKernelHeader(kernelProps))
         );
-        return true;
-      }
-    );
 
-    if (k) {
-      k->sourceFilename = filename;
-      k->binaryFilename = binaryFilename;
+        const std::string outputFile = hashDir + kc::cachedSourceFilename(filename);
+        const std::string launcherOutputFile = hashDir + kc::launcherSourceFile;
+        bool valid = parseFile(sourceFilename,
+                               outputFile,
+                               launcherOutputFile,
+                               kernelProps,
+                               launcherMetadata,
+                               deviceMetadata);
+        if (!valid) {
+          return NULL;
+        }
+        sourceFilename = outputFile;
+
+        buildLauncherKernel(kernelHash,
+                            hashDir,
+                            kernelName,
+                            launcherMetadata,
+                            kernelProps);
+
+        // No OKL means no build file is generated,
+        //   so we need to build it
+        host()
+          .getModeDevice()
+          ->writeKernelBuildFile(hashDir + kc::launcherBuildFile,
+                                 kernelHash,
+                                 occa::json(),
+                                 launcherMetadata);
+
+        writeKernelBuildFile(hashDir + kc::buildFile,
+                             kernelHash,
+                             kernelProps,
+                             deviceMetadata);
+      } else {
+        // Cache in sourceFile to directly compile file
+        sourceFilename = (
+          io::cacheFile(filename,
+                        kc::cachedSourceFilename(filename),
+                        kernelHash,
+                        assembleKernelHeader(kernelProps))
+        );
+      }
+
+      modeKernel_t *k;
+      io::stageFile(
+        binaryFilename,
+        false,
+        [&](const std::string &tempFilename) -> bool {
+          k = buildKernelFromProcessedSource(
+            kernelHash,
+            hashDir,
+            kernelName,
+            sourceFilename,
+            tempFilename,
+            usingOkl,
+            launcherMetadata,
+            deviceMetadata,
+            kernelProps
+          );
+          return true;
+        }
+      );
+
+      if (k) {
+        k->sourceFilename = filename;
+        k->binaryFilename = binaryFilename;
+      }
+      return k;
     }
-    return k;
+    // Found binary and compile only
+    return nullptr;
   }
 
   modeKernel_t* launchedModeDevice_t::buildLauncherKernel(
     const hash_t kernelHash,
     const std::string &hashDir,
     const std::string &kernelName,
-    lang::sourceMetadata_t sourceMetadata
+    lang::sourceMetadata_t sourceMetadata,
+    const occa::json& kernelProps
   ) {
     const std::string launcherOutputFile = hashDir + kc::launcherSourceFile;
 
@@ -226,7 +243,8 @@ namespace occa {
     modeKernel_t *launcherKernel = hostDevice->buildLauncherKernel(
       launcherOutputFile,
       kernelName,
-      kernelHash
+      kernelHash,
+      kernelProps
     );
     if (!launcherKernel) {
       return NULL;

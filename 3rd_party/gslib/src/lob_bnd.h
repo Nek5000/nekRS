@@ -85,7 +85,9 @@ void lob_bnd_lin_3(
   const double *lob_bnd_data_t, unsigned nt, unsigned mt,
   const double *restrict u, uint un, double *restrict work);
 
+#ifndef OBBOX_H
 struct dbl_range { double min, max; };
+#endif
 
 /* work holds 2*m doubles */
 struct dbl_range lob_bnd_1(

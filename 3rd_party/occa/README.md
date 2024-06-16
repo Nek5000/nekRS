@@ -36,7 +36,7 @@ Mission critical computational science and engineering applications from the pub
 
 ### Minimum
 
-- [CMake] v3.17 or newer
+- [CMake] v3.21 or newer
 - C++17 compiler
 - C11 compiler
 
@@ -44,7 +44,7 @@ Mission critical computational science and engineering applications from the pub
 
  - Fortan 90 compiler
  - CUDA 9 or later
- - HIP 3.5 or later
+ - HIP 4.2 or later
  - SYCL 2020 or later
  - OpenCL 2.0 or later
  - OpenMP 4.0 or later
@@ -59,7 +59,7 @@ For convenience, the shell script `configure-cmake.sh` has been provided to driv
 
 The following demonstrates a typical sequence of shell commands to build, test, and install occa:
 ```shell
-$ ./configure.sh
+$ ./configure-cmake.sh
 $ cmake --build build --parallel <number-of-threads>
 $ ctest --test-dir build --output-on-failure
 $ cmake --install build --prefix install

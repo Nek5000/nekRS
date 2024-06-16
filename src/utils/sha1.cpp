@@ -117,6 +117,13 @@ std::string SHA1::from_file(const std::string &filename)
     return checksum.final();
 }
  
+std::string SHA1::from_string(const std::string &s)
+{
+    std::istringstream is(s);
+    SHA1 checksum;
+    checksum.update(is);
+    return checksum.final();
+}
  
 void SHA1::reset()
 {

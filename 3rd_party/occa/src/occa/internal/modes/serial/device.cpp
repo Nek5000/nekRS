@@ -14,7 +14,10 @@
 namespace occa {
   namespace serial {
     device::device(const occa::json &properties_) :
-      occa::modeDevice_t(properties_) {}
+      occa::modeDevice_t(properties_) {
+      // TODO: Maybe theres something more descriptive we can populate here
+      arch = std::string("CPU");
+    }
 
     bool device::hasSeparateMemorySpace() const {
       return false;
@@ -36,6 +39,8 @@ namespace occa {
         ^ props["compiler_language"]
         ^ props["compiler_linker_flags"]
         ^ props["compiler_shared_flags"]
+        ^ props["include_occa"]
+        ^ props["link_occa"]
       );
     }
 
@@ -104,17 +109,28 @@ namespace occa {
       return buildKernel(filename, kernelName, kernelHash, kernelProps, false);
     }
 
+    void device::buildSource(const std::string& fileName, 
+                             const hash_t hash, 
+                             const occa::json& props) {
+      buildKernel(fileName, "", hash, props, false, true);
+    }
+
     modeKernel_t* device::buildLauncherKernel(const std::string &filename,
                                               const std::string &kernelName,
-                                              const hash_t kernelHash) {
-      return buildKernel(filename, kernelName, kernelHash, properties["kernel"], true);
+                                              const hash_t kernelHash,
+                                              const occa::json& kernelProps) {
+      
+      occa::json launcher_properties = properties["kernel"];
+      launcher_properties["build"] = kernelProps["build"];
+      return buildKernel(filename, kernelName, kernelHash, launcher_properties, true);
     }
 
     modeKernel_t* device::buildKernel(const std::string &filename,
                                       const std::string &kernelName,
                                       const hash_t kernelHash,
                                       const occa::json &kernelProps,
-                                      const bool isLauncherKernel) {
+                                      const bool isLauncherKernel,
+                                      bool buildOnly) {
       const std::string hashDir = io::hashDir(filename, kernelHash);
 
       const std::string &kcBinaryFile = (
@@ -124,11 +140,16 @@ namespace occa {
       );
       std::string binaryFilename = hashDir + kcBinaryFile;
 
+      const bool verbose = kernelProps.get("verbose", false);
+      const bool compile_only = kernelProps.get("build/compile_only",false);
+      const bool load_only    = kernelProps.get("build/load_only",false);
+ 
+      OCCA_ERROR("[" + kernelName + "]: both compile_only and load_only were set", 
+        !(compile_only && load_only));
+
       // Check if binary exists and is finished
       const bool foundBinary = io::isFile(binaryFilename);
-
-      const bool verbose = kernelProps.get("verbose", false);
-      if (foundBinary) {
+      if (!compile_only && foundBinary) {
         if (verbose) {
           io::stdout << "Loading cached ["
                      << kernelName
@@ -145,6 +166,7 @@ namespace occa {
         return k;
       }
 
+      if (!load_only && !foundBinary) {
       std::string compilerLanguage;
       std::string compiler;
       std::string compilerFlags;
@@ -271,22 +293,16 @@ namespace occa {
       if (isLauncherKernel) {
         sourceFilename = filename;
       } else {
-        const std::string &rawSourceFile = (
-          compilingCpp
-          ? kc::cppRawSourceFile
-          : kc::cRawSourceFile
-        );
-
         // Cache raw origin
         sourceFilename = (
           io::cacheFile(filename,
-                        rawSourceFile,
+                        kc::cachedRawSourceFilename(filename, compilingCpp),
                         kernelHash,
                         assembleKernelHeader(kernelProps))
         );
 
         if (compilingOkl) {
-          const std::string outputFile = hashDir + kc::sourceFile;
+          const std::string outputFile = hashDir + kc::cachedSourceFilename(filename);
           bool valid = parseFile(sourceFilename,
                                  outputFile,
                                  kernelProps,
@@ -315,6 +331,9 @@ namespace occa {
         sys::addCompilerLibraryFlags(compilerFlags);
       }
 
+      const bool includeOcca = kernelProps.get("kernel/include_occa", isLauncherKernel);
+      const bool linkOcca    = kernelProps.get("kernel/link_occa", isLauncherKernel);
+
       io::stageFile(
         binaryFilename,
         true,
@@ -323,11 +342,15 @@ namespace occa {
           command << compiler
                   << ' '    << compilerFlags
                   << ' '    << sourceFilename
-                  << " -o " << tempFilename
-                  << " -I"  << env::OCCA_DIR << "include"
-                  << " -I"  << env::OCCA_INSTALL_DIR << "include"
-                  << " -L"  << env::OCCA_INSTALL_DIR << "lib -locca"
-                  << ' '    << compilerLinkerFlags
+                  << " -o " << tempFilename;
+          if (includeOcca) {
+            command << " -I"  << env::OCCA_DIR << "include"
+                    << " -I"  << env::OCCA_INSTALL_DIR << "include";
+          }
+          if (linkOcca) {
+            command << " -L"  << env::OCCA_INSTALL_DIR << "lib -locca";
+          }
+          command << ' '    << compilerLinkerFlags
                   << " 2>&1"
                   << std::endl;
 #else
@@ -336,12 +359,16 @@ namespace occa {
                   << " /D OCCA_OS=OCCA_WINDOWS_OS"
                   << " /EHsc"
                   << " /wd4244 /wd4800 /wd4804 /wd4018"
-                  << ' '       << compilerFlags
-                  << " /I"     << env::OCCA_DIR << "include"
-                  << " /I"     << env::OCCA_INSTALL_DIR << "include"
-                  << ' '       << sourceFilename
-                  << " /link " << env::OCCA_INSTALL_DIR << "lib/libocca.lib",
-                  << ' '       << compilerLinkerFlags
+                  << ' '       << compilerFlags;
+          if (includeOcca) {
+            command << " /I"     << env::OCCA_DIR << "include"
+                    << " /I"     << env::OCCA_INSTALL_DIR << "include";
+          }
+          command << ' '       << sourceFilename;
+          if (linkOcca) {
+            command << " /link " << env::OCCA_INSTALL_DIR << "lib/libocca.lib";
+          }
+          command << ' '       << compilerLinkerFlags
                   << " /OUT:"  << tempFilename
                   << std::endl;
 #endif
@@ -376,17 +403,22 @@ namespace occa {
           return true;
         }
       );
-      
+
       io::sync(binaryFilename);
+
+      if (compile_only) return nullptr;
 
       modeKernel_t *k = buildKernelFromBinary(binaryFilename,
                                               kernelName,
                                               kernelProps,
                                               metadata.kernelsMetadata[kernelName]);
-      if (k) {
-        k->sourceFilename = filename;
+        if (k) {
+          k->sourceFilename = filename;
+        }
+        return k;
       }
-      return k;
+      // Found binary and compile only
+      return nullptr;
     }
 
     modeKernel_t* device::buildKernelFromBinary(const std::string &filename,

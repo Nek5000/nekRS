@@ -135,7 +135,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleSYcomputational
+*> \ingroup hetrf
 *
 *> \par Further Details:
 *  =====================
@@ -232,7 +232,7 @@
 *        Determine the block size
 *
          NB = ILAENV( 1, 'DSYTRF', UPLO, N, -1, -1, -1 )
-         LWKOPT = N*NB
+         LWKOPT = MAX( 1, N*NB )
          WORK( 1 ) = LWKOPT
       END IF
 *

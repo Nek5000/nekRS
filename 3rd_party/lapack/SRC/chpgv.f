@@ -144,7 +144,7 @@
 *>                    i off-diagonal elements of an intermediate
 *>                    tridiagonal form did not convergeto zero;
 *>             > N:   if INFO = N + i, for 1 <= i <= n, then the leading
-*>                    minor of order i of B is not positive definite.
+*>                    principal minor of order i of B is not positive.
 *>                    The factorization of B could not be completed and
 *>                    no eigenvalues or eigenvectors were computed.
 *> \endverbatim
@@ -157,7 +157,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complexOTHEReigen
+*> \ingroup hpgv
 *
 *  =====================================================================
       SUBROUTINE CHPGV( ITYPE, JOBZ, UPLO, N, AP, BP, W, Z, LDZ, WORK,

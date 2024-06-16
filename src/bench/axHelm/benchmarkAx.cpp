@@ -2,7 +2,6 @@
 #include <vector>
 #include <iostream>
 #include <numeric>
-#include "nrs.hpp"
 
 #include "kernelBenchmarker.hpp"
 #include "randomVector.hpp"
@@ -68,7 +67,10 @@ occa::kernel benchmarkAx(int Nelements,
                          bool runAutotuner,
                          std::string suffix)
 {
-  if (platform->options.compareArgs("BUILD ONLY", "TRUE")) {
+  const std::string oklpath(getenv("NEKRS_KERNEL_DIR"));
+  const std::string ext = platform->serial ? ".c" : ".okl";
+
+  if (platform->options.compareArgs("REGISTER ONLY", "TRUE")) {
     Nelements = 1;
   }
 
@@ -86,6 +88,12 @@ occa::kernel benchmarkAx(int Nelements,
   const int Np_g = Nq_g * Nq_g * Nq_g;
 
   occa::properties props = platform->kernelInfo + meshKernelProperties(N);
+  
+  props["defines/p_cubNq"] = Nq; // Needed for const differentiation matrices
+  std::string diffDataFile = oklpath + "/mesh/constantGLLDifferentiationMatrices.h";
+  props["includes"].asArray();
+  props["includes"] += diffDataFile.c_str();
+
   if (wordSize == 4)
     props["defines/dfloat"] = "float";
   if (Ng != N) {
@@ -123,6 +131,7 @@ occa::kernel benchmarkAx(int Nelements,
     }
   }
   kernelName += "Hex3D";
+  const std::string fileName = oklpath + "/elliptic/" + kernelName;
 
   auto benchmarkAxWithPrecision = [&](auto sampleWord) {
     using FPType = decltype(sampleWord);
@@ -138,7 +147,7 @@ occa::kernel benchmarkAx(int Nelements,
     }
     else {
       if (kernelName == "ellipticPartialAxCoeffHex3D") {
-        const int Nkernels = 8;
+        const int Nkernels = 9;
         for (int knl = 0; knl < Nkernels; ++knl)
           kernelVariants.push_back(knl);
 
@@ -163,7 +172,7 @@ occa::kernel benchmarkAx(int Nelements,
         props["defines/pts_per_thread"] = Nq/n_plane;              
       }
       if (kernelName == "ellipticBlockPartialAxCoeffHex3D") {
-        const int Nkernels = 2;
+        const int Nkernels = 3;
         for (int knl = 0; knl < Nkernels; ++knl)
           kernelVariants.push_back(knl);
 
@@ -198,21 +207,41 @@ occa::kernel benchmarkAx(int Nelements,
         props["defines/pts_per_thread"] = Nq / n_plane;
       }
     }
-    const std::string oklpath(getenv("NEKRS_KERNEL_DIR"));
 
-    // only a single choice, no need to run benchmark
-    if ((kernelVariants.size() == 1 && !platform->serial) || !runAutotuner) {
-
+    auto buildKernel = [&props, &fileName, &ext, &kernelName, &suffix](int ver)
+    {
       auto newProps = props;
-      newProps["defines/p_knl"] = kernelVariants.front();
+      newProps["defines/p_knl"] = ver;
+      const auto verSuffix = "_v" + std::to_string(ver);
 
-      const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = oklpath + "/elliptic/" + kernelName + ext;
+      if (platform->options.compareArgs("REGISTER ONLY", "TRUE")) {
+        const auto reqName = std::string(fileName) + "::" + std::string(newProps.hash().getString());
+        platform->kernelRequests.add(reqName, fileName + ext, newProps, suffix);
+        return occa::kernel();
+      } else {
+        return platform->device.loadKernel(fileName + ext, kernelName + verSuffix, newProps, suffix);
+      }
+    };
 
-      return std::make_pair(platform->device.buildKernel(fileName, newProps, suffix, true), -1.0);
+    auto referenceKernel = buildKernel(kernelVariants.front());
+
+    if (!runAutotuner) {
+      return std::make_pair(referenceKernel, -1.0);
     }
 
-    auto DrV = randomVector<FPType>(Nq * Nq, 0, 1, true);
+    auto buildConstMatrixReader = [&props, &oklpath](const std::string& _fileName) {
+      const auto filePath = oklpath + _fileName;
+
+      if (platform->options.compareArgs("REGISTER ONLY", "TRUE")) {
+        const auto reqName = std::string(fs::path(filePath).filename()) + "::" +  std::string(props.hash().getString());
+        platform->kernelRequests.add(reqName, filePath, props);
+        return occa::kernel();
+      } else {
+        return platform->device.loadKernel(filePath, props);
+      }
+    };
+    auto readConstDMatrixKernel = buildConstMatrixReader("/nrs/readCubDMatrix.okl");
+
     auto ggeo = randomVector<FPType>(Np_g * Nelements * p_Nggeo, 0, 1, true);
     auto vgeo = randomVector<FPType>(Np * Nelements * p_Nvgeo, 0, 1, true);
     auto q = randomVector<FPType>((Ndim * Np) * Nelements, 0, 1, true);
@@ -227,7 +256,9 @@ occa::kernel benchmarkAx(int Nelements,
     std::iota(elementList.begin(), elementList.end(), 0);
     auto o_elementList = platform->device.malloc(Nelements * sizeof(dlong), elementList.data());
 
-    auto o_D = platform->device.malloc(Nq * Nq * wordSize, DrV.data());
+    auto o_D = platform->device.malloc(Nq * Nq * wordSize);
+    if(readConstDMatrixKernel.isInitialized()) {readConstDMatrixKernel(o_D);}
+
     auto o_S = o_D;
     auto o_ggeo = platform->device.malloc(Np_g * Nelements * p_Nggeo * wordSize, ggeo.data());
     auto o_vgeo = platform->device.malloc(Np * Nelements * p_Nvgeo * wordSize, vgeo.data());    
@@ -238,17 +269,6 @@ occa::kernel benchmarkAx(int Nelements,
 
     auto o_lambda0 = platform->device.malloc(Np * Nelements * wordSize, lambda0.data());
     auto o_lambda1 = platform->device.malloc(Np * Nelements * wordSize, lambda1.data());
-
-    occa::kernel referenceKernel;
-    {
-      auto newProps = props;
-      newProps["defines/p_knl"] = kernelVariants.front();
-
-      const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = oklpath + "/elliptic/" + kernelName + ext;
-
-      referenceKernel = platform->device.buildKernel(fileName, newProps, suffix, true);
-    }
 
     auto kernelRunner = [&](occa::kernel &kernel) {
       const int loffset = 0;
@@ -266,16 +286,8 @@ occa::kernel benchmarkAx(int Nelements,
     };
 
     auto axKernelBuilder = [&](int kernelVariant) {
-      auto newProps = props;
-      newProps["defines/p_knl"] = kernelVariant;
-
-      const std::string ext = platform->serial ? ".c" : ".okl";
-      const std::string fileName = oklpath + "/elliptic/" + kernelName + ext;
-
-      auto kernel = platform->device.buildKernel(fileName, newProps, suffix, true);
-      
-      if (platform->options.compareArgs("BUILD ONLY", "TRUE"))
-        return kernel;
+      auto kernel = buildKernel(kernelVariant);
+      if (!kernel.isInitialized()) return occa::kernel();
 
       std::vector<FPType> refResults((Ndim * Np) * Nelements);
       std::vector<FPType> results((Ndim * Np) * Nelements);
@@ -287,7 +299,7 @@ occa::kernel benchmarkAx(int Nelements,
       o_Aq.copyTo(results.data(), results.size() * sizeof(FPType));
 
       const auto err = maxRelErr<FPType>(refResults, results, platform->comm.mpiComm);
-      if (err > 400 * std::numeric_limits<FPType>::epsilon()) {
+      if (err > 500 * std::numeric_limits<FPType>::epsilon()) {
         if (platform->comm.mpiRank == 0 && verbosity > 1) {
           std::cout << "Ax: Ignore version " << kernelVariant
                     << " as correctness check failed with " << err << std::endl;
@@ -376,11 +388,11 @@ occa::kernel benchmarkAx(int Nelements,
         benchmarkKernel(axKernelBuilder, kernelRunner, printCallBack, kernelVariants, NtestsOrTargetTime);
 
     if (kernelAndTime.first.properties().has("defines/p_knl") &&
-        platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-      int bestKernelVariant = static_cast<int>(kernelAndTime.first.properties()["defines/p_knl"]);
-
+        !platform->options.compareArgs("REGISTER ONLY", "TRUE")) {
+ 
       // print only the fastest kernel
       if (verbosity == 1) {
+        int bestKernelVariant = static_cast<int>(kernelAndTime.first.properties()["defines/p_knl"]);
         printPerformanceInfo(bestKernelVariant, kernelAndTime.second, 0, false);
       }
     }

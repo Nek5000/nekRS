@@ -30,6 +30,7 @@ public:
     void update(std::istream &is);
     std::string final();
     static std::string from_file(const std::string &filename);
+    static std::string from_string(const std::string &s);
  
 private:
     typedef unsigned long int uint32;   /* just needs to be at least 32bit */

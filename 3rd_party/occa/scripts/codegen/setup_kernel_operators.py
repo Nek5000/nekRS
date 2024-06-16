@@ -8,7 +8,7 @@ Generates:
 
 import os
 import functools
-
+import argparse
 
 OCCA_DIR = os.environ.get(
     'OCCA_DIR',
@@ -24,14 +24,17 @@ EDIT_WARNING = f'''
 // =========================================
 '''.strip()
 
-MAX_ARGS = 50
+MAX_ARGS = 128
 
 
 def to_file(filename):
     def inner_to_file(func):
         @functools.wraps(func)
         def cached_func(*args, **kwargs):
-            with open(OCCA_DIR + '/' + filename, 'w') as f:
+            filepath = OCCA_DIR + '/' + filename
+            dirpath = os.path.dirname(os.path.abspath(filepath))
+            os.makedirs(dirpath, exist_ok=True)
+            with open(filepath, 'w') as f:
                 content = func(*args, **kwargs)
                 f.write(EDIT_WARNING + '\n\n');
                 f.write(content + '\n')
@@ -74,12 +77,12 @@ def array_args(N, indent):
     return content
 
 
-@to_file('src/occa/internal/utils/runFunction.cpp_codegen')
+@to_file('include/codegen/runFunction.cpp_codegen')
 def run_function_from_arguments(N):
     content = '\nswitch (argc) {\n'
     for n in range(N + 1):
         content += run_function_from_argument(n)
-    content += '}\n';
+    content += '  default:\n    OCCA_FORCE_ERROR("TOO MANY KERNEL ARGUMENTS REQUESTED");\n}\n'
 
     return content
 
@@ -101,7 +104,7 @@ def run_function_from_argument(N):
     return content
 
 
-@to_file('include/occa/core/kernelOperators.hpp_codegen')
+@to_file('include/codegen/kernelOperators.hpp_codegen')
 def operator_declarations(N):
     # We manually define the 0-argument kernel for documentation purposes
     return '\n\n'.join(
@@ -118,7 +121,7 @@ def operator_declaration(N):
     return content
 
 
-@to_file('src/core/kernelOperators.cpp_codegen')
+@to_file('include/codegen/kernelOperators.cpp_codegen')
 def operator_definitions(N):
     return '\n'.join(
         operator_definition(n) for n in range(N + 1)
@@ -148,7 +151,45 @@ def operator_definition(N):
 '''
     return content
 
+def macro_count2(N):
+    content = '#  define OCCA_ARG_COUNT2( \\\n'
+    indent=' ' * 2
+    for n in range(1, N+1):
+        if n % 10 == 1:
+            content += indent
+        content += '_' + str(n) + ', '
+        if n % 10 == 0:
+            content += '\\\n'
+    if N % 10 > 0:
+        content += '\\\n'
+    content += indent + 'N,  ...) N\n'
+    return content
+
+def macro_count(N):
+    content = '#  define OCCA_ARG_COUNT(...) OCCA_ARG_COUNT2( \\\n'
+    indent=' ' * 2
+    content += indent + '__VA_ARGS__, \\\n' + indent
+    for n in range(N, 0, -1):
+        content += str(n) + ', '
+        if n % 10 == 1:
+            content += '\\\n' + indent
+    content += '0)\n'
+    return content
+
+@to_file('include/codegen/macros.hpp_codegen')
+def macro_declarations(N):
+    return ''.join(
+        macro_count2(N) + '\n' + macro_count(N)
+    )
+
 if __name__ == '__main__':
-    run_function_from_arguments(MAX_ARGS)
+    parser = argparse.ArgumentParser(usage=__doc__)
+    parser.add_argument("-N","--NargsMax", type=int, default=MAX_ARGS)
+    parser.add_argument("--skipInline", action='store_true')
+    args = parser.parse_args()
+
+    run_function_from_arguments(args.NargsMax)
+    MAX_ARGS = MAX_ARGS if args.skipInline else args.NargsMax
     operator_declarations(MAX_ARGS)
     operator_definitions(MAX_ARGS)
+    macro_declarations(MAX_ARGS)

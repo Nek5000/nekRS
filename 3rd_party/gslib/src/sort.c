@@ -29,3 +29,17 @@
 #  undef SORT_SUFFIX
 #  undef T
 #endif
+
+#define REALSORT
+#  define T double
+#  define SORT_SUFFIX _double
+#  include "sort_imp.h"
+#  undef SORT_SUFFIX
+#  undef T
+
+#  define T float
+#  define SORT_SUFFIX _float
+#  include "sort_imp.h"
+#  undef SORT_SUFFIX
+#  undef T
+#undef REALSORT

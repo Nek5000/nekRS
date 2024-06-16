@@ -1,12 +1,7 @@
-//
-// nekRS User Defined File
-//
-#include <math.h>
-#include "udf.hpp"
 #include "ci.inc"
 
-static occa::memory o_nekFU;
-static occa::memory o_nekMue;
+static deviceMemory<dfloat> o_nekFU;
+static deviceMemory<dfloat> o_nekMue;
 static dfloat P_ROT;
 
 #ifdef __okl__
@@ -15,23 +10,16 @@ static dfloat P_ROT;
 
 #endif
 
-void userf(nrs_t *nrs, double time, occa::memory o_U, occa::memory o_FU)
+void userf(double time)
 {
-  o_FU.copyFrom(o_nekFU, nrs->NVfields * nrs->fieldOffset);
+  nrs->o_NLT.copyFrom(o_nekFU, nrs->NVfields * nrs->fieldOffset);
 }
 
-void uservp(nrs_t *nrs,
-            double time,
-            occa::memory o_U,
-            occa::memory o_S,
-            occa::memory o_UProp,
-            occa::memory o_SProp)
+void uservp(double time)
 {
-  mesh_t *mesh = nrs->meshV;
-  occa::memory o_mue = o_UProp.slice(0 * nrs->fieldOffset);
-  occa::memory o_rho = o_UProp.slice(1 * nrs->fieldOffset);
-  platform->linAlg->fill(mesh->Nlocal, 1.0, o_rho);
-  o_mue.copyFrom(o_nekMue, mesh->Nlocal);
+  auto mesh = nrs->meshV;
+  platform->linAlg->fill(mesh->Nlocal, 1.0, nrs->o_rho);
+  nrs->o_mue.copyFrom(o_nekMue, mesh->Nlocal);
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
@@ -42,36 +30,36 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   }
   platform->par->extract("casedata", "p_rot", P_ROT);
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
-    double *const nek_cb_scnrs = (double *)nek::ptr("cb_scnrs");
-    nek_cb_scnrs[0] = P_ROT;
+    *nek::ptr<double>("p_rot") = P_ROT;
   }
 }
 
-void UDF_Setup(nrs_t *nrs)
+void UDF_Setup()
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->meshV;
 
-  udf.uEqnSource = &userf;
-  udf.properties = &uservp;
+  nrs->userVelocitySource = &userf;
+  nrs->userProperties = &uservp;
+
+  o_nekFU.resize(nrs->NVfields * nrs->fieldOffset);
+  o_nekMue.resize(mesh->Nlocal);
 
   nek::userchk();
-  auto mul = (double *)nek::scPtr(1);
-  auto FUx = (double *)nek::scPtr(2);
-  auto FUy = (double *)nek::scPtr(3);
-  auto FUz = (double *)nek::scPtr(4);
+  std::vector<double> mul(nek::ptr<double>("mul"), nek::ptr<double>("mul") + mesh->Nlocal);
+  o_nekMue.copyFrom(mul);
 
-  o_nekFU = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
-  o_nekMue = platform->device.malloc<dfloat>(nrs->fieldOffset);
+  std::vector<double> FUx(nek::ptr<double>("forcx"), nek::ptr<double>("forcx") + mesh->Nlocal);
+  std::vector<double> FUy(nek::ptr<double>("forcy"), nek::ptr<double>("forcy") + mesh->Nlocal);
+  std::vector<double> FUz(nek::ptr<double>("forcz"), nek::ptr<double>("forcz") + mesh->Nlocal);
 
-  o_nekMue.copyFrom(mul, mesh->Nlocal);
   o_nekFU.copyFrom(FUx, mesh->Nlocal, 0 * nrs->fieldOffset);
   o_nekFU.copyFrom(FUy, mesh->Nlocal, 1 * nrs->fieldOffset);
   o_nekFU.copyFrom(FUz, mesh->Nlocal, 2 * nrs->fieldOffset);
 }
 
-void UDF_ExecuteStep(nrs_t *nrs, double time, int tstep)
+void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isOutputStep) {
+  if (nrs->isCheckpointStep) {
     nek::ocopyToNek(time, tstep);
     nek::userchk();
   }

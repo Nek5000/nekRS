@@ -156,7 +156,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleSYcomputational
+*> \ingroup trsyl
 *
 *  =====================================================================
       SUBROUTINE DTRSYL( TRANA, TRANB, ISGN, M, N, A, LDA, B, LDB, C,
@@ -196,7 +196,7 @@
       EXTERNAL           LSAME, DDOT, DLAMCH, DLANGE
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLABAD, DLALN2, DLASY2, DSCAL, XERBLA
+      EXTERNAL           DLALN2, DLASY2, DSCAL, XERBLA
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          ABS, DBLE, MAX, MIN
@@ -244,7 +244,6 @@
       EPS = DLAMCH( 'P' )
       SMLNUM = DLAMCH( 'S' )
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
       SMLNUM = SMLNUM*DBLE( M*N ) / EPS
       BIGNUM = ONE / SMLNUM
 *

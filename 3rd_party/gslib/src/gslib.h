@@ -1,13 +1,15 @@
-#define UNDERSCORE 1
-#define USE_NAIVE_BLAS 
-#define NO_NEX_EXITT 1
-#define GLOBAL_LONG_LONG 1
+#ifndef GSLIB_H
+#define GSLIB_H
 
-#define MPI 1
+#include <stdio.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "config.h"
 #include "c99.h"
 #include "name.h"
 #include "fail.h"
@@ -29,4 +31,6 @@ extern "C" {
 #include "findpts_local.h"
 #ifdef __cplusplus
 }
+#endif
+
 #endif

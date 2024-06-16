@@ -181,7 +181,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup realGEauxiliary
+*> \ingroup tgex2
 *
 *> \par Further Details:
 *  =====================
@@ -255,7 +255,7 @@
      $                   THRESHA, THRESHB
 *     ..
 *     .. Local Arrays ..
-      INTEGER            IWORK( LDST )
+      INTEGER            IWORK( LDST + 2 )
       REAL               AI( 2 ), AR( 2 ), BE( 2 ), IR( LDST, LDST ),
      $                   IRCOP( LDST, LDST ), LI( LDST, LDST ),
      $                   LICOP( LDST, LDST ), S( LDST, LDST ),

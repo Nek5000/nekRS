@@ -46,10 +46,14 @@ void sarray_permute_buf_(
   sarray_permute_buf_(ALIGNOF(T),sizeof(T),A,n,buf)
 
 #define sarray_sort_field(T,A,n, field,is_long, buf,keep) do { \
-  if(is_long) \
+  if(is_long == 1) \
     sortp_long(buf,keep, (ulong*)((char*)(A)+offsetof(T,field)),n,sizeof(T)); \
-  else \
+  else if(is_long == 0) \
     sortp     (buf,keep, (uint *)((char*)(A)+offsetof(T,field)),n,sizeof(T)); \
+  else if(is_long == 3) \
+    sortp_double(buf,keep, (double *)((char*)(A)+offsetof(T,field)),n,sizeof(T)); \
+  else if(is_long == 2) \
+    sortp_float(buf,keep, (float *)((char*)(A)+offsetof(T,field)),n,sizeof(T)); \
 } while (0)
 
 #define sarray_sort(T,A,n, field,is_long, buf) do { \

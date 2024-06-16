@@ -1,16 +1,5 @@
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <assert.h>
-#include "c99.h"
-#include "name.h"
-#include "fail.h"
-#include "types.h"
-#include "comm.h"
-#include "mem.h"
-#include "gs_defs.h"
-#include "gs.h"
+#include "gslib.h"
 
 struct gs_data *gop_handle;
 int np;
@@ -82,7 +71,7 @@ int main(int narg, char *arg[])
   comm_ext world; int rank, result;
   struct comm comm;
 
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   MPI_Init(&narg,&arg);
   world = MPI_COMM_WORLD;
   MPI_Comm_size(world,&np);
@@ -99,7 +88,7 @@ int main(int narg, char *arg[])
 
   gop_free(&comm);
 
-#ifdef MPI
+#ifdef GSLIB_USE_MPI
   MPI_Finalize();
 #endif
 

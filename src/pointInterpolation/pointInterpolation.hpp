@@ -1,25 +1,24 @@
 #if !defined(nekrs_interp_hpp_)
 #define nekrs_interp_hpp_
 
-#include <vector>
-#include <memory>
-#include "nrssys.hpp"
+#include "nekrsSys.hpp"
+#include "platform.hpp"
 #include "findpts.hpp"
-
-class nrs_t;
+#include "mesh.h"
 
 using findpts::TimerLevel;
 
-class pointInterpolation_t {
+class pointInterpolation_t
+{
 public:
   enum class VerbosityLevel { None, Basic, Detailed };
-  pointInterpolation_t(nrs_t *nrs_,
+  pointInterpolation_t(mesh_t *mesh,
                        double bb_tol = 0.01,
                        double newton_tol_ = 0,
                        bool mySession_ = true,
                        dlong sessionID_ = 0,
                        bool multipleSessionSupport_ = false);
-  pointInterpolation_t(nrs_t *nrs_,
+  pointInterpolation_t(mesh_t *mesh_,
                        MPI_Comm comm,
                        dlong localHashSize,
                        dlong globalHashSize,
@@ -33,30 +32,37 @@ public:
   // Finds the process, element, and reference coordinates of the given points
   void find(VerbosityLevel verbosity = VerbosityLevel::Basic, bool matchSession = false);
 
-  void
-  eval(dlong nFields, dlong inputFieldOffset, const occa::memory& o_in, dlong outputFieldOffset, occa::memory& o_out);
+  void eval(dlong nFields,
+            dlong inputFieldOffset,
+            const occa::memory& o_in,
+            dlong outputFieldOffset,
+            occa::memory& o_out);
 
-  void eval(dlong nFields, dlong inputFieldOffset, dfloat *in, dlong outputFieldOffset, dfloat *out);
+  void eval(dlong nFields, dlong inputFieldOffset, const std::vector<dfloat>& in, dlong outputFieldOffset, std::vector<dfloat> &out);
 
-  auto *ptr() { return findpts_.get(); }
-  auto &data() {return data_;}
+  auto *ptr()
+  {
+    return findpts_.get();
+  }
 
-  int numPoints() const { return nPoints; }
+  auto &data()
+  {
+    return data_;
+  }
+
+  int numPoints() const
+  {
+    return nPoints;
+  }
 
   // calls underlying findpts_t::update
   void o_update();
 
-  // add points on device
-  void setPoints(int n, const occa::memory& o_x, const occa::memory& o_y, const occa::memory& o_z);
-  void setPoints(int n,
-                 const occa::memory &o_x,
-                 const occa::memory &o_y,
-                 const occa::memory &o_z,
-                 const occa::memory &o_session);
+  void setPoints(const occa::memory &o_x, const occa::memory &o_y, const occa::memory &o_z);
+  void setPoints(const occa::memory &o_x, const occa::memory &o_y, const occa::memory &o_z, const occa::memory &o_session);
 
-  // add points on host
-  void setPoints(int n, dfloat *x, dfloat *y, dfloat *z);
-  void setPoints(int n, dfloat *x, dfloat *y, dfloat *z, dlong *session);
+  void setPoints(const std::vector<dfloat>& x, const std::vector<dfloat>& y, const std::vector<dfloat>& z);
+  void setPoints(const std::vector<dfloat>& x, const std::vector<dfloat>& y, const std::vector<dfloat>& z, const std::vector<dlong>& session);
 
   // set timer level
   void setTimerLevel(TimerLevel level);
@@ -70,7 +76,7 @@ public:
   occa::memory distance();
 
 private:
-  nrs_t *nrs;
+  mesh_t *mesh;
   double newton_tol;
   std::string timerName = "";
   TimerLevel timerLevel = TimerLevel::None;
@@ -90,9 +96,9 @@ private:
 
   int nPoints;
 
-  dfloat * _x;
-  dfloat * _y;
-  dfloat * _z;
+  dfloat *_x;
+  dfloat *_y;
+  dfloat *_z;
   dlong *_session;
 
   occa::memory _o_x;

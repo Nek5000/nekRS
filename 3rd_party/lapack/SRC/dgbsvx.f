@@ -316,7 +316,7 @@
 *>
 *> \param[out] WORK
 *> \verbatim
-*>          WORK is DOUBLE PRECISION array, dimension (3*N)
+*>          WORK is DOUBLE PRECISION array, dimension (MAX(1,3*N))
 *>          On exit, WORK(1) contains the reciprocal pivot growth
 *>          factor norm(A)/norm(U). The "max absolute element" norm is
 *>          used. If WORK(1) is much less than 1, then the stability
@@ -360,7 +360,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup doubleGBsolve
+*> \ingroup gbsvx
 *
 *  =====================================================================
       SUBROUTINE DGBSVX( FACT, TRANS, N, KL, KU, NRHS, AB, LDAB, AFB,

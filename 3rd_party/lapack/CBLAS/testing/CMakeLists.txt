@@ -4,11 +4,13 @@
 #######################################################################
 
 macro(add_cblas_test output input target)
-  set(TEST_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/${input}")
+  if(NOT "${input}" STREQUAL "")
+    set(TEST_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/${input}")
+  endif()
   set(TEST_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${output}")
   set(testName "${target}")
 
-  if(EXISTS "${TEST_INPUT}")
+  if(DEFINED TEST_INPUT AND EXISTS "${TEST_INPUT}")
     add_test(NAME CBLAS-${testName} COMMAND "${CMAKE_COMMAND}"
       -DTEST=$<TARGET_FILE:${target}>
       -DINPUT=${TEST_INPUT}
@@ -52,6 +54,12 @@ if(BUILD_SINGLE)
   add_executable(xscblat2 c_sblat2.f ${STESTL2O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
   add_executable(xscblat3 c_sblat3.f ${STESTL3O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
 
+  if(HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xscblat1 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xscblat2 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xscblat3 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+  endif()
+
   target_link_libraries(xscblat1 ${CBLASLIB})
   target_link_libraries(xscblat2 ${CBLASLIB})
   target_link_libraries(xscblat3 ${CBLASLIB})
@@ -65,6 +73,12 @@ if(BUILD_DOUBLE)
   add_executable(xdcblat1 c_dblat1.f ${DTESTL1O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
   add_executable(xdcblat2 c_dblat2.f ${DTESTL2O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
   add_executable(xdcblat3 c_dblat3.f ${DTESTL3O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
+
+  if(HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xdcblat1 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xdcblat2 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xdcblat3 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+  endif()
 
   target_link_libraries(xdcblat1 ${CBLASLIB})
   target_link_libraries(xdcblat2 ${CBLASLIB})
@@ -80,6 +94,12 @@ if(BUILD_COMPLEX)
   add_executable(xccblat2 c_cblat2.f ${CTESTL2O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
   add_executable(xccblat3 c_cblat3.f ${CTESTL3O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
 
+  if(HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xccblat1 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xccblat2 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xccblat3 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+  endif()
+
   target_link_libraries(xccblat1 ${CBLASLIB} ${BLAS_LIBRARIES})
   target_link_libraries(xccblat2 ${CBLASLIB})
   target_link_libraries(xccblat3 ${CBLASLIB})
@@ -93,6 +113,12 @@ if(BUILD_COMPLEX16)
   add_executable(xzcblat1 c_zblat1.f ${ZTESTL1O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
   add_executable(xzcblat2 c_zblat2.f ${ZTESTL2O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
   add_executable(xzcblat3 c_zblat3.f ${ZTESTL3O} ${LAPACK_BINARY_DIR}/test_include/cblas_test.h)
+
+  if(HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xzcblat1 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xzcblat2 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+    target_compile_definitions(xzcblat3 PRIVATE HAS_ATTRIBUTE_WEAK_SUPPORT)
+  endif()
 
   target_link_libraries(xzcblat1 ${CBLASLIB})
   target_link_libraries(xzcblat2 ${CBLASLIB})

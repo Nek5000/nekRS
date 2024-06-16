@@ -18,8 +18,9 @@ struct csr_laplacian {
 };
 
 static void find_nbrs_rsb(struct array *arr, const struct rsb_element *elems,
-                          const uint nelt, const int nv, const struct comm *c,
-                          struct crystal *cr, buffer *buf) {
+                          const uint nelt, const unsigned nv,
+                          const struct comm *c, struct crystal *cr,
+                          buffer *buf) {
   slong out[2][1], bfr[2][1], in = nelt;
   comm_scan(out, c, gs_long, gs_add, &in, 1, bfr);
   ulong eid = out[0][0] + 1;
@@ -49,8 +50,7 @@ static void find_nbrs_rsb(struct array *arr, const struct rsb_element *elems,
   array_init(struct nbr, arr, vertices.n * 10);
   while (s < vn) {
     e = s + 1;
-    while (e < vn && vptr[s].c == vptr[e].c)
-      e++;
+    while (e < vn && vptr[s].c == vptr[e].c) e++;
     for (i = s; i < e; i++) {
       t = vptr[i];
       for (j = s; j < e; j++) {
@@ -157,20 +157,19 @@ struct gs_laplacian {
 };
 
 static int gs_weighted_init(struct laplacian *l, struct rsb_element *elems,
-                            uint lelt, int nv, struct comm *c, buffer *buf) {
+                            const uint lelt, const unsigned nv, struct comm *c,
+                            buffer *buf) {
 
   uint npts = nv * lelt;
   slong *vertices = tcalloc(slong, npts);
   uint i, j;
   for (i = 0; i < lelt; i++)
-    for (j = 0; j < nv; j++)
-      vertices[i * nv + j] = elems[i].vertices[j];
+    for (j = 0; j < nv; j++) vertices[i * nv + j] = elems[i].vertices[j];
 
   struct gs_laplacian *gl = l->data = tcalloc(struct gs_laplacian, 1);
   gl->u = tcalloc(scalar, npts);
   for (i = 0; i < lelt; i++)
-    for (j = 0; j < nv; j++)
-      gl->u[nv * i + j] = 1.0;
+    for (j = 0; j < nv; j++) gl->u[nv * i + j] = 1.0;
 
   gl->gsh = gs_setup(vertices, npts, c, 0, gs_crystal_router, 0);
   gs(gl->u, gs_double, gs_add, 0, gl->gsh, buf);
@@ -178,33 +177,28 @@ static int gs_weighted_init(struct laplacian *l, struct rsb_element *elems,
   gl->diag = tcalloc(scalar, lelt);
   for (i = 0; i < lelt; i++) {
     gl->diag[i] = 0.0;
-    for (j = 0; j < nv; j++)
-      gl->diag[i] += gl->u[nv * i + j];
+    for (j = 0; j < nv; j++) gl->diag[i] += gl->u[nv * i + j];
   }
 
-  if (vertices != NULL)
-    free(vertices);
+  if (vertices != NULL) free(vertices);
 
   return 0;
 }
 
-static int gs_weighted(scalar *v, struct laplacian *l, scalar *u, buffer *buf) {
+static int gs_weighted(scalar *v, struct laplacian *l, scalar *u, buffer *bfr) {
   uint lelt = l->nel;
-  int nv = l->nv;
-
+  unsigned nv = l->nv;
   struct gs_laplacian *gl = l->data;
 
   uint i, j;
   for (i = 0; i < lelt; i++)
-    for (j = 0; j < nv; j++)
-      gl->u[nv * i + j] = u[i];
+    for (j = 0; j < nv; j++) gl->u[nv * i + j] = u[i];
 
-  gs(gl->u, gs_double, gs_add, 0, gl->gsh, buf);
+  gs(gl->u, gs_double, gs_add, 0, gl->gsh, bfr);
 
   for (i = 0; i < lelt; i++) {
     v[i] = gl->diag[i] * u[i];
-    for (j = 0; j < nv; j++)
-      v[i] -= gl->u[nv * i + j];
+    for (j = 0; j < nv; j++) v[i] -= gl->u[nv * i + j];
   }
 
   return 0;
@@ -212,10 +206,8 @@ static int gs_weighted(scalar *v, struct laplacian *l, scalar *u, buffer *buf) {
 
 static int gs_weighted_free(struct laplacian *l) {
   struct gs_laplacian *gl = l->data;
-  if (gl->u != NULL)
-    free(gl->u);
-  if (gl->diag != NULL)
-    free(gl->diag);
+  if (gl->u != NULL) free(gl->u);
+  if (gl->diag != NULL) free(gl->diag);
   gs_free(gl->gsh);
   free(l->data);
   return 0;
@@ -260,9 +252,7 @@ void laplacian_free(struct laplacian *l) {
   if (l) {
     if (l->type & CSR)
       par_csr_free(l);
-    else if (l->type & GS) {
-      gs_weighted_free(l);
-    }
+    else if (l->type & GS) { gs_weighted_free(l); }
     free(l);
   }
 }

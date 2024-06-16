@@ -217,7 +217,7 @@
 *>          and RWORK array, respectively, and no error message related
 *>          to LWORK or LRWORK is issued by XERBLA.
 *> \endverbatim
-*
+*>
 *> \param[out] IWORK
 *> \verbatim
 *>          IWORK is INTEGER array, dimension (M-MIN(P,M-P,Q,M-Q))
@@ -246,7 +246,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16OTHERcomputational
+*> \ingroup uncsd2by1
 *
 *  =====================================================================
       SUBROUTINE ZUNCSD2BY1( JOBU1, JOBU2, JOBV1T, M, P, Q, X11, LDX11,

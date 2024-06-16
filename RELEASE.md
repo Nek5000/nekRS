@@ -1,33 +1,68 @@
-# Release v23.1
+# Release v24.0
 
 ## What is new? 
 
+* FP32 solver mode
 * Interpolation based velocity recycling
-* Build time option (`-DNEKRS_USE_DFLOAT_FLOAT=ON`) to run solver using FP32
-* combinedPCG
-* multi session nek-nek
+* [Ascent](https://ascent.readthedocs.io/en/latest/) in situ visualisation plugin
+* [ADIOS2](https://adios2.readthedocs.io/) field file writer
+* Addtional output options (element filter and interpolation on uniform grid / different polynomial-order)
+* Multi session nek-nek including multi-rate time stepping
+* Combined CG for improved performance
+* CHT nek-nek support
+* Improved JIT compilation performance
+* HIP support for BoomerAMG
+* Intel GPU support
+* Aero forces
+* User friendly opSEM class
 * Various bug fixes
 
 ## Good to know
+
+* AmgX is no longer available use HYPRE instead
+* `nek::userchk` is no longer called automatically during setup 
 * [reproducibility] variable time step controller restricts dt to 5 significant digits
+* send signal (defined in env-var `NEKRS_SIGNUM_UPD`) to process trigger file `nekrs.upd` (no automatic check every N steps)
+* after fixing a bug in the linear solver residual norm, iteration counts have increased compared to previous versions
 
 ## Breaking Changes
-* `occa::memory::o_mempool` was removed instead use `auto foo = platform->o_memPool.reserve<T>(N)`
-* `occa::memory` objects (with a few exceptions) are typed now  
-* `occa::memory::slice, occa::memory::copyFrom, occa::memory::copyTo` are type aware (use words not bytes)
-* writeFld takes `const occa::memory&` instead of `const void*`
-* [udf] API argument `time` is `double` instead of `dfloat` 
-* nek::userchk is no longer called automatically during setup 
-* processing of `nekrs.upd` is triggered by SIGUSR2 instead of every N-steps
+
+This list provides an overview of the most significant changes in this release, although it may not encompass all modifications. We acknowledge that this release introduces several breaking changes. These adjustments were essential to enhance the stability of the user interface in future iterations. We apologize for any inconvenience this may cause.
+
+* call `build.sh` instead of `nrsconfig` to build the code 
+* use `auto foo = platform->o_memPool.reserve<T>(nWords)` instead of preallocated slices of `occa::memory::o_mempool`
+* change count argument of `occa::memory::slice, occa::memory::copyFrom, occa::memory::copyTo` to number of words instead of bytes 
+* pass `const occa::memory&` instead of `const void*` to `writeFld`
+* `time` in all UDF APU funcrtions is now `double` instead of dfloat
+* remove `nrs_t` argument from UDF API functions (nrs object is now globally accessible within udf if the Navier Stokes solver is enabled)
+* use `nrs_t::userProperties = std::function<void(double)>` instead of `udf::properties = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory, occa::memory, occa::memory)>`
+* `nrs_t::userVelocitySource = std::function<void(double)>` -> `udf::uEqnSource = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory)>`
+* `nrs_t::userScalarSource = std::function<void(double)>` -> `udf::sEqnSource = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory)>`
+* `nrs_t::userConvergenceCheck = std::function<bool(int)>` -> `udf::udfconv = std::function<int(nrs_t *, int)>`
+* `nrs_t::userDivergence = std::function<void(double)>` -> `udf::udfdif = std::function<void(nrs_t *, dfloat, occa::memory)>`
+* `tavg::setup(dlong fieldOffset, const fields& fields)` -> `tavg::setup(nrs_t*)`
+* `planarAvg(mesh_t*, const std::string&, int, int, int, int, dlong, occa::memory o_avg)` -> `postProcessing::planarAvg(nrs_t*, const std::string&, int, int, int, int, occa::memory)`
+* `nrs->o_NLT` -> `nrs->o_FU`
+* `cds->o_NLT` -> `cds->o_FS`
+* `::postProcessing` functions are now members of `nrs_t` (except planarAvg)
+* access `nekrs::nrsPtr` through `nekrs::platform()`
+* use `nekrs_registerPtr` instead of common blocks NRSSCPTR / SCNRS in usr file and access them using `nek::ptr` in udf
+* use `deviceKernel`, `deviceKernelProperties`, `deviceMemory`, `poolDeviceMemory` instead of `occa::` (consult examples for more details) 
+* remove `nrs_t` argument from `<plugin>::setup`
+* use pay key `avm+highestModalDecay` instead of `avm+hpfResidual`
+* `nrs->isOutputStep` -> `nrs->isCheckpointStep`
+* `pointInterpolation_t::setPoints` now takes std::vector<T> instead of raw pointers and number points are determined on the vector size 
 
 ## Known Bugs / Restrictions
 
-* Code is not fully optimized on CPUs in general and Intel GPUs
-* [485](https://github.com/Nek5000/Nek5000/issues/485)
-* [729](https://github.com/Nek5000/Nek5000/issues/759)
+* Code is not fully optimized on CPUs and Intel GPUs
+* [507](https://github.com/Nek5000/nekRS/issues/507)
+* [485](https://github.com/Nek5000/nekRS/issues/485)
 * [258](https://github.com/Nek5000/nekRS/issues/258)
 
 ## Thanks to our Contributors
+
+@kris-rowe, @MalachiTimothyPhillips, @yslan, @tcew
 
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.

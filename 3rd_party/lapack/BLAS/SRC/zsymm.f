@@ -168,7 +168,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16_blas_level3
+*> \ingroup hemm
 *
 *> \par Further Details:
 *  =====================
@@ -236,9 +236,11 @@
 *     Test the input parameters.
 *
       INFO = 0
-      IF ((.NOT.LSAME(SIDE,'L')) .AND. (.NOT.LSAME(SIDE,'R'))) THEN
+      IF ((.NOT.LSAME(SIDE,'L')) .AND.
+     +    (.NOT.LSAME(SIDE,'R'))) THEN
           INFO = 1
-      ELSE IF ((.NOT.UPPER) .AND. (.NOT.LSAME(UPLO,'L'))) THEN
+      ELSE IF ((.NOT.UPPER) .AND.
+     +         (.NOT.LSAME(UPLO,'L'))) THEN
           INFO = 2
       ELSE IF (M.LT.0) THEN
           INFO = 3

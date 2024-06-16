@@ -322,7 +322,7 @@
 *>
 *> \param[out] RWORK
 *> \verbatim
-*>          RWORK is REAL array, dimension (N)
+*>          RWORK is REAL array, dimension (MAX(1,N))
 *>          On exit, RWORK(1) contains the reciprocal pivot growth
 *>          factor norm(A)/norm(U). The "max absolute element" norm is
 *>          used. If RWORK(1) is much less than 1, then the stability
@@ -361,7 +361,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complexGBsolve
+*> \ingroup gbsvx
 *
 *  =====================================================================
       SUBROUTINE CGBSVX( FACT, TRANS, N, KL, KU, NRHS, AB, LDAB, AFB,

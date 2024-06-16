@@ -1,31 +1,30 @@
-#include "sort.h"
+#include "sort-impl.h"
 #include <float.h>
 #include <math.h>
 
-static double get_scalar(struct array *a, uint i, uint offset, uint usize,
-                         gs_dom type) {
+extern void parrsb_print(const struct comm *c, int verbose, const char *fmt,
+                         ...);
+
+double get_scalar(struct array *a, uint i, uint offset, uint usize,
+                  gs_dom type) {
   char *v = (char *)a->ptr + i * usize + offset;
 
   double data;
   switch (type) {
-  case gs_int:
-    data = *((uint *)v);
-    break;
-  case gs_long:
-    data = *((ulong *)v);
-    break;
-  case gs_double:
-    data = *((double *)v);
-    break;
+  case gs_int: data = *((uint *)v); break;
+  case gs_long: data = *((ulong *)v); break;
+  case gs_double: data = *((double *)v); break;
   default:
+    fprintf(stderr, "Error: Unknown type %d\n", type);
+    exit(EXIT_FAILURE);
     break;
   }
 
   return data;
 }
 
-static void get_extrema(void *extrema_, struct sort *data, uint field,
-                        const struct comm *c) {
+void get_extrema(void *extrema_, struct sort *data, uint field,
+                 const struct comm *c) {
   struct array *a = data->a;
   uint usize = data->unit_size;
   uint offset = data->offset[field];
@@ -41,70 +40,33 @@ static void get_extrema(void *extrema_, struct sort *data, uint field,
     extrema[1] = get_scalar(a, size - 1, offset, usize, t);
   }
 
-  double buf[2];
+  double buf[4];
   comm_allreduce(c, gs_double, gs_max, extrema, 2, buf);
   extrema[0] *= -1;
 }
 
-static int set_dest(uint *proc, uint size, sint np, slong start, slong nelem) {
-  if (nelem == 0)
-    return 1;
+uint *set_proc_from_idx(uint size, sint np_, slong start, slong nelem) {
+  if (nelem == 0) return NULL;
+  uint *proc = tcalloc(uint, size + 1);
 
-  uint nelt = nelem / np, nrem = nelem - np * nelt;
+  ulong np = np_;
+  ulong nelt = nelem / np, nrem = nelem - np * nelt;
+  assert(nrem < np);
   if (nrem == 0) {
-    for (uint i = 0; i < size; i++) {
-      proc[i] = (start + i) / nelt;
-    }
+    for (uint i = 0; i < size; i++) proc[i] = (uint)((start + i) / nelt);
   } else {
-    uint s = np - nrem;
-    slong t = nelt * s;
+    ulong s = np - nrem;
+    ulong t1 = nelt * s;
     for (uint i = 0; i < size; i++) {
-      if (start + i < t)
-        proc[i] = (start + i) / nelt;
+      ulong spi = start + i;
+      if (spi < t1)
+        proc[i] = (uint)(spi / nelt);
       else
-        proc[i] = s + (start + i - t) / (nelt + 1);
+        proc[i] = (uint)s + (uint)((spi - t1) / (nelt + 1));
     }
   }
 
-  return 0;
-}
-
-//-----------------------------------------------------------------------------
-// Parallel Bin-Sort
-//
-static int set_bin(uint **proc_, struct sort *s, uint field,
-                   const struct comm *c) {
-  struct array *a = s->a;
-  gs_dom t = s->t[field];
-  uint offset = s->offset[field];
-
-  uint size = a->n;
-  uint *proc = *proc_ = tcalloc(uint, size);
-
-  double extrema[2];
-  get_extrema((void *)extrema, s, field, c);
-  double range = extrema[1] - extrema[0];
-
-  if (size == 0)
-    return 0;
-
-  sint np = c->np;
-  uint id = 0;
-  uint index = 0;
-  do {
-    double end = extrema[0] + (range / np) * (id + 1);
-    while (index < size) {
-      double val = get_scalar(a, index, offset, s->unit_size, t);
-      if (val <= end)
-        proc[index++] = id;
-      else
-        break;
-    }
-    id++;
-  } while (id < np && index < size);
-  for (; index < size; index++)
-    proc[index] = np - 1;
-  return 0;
+  return proc;
 }
 
 static int sort_field(struct array *arr, size_t usize, gs_dom t, uint off,
@@ -124,264 +86,128 @@ static int sort_field(struct array *arr, size_t usize, gs_dom t, uint off,
   case gs_int: // FIXME gs_uint
     gslib_sortp_ui(buf, keep, (uint *)((char *)ptr + off), nunits, usize);
     break;
-  default:
-    break;
+  default: break;
   }
 
   return 0;
 }
 
-int sort_local(struct sort *s) {
+void sort_local(struct sort *s) {
   struct array *a = s->a;
   buffer *buf = s->buf;
   size_t usize = s->unit_size;
   int i = s->nfields - 1;
 
   sort_field(a, usize, s->t[i], s->offset[i], buf, 0), i--;
-  while (i >= 0)
-    sort_field(a, usize, s->t[i], s->offset[i], buf, 1), i--;
+  while (i >= 0) sort_field(a, usize, s->t[i], s->offset[i], buf, 1), i--;
   sarray_permute_buf_(s->align, usize, a->ptr, a->n, buf);
-
-  return 0;
 }
 
-static int parallel_bin_sort(struct sort *s, const struct comm *c) {
-  // Local sort
-  sort_local(s);
-
-  // Set destination bin
-  uint *proc;
-  set_bin(&proc, s, 0, c);
-
-  // Transfer to destination processor
-  struct crystal cr;
-  crystal_init(&cr, c);
-  sarray_transfer_ext_(s->a, s->unit_size, proc, sizeof(uint), &cr);
-  crystal_free(&cr);
-
-  free(proc);
-
-  // Locally sort again
-  sort_local(s);
-
-  return 0;
-}
-
-//-----------------------------------------------------------------------------
-// Parallel Hypercube-Sort
-//
-struct hypercube {
-  struct sort *data;
-  int nprobes;
-  double *probes;
-  ulong *probe_cnt;
-};
-
-static int init_probes(struct hypercube *data, struct comm *c) {
-  struct sort *input = data->data;
-
-  // Allocate space for probes and counts
-  int nprobes = data->nprobes = 3;
-  if (!data->probes)
-    data->probes = tcalloc(double, nprobes);
-  if (!data->probe_cnt)
-    data->probe_cnt = tcalloc(ulong, nprobes);
-
-  double extrema[2];
-  get_extrema((void *)extrema, data->data, 0, c);
-  double range = extrema[1] - extrema[0];
-  double delta = range / (nprobes - 1);
-
-  data->probes[0] = extrema[0];
-  data->probes[1] = extrema[0] + delta;
-  data->probes[2] = extrema[1];
-
-  return 0;
-}
-
-static int update_probe_counts(struct hypercube *data, struct comm *c) {
-  struct sort *input = data->data;
-  uint offset = input->offset[0];
-  gs_dom t = input->t[0];
-
-  uint nprobes = data->nprobes;
-  uint i;
-  for (i = 0; i < nprobes; i++)
-    data->probe_cnt[i] = 0;
-
-  struct array *a = input->a;
-  uint e;
-  for (e = 0; e < a->n; e++) {
-    double val_e = get_scalar(a, e, offset, input->unit_size, t);
-    for (i = 0; i < nprobes; i++)
-      if (val_e < data->probes[i])
-        data->probe_cnt[i]++;
-  }
-
-  ulong buf[3];
-  comm_allreduce(c, gs_long, gs_add, data->probe_cnt, nprobes, buf);
-
-  return 0;
-}
-
-static int update_probes(slong nelem, double *probes, ulong *probe_cnt,
-                         uint threshold) {
-  slong expected = nelem / 2;
-  if (llabs(expected - (slong)probe_cnt[1]) < threshold)
-    return 0;
-
-  if (probe_cnt[1] < expected)
-    probes[0] = probes[1];
-  else
-    probes[2] = probes[1];
-
-  probes[1] = probes[0] + (probes[2] - probes[0]) / 2.0;
-
-  return 0;
-}
-
-static int transfer_elem(struct hypercube *data, struct comm *c) {
-  struct sort *input = data->data;
-  uint usize = input->unit_size, offset = input->offset[0];
-  gs_dom t = input->t[0];
-  struct array *a = input->a;
-
-  uint size = a->n, lown = 0, uppern = 0;
-  for (uint e = 0; e < size; e++) {
-    double val = get_scalar(a, e, offset, usize, t);
-    if (val < data->probes[1])
-      lown++;
-    else
-      uppern++;
-  }
-
-  slong out[2][2], in[2] = {lown, uppern}, buf[2][2];
-  comm_scan(out, c, gs_long, gs_add, in, 2, buf);
-  slong lstart = out[0][0], ustart = out[0][1];
-  slong lelem = out[1][0], uelem = out[1][1];
-
-  uint np = c->np, lnp = np / 2;
-  uint *proc = tcalloc(uint, size);
-  set_dest(proc, lnp, lstart, lown, lelem);
-  set_dest(proc + lown, np - lnp, ustart, uppern, uelem);
-
-  for (uint e = lown; e < size; e++)
-    proc[e] += lnp;
-
-  struct crystal cr;
-  crystal_init(&cr, c);
-  sarray_transfer_ext_(a, usize, proc, sizeof(uint), &cr);
-  crystal_free(&cr);
-
-  free(proc);
-
-  return 0;
-}
-
-static int parallel_hypercube_sort(struct hypercube *data, struct comm *c) {
-  struct sort *input = data->data;
-  struct array *a = input->a;
-  gs_dom t = input->t[0];
-  uint offset = input->offset[0];
-
-  sint size = c->np, rank = c->id;
-
-  slong out[2][1], buf[2][1], in = a->n;
-  comm_scan(out, c, gs_long, gs_add, &in, 1, buf);
-  slong start = out[0][0];
-  slong nelem = out[1][0];
-
-  uint threshold = nelem / (10 * size);
-  if (threshold < 2)
-    threshold = 2;
-
-  sort_local(data->data);
-
-  if (size == 1)
-    return 0;
-
-  init_probes(data, c);
-  update_probe_counts(data, c);
-
-  int max_iter = log2((data->probes[2] - data->probes[0]) / 1e-12);
-  int iter = 0;
-  while (llabs(nelem / 2 - (slong)data->probe_cnt[1]) > threshold &&
-         iter++ < max_iter) {
-    update_probes(nelem, data->probes, data->probe_cnt, threshold);
-    update_probe_counts(data, c);
-  }
-
-  transfer_elem(data, c);
-
-  // split the communicator
-  struct comm nc;
-  sint lower = (rank < size / 2) ? 1 : 0;
-#if defined(MPI)
-  MPI_Comm nc_;
-  MPI_Comm_split(c->c, lower, rank, &nc_);
-  comm_init(&nc, nc_);
-  MPI_Comm_free(&nc_);
-#else
-  comm_init(&nc, 1);
-#endif
-
-  // TODO: Keep load balancing after each split
-  parallel_hypercube_sort(data, &nc);
-  comm_free(&nc);
-
-  return 0;
-}
-
-static int load_balance(struct array *a, size_t size, const struct comm *c,
-                        struct crystal *cr) {
-  slong out[2][1], buf[2][1], in = a->n;
-  comm_scan(out, c, gs_long, gs_add, &in, 1, buf);
+static int load_balance(struct array *a, size_t size, const struct comm *c) {
+  slong out[2][1], wrk[2][1], in = a->n;
+  comm_scan(out, c, gs_long, gs_add, &in, 1, wrk);
   slong start = out[0][0], nelem = out[1][0];
 
-  uint *proc = tcalloc(uint, a->n);
-  set_dest(proc, a->n, c->np, start, nelem);
-  sarray_transfer_ext_(a, size, proc, sizeof(uint), cr);
+  parrsb_print(c, 0, "\t\t\tstart = %lld, nelem = %lld", start, nelem);
+  uint *proc = set_proc_from_idx(a->n, c->np, start, nelem);
+  sarray_transfer_chunk(a, size, proc, c);
   free(proc);
 
   return 0;
 }
 
-int parallel_sort_private(struct sort *data, const struct comm *c) {
-  struct comm dup;
-  comm_dup(&dup, c);
+void sarray_transfer_chunk(struct array *arr, const size_t usize,
+                           const uint *proci, const struct comm *c) {
+  // Calculate the global array size. If it is zero, nothing to do, just return.
+  slong ng = arr->n, wrk[2];
+  comm_allreduce(c, gs_long, gs_add, &ng, 1, wrk);
+  if (ng == 0) return;
 
-  int balance = data->balance, algo = data->algo;
+  // Initialize the crystal router.
+  struct crystal cr;
+  crystal_init(&cr, c);
 
-  struct array *a = data->a;
-  size_t usize = data->unit_size;
+  // Allocate `proc` with some buffer space.
+  uint *proc = tcalloc(uint, arr->n + 1);
+  for (uint i = 0; i < arr->n; i++) proc[i] = proci[i];
 
-  struct hypercube hdata;
+  // Transfer the array elements to destination processor. To avoid message
+  // sizes larger than INT_MAX, we calculate total message size and then figure
+  // out how many transfers we need. Then we transfer array using that many
+  // transfers.
+  slong msg_size = 9 * (INT_MAX / 10);
+  uint nt = (ng * usize + msg_size - 1) / msg_size;
+  parrsb_print(c, 0, "\t\t\tmsg_size = %lld, nt = %u", msg_size, nt);
+  uint tsize = (arr->n + nt - 1) / nt;
+
+  struct array brr, crr;
+  array_init_(&brr, tsize + 1, usize, __FILE__, __LINE__);
+  array_init_(&crr, arr->n + 1, usize, __FILE__, __LINE__);
+
+  char *pe = (char *)arr->ptr;
+  uint off = 0, off1;
+  for (unsigned t = 0; t < nt; t++) {
+    // Copy a chunk from `arr` to `brr`.
+    brr.n = 0, off1 = off + tsize;
+    assert(off <= arr->n);
+    for (uint j = off; j < arr->n && j < off1; j++)
+      array_cat_(usize, &brr, &pe[j * usize], 1, __FILE__, __LINE__);
+
+    // Transfer the chunk in `brr` to the destination.
+    sarray_transfer_ext_(&brr, usize, &proc[off], sizeof(uint), &cr);
+
+    // Append the received chunk to `crr`.
+    array_cat_(usize, &crr, brr.ptr, brr.n, __FILE__, __LINE__);
+    off = (off1 < arr->n ? off1 : arr->n);
+
+    // Some debug printing.
+    slong cmax = crr.n, bmax = brr.n, cmin = crr.n, bmin = brr.n;
+    comm_allreduce(c, gs_long, gs_max, &cmax, 1, wrk);
+    comm_allreduce(c, gs_long, gs_max, &bmax, 1, wrk);
+    comm_allreduce(c, gs_long, gs_min, &cmin, 1, wrk);
+    comm_allreduce(c, gs_long, gs_min, &bmin, 1, wrk);
+    parrsb_print(c, 0, "\t\t\t %d/%d brr.n = %u/%lld/%lld crr.n = %u/%lld/%lld",
+                 t, nt, brr.n, bmin, bmax, crr.n, cmin, cmax);
+  }
+  array_free(&brr);
+
+  arr->n = 0;
+  array_cat_(usize, arr, crr.ptr, crr.n, __FILE__, __LINE__);
+  array_free(&crr);
+
+  free(proc);
+  crystal_free(&cr);
+}
+
+void parallel_sort_(struct array *arr, size_t usize, size_t align,
+                    unsigned algo, unsigned balance, const struct comm *c,
+                    buffer *bfr, unsigned nfields, ...) {
+  struct sort sd = {.a = arr, .unit_size = usize, .align = align};
+  sd.buf = bfr;
+  sd.nfields = nfields;
+
+  va_list vargs;
+  va_start(vargs, nfields);
+  for (uint i = 0; i < nfields; i++) {
+    sd.t[i] = va_arg(vargs, gs_dom);
+    sd.offset[i] = va_arg(vargs, size_t);
+  }
+  va_end(vargs);
+
+  // If there is only a single MPI process, just sort locally and return.
+  if (c->np == 1) {
+    sort_local(&sd);
+    return;
+  }
 
   switch (algo) {
-  case 0:
-    parallel_bin_sort(data, c);
-    break;
-  case 1:
-    hdata.data = data;
-    hdata.probes = NULL;
-    hdata.probe_cnt = NULL;
-    parallel_hypercube_sort(&hdata, &dup);
-    free(hdata.probes);
-    free(hdata.probe_cnt);
-    break;
-  default:
-    break;
+  case 0: parallel_bin_sort(&sd, c); break;
+  case 1: parallel_hypercube_sort(&sd, c); break;
+  default: break;
   }
 
   if (balance) {
-    struct crystal cr;
-    crystal_init(&cr, c);
-    load_balance(a, usize, c, &cr);
-    crystal_free(&cr);
-    sort_local(data);
+    load_balance(sd.a, sd.unit_size, c);
+    sort_local(&sd);
   }
-
-  comm_free(&dup);
-
-  return 0;
 }

@@ -6,8 +6,8 @@ endTime = 50
 dt = 5e-02
 timeStepper = tombo2
 
-writeControl = simulationTime 
-writeInterval = 50
+checkpointControl = simulationTime 
+checkpointInterval = 50
 
 constFlowRate = meanVelocity=1.0 + direction=X
 

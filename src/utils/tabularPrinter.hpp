@@ -6,7 +6,7 @@
 #include <iostream>
 #include <iomanip>
 
-void printTable(std::map<int, std::vector<std::string>> table, std::vector<std::string> headers, std::string delimiter)
+static void printTable(std::map<int, std::vector<std::string>> table, std::vector<std::string> headers, std::string delimiter)
 {
   std::ios oldState(nullptr);
   oldState.copyfmt(std::cout);

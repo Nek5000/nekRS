@@ -2,17 +2,18 @@
 
 [![Build Status](https://travis-ci.org/gslib/gslib.svg?branch=master)](https://travis-ci.org/gslib/gslib)
 
-* Scalable Many-to-Many collectives
-* Robust interpolation for hexahedral spectral element meshes
+* Scalable Many-to-Many (neighborhood) gather-scatter collectives
+* Robust GLL interpolation on hexahedral spectral element meshes
 
 # Build Instructions
 
 The build system relies on GNU Make with the `make` command. To compile gslib just run:
 
 ```
-make CC=mpicc FC=mpif77
-make PREFIX=<install path> install
+make CC=mpicc
 ```
+
+Different make options are available (see Makefile).
 
 # Applications
 
@@ -21,3 +22,5 @@ make PREFIX=<install path> install
 **\[2]&#160;[CEED](http://ceed.exascaleproject.org/)**: Co-design center for Efficient Exascale Discretizations.
 
 **\[3]&#160;[Nektar++](http://www.nektar.info)**: Nektar++ open-source spectral/hp element code.
+
+**\[4]&#160;[Libparanumal](https://github.com/paranumal/libparanumal)**: Accelerated finite element flow solvers .

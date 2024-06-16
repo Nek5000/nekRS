@@ -1,0 +1,232 @@
+###############################################################################
+# env variables
+###############################################################################
+
+: ${PROJ_ID:=""}
+: ${QUEUE:=""}
+: ${CPUONLY:=0}
+: ${NEKRS_CACHE_BCAST:=0}
+: ${RUN_ONLY:=0}
+: ${BUILD_ONLY:=0}
+: ${FP32:=0}
+: ${OPT_ARGS:=""}
+
+###############################################################################
+# global variables
+###############################################################################
+
+case=$1
+case="${case%.*}"
+nodes=$2
+time=$3
+
+bin=$NEKRS_HOME/bin/nekrs
+if [ $FP32 -gt 0 ]; then
+  bin=$NEKRS_HOME/bin/nekrs-fp32
+fi
+
+nsessions=1
+if [ ! -f $case.par ]; then
+  if [ -f $case.sess ]; then
+    nsessions=`wc -l $case.sess|awk '{print $1}'`
+    NEKRS_CACHE_BCAST=0
+
+    if ! [ "$nsessions" -gt 1 ] 2> /dev/null; then
+      echo "ERROR: not enough of sessions in $case.sess"
+      exit 1
+    fi
+    echo "This is a neknek case with $nsessions sessions"
+  fi
+fi
+
+jobname="nekRS_"
+if [ $nsessions -gt 1 ]; then
+  jobname+="nn_"
+fi
+if [ $BUILD_ONLY -eq 1 ]; then
+  jobname+="build_"
+fi
+jobname+=$case
+
+if [ "$nsessions" -gt 1 ] 2> /dev/null; then
+  case=$case.sess
+fi
+
+if [ $BUILD_ONLY -eq 0 ]; then
+  qnodes=$nodes
+  if [ $nsessions -gt $nodes ] 2> /dev/null; then
+    qnodes=$nsessions
+  fi
+else
+  qnodes=1
+  if [ $nsessions -gt 1 ]; then
+    qnodes=$nsessions
+  fi
+  RUN_ONLY=0
+fi
+
+extra_args=""
+if [ ! -z "$OPT_ARGS" ]; then
+  extra_args="${OPT_ARGS}"
+fi
+
+###############################################################################
+# functions
+###############################################################################
+
+setup() {
+
+set +e
+ulimit -s unlimited 
+set -e
+
+if [ $2 -gt 0 ]; then
+
+  if [ $1 -ne 3 ] || [ "$case" == "-h" ] || [ "$case" == "--help" ]; then
+    echo "Usage: [<env-var>] $0 <par or sess file> <number of compute nodes> <hh:mm>"
+    echo ""
+    echo "  env-var                 Values(s)   Description / Comment"
+    echo "  ------------------------------------------------------------------------------------"
+    echo "  NEKRS_HOME              string      path to installation"
+    echo "  PROJ_ID                 string      "
+    echo "  QUEUE                   string      "
+    echo "  CPUONLY                 0/1         backend=serial"
+    echo "  RUN_ONLY                0/1         skip pre-compilation"
+    echo "  BUILD_ONLY              0/1         run pre-compilation only"
+    echo "  FP32                    0/1         run solver in single precision"
+    echo "  OPT_ARGS                string      optional arguements e.g. \"--cimode 1 --debug\""
+    echo ""
+    echo "Example: PROJ_ID=foo QUEUE=production $0 turbChannel.par 2 01:00"
+    exit 1
+  fi
+
+  if [ -z "$NEKRS_HOME" ]; then
+    echo "ERROR: NEKRS_HOME is empty"
+    exit 1
+  fi
+
+  if [ -z "$PROJ_ID" ]; then
+    echo "ERROR: PROJ_ID is empty"
+    exit 1
+  fi
+
+  if [ -z "$QUEUE" ]; then
+    echo "ERROR: QUEUE is empty"
+    exit 1
+  fi
+
+  if ! [ "$nodes" -eq "$nodes" ] 2> /dev/null; then
+    echo "ERROR: <nodes> needs to be an integer"      
+    echo $nodes
+    exit 1
+  fi
+
+  time_fmt=`echo $time|tr ":" " "|awk '{print NF}'`
+  if [ "$time_fmt" -ne "2" ]; then
+    echo "ERROR: <time> is not in the format <hh:mm>"
+    echo $time
+    exit 1
+  fi
+
+  if [ ! -f $bin ]; then
+    echo "Cannot find" $bin
+    exit 1
+  fi
+
+fi
+
+}
+
+chk_case_files() {
+  __case=$1
+  list=($__case.par $__case.udf $__case.re2)
+  for f in ${list[@]}; do
+    if [ ! -f $f ]; then
+      echo "Cannot find" $f
+      exit 1
+    fi
+  done
+}
+
+chk_case() {
+  __ntasks=$1
+  if [ $nsessions -eq 1 ]; then
+    chk_case_files $case
+  else
+    ntmp=`cat $case | awk -F ':' '{sum+=$2} END{print sum}'`
+    if [ $__ntasks -ne $ntmp ]; then
+      echo "ERROR: total #ranks in $case not matched with $__ntasks"
+      exit 1
+    fi
+
+    while read p; do  # chk neknek subfolders
+      cname_sess="${p%:*}"
+      tmp="${p#*:}"
+      ntasks_sess="${tmp%;}"
+
+      if [ -z "$cname_sess" ] || [ -z "$ntasks_sess" ]; then
+        echo "ERROR: $case has wrong format at line"
+        echo $p
+        exit 1
+      fi
+
+      chk_case_files $cname_sess
+    done < $case
+  fi 
+}
+
+add_build_CMD() {
+  f="$1"
+  cmd="$2"
+  __ntasks="$3"
+
+  echo "date" >> $f
+  if [ $nsessions -eq 1 ]; then
+    echo "case_tmp=$case" >> $f
+    echo "ntasks_tmp=$__ntasks" >> $f
+    echo "$cmd" >> $f
+  else
+    while read p; do
+      cname_sess="${p%:*}"
+      tmp="${p#*:}"
+      ntasks_sess="${tmp%;}"
+
+      echo "case_tmp=$cname_sess" >> $f
+      echo "ntasks_tmp=$ntasks_sess" >> $f
+      echo "$cmd &" >> $f
+      echo "sleep 1s" >> $f
+      echo "" >> $f
+    done < $case
+    echo "wait" >>$f
+  fi
+  echo "if [ \$? -ne 0 ]; then" >> $f
+  echo "  exit" >> $f
+  echo "fi" >> $f
+  echo "date" >> $f
+}
+
+link_neknek_logfile() {
+  f="$1"
+
+  if [ $nsessions -gt 1 ]; then
+    echo "# Get job id" >> $f
+    echo "jobid=\"\"" >> $f
+    echo "if [ ! -z \$SLURM_JOB_ID ]; then" >> $f
+    echo "  jobid=\$SLURM_JOB_ID" >> $f
+    echo "elif [ ! -z \$LSB_JOBID ]; then" >> $f
+    echo "  jobid=\$LSB_JOBID" >> $f
+    echo "elif [ ! -z \$PBS_JOBID ]; then" >> $f
+    echo "  jobid=\$PBS_JOBID" >> $f
+    echo "fi" >> $f
+
+    echo "# Link neknek logfiles" >> $f
+    echo "if [ ! -z \$jobid ]; then" >> $f
+    echo "  jobid=\"\${jobid%%.*}\"" >> $f
+    while read p; do
+      cname_sess="${p%:*}"
+      folder_sess="$(dirname "${cname_sess}")"
+      echo "  ln -sf $PWD/$folder_sess/logfile-\$jobid $PWD/$folder_sess/logfile" >> $f
+    done < $case
+    echo "fi" >> $f
+  fi
+}

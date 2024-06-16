@@ -1,154 +1,242 @@
-#include "nrssys.hpp"
+#include "nekrsSys.hpp"
 #include "kernelRequestManager.hpp"
 #include "platform.hpp"
 #include "fileUtils.hpp"
+#include <unordered_set>
+#include <regex>
+#include "sha1.hpp"
 
-kernelRequestManager_t::kernelRequestManager_t(const platform_t& m_platform)
-: kernelsProcessed(false),
-  platformRef(m_platform)
-{}
+kernelRequestManager_t::kernelRequestManager_t(const platform_t &m_platform)
+    : kernelsProcessed(false), platformRef(m_platform)
+{
+}
 
-void
-kernelRequestManager_t::add(const std::string& m_requestName,
-                const std::string& m_fileName,
-                const occa::properties& m_props,
-                std::string m_suffix,
-                bool checkUnique)
+// add (autotuned) kernel for subsequent load 
+void kernelRequestManager_t::add(const std::string& requestName, occa::kernel kernel)
+{
+  if (!kernel.isInitialized()) return;
+
+  kernelRequest_t req(requestName, kernel.sourceFilename(), kernel.properties(), "");
+  req.kernel = kernel;
+  this->add(req, false);
+}
+
+void kernelRequestManager_t::add(const std::string &m_requestName,
+                                 const std::string &m_fileName,
+                                 const occa::properties &m_props,
+                                 std::string m_suffix,
+                                 bool checkUnique)
 {
   this->add(kernelRequest_t{m_requestName, m_fileName, m_props, m_suffix}, checkUnique);
 }
-void
-kernelRequestManager_t::add(kernelRequest_t request, bool checkUnique)
+
+void kernelRequestManager_t::add(kernelRequest_t request, bool checkUnique)
 {
-  auto iterAndBoolPair = kernels.insert(request);
-  if(checkUnique)
-  {
-    int unique = (iterAndBoolPair.second) ? 1 : 0;
+  auto [iter, inserted] = requests.insert(request);
+
+  // checkUnique flag is typically set to false because we may add the same request 
+  // (source file + properties) multiple times. 
+  if (checkUnique) {
+    int unique = (inserted) ? 1 : 0;
     MPI_Allreduce(MPI_IN_PLACE, &unique, 1, MPI_INT, MPI_MIN, platformRef.comm.mpiComm);
-    nrsCheck(!unique, platformRef.comm.mpiComm, EXIT_FAILURE, 
-             "request details: %s\n", request.to_string().c_str());
-  }
 
-  const std::string fileName = request.fileName;
-  fileNameToRequestMap[fileName].insert(request);
-}
-occa::kernel
-kernelRequestManager_t::get(const std::string& request, bool checkValid) const
-{
-  if(checkValid){
-    bool issueError = 0;
-    issueError = !processed();
-    issueError = (requestToKernelMap.count(request) == 0);
-
-    int errorFlag = issueError ? 1 : 0;
-    MPI_Allreduce(MPI_IN_PLACE, &errorFlag, 1, MPI_INT, MPI_MAX, platformRef.comm.mpiComm);
-
-    auto errTxt = [&]()
-    { 
-        std::stringstream txt;
-        txt << "\n";
-        txt << "Cannot find requested kernel " << request << "!\n";
-        txt << "Available:\n";
-        for(auto&& keyAndValue : requestToKernelMap)
-          txt << "\t" << keyAndValue.first << "\n";
-
-        txt << "===========================================================\n";
-        return txt.str();
-    };
-
-    nrsCheck(errorFlag, platformRef.comm.mpiComm, EXIT_FAILURE, errTxt().c_str(), "");
+    nekrsCheck(!unique,
+               platformRef.comm.mpiComm,
+               EXIT_FAILURE,
+               "request already exists:\n%s",
+               request.to_string().c_str());
   }
 
 
-  occa::kernel knl = requestToKernelMap.at(request); 
-  nrsCheck(!knl.isInitialized(), MPI_COMM_SELF, EXIT_FAILURE, 
-           "requested kernel %s not initialized!\n", request.c_str());
+  // if the request already exists, it's important to verify that it is indeed the same,
+  // as inadvertently overwriting the existing entry could occur otherwise.
+  if (!inserted) {
+    auto exisitingProps = (requestMap.find(request.requestName)->second).props;
+    nekrsCheck(request.props.hash() != exisitingProps.hash(),
+               platformRef.comm.mpiComm,
+               EXIT_FAILURE,
+               "%s\n",
+               "detected different kernel hash for same request name\n%s", request.to_string().c_str());
 
-  return knl;
+    auto exisitingFileName = (requestMap.find(request.requestName)->second).fileName;
+    nekrsCheck(request.fileName != exisitingFileName,
+               platformRef.comm.mpiComm,
+               EXIT_FAILURE,
+               "%s\n",
+               "detected different kernel hash for same request name\n%s", request.to_string().c_str());
+
+    return;
+  }
+
+  requestMap.insert({request.requestName, request});
+
 }
 
-void
-kernelRequestManager_t::compile()
+occa::kernel kernelRequestManager_t::load(const std::string& requestName, const std::string& _kernelName)
 {
-  if(kernelsProcessed) return;
+  auto errTxt = [&]() {
+    const auto valid = processed() && (requestMap.find(requestName) != requestMap.end());
 
-  kernelsProcessed = true;
+    if (valid) return std::string();
 
-  constexpr int maxCompilingRanks {20};
+    std::stringstream txt;
+    txt << "\n";
+    txt << "Cannot find request " << "<" << requestName << ">" << "\n";
+    txt << "Available:\n";
+    for (auto &keyAndValue : requestMap) {
+      txt << "\t" << "<" << keyAndValue.second.requestName << ">" << "\n";
+    }
 
-  const int rank = platform->cacheLocal ? platformRef.comm.localRank : platformRef.comm.mpiRank;
-  const int ranksCompiling =
-    std::min(
-      maxCompilingRanks,
-      platform->cacheLocal ?
-        platformRef.comm.mpiCommLocalSize :
-        platformRef.comm.mpiCommSize
-    );
+    txt << "===========================================================\n";
+    auto retVal = txt.str();
 
+    return retVal; 
+  }();
 
-  std::vector<std::string> kernelFiles(fileNameToRequestMap.size());
-  
-  unsigned ctr = 0;
-  for(auto&& fileNameAndRequests : fileNameToRequestMap)
+  nekrsCheck(errTxt.size(), platformRef.comm.mpiComm, EXIT_FAILURE, "%s\n", errTxt.c_str());
+
+  auto kernel = [&]() 
   {
-    kernelFiles[ctr] = fileNameAndRequests.first;
-    ctr++;
+    const auto& req = requestMap.find(requestName)->second;
+
+    auto reqKnl = req.kernel;
+    if (reqKnl.isInitialized()) return reqKnl; // request is mapped to a already loaded kernel
+
+    const auto kernelName = [&]()
+    {
+      if (_kernelName.empty()) {
+        auto fullPath = req.fileName;
+        std::regex kernelNameRegex(R"((.+)\/(.+)\.)");
+        std::smatch kernelNameMatch;
+        const auto foundKernelName = std::regex_search(fullPath, kernelNameMatch, kernelNameRegex);
+  
+        // capture group
+        // 0:   /path/to/install/nekrs/kernels/cds/advectMeshVelocityHex3D.okl
+        // 1:   /path/to/install/nekrs/kernels/cds
+        // 2:   advectMeshVelocityHex3D.okl
+  
+        return (foundKernelName && kernelNameMatch.size() == 3) ? kernelNameMatch[2].str() : "";
+      } else {
+        return _kernelName;
+      }
+    }();
+
+    if (kernelMap.find({req, kernelName}) != kernelMap.end()) {
+      return kernelMap[{req, kernelName}];
+    } else {
+      return kernelMap[{req, kernelName}] = platformRef.device.loadKernel(req.fileName, kernelName, req.props, req.suffix);
+    }
+  }();
+
+  nekrsCheck(!kernel.isInitialized(),
+             MPI_COMM_SELF,
+             EXIT_FAILURE,
+             "kernel <%s> for request <%s> could not be initialized!\n",
+             _kernelName.c_str(),
+             requestName.c_str());
+
+  return kernel;
+}
+
+void kernelRequestManager_t::compile()
+{
+  if (kernelsProcessed) {
+    return;
+  } else {
+    kernelsProcessed = true;
   }
 
-  const auto& device = platformRef.device;
-  auto& requestToKernel = requestToKernelMap;
-  auto& fileNameToRequest = fileNameToRequestMap;
-  auto compileKernels = [&kernelFiles, &requestToKernel, &fileNameToRequest, &device, rank, ranksCompiling](){
-    if(rank >= ranksCompiling) return;
-    const unsigned nFiles = kernelFiles.size();
-    for(unsigned fileId = 0; fileId < nFiles; ++fileId)
-    {
-      if(fileId % ranksCompiling == rank){
-        const std::string fileName = kernelFiles[fileId];
-        for(auto && kernelRequest : fileNameToRequest[fileName]){
-          const std::string requestName = kernelRequest.requestName;
-          const std::string fileName = kernelRequest.fileName;
-          const std::string suffix = kernelRequest.suffix;
-          const occa::properties props = kernelRequest.props;
+  const auto &device = platformRef.device;
 
-          const bool buildRank0 = false;
-          auto kernel = device.buildKernel(fileName, props, suffix, buildRank0);
-          requestToKernel[requestName] = kernel;
+  constexpr int maxCompilingRanks{32}; // large enough to speed things up, small enough to control pressure on filesystem
+  const int rank = platform->cacheLocal ? platformRef.comm.localRank : platformRef.comm.mpiRank;
+  const int ranksCompiling = std::min(
+                               maxCompilingRanks,
+                               platform->cacheLocal ? platformRef.comm.mpiCommLocalSize : platformRef.comm.mpiCommSize
+                             );
+
+  if (platformRef.comm.mpiRank == 0 && (platform->verbose || platform->buildOnly)) {
+    std::cout << "requests.size(): " << requests.size() << std::endl;
+  }
+
+  {
+    std::map<std::string, kernelRequest_t> map;
+    for (auto&& req : requests) {
+      const auto fileName = (requestMap.find(req.requestName)->second).fileName;
+      const auto props = (requestMap.find(req.requestName)->second).props;
+      const auto hash = SHA1::from_string(fileName + props.hash().getFullString());
+      auto [iter, inserted] = map.insert({hash, req});
+      const std::string txt = 
+        "request collision between <" + req.requestName + "> and <" + (iter->second).requestName + ">!"; 
+      nekrsCheck(!inserted, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", txt.c_str());
+    }
+  }
+
+  // compile requests (assumed to have a unique occa hash) on build ranks
+  constexpr int hashLength = 16 + 1; // null-terminated 
+  auto hashes = (char*) std::calloc(requests.size() * hashLength, sizeof(char)); 
+
+  auto reqIdStart = std::numeric_limits<long int>::max();
+  auto reqIdEnd = static_cast<long int>(1);
+
+  if (rank < ranksCompiling) { 
+    for (auto&& req : requests) {
+      const auto reqId = std::distance(requests.begin(), requests.find(req));
+      if (reqId % ranksCompiling == rank) {
+        reqIdStart = std::min(reqIdStart, static_cast<long int>(reqId));
+        reqIdEnd = std::max(reqIdEnd, static_cast<long int>(reqId));
+
+        if (platform->verbose || platform->buildOnly) {
+          std::cout << "Compiling request <" << req.requestName << ">";
+          fflush(stdout);
+        }
+
+        auto knl = device.compileKernel(req.fileName, req.props, req.suffix, MPI_COMM_SELF);
+        const auto hash = knl.hash().getString();
+        std::strncpy(hashes + reqId*hashLength, hash.c_str(), hashLength); 
+        if (platform->verbose || platform->buildOnly) {
+          std::cout << " (" << hash << ") on rank " << rank << std::endl;
         }
       }
     }
-  };
+  }
+  MPI_Barrier(platform->comm.mpiComm); // finish compilation
 
-  const auto& kernelRequests = this->kernels;
-  auto loadKernels = [&requestToKernel, &kernelRequests,&device](){
-    for(auto&& kernelRequest : kernelRequests)
+  // a-posteriori check for duplicated hash causing a potential race condition
+  // no parallel version available yet 
+  if (platform->comm.mpiCommSize == 1) {
+    const auto duplicateHashFound = [&]()
     {
-      const std::string requestName = kernelRequest.requestName;
-      if(requestToKernel.count(requestName) == 0){
-        const std::string fileName = kernelRequest.fileName;
-        const std::string suffix = kernelRequest.suffix;
-        const occa::properties props = kernelRequest.props;
-
-        const bool buildRank0 = false;
-        auto kernel = device.buildKernel(fileName, props, suffix, buildRank0); // will just load because binary exists already
-        requestToKernel[requestName] = kernel;
+      if (platform->comm.mpiRank == 0) {
+        std::unordered_set<std::string> encounteredHashes;
+        for (const auto& req : requests) {
+          const auto reqId = distance(requests.begin(), requests.find(req));
+          char hash[hashLength];
+          std::strncpy(hash, hashes + reqId*hashLength, hashLength);
+          if (!encounteredHashes.insert(hash).second) {
+            std::cerr << "duplicate hash <" << hash << "> found for request: " << req.requestName << std::endl;
+            return true;
+          }
+        }
+        return false;
       }
-    }
-  };
-
-  MPI_Barrier(platform->comm.mpiComm);
-  compileKernels();
-
-  const auto OCCA_CACHE_DIR0 = occa::env::OCCA_CACHE_DIR;
-  if(platform->cacheBcast) {
-    const auto OCCA_CACHE_DIR_LOCAL = platform->tmpDir / fs::path("occa/");
-    const auto srcPath = fs::path(getenv("OCCA_CACHE_DIR")); 
-    fileBcast(srcPath, OCCA_CACHE_DIR_LOCAL / "..", platform->comm.mpiComm, platform->verbose); 
-    occa::env::OCCA_CACHE_DIR = std::string(OCCA_CACHE_DIR_LOCAL);
+      return false;
+    }();
+    nekrsCheck(duplicateHashFound, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "More than one compile request is using the same hash!");
   }
 
-  MPI_Barrier(platform->comm.mpiComm);
-  loadKernels();
+  free(hashes);
 
-  occa::env::OCCA_CACHE_DIR = OCCA_CACHE_DIR0;
+  // after this point it is illegal to compile kernels
+  platform->device.compilationFinished();
+
+  if (platform->cacheBcast && !platform->buildOnly) {
+    const auto srcPath = fs::path(getenv("OCCA_CACHE_DIR"));
+    const std::string cacheDir = platform->tmpDir / fs::path("occa/"); 
+    fileBcast(srcPath, fs::path(cacheDir) / "..", platform->comm.mpiComm, platform->verbose);
+  
+    // redirect
+    occa::env::OCCA_CACHE_DIR = cacheDir; 
+    setenv("OCCA_CACHE_DIR", cacheDir.c_str(), 1);
+  }
 }

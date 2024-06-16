@@ -169,7 +169,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup realOTHEReigen
+*> \ingroup hbgv
 *
 *  =====================================================================
       SUBROUTINE SSBGV( JOBZ, UPLO, N, KA, KB, AB, LDAB, BB, LDBB, W, Z,
@@ -228,7 +228,7 @@
          INFO = -12
       END IF
       IF( INFO.NE.0 ) THEN
-         CALL XERBLA( 'SSBGV ', -INFO )
+         CALL XERBLA( 'SSBGV', -INFO )
          RETURN
       END IF
 *

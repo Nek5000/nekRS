@@ -25,8 +25,9 @@ dfloat flopCounter_t::get(MPI_Comm comm) const
   dfloat err = 0;
   dfloat total = 0.0;
   for (auto const &entry : flopMap) {
-    if (entry.second < 0.0)
+    if (entry.second < 0.0) {
       err += 1;
+    }
     total += entry.second;
   }
 
@@ -38,13 +39,17 @@ dfloat flopCounter_t::get(MPI_Comm comm) const
   err = errAndTotal[0];
   total = errAndTotal[1];
 
-  if (comm != MPI_COMM_SELF && err > 0)
-    nrsAbort(comm, EXIT_FAILURE, "%s\n", "Encountered error in flopCounter_t::get");
+  if (comm != MPI_COMM_SELF && err > 0) {
+    nekrsAbort(comm, EXIT_FAILURE, "%s\n", "Encountered error in flopCounter_t::get");
+  }
 
   return total;
 }
 
-void flopCounter_t::clear() { flopMap.clear(); }
+void flopCounter_t::clear()
+{
+  flopMap.clear();
+}
 
 std::vector<std::string> flopCounter_t::entries(MPI_Comm comm) const
 {

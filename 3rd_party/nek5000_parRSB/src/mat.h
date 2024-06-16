@@ -43,7 +43,8 @@ int IS_DIAG(const struct par_mat *A);
 
 // Output array `arr` is an array of type `struct nbr`
 void find_nbrs(struct array *arr, const ulong *eid, const slong *vtx,
-               const uint nelt, const int nv, struct crystal *cr, buffer *buf);
+               const uint nelt, const unsigned nv, struct crystal *cr,
+               buffer *buf);
 // Output array `eij` is an array of type `struct mij`, input array `nbr` is
 // an array of type `struct nbr`
 int compress_nbrs(struct array *eij, struct array *nbr, buffer *bfr);

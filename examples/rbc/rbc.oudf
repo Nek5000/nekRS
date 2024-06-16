@@ -7,6 +7,44 @@ void scalarDirichletConditions(bcData *bc)
 
 // Kernels
 
+// naive implementation suffering from collisions in case of dense data
+@kernel void hist(const dlong N,
+                  const dlong nBin,
+                  const dfloat uMin,
+                  const dfloat du,
+                  @restrict const dfloat *w,
+                  @restrict const dfloat *u,
+                  @restrict float *o)
+{
+  for (dlong n = 0; n < (N + p_blockSize - 1) / p_blockSize; n++; @outer) {
+    @shared float cnt_s[2048];
+
+    for (int b=0; b < (nBin + p_blockSize - 1) / p_blockSize; b++) {
+      for (int t = 0; t < p_blockSize; t++; @inner) {
+        const int id = b*p_blockSize + t;
+        if(id < nBin) {
+          cnt_s[id] = 0.0f;
+        }
+      }
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; t++; @inner) {
+      const int id = n*p_blockSize + t;
+      int idx = (u[id] - uMin) * du; // map to [0, nBin]
+      @atomic cnt_s[(idx < nBin) ? idx : nBin - 1] += w[id];
+    }
+    @barrier();
+
+    for (int b=0; b < (nBin + p_blockSize - 1) / p_blockSize; b++) {
+      for (int t = 0; t < p_blockSize; t++; @inner) {
+        const int id = b*p_blockSize + t;
+        if(id < nBin) @atomic o[id] += cnt_s[id];
+      }
+    }
+  }
+}
+
 @kernel void cfill(const dlong Ntotal, const dlong offset, @ restrict const dfloat *S, @ restrict dfloat *FU)
 {
   for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {

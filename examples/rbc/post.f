@@ -145,7 +145,8 @@ c-----------------------------------------------------------------------
       real ff(lx1,ly1,lz1,lelt)
       real pdf(npdf)
       real work(npdf)
-      real val, vol, offset, wght, norm, height1, height2, radius, radiusc
+      real val, vol, offset, wght, norm, height1, height2
+      real radius, radiusc
       integer e 
 
 !-----Set arrays to zero
@@ -166,11 +167,10 @@ c-----------------------------------------------------------------------
       do k=1,nz1
       do j=1,ny1
       do i=1,nx1
-               wght= bm1(i,j,k,e) 
-               val= ff(i,j,k,e)
-
-	       radius=sqrt(xm1(i,j,k,e)**2+ym1(i,j,k,e)**2)
-               IF (radius.le.radiusc) THEN 
+         wght= bm1(i,j,k,e) 
+          val= ff(i,j,k,e)
+          radius=sqrt(xm1(i,j,k,e)**2+ym1(i,j,k,e)**2)
+          IF (radius.le.radiusc) THEN 
 
 !-----------------------------------------------------------------------
       if ((zm1(i,j,k,e).ge.height1).and.(zm1(i,j,k,e).le.height2)) then
@@ -185,10 +185,10 @@ c-----------------------------------------------------------------------
 
                enddo
 
-               endif    
+      endif    
 !-----------------------------------------------------------------------
 
-               ENDIF
+          ENDIF
       enddo
       enddo
       enddo
@@ -251,7 +251,7 @@ c-----------------------------------------------------------------------
          vol_check=vol_check + bm1(i,j,k,e)
          mean_val1=mean_val1 + ff(i,j,k,e)*bm1(i,j,k,e)
          mean_val2=mean_val2 + (ff(i,j,k,e)**2)*bm1(i,j,k,e)
-         mean_val3=mean_val3 + (ff(i,j,k,e)**3)*bm1(i,j,k,e)	       
+         mean_val3=mean_val3 + (ff(i,j,k,e)**3)*bm1(i,j,k,e)
          mean_val4=mean_val4 + (ff(i,j,k,e)**4)*bm1(i,j,k,e)
       enddo
       enddo
@@ -316,11 +316,11 @@ c-----------------------------------------------------------------------
             if (zm1(i,j,k,e).ge.height1 .and.
      $          zm1(i,j,k,e).le.height2) then
                    vol_check=vol_check + bm1(i,j,k,e)
-	           mean_val1=mean_val1 + ff(i,j,k,e)*bm1(i,j,k,e)
-	           mean_val2=mean_val2 + (ff(i,j,k,e)**2)*bm1(i,j,k,e)
-	           mean_val3=mean_val3 + (ff(i,j,k,e)**3)*bm1(i,j,k,e)	       
-	           mean_val4=mean_val4 + (ff(i,j,k,e)**4)*bm1(i,j,k,e)
-	    endif
+                   mean_val1=mean_val1 + ff(i,j,k,e)*bm1(i,j,k,e)
+                   mean_val2=mean_val2 + (ff(i,j,k,e)**2)*bm1(i,j,k,e)
+                   mean_val3=mean_val3 + (ff(i,j,k,e)**3)*bm1(i,j,k,e)
+                   mean_val4=mean_val4 + (ff(i,j,k,e)**4)*bm1(i,j,k,e)
+            endif
          endif
       enddo
       enddo
@@ -355,6 +355,7 @@ c-----------------------------------------------------------------------
 
       parameter (lt=lx1*ly1*lz1*lelt)
       real dtdx(lt),dtdy(lt),dtdz(lt),w(lt)
+      common /scrns/ dtdx,dtdy,dtdz,w 
 
       common /chkcmnr/ atime,timel,flux(2)
       common /chkcmni/ iesurf(0:2*lelt,2),ifsurf(0:2*lelt,2)

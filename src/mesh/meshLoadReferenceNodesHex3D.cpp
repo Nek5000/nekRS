@@ -24,10 +24,8 @@
 
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include "mesh3D.h"
-#include <vector>
+#include <cstring>
 #define NODE_GEN
 
 void meshLoadReferenceNodesHex3D(mesh_t *mesh, int N, int cubN)
@@ -145,6 +143,6 @@ void meshLoadReferenceNodesHex3D(mesh_t *mesh, int N, int cubN)
   }
 
   mesh->edgeNodes = (int*) calloc(_edgeNodes.size(), sizeof(int));
-  memcpy(mesh->edgeNodes, _edgeNodes.data(), _edgeNodes.size() * sizeof(int));
+  std::memcpy(mesh->edgeNodes, _edgeNodes.data(), _edgeNodes.size() * sizeof(int));
   mesh->NedgeNodes = _edgeNodes.size();
 }

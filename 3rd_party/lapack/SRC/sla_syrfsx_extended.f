@@ -383,7 +383,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup realSYcomputational
+*> \ingroup la_herfsx_extended
 *
 *  =====================================================================
       SUBROUTINE SLA_SYRFSX_EXTENDED( PREC_TYPE, UPLO, N, NRHS, A, LDA,
@@ -647,7 +647,7 @@
             PREVNORMDX = NORMDX
             PREV_DZ_Z = DZ_Z
 *
-*           Update soluton.
+*           Update solution.
 *
             IF (Y_PREC_STATE .LT. EXTRA_Y) THEN
                CALL SAXPY( N, 1.0, DY, 1, Y(1,J), 1 )

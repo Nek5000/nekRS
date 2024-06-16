@@ -37,6 +37,8 @@
 
 namespace inipp
 {
+const std::string envPrefix  = "env::";
+
 namespace detail
 {
 
@@ -154,11 +156,21 @@ void Ini::parse(std::stringstream & is, bool lowerValue)
           end_position = value.find("\"");
           if (end_position != std::string::npos)
           {
-            valueInQuotes = value.substr(start_position, end_position - start_position);
+            valueInQuotes = value.substr(start_position, end_position - start_position - 1);
           }    
         }
-       
-        if (lowerValue) {
+ 
+        const auto isEnvVar = value.find(envPrefix, 0) != std::string::npos;
+        if (isEnvVar) { 
+          const std::string val = value.erase(0, envPrefix.length());
+          if(std::getenv(val.c_str())) {
+            value = std::getenv(val.c_str()); 
+          } else {
+             throw std::runtime_error("env variable " + val + " not found");
+          }
+        }
+ 
+        if (lowerValue && !isEnvVar) {
           transform(value.begin(), value.end(), value.begin(),
                     [](int c){return std::tolower(c);});
         }

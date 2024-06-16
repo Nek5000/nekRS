@@ -15,7 +15,7 @@ hlong hsum(mesh_t *mesh, const dlong N, occa::memory &o_a, MPI_Comm _comm)
   static occa::memory h_scratch;
   static hlong *scratch;
 
-  if (o_scratch.size() < Nbytes) {
+  if (o_scratch.byte_size() < Nbytes) {
     o_scratch = platform->device.malloc(Nbytes);
     h_scratch = platform->device.mallocHost(Nbytes);
     scratch = (hlong *)h_scratch.ptr();
@@ -133,10 +133,10 @@ mesh_t::distance(int nbID, const occa::memory &o_bID, dlong offsetFld, std::stri
   if (type.find("cheap") != std::string::npos) {
     o_dist = cheapDist(this, nbID, o_bID, offsetFld, false, maxIter);
   } else {
-    nrsAbort(platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "distance function type %s not supported!\n",
-             type.c_str());
+    nekrsAbort(platform->comm.mpiComm,
+               EXIT_FAILURE,
+               "distance function type %s not supported!\n",
+               type.c_str());
   }
 
   return o_dist;
@@ -150,10 +150,10 @@ occa::memory mesh_t::minDistance(int nbID, const occa::memory &o_bID, std::strin
   if (type.find("cheap") != std::string::npos) {
     o_dist = cheapDist(this, nbID, o_bID, this->Nlocal, true, maxIter);
   } else {
-    nrsAbort(platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "distance function type %s not supported!\n",
-             type.c_str());
+    nekrsAbort(platform->comm.mpiComm,
+               EXIT_FAILURE,
+               "distance function type %s not supported!\n",
+               type.c_str());
   }
 
   return o_dist;

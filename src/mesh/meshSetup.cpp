@@ -1,4 +1,4 @@
-#include "nrs.hpp"
+#include "platform.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "meshNekReader.hpp"
 
@@ -6,8 +6,9 @@ static void checkEToB(mesh_t *mesh)
 {
   const auto nid = mesh->Nbid;
 
-  if (nid <= 0)
+  if (nid <= 0) {
     return;
+  }
 
   int err = 0;
   int found = 0;
@@ -22,10 +23,11 @@ static void checkEToB(mesh_t *mesh)
     }
     MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
     err += (found ? 0 : 1);
-    if (err && platform->comm.mpiRank == 0)
+    if (err && platform->comm.mpiRank == 0) {
       printf("Cannot find boundary ID %d in EToB!\n", id);
+    }
   }
-  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
+  nekrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
 
   found = 0;
   for (int f = 0; f < mesh->Nelements * mesh->Nfaces; f++) {
@@ -34,7 +36,7 @@ static void checkEToB(mesh_t *mesh)
     }
   }
   MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-  nrsCheck(found, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "EToB has invalid entries!");
+  nekrsCheck(found, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "EToB has invalid entries!");
 }
 
 static void meshVOccaSetup3D(mesh_t *mesh, occa::properties &kernelInfo);
@@ -53,12 +55,12 @@ occa::properties meshKernelProperties(int N)
   constexpr int Nggeo{7};
   constexpr int Nsgeo{13};
 
-  nrsCheck(BLOCKSIZE < Nq * Nq,
-           MPI_COMM_SELF,
-           EXIT_FAILURE,
-           "BLOCKSIZE of %d < %d (Nq * Nq)\n!",
-           BLOCKSIZE,
-           Nq * Nq);
+  nekrsCheck(BLOCKSIZE < Nq * Nq,
+             MPI_COMM_SELF,
+             EXIT_FAILURE,
+             "BLOCKSIZE of %d < %d (Nq * Nq)\n!",
+             BLOCKSIZE,
+             Nq * Nq);
 
   meshProperties["defines/"
                  "p_dim"] = 3;
@@ -167,18 +169,34 @@ static void loadKernels(mesh_t *mesh)
   const std::string meshPrefix = "mesh-";
   const std::string orderSuffix = "_" + std::to_string(mesh->N);
 
-  mesh->surfaceIntegralKernel = platform->kernels.get(meshPrefix + "surfaceIntegral" + orderSuffix);
-  mesh->surfaceIntegralVectorKernel = platform->kernels.get(meshPrefix + "surfaceIntegralVector" + orderSuffix);
-  mesh->geometricFactorsKernel = platform->kernels.get(meshPrefix + "geometricFactorsHex3D" + orderSuffix);
-  mesh->surfaceGeometricFactorsKernel = platform->kernels.get(meshPrefix + "surfaceGeometricFactorsHex3D" + orderSuffix);
-  mesh->cubatureGeometricFactorsKernel = platform->kernels.get(meshPrefix + "cubatureGeometricFactorsHex3D" + orderSuffix);
+  mesh->geometricFactorsKernel =
+      platform->kernelRequests.load(meshPrefix + "geometricFactorsHex3D" + orderSuffix);
+  mesh->surfaceGeometricFactorsKernel =
+      platform->kernelRequests.load(meshPrefix + "surfaceGeometricFactorsHex3D" + orderSuffix);
+  mesh->cubatureGeometricFactorsKernel =
+      platform->kernelRequests.load(meshPrefix + "cubatureGeometricFactorsHex3D" + orderSuffix);
 
-  mesh->setBIDKernel = platform->kernels.get(meshPrefix + "setBIDHex3D" + orderSuffix);
-  mesh->distanceKernel = platform->kernels.get(meshPrefix + "distanceHex3D" + orderSuffix);
-  mesh->hlongSumKernel = platform->kernels.get("hlong-" + meshPrefix + "sum" + orderSuffix);
+  mesh->setBIDKernel = platform->kernelRequests.load(meshPrefix + "setBIDHex3D");
+  mesh->distanceKernel = platform->kernelRequests.load(meshPrefix + "distanceHex3D");
+  mesh->hlongSumKernel = platform->kernelRequests.load("hlong-" + meshPrefix + "sum");
 
-  mesh->velocityDirichletKernel = platform->kernels.get(meshPrefix + "velocityDirichletBCHex3D");
-  mesh->nStagesSumVectorKernel = platform->kernels.get(meshPrefix + "nStagesSumVector");
+  mesh->velocityDirichletKernel = platform->kernelRequests.load(meshPrefix + "velocityDirichletBCHex3D");
+  mesh->nStagesSumVectorKernel = platform->kernelRequests.load(meshPrefix + "nStagesSumVector");
+
+  { 
+    const auto prefix = "coarsenHex3D_Nf_" + std::to_string(mesh->N);
+    for (int N = 1; N < mesh->N; N++) {
+      mesh->intpKernel[N] = 
+        platform->kernelRequests.load(meshPrefix + prefix + std::string("_Nc_") + std::to_string(N));
+    }
+  }
+  { 
+    for (int N = mesh->N; N < mesh->maxNqIntp; N++) {
+      const auto prefix = "prolongateHex3D_Nf_" + std::to_string(N);
+      mesh->intpKernel[N] = 
+        platform->kernelRequests.load(meshPrefix + prefix + std::string("_Nc_") + std::to_string(mesh->N));
+    }
+  }
 }
 
 mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &kernelInfo)
@@ -192,20 +210,20 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
   mesh->cht = cht;
 
   if (platform->comm.mpiRank == 0) {
-    if(mesh->cht) {
+    if (mesh->cht) {
       printf("generating t-mesh ...\n");
     } else {
       printf("generating mesh ...\n");
     }
   }
-   
+
   meshNekReaderHex3D(N, mesh);
 
-  nrsCheck(static_cast<size_t>(mesh->Nelements) * mesh->Nvgeo * cubN > std::numeric_limits<int>::max(),
-           platform->comm.mpiComm,
-           EXIT_FAILURE,
-           "%s\n",
-           "mesh->Nelements * mesh->Nvgeo * mesh->cubN exceeds int limit!");
+  nekrsCheck(static_cast<size_t>(mesh->Nelements) * mesh->Nvgeo * cubN > std::numeric_limits<int>::max(),
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "%s\n",
+             "mesh->Nelements * mesh->Nvgeo * mesh->cubN exceeds int limit!");
 
   // connect elements using parallel sort
   meshParallelConnect(mesh);
@@ -214,9 +232,14 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
   meshLoadReferenceNodesHex3D(mesh, N, cubN);
   if (platform->comm.mpiRank == 0) {
     printf("polynomial order N: %d", mesh->N);
-    if (cubN)
-      printf(", over-integration order cubN: %d", mesh->cubNq-1);
+    if (cubN) {
+      printf(", over-integration order cubN: %d", mesh->cubNq - 1);
+    }
     printf("\n");
+  }
+
+  if (platform->comm.mpiRank == 0 && mesh->N < 5) {
+    std::cout << std::endl << "    WARNING: N < 5 may degrade performance!\n" << std::endl;
   }
 
   loadKernels(mesh);
@@ -257,20 +280,22 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
   if (mesh->N == Nfine) {
     dfloat *tmp = (dfloat *)calloc(mesh->Nlocal, sizeof(dfloat));
     mesh->ogs->o_invDegree.copyTo(tmp, mesh->Nlocal);
-    double *mult = (cht) ? (double *)nek::ptr("tmult") : (double *)nek::ptr("vmult");
+    double *mult = (cht) ? nek::ptr<double>("tmult") : nek::ptr<double>("vmult");
     dfloat sum1 = 0;
-    for (int i = 0; i < mesh->Nlocal; i++)
+    for (int i = 0; i < mesh->Nlocal; i++) {
       sum1 += std::abs(tmp[i] - static_cast<dfloat>(mult[i]));
+    }
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-    if (sum1 > 10*std::numeric_limits<dfloat>::epsilon()) {
-      if (platform->comm.mpiRank == 0)
+    if (sum1 > 10 * std::numeric_limits<dfloat>::epsilon()) {
+      if (platform->comm.mpiRank == 0) {
         printf("multiplicity test err=%g!\n", sum1);
+      }
       fflush(stdout);
       err++;
     }
     free(tmp);
   }
-  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
+  nekrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     const int maxTemporalOrder = 3;
@@ -278,7 +303,7 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
     mesh->o_coeffAB = platform->device.malloc<dfloat>(maxTemporalOrder, mesh->coeffAB);
   }
 
-  { 
+  {
     std::vector<dfloat> tmp(mesh->Nlocal);
     mesh->ogs->o_invDegree.copyTo(tmp.data());
 
@@ -287,8 +312,15 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
       sum += tmp[i];
     }
     MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
-      printf("unique number of gridpoints: : %lld\n", static_cast<hlong>(sum+0.1));
+    auto Nglobal = static_cast<hlong>(sum + 0.1);
+    if (platform->comm.mpiRank == 0) {
+      printf("unique number of gridpoints: : %lld\n", Nglobal);
+    }
+    mesh->Nglobal = Nglobal;
+
+    hlong NelementsGlobal = mesh->Nelements;
+    MPI_Allreduce(MPI_IN_PLACE, &NelementsGlobal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+    mesh->NelementsGlobal = NelementsGlobal;
   }
 
   {
@@ -297,13 +329,15 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
     MPI_Allreduce(MPI_IN_PLACE, &valMin, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
     MPI_Allreduce(MPI_IN_PLACE, &valMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
 
-    if (platform->comm.mpiRank == 0 && platform->comm.mpiCommSize > 1)
+    if (platform->comm.mpiRank == 0 && platform->comm.mpiCommSize > 1) {
       printf("number of interior elements min/max: %2.0f%%  %2.0f%%\n", 100 * valMin, 100 * valMax);
+    }
   }
 
   mesh->fluid = mesh;
-  if (mesh->cht)
+  if (mesh->cht) {
     mesh->fluid = createMeshV(comm, N, cubN, mesh, kernelInfo);
+  }
 
   return mesh;
 }
@@ -317,11 +351,11 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
   meshLoadReferenceNodesHex3D(mesh, Nc, cubN);
 
   const std::string meshPrefix = "pMGmesh-";
-  const std::string orderSuffix =  "_" + std::to_string(mesh->N);
+  const std::string orderSuffix = "_" + std::to_string(mesh->N);
 
-  mesh->surfaceIntegralKernel = nullptr;
   mesh->velocityDirichletKernel = nullptr;
-  mesh->geometricFactorsKernel = platform->kernels.get(meshPrefix + "geometricFactorsHex3D" + orderSuffix);
+  mesh->geometricFactorsKernel =
+      platform->kernelRequests.load(meshPrefix + "geometricFactorsHex3D" + orderSuffix);
   mesh->surfaceGeometricFactorsKernel = nullptr;
   mesh->cubatureGeometricFactorsKernel = nullptr;
   mesh->nStagesSumVectorKernel = nullptr;
@@ -329,26 +363,23 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
   mesh->o_D = platform->device.malloc<dfloat>(mesh->Nq * mesh->Nq, mesh->D);
 
   dfloat *DT = (dfloat *)calloc(mesh->Nq * mesh->Nq, sizeof(dfloat));
-  for (int j = 0; j < mesh->Nq; j++)
-    for (int i = 0; i < mesh->Nq; i++)
+  for (int j = 0; j < mesh->Nq; j++) {
+    for (int i = 0; i < mesh->Nq; i++) {
       DT[j * mesh->Nq + i] = mesh->D[i * mesh->Nq + j];
+    }
+  }
   mesh->o_DT = platform->device.malloc<dfloat>(mesh->Nq * mesh->Nq, DT);
   free(DT);
 
-  mesh->o_gllw =
-    platform->device.malloc<dfloat>(mesh->Nq, mesh->gllw);
+  mesh->o_gllw = platform->device.malloc<dfloat>(mesh->Nq, mesh->gllw);
 
-  mesh->o_faceNodes =
-    platform->device.malloc<int>(mesh->Nfaces * mesh->Nfp, mesh->faceNodes);
+  mesh->o_faceNodes = platform->device.malloc<int>(mesh->Nfaces * mesh->Nfp, mesh->faceNodes);
 
-  mesh->o_LMM =
-    platform->device.malloc<dfloat>(mesh->Nlocal);
+  mesh->o_LMM = platform->device.malloc<dfloat>(mesh->Nlocal);
 
-  mesh->o_vgeo =
-      platform->device.malloc<dfloat>(mesh->Nlocal * mesh->Nvgeo);
+  mesh->o_vgeo = platform->device.malloc<dfloat>(mesh->Nlocal * mesh->Nvgeo);
 
-  mesh->o_ggeo =
-      platform->device.malloc<dfloat>(mesh->Nlocal * mesh->Nggeo);
+  mesh->o_ggeo = platform->device.malloc<dfloat>(mesh->Nlocal * mesh->Nggeo);
 
   meshHaloSetup(mesh);
 
@@ -361,22 +392,17 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
   meshConnectFaceNodes3D(mesh);
 
   meshGlobalIds(mesh);
-  meshParallelGatherScatterSetup(mesh,
-                                 mesh->Nlocal,
-                                 mesh->globalIds,
-                                 platform->comm.mpiComm,
-                                 OOGS_AUTO,
-                                 0);
+  meshParallelGatherScatterSetup(mesh, mesh->Nlocal, mesh->globalIds, platform->comm.mpiComm, OOGS_AUTO, 0);
 
   mesh->geometricFactors();
 
   mesh->o_vgeo.free(); // dfloat version not required
-  mesh->o_LMM.free(); // dfloat version not required
+  mesh->o_LMM.free();  // dfloat version not required
 
   {
     const auto length = mesh->o_ggeo.length();
     auto o_tmp = platform->device.malloc<dfloat>(length);
-    mesh->o_ggeo.copyTo(o_tmp); 
+    mesh->o_ggeo.copyTo(o_tmp);
     mesh->o_ggeo.free();
     mesh->o_ggeo = platform->device.malloc<pfloat>(length);
     platform->copyDfloatToPfloatKernel(length, o_tmp, mesh->o_ggeo);
@@ -385,7 +411,7 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
   {
     const auto length = mesh->o_D.length();
     auto o_tmp = platform->device.malloc<dfloat>(length);
-    mesh->o_D.copyTo(o_tmp); 
+    mesh->o_D.copyTo(o_tmp);
     mesh->o_D.free();
     mesh->o_D = platform->device.malloc<pfloat>(length);
     platform->copyDfloatToPfloatKernel(length, o_tmp, mesh->o_D);
@@ -394,12 +420,12 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
   {
     const auto length = mesh->o_DT.length();
     auto o_tmp = platform->device.malloc<dfloat>(length);
-    mesh->o_DT.copyTo(o_tmp); 
+    mesh->o_DT.copyTo(o_tmp);
     mesh->o_DT.free();
     mesh->o_DT = platform->device.malloc<pfloat>(length);
     platform->copyDfloatToPfloatKernel(length, o_tmp, mesh->o_DT);
   }
- 
+
   return mesh;
 }
 
@@ -407,8 +433,9 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
 {
   mesh_t *mesh = new mesh_t();
 
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     printf("generating v-mesh ...\n");
+  }
 
   // derive from meshT using shallow copy
   memcpy(mesh, meshT, sizeof(*meshT));
@@ -450,20 +477,22 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
   if (mesh->N == Nfine) {
     dfloat *tmp = (dfloat *)calloc(mesh->Nlocal, sizeof(dfloat));
     mesh->ogs->o_invDegree.copyTo(tmp, mesh->Nlocal);
-    auto mult = (double *)nek::ptr("vmult");
+    auto mult = nek::ptr<double>("vmult");
     dfloat sum1 = 0;
-    for (int i = 0; i < mesh->Nlocal; i++)
+    for (int i = 0; i < mesh->Nlocal; i++) {
       sum1 += std::abs(tmp[i] - static_cast<dfloat>(mult[i]));
+    }
     MPI_Allreduce(MPI_IN_PLACE, &sum1, 1, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
-    if (sum1 > 10*std::numeric_limits<dfloat>::epsilon()) {
-      if (platform->comm.mpiRank == 0)
+    if (sum1 > 10 * std::numeric_limits<dfloat>::epsilon()) {
+      if (platform->comm.mpiRank == 0) {
         printf("matching invDegree test failed, err=%g!\n", sum1);
+      }
       fflush(stdout);
       err++;
     }
     free(tmp);
   }
-  nrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
+  nekrsCheck(err, platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "");
 
   mesh->oogs = oogs::setup(mesh->ogs, 1, mesh->Nelements * mesh->Np, ogsDfloat, NULL, OOGS_AUTO);
 
@@ -471,7 +500,7 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
 
   mesh->volume = platform->linAlg->sum(mesh->Nlocal, mesh->o_LMM, platform->comm.mpiComm);
 
-  { 
+  {
     std::vector<dfloat> tmp(mesh->Nlocal);
     mesh->ogs->o_invDegree.copyTo(tmp.data());
 
@@ -480,8 +509,9 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
       sum += tmp[i];
     }
     MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_DOUBLE, MPI_SUM, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0)
-      printf("unique number of gridpoints: : %lld\n", static_cast<hlong>(sum+0.1));
+    if (platform->comm.mpiRank == 0) {
+      printf("unique number of gridpoints: : %lld\n", static_cast<hlong>(sum + 0.1));
+    }
   }
 
   {
@@ -490,8 +520,9 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
     MPI_Allreduce(MPI_IN_PLACE, &valMin, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
     MPI_Allreduce(MPI_IN_PLACE, &valMax, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
 
-    if (platform->comm.mpiRank == 0 && platform->comm.mpiCommSize > 1)
+    if (platform->comm.mpiRank == 0 && platform->comm.mpiCommSize > 1) {
       printf("number of interior elements min/max: %2.0f%%  %2.0f%%\n", 100 * valMin, 100 * valMax);
+    }
   }
 
   return mesh;
@@ -501,12 +532,10 @@ static void meshVOccaSetup3D(mesh_t *mesh, occa::properties &kernelInfo)
 {
   if (mesh->totalHaloPairs > 0) {
     // copy halo element list to DEVICE
-    mesh->o_haloElementList =
-        platform->device.malloc<dlong>(mesh->totalHaloPairs, mesh->haloElementList);
+    mesh->o_haloElementList = platform->device.malloc<dlong>(mesh->totalHaloPairs, mesh->haloElementList);
 
     // temporary DEVICE buffer for halo (maximum size Nfields*Np for dfloat)
-    mesh->o_haloBuffer =
-        platform->device.malloc<dfloat>(mesh->totalHaloPairs * mesh->Np * mesh->Nfields);
+    mesh->o_haloBuffer = platform->device.malloc<dfloat>(mesh->totalHaloPairs * mesh->Np * mesh->Nfields);
 
     // node ids
     mesh->o_haloGetNodeIds =
@@ -517,7 +546,6 @@ static void meshVOccaSetup3D(mesh_t *mesh, occa::properties &kernelInfo)
   }
 
   mesh->o_EToB = platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces, mesh->EToB);
-  mesh->o_vmapM =
-      platform->device.malloc<dlong>(mesh->Nelements * mesh->Nfp * mesh->Nfaces, mesh->vmapM);
+  mesh->o_vmapM = platform->device.malloc<dlong>(mesh->Nelements * mesh->Nfp * mesh->Nfaces, mesh->vmapM);
   mesh->o_invLMM = platform->device.malloc<dfloat>(mesh->Nelements * mesh->Np);
 }

@@ -335,7 +335,7 @@
 *> \author Univ. of Colorado Denver
 *> \author NAG Ltd.
 *
-*> \ingroup complex16GEeigen
+*> \ingroup ggevx
 *
 *> \par Further Details:
 *  =====================
@@ -414,9 +414,9 @@
       LOGICAL            LDUMMA( 1 )
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           DLABAD, DLASCL, XERBLA, ZGEQRF, ZGGBAK, ZGGBAL,
-     $                   ZGGHRD, ZHGEQZ, ZLACPY, ZLASCL, ZLASET, ZTGEVC,
-     $                   ZTGSNA, ZUNGQR, ZUNMQR
+      EXTERNAL           DLASCL, XERBLA, ZGEQRF, ZGGBAK, ZGGBAL, ZGGHRD,
+     $                   ZHGEQZ, ZLACPY, ZLASCL, ZLASET, ZTGEVC, ZTGSNA,
+     $                   ZUNGQR, ZUNMQR
 *     ..
 *     .. External Functions ..
       LOGICAL            LSAME
@@ -545,7 +545,6 @@
       EPS = DLAMCH( 'P' )
       SMLNUM = DLAMCH( 'S' )
       BIGNUM = ONE / SMLNUM
-      CALL DLABAD( SMLNUM, BIGNUM )
       SMLNUM = SQRT( SMLNUM ) / EPS
       BIGNUM = ONE / SMLNUM
 *

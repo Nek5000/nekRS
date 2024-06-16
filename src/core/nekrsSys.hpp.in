@@ -1,0 +1,254 @@
+#if !defined(nekrsSys_hpp)
+#define nekrsSys_hpp
+
+
+// float data type
+#ifdef NEKRS_USE_DFLOAT_FLOAT
+using dfloat = float;
+#define DFLOAT_SINGLE
+#define MPI_DFLOAT MPI_FLOAT
+#define dfloatFormat "%f"
+#define dfloatString "float"
+#else
+using dfloat = double;
+#define DFLOAT_DOUBLE
+#define MPI_DFLOAT MPI_DOUBLE
+#define dfloatFormat "%lf"
+#define dfloatString "double"
+#endif
+
+// smoother float data type
+#if 1
+using pfloat = float;
+#define MPI_PFLOAT MPI_FLOAT
+#define pfloatFormat "%f"
+#define pfloatString "float"
+#else
+using pfloat = double;
+#define MPI_PFLOAT MPI_DOUBLE
+#define pfloatFormat "%lf"
+#define pfloatString "double"
+#endif
+
+// host index data type
+#if 0
+using hlong = int;
+#define MPI_HLONG MPI_INT
+#define hlongFormat "%d"
+#define hlongString "int"
+#else
+using hlong = long long int;
+#define MPI_HLONG MPI_LONG_LONG_INT
+#define hlongFormat "%lld"
+#define hlongString "long long int"
+#endif
+
+// device index data type
+#if 1
+using dlong = int;
+#define MPI_DLONG MPI_INT
+#define dlongFormat "%d"
+#define dlongString "int"
+#else
+using dlong = long long int;
+#define MPI_DLONG MPI_LONG_LONG_INT;
+#define dlongFormat "%lld"
+#define dlongString "long long int"
+#endif
+
+#include <mpi.h>
+#include <math.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+#include <iostream>
+#include <fstream>
+#include <limits>
+#include <stdexcept>
+#include <array>
+#include <tuple>
+#include <regex>
+#include <string>
+#include <vector>
+#include <map>
+#include <algorithm>
+#include <numeric>
+#include <functional>
+#include <cstdio>
+#include <cstdlib>
+#include <cstddef>
+#include <unistd.h>
+#include <getopt.h>
+#include <sys/stat.h>
+#include <cfenv>
+
+#ifdef CPPTRACE_ENABLED
+#include <cpptrace/cpptrace.hpp>
+#endif
+
+#include <@CXX_FILESYSTEM_HEADER@>
+namespace fs = @CXX_FILESYSTEM_NAMESPACE@; 
+
+#include "occa.hpp"
+#include "setupAide.hpp"
+
+constexpr std::string_view GITCOMMITHASH="@GIT_COMMIT_HASH@";
+constexpr std::string_view NEKRS_VERSION="@PROJECT_VERSION_MAJOR@";
+constexpr std::string_view NEKRS_SUBVERSION="@PROJECT_VERSION_MINOR@";
+constexpr std::string_view NEKRS_PATCHVERSION="@PROJECT_VERSION_PATCH@";
+
+#ifdef CPPTRACE_ENABLED
+
+#define nekrsCheck(_nekrsCheckCond, _nekrsCheckComm, _nekrsCheckExitCode, _nekrsCheckFormat, ...)            \
+do {                                                                                                         \
+int _nekrsCheckErr = 0;                                                                                      \
+if (_nekrsCheckCond)                                                                                         \
+_nekrsCheckErr = 1;                                                                                          \
+if (_nekrsCheckComm != MPI_COMM_SELF)                                                                        \
+MPI_Allreduce(MPI_IN_PLACE, &_nekrsCheckErr, 1, MPI_INT, MPI_SUM, _nekrsCheckComm);                          \
+if (_nekrsCheckErr) {                                                                                        \
+int rank = 0;                                                                                                \
+MPI_Comm_rank(_nekrsCheckComm, &rank);                                                                       \
+if (rank == 0) {                                                                                             \
+  char _errTxt[32768] = {0};                                                                                 \
+  snprintf(_errTxt, sizeof(_errTxt), _nekrsCheckFormat, __VA_ARGS__);                                        \
+  throw cpptrace::runtime_error(_errTxt);                                                                    \
+} else {                                                                                                     \
+  throw cpptrace::runtime_error("");                                                                         \
+}                                                                                                            \
+}                                                                                                            \
+} while (0)
+
+#else
+
+#define nekrsCheck(_nekrsCheckCond, _nekrsCheckComm, _nekrsCheckExitCode, _nekrsCheckFormat, ...)            \
+do {                                                                                                         \
+int _nekrsCheckErr = 0;                                                                                      \
+if (_nekrsCheckCond)                                                                                         \
+_nekrsCheckErr = 1;                                                                                          \
+if (_nekrsCheckComm != MPI_COMM_SELF)                                                                        \
+MPI_Allreduce(MPI_IN_PLACE, &_nekrsCheckErr, 1, MPI_INT, MPI_SUM, _nekrsCheckComm);                          \
+if (_nekrsCheckErr) {                                                                                        \
+int rank = 0;                                                                                                \
+MPI_Comm_rank(_nekrsCheckComm, &rank);                                                                       \
+if (rank == 0) {                                                                                             \
+  char _errTxt[32768] = {0};                                                                                 \
+  snprintf(_errTxt, sizeof(_errTxt), "Aborting in %s:%s\n" _nekrsCheckFormat, __FILE__, __func__, __VA_ARGS__); \
+  throw std::runtime_error(_errTxt);                                                                         \
+} else {                                                                                                     \
+  throw std::runtime_error("");                                                                              \
+}                                                                                                            \
+}                                                                                                            \
+} while (0)
+
+#endif
+
+#define nekrsAbort(...)                                                                                      \
+do {                                                                                                         \
+nekrsCheck(true, __VA_ARGS__);                                                                               \
+} while (0)
+
+struct platform_t;
+extern platform_t *platform;
+
+namespace
+{
+
+constexpr double targetTimeBenchmark{1.0};
+
+constexpr int BLOCKSIZE = 256;
+constexpr int ALIGN_SIZE = 1024;
+constexpr int NSCALAR_MAX = 99;
+const occa::memory o_NULL;
+
+template <typename T> unsigned int alignStride(unsigned int stride)
+{
+  const auto pageW = ALIGN_SIZE / sizeof(T);
+  if (stride % pageW) {
+    stride = (stride / pageW + 1) * pageW;
+  }
+
+  return stride;
+}
+
+const std::string scalarDigitStr(int i)
+{
+  const int scalarWidth = std::to_string(NSCALAR_MAX - 1).length();
+  std::stringstream ss;
+  ss << std::setfill('0') << std::setw(scalarWidth) << i;
+  return ss.str();
+};
+
+// std::to_string might be not accurate enough
+std::string to_string_f(double a)
+{
+  std::stringstream s;
+  constexpr auto maxPrecision{std::numeric_limits<double>::digits10 + 1};
+  s << std::setprecision(maxPrecision) << std::scientific << a;
+  return s.str();
+}
+
+std::vector<std::string> serializeString(const std::string sin, char dlim)
+{
+  std::vector<std::string> slist;
+  std::string s(sin);
+  s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+  std::stringstream ss;
+  ss.str(s);
+  while (ss.good()) {
+    std::string substr;
+    std::getline(ss, substr, dlim);
+    if (!substr.empty()) {
+      slist.push_back(substr);
+    }
+  }
+  return slist;
+}
+
+void lowerCase(std::string &s)
+{
+  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
+}
+
+void lowerCase(std::vector<std::string> &stringVec)
+{
+  for (auto &&s : stringVec) {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
+  }
+}
+
+void upperCase(std::vector<std::string> &stringVec)
+{
+  for (auto &&s : stringVec) {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
+  }
+}
+
+void upperCase(std::string &s)
+{
+  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
+}
+
+double setPrecision(double val, int n)
+{
+  std::stringstream tmp;
+  tmp << std::setprecision(n) << std::scientific << val;
+  return std::stod(tmp.str());
+}
+
+template <typename T = dfloat> void o_print(const occa::memory &o_u, const std::string &txt = "")
+{
+  std::vector<T> u(o_u.byte_size() / sizeof(T));
+  o_u.copyTo(u.data());
+  std::stringstream msg;
+  msg << txt << " ";
+  for (const auto &i : u) {
+    msg << i << ", ";
+  }
+  std::cerr << msg.str() << std::endl;
+}
+
+} // namespace
+
+
+#endif
