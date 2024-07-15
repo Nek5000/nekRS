@@ -71,3 +71,24 @@ nekRS is run.
 
 nekRS helper scripts
 --------------------
+
+A number of scripts ship with nekRS itself and are located in the 
+``$NEKRS_HOME/bin`` directory (see :ref:`nekrs_home`). A brief summary of these 
+scripts and their usage is as follows.
+
+* ``nrsmpi <casename> <processes>``: run nekRS in parallel with ``<processes>`` parallel
+  processes for the case files that are prefixed with ``casename``.
+* ``nrsbmpi <casename> <processes>``: same as ``nrsmpi``, except that nekRS runs
+  in the background
+* ``nrspre <casename> <target GPUs>``: precompile nekRS case (see
+  :ref:`just_in_time_compilation`)
+* ``nrsqsub_lassen <casename> <nodes> <wall time>``: submission script for
+  `Lassen <https://computing.llnl.gov/computers/lassen>`_, a supercomputer
+  at Lawrence Livermore National Laboratory. A number of other settings are specified
+  within the script itself.
+* ``nrsqsub_summit <casename> <nodes> <wall time>``: submission script for
+  `Summit <https://www.olcf.ornl.gov/summit/>`_, a supercomputer
+  at Oak Ridge National Laboratory. A number of other settings are specified within the
+  script itself.
+* ``nrsvis <casename>``: postprocess ``fld``-type nekRS output files into a form
+  readable by Paraview or Visit.

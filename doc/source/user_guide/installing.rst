@@ -181,3 +181,23 @@ Optional features
 | ``ENABLE_CVODE``     | Enable CVODE support       | **OFF** | Unsupported when ``OCCA_OPENCL_ENABLED``,                  |
 |                      |                            |         | ``OCCA_DPCPP_ENABLED`` or ``OCCA_HIP_ENABLED`` are on      |
 +----------------------+----------------------------+---------+------------------------------------------------------------+
+
+.. _scripts:
+
+Building the Nek5000 Tool Scripts
+---------------------------------
+
+Some user actions in nekRS require the use of scripts available with :term:`Nek5000`.
+To build these scripts, you will need to separately clone Nek5000, and then
+navigate to the ``tools`` directory and run the makefile to compile all the scripts.
+
+.. code-block::
+
+  user$ git clone https://github.com/Nek5000/Nek5000.git
+  user$ cd Nek5000/tools
+  user$ ./maketools all
+
+This should create binary executables in the ``Nek5000/bin`` directory. 
+You may want to add this to your path in order to quickly access those scripts. 
+There is additional information about these scripts in the nek5000 docs 
+`here <https://nek5000.github.io/NekDoc/tools.html>`_.
