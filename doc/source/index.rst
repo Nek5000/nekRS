@@ -34,7 +34,7 @@ Table of Contents
 
    quickstart
    user_guide/_user_guide
-   tutorials
+   tutorials/_tutorials
    developer_guide/_developer_guide
    glossary
    references
