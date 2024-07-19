@@ -1,0 +1,14 @@
+-3                     spatial dimension (will create box.re2)
+2                      number of fields
+#
+#    comments: periodic laminar flow
+#
+#========================================================
+#
+Box                                       fdlf
+-50 -5 -1                                 Nelx  Nely
+0.0 0.2 1.0                               x0 x1 ratio
+0.0 0.005 0.7                             y0 y1 ratio
+0.0 1.0 1.0                               z0 z1 ratio
+v  ,O  ,SYM,W  ,P  ,P                     Velocity BC's:  (cbx0, cbx1, cby0, cby1)
+t  ,O  ,I  ,f  ,P  ,P                     Temperature BC's:  (cbx0, cbx1, cby0, cby1)

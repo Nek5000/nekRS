@@ -1,0 +1,177 @@
+
+static dfloat P_HEIGHT, P_UMEAN, P_TFLUX, P_TIN;
+deviceMemory<dfloat> o_Uexact, o_Texact;
+
+#ifdef __okl__
+
+@kernel void computeUexact(const dlong Ntotal,
+                           @ restrict const dfloat *y,
+                           @ restrict dfloat *U)
+{
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < Ntotal) {
+      const dfloat yhat = y[n] / p_height;
+      const dfloat yhat2 = yhat * yhat;
+      U[n] = p_umean * 1.5 * (1.0 - 4.0*yhat2);
+    }
+  }
+}
+
+@kernel void computeTexact(const dlong Ntotal,
+                           @ restrict const dfloat *x,
+                           @ restrict const dfloat *y,
+                           @ restrict dfloat *T)
+{ 
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < Ntotal) {
+      const dfloat xn = x[n];
+      const dfloat yn = y[n];
+      const dfloat yhat = yn / p_height;
+      const dfloat yhat2 = yhat * yhat;
+      const dfloat yhat4 = yhat2 * yhat2;
+
+      const dfloat Tbulk = 2.0*p_tflux / (p_umean*p_rhocp*p_height) * xn + p_tin;
+
+      const dfloat tmp = p_tflux*p_height/(2.0*p_cond);
+      T[n] = Tbulk + tmp * (3.0*yhat2 - 2.0*yhat4 - 39.0/280.0);
+    }
+  }
+}
+
+void velocityDirichletConditions(bcData *bc)
+{
+  const dfloat yhat = bc->y / p_height;
+  const dfloat yhat2 = yhat * yhat;
+  bc->u = p_umean * 1.5 * (1.0 - 4.0*yhat2);
+  bc->v = 0.0;
+  bc->w = 0.0;
+}
+
+void scalarDirichletConditions(bcData *bc)
+{
+  const dfloat yhat = bc->y / p_height;
+  const dfloat yhat2 = yhat * yhat;
+  const dfloat yhat4 = yhat2* yhat2;
+  bc->s = p_tscale*(3.0*yhat2 - 2.0*yhat4 - 39.0/280.0) + p_tin;
+}
+
+void scalarNeumannConditions(bcData *bc)
+{
+  bc->flux = p_tflux;
+}
+
+#endif
+
+void UDF_LoadKernels(deviceKernelProperties& kernelInfo)
+{ 
+  setupAide& options = platform->options;
+  
+  dfloat rhocp, cond;
+  options.getArgs("SCALAR00 DENSITY", rhocp);
+  options.getArgs("SCALAR00 DIFFUSIVITY", cond);
+  
+  kernelInfo.define("p_height") = P_HEIGHT;
+  kernelInfo.define("p_umean")  = P_UMEAN;
+  kernelInfo.define("p_tflux")  = P_TFLUX;
+  kernelInfo.define("p_tin")    = P_TIN;
+  kernelInfo.define("p_tscale") = P_TFLUX * P_HEIGHT / (2.0*cond);
+  kernelInfo.define("p_rhocp")  = rhocp;
+  kernelInfo.define("p_cond")   = cond;
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  platform->par->extract("casedata", "height", P_HEIGHT);
+  platform->par->extract("casedata", "umean", P_UMEAN);
+  platform->par->extract("casedata", "tflux", P_TFLUX);
+  platform->par->extract("casedata", "tin", P_TIN);
+}
+
+void UDF_Setup()
+{
+  auto mesh = nrs->meshV;
+
+  // adjust mesh
+  {
+    auto rescale = [&](dfloat newMin, dfloat newMax, dfloat *x)
+    {
+      auto min = std::numeric_limits<dfloat>::max();
+      auto max = std::numeric_limits<dfloat>::lowest();
+      for(int i = 0; i < mesh->Nlocal ; i++) {
+        min = std::min(min, x[i]);
+        max = std::max(max, x[i]);
+      }
+      MPI_Allreduce(MPI_IN_PLACE, &min, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
+      MPI_Allreduce(MPI_IN_PLACE, &max, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+      const auto scale = (newMax - newMin)/(max - min);
+
+      for(int i = 0; i < mesh->Nlocal ; i++) {
+        x[i] = newMin + scale*(x[i] - min);
+      }
+    };
+    rescale(0.0, P_HEIGHT/2.0, mesh->y);
+    rescale(0.0, P_HEIGHT/2.0, mesh->z);
+  }
+
+  // set IC 
+  dfloat rhocp, cond;
+  platform->options.getArgs("SCALAR00 DENSITY", rhocp);
+  platform->options.getArgs("SCALAR00 DIFFUSIVITY", cond);
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      const auto x = mesh->x[n];
+      const auto y = mesh->y[n];
+      const auto z = mesh->z[n]; 
+
+      const dfloat yhat2 = pow(y/P_HEIGHT,2);
+      const dfloat yhat4 = pow(yhat2,2);
+      nrs->U[n + 0 * nrs->fieldOffset] = P_UMEAN;
+      nrs->U[n + 1 * nrs->fieldOffset] = 0.0;
+      nrs->U[n + 2 * nrs->fieldOffset] = 0.0;
+
+      nrs->cds->S[n + 0 * nrs->cds->fieldOffset[0]] = P_TIN;
+    }
+  }
+
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  auto mesh = nrs->meshV;
+/*
+  if (nrs->isCheckpointStep) {
+    nek::ocopyToNek(time, tstep);
+    nek::userchk();
+  }
+*/
+
+  // dump exact sol.
+  if (tstep==0) {
+    o_Uexact.resize(mesh->Nlocal);
+    o_Texact.resize(mesh->Nlocal);
+    computeUexact(mesh->Nlocal, mesh->o_y, o_Uexact);
+    computeTexact(mesh->Nlocal, mesh->o_x, mesh->o_y, o_Texact);
+  
+    std::vector<occa::memory> o_fldList;
+    o_fldList.push_back(o_Uexact);
+    o_fldList.push_back(o_Texact);
+    fld::write("ref", time, tstep, o_fldList, true, false, 0, false);
+  }
+
+  if (tstep % 100 == 0) {
+
+    auto o_ux = nrs->o_U.slice(0 * nrs->fieldOffset, nrs->fieldOffset);
+    auto o_t  = nrs->cds->o_S.slice(0 * nrs->cds->fieldOffset[0], nrs->cds->fieldOffset[0]);
+    auto o_err = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+
+    platform->linAlg->axpbyz(mesh->Nlocal, 1.0, o_Uexact, -1.0, o_ux, o_err);
+    auto Uerr = platform->linAlg->amax(mesh->Nlocal, o_err, platform->comm.mpiComm);
+
+    platform->linAlg->axpbyz(mesh->Nlocal, 1.0, o_Texact, -1.0, o_t, o_err);
+    auto Terr = platform->linAlg->amax(mesh->Nlocal, o_err, platform->comm.mpiComm);
+
+    if (platform->comm.mpiRank == 0) {
+      printf("LinfErr: %d %2.2e %2.4e %2.4e\n",tstep, time, Uerr, Terr);
+    }
+  }
+}
