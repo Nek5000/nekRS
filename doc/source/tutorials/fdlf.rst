@@ -3,7 +3,7 @@
 Fully Developed Laminar Flow
 ============================
 
-In this tutorial we will be building a case that involves incompressible laminar flow in a channel with a constant heat flux applied. 
+In this tutorial we will be building a case that involves incompressible laminar flow in a channel with a constant heat flux applied.
 This case uses air as a working fluid and will be simulated using fully dimensional quantities.
 A diagram of the case is provided in :numref:`fig:setup` and the necessary case parameters are provided in :numref:`tab:setup`.
 Note that round numbers have been selected for the fluid properties and simulation parameters for the sake of simplicity.
@@ -16,7 +16,7 @@ Note that round numbers have been selected for the fluid properties and simulati
    :alt: flow diagram
    :width: 500
 
-   Diagram describing the case setup for fully developed laminar flow in a channel..
+   Diagram describing the case setup for fully developed laminar flow in a channel.
 
 .. _tab:setup:
 
@@ -68,13 +68,13 @@ Before You Begin
 ________________
 
 This tutorial assumes that you have installed *NekRS* in your home directory and 
-have setup your :ref:`execution PATH<sec:PATH>`. You can either follow the example 
+have setup your :ref:`PATH <nekrs_home>`. You can either follow the example 
 with the files in the fdlf directory within examples directory of nekRS, or create 
 it within a directory of your choice.
 
-If you have chosen to create the example as following along, for the initial 
-mesh generation, you will need to compile the tools ``genbox`` and ``genmap`` 
-from *Nek5000*. Please follow the instructions in the 
+If you have chosen to create the example as following along, you will need to 
+compile the two *Nek5000* tools ``genbox`` for the initial mesh generation and 
+``visnek`` to visualise the final result. Please follow the instructions in the
 :ref:`Building the Nek5000 Tool Scripts <scripts>` section.
 
 Mesh Generation
@@ -86,19 +86,32 @@ To create the input file, copy the following script and save the file as ``fdlf.
 .. literalinclude:: ../../../examples/fdlf/fdlf.box
    :language: none
 
-For this mesh we are specifying 50 uniform elements in the stream-wise (:math:`x`) direction and 5 uniform elements in the span-wise (:math:`y`) direction. 
-The velocity boundary conditions in the x-direction are a standard Dirichlet velocity boundary condition at :math:`x_{min}` and an open boundary condition with zero pressure at :math:`x_{max}`. 
-The velocity boundary conditions in the y-direction are a symmetric boundary at :math:`y_{min}` and a wall with no slip condition at :math:`y_{max}`.. 
-The temperature boundary conditions in the x-direction are a standard Dirichlet boundary condition at :math:`x_{min}` and an outflow condition with zero gradient at :math:`x_{max}`. 
-The temperature boundary conditions in the y-direction are an insulated condition with zero gradient at :math:`y_{min}` and a constant heat flux at :math:`y_{max}`. 
-Note that the boundary conditions specified with lower case letters must have values assigned in userbc, which will be shown later in this tutorial. 
-Now we can run ``genbox`` with
+For this mesh we are specifying 50 uniform elements in the stream-wise (:math:`x`) 
+direction and 5 uniform elements in the span-wise (:math:`y`) direction. The 
+velocity boundary conditions in the x-direction are a standard Dirichlet 
+velocity boundary condition at :math:`x_{min}` and an open boundary condition 
+with zero pressure at :math:`x_{max}`. The velocity boundary conditions in the 
+y-direction are a symmetric boundary at :math:`y_{min}` and a wall with no slip
+condition at :math:`y_{max}`. The temperature boundary conditions in the 
+x-direction are a standard Dirichlet boundary condition at :math:`x_{min}`
+and an outflow condition with zero gradient at :math:`x_{max}`. The temperature
+boundary conditions in the y-direction are an insulated condition with zero
+gradient at :math:`y_{min}` and a constant heat flux at :math:`y_{max}`. Note 
+that the boundary conditions specified with lower case letters must have values
+assigned in userbc, which will be shown later in this tutorial. Now we can run
+``genbox`` with
 
 .. code-block:: console
 
    $ genbox
 
-When prompted provide the input file name, which for this case is ``fdlf.box``. The tool will produce binary mesh and boundary data file ``box.re2`` which should be renamed to ``fdlf.re2``.
+When prompted provide the input file name, which for this case is ``fdlf.box``.
+The tool will produce binary mesh and boundary data file ``box.re2`` which should 
+be renamed to ``fdlf.re2``.
+
+.. code-block:: console
+
+   $ mv box.re fdlf.re2
 
 .. Once we have the mesh file, we need to run the domain partitioning tool, ``genmap``.
 
@@ -111,12 +124,13 @@ When prompted provide the input file name, which for this case is ``fdlf.box``. 
 .. You do not have to specify the number of MPI-ranks you plan to run the case with when you use ``genmap``, as it contains the partitioning for all possible choices.
 
 .. :tip: If either ``genbox`` or ``genmap`` cannot be located by your shell, check to make sure the ``Nek5000/tools`` directory is in your path. For help see :ref:`here<sec:PATH>`.
-:tip: If ``genbox`` cannot be located by your shell, check to make sure the ``Nek5000/tools`` directory is in your path. For help see `here <https://nek5000.github.io/NekDoc/quickstart.html#sec-path>`_.
+.. tip:: If ``genbox`` cannot be located by your shell, check to make sure the ``Nek5000/tools`` directory is in your path. For help see `here <https://nek5000.github.io/NekDoc/quickstart.html#sec-path>`_.
 
 Control parameters
 __________________
 
-The control parameters for any case are given in the ``.par`` file. For this case, create a new file called ``fdlf.par`` with the following:
+The control parameters for any case are given in the ``.par`` file. For this case,
+create a new file called ``fdlf.par`` with the following:
 
 .. literalinclude:: ../../../examples/fdlf/fdlf.par
 
@@ -132,154 +146,68 @@ parameters, as well as the height of the channel. These initial and boundary
 conditions will later be called in respective subroutines of the ``.udf`` file.
 
 User-Defined Host Functions File (.udf)
-_________________________
+_______________________________________
 
-The user-defined host functions file implements various subroutines to allow the user to interact with the solver.
-Note that only the subroutines that need to be edited to run this case will be discussed. 
-The remaining routines can be left as is.
-For more information on the ``.udf`` file and the available subroutines see :ref:`here <udf_functions>`.
-
-To get started we copy the template to our case directory
-
-.. code-block:: console
-
-   $ cp $HOME/Nek5000/core/zero.usr fdlf.usr
-
+The user-defined host functions file implements various subroutines to allow the
+user to interact with the solver. For more information on the ``.udf`` file and 
+the available subroutines see :ref:`here <udf_functions>`.
 
 Boundary and initial conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The boundary conditions can be setup in subroutine ``userbc`` as shown below, where the highlighted lines indicate where the actual boundary condition is specified.
-The velocity and temperature are set to the analytic profiles given by Eqs. :eq:`fdlf_vel` and :eq:`fdlf_temp` and the heat flux is set to a constant value.
+The boundary conditions can be setup in function ``UDF_Setup`` as shown below, 
+where the highlighted lines indicate where the actual boundary condition is specified.
+The velocity and temperature are set to the analytic profiles given by Eqs. :
+eq:`fdlf_vel` and :eq:`fdlf_temp` and the heat flux is set to a constant value.
 
-.. .. literalinclude:: ../../../examples/fdlf/fdlf.udf
-..    :language: fortran
-..    :lines: 69-97
-..    :emphasize-lines: 22,25,26
+.. literalinclude:: ../../../examples/fdlf/fdlf.udf
+   :language: c++
+   :lines: 41-61
+   :emphasize-lines: 3-5,12-15,20
 
-The channel height, mean velocity, heat flux, and mean inlet temperature are all called from the list of user defined parameters in the ``.par`` file.
-The thermal conductivity is set from the :ref:`field coefficient array<tab:cpfld>`, which is set from the conductivity specified for the temperature field in the ``.par`` file.
+*The channel height, mean velocity, heat flux, and mean inlet temperature are all 
+called from the list of user defined parameters in the ``.par`` file.
+The thermal conductivity is set from the :ref:`field coefficient array<tab:cpfld>`, 
+which is set from the conductivity specified for the temperature field in the ``.par`` file.*
 
-The next step is to specify the initial conditions. 
-This can be done in the subroutine ``useric`` as shown. 
+The next step is to specify the initial conditions.
+This can also be done in the ``UDF_Setup`` function as shown. 
 Again, the actual inlet condition is specified with the highlighted lines.
 
-.. .. literalinclude:: ../../../examples/fdlf/fdlf.usr
-..    :language: fortran
-..    :lines: 99-117
-..    :emphasize-lines: 13,16
+.. literalinclude:: ../../../examples/fdlf/fdlf.udf
+   :language: c++
+   :lines: 117-132
+   :emphasize-lines: 12,16
 
-As with ``userbc``, the inlet temperature and mean velocity are set from the list of user defined parameters in the ``.par`` file. 
-
-.. ........................
-.. userchk
-.. ........................
-.. 
-.. The subroutine ``userchk`` is a general purpose function that is executed before the time stepper and after each time step. The following should be copied to this subroutine
-.. 
-.. .. code-block:: fortran
-.. 
-..    subroutine userchk()
-.. 
-..    implicit none
-.. 
-..    include 'SIZE'
-..    include 'TOTAL'
-.. 
-..    real bc_average,glsc3,glsc2
-..    real Dh,um,qpp,Tin,rho,mu,con,L,Pin,Pout,darcy,Re,derror
-..    real Tbulk,Twall,HTC,Nuss,Nerror
-.. 
-..    integer n
-.. 
-..    n=lx1*ly1*lz1*nelv
-.. 
-..    Dh   = uparam(1)*2.0 !hydraulic diameter
-..    um   = uparam(2)     !mean velocity
-..    qpp  = uparam(3)     !heat flux
-..    rho  = cpfld(1,2)    !density
-..    mu   = cpfld(1,1)    !viscosity
-..    con  = cpfld(2,1)    !conductivity
-.. 
-..    c     Evaluate friction factor
-..    L = 0.2
-..    Pin = bc_average(pr,'v  ',1)
-..    Pout = bc_average(pr,'O  ',1)
-..    darcy = -2.*Dh*(Pout-Pin)/(L*rho*um*um)
-..    Re = rho*um*Dh/mu
-..    derror = abs(1.-darcy*Re/96.)
-.. 
-..    c     Evaluate Nusselt number
-..    Tbulk = glsc3(t,vx,bm1,n)/glsc2(vx,bm1,n)
-..    Twall = bc_average(t,'f  ',2)
-..    HTC = qpp/(Twall-Tbulk)
-..    Nuss = HTC*Dh/con
-..    Nerror = abs(1.-Nuss*17./140.)
-.. 
-..    c     Print to logfile
-..    if(nio.eq.0) then
-..      write(*,*) "Friction factor = ",darcy,derror
-..      write(*,*) "Nusselt = ",Nuss,Nerror
-..      write(*,*)
-..    endif
-.. 
-.. A custom function is called to evaluate the inlet pressure, outlet pressure, and the wall temperature. Built in routines for array multiplication are used to evaluate the bulk temperature. The Nusselt number and Darcy friction factor are evaluated and printed to the logfile along with their associated errors.
-
-SIZE file
-_________
-
-It is recommended to copy a template of the ``SIZE`` file from the core directory and rename it ``SIZE`` in the working directory:
-
-.. code-block:: console
-
-   $ cp $HOME/Nek5000/core/SIZE.template SIZE 
-
-Then, in the BASIC section, adjust the domain dimension (``ldim``) and the max number of global elements (``lelg``).
-
-.. literalinclude:: ../../../examples/fdlf/SIZE
-   :language: fortran
-   :lines: 11-20
-   :emphasize-lines: 2,7
-
-For this tutorial we have set our polynomial order to be :math:`N=7` which is defined in the ``SIZE`` file as ``lx1=8`` which indicates that there are 8 points in each spatial dimension of every element. The number of dimensions is specified using ``ldim`` and the number of global elements used is specified using ``lelg``. 
-
-
-Compilation
-___________
-
-You should now be all set to compile and run your case!
-As a final check, you should have the following files:
-
- .. * :download:`fdlf.usr <fdlf/fdlf.usr>`
- .. * :download:`fdlf.par <fdlf/fdlf.par>`
- .. * :download:`fdlf.re2 <fdlf/fdlf.re2>`
- .. * :download:`fdlf.ma2 <fdlf/fdlf.ma2>`
- .. * :download:`SIZE <fdlf/SIZE>`
-
-If for some reason you encountered an insurmountable error and were unable to generate any of the required files, you may use the provided links to download them.
-After confirming that you have all five, you are now ready to compile
-
-.. code-block:: console
-
-   $ makenek fdlf
-
-If the compilation is successful, the executable ``nek5000`` will be generated.
+As with the boundary conditions, the inlet temperature and mean velocity are set
+from the list of user defined parameters in the ``.par`` file. 
 
 Running the case
 ________________
 
+You should now be all set to run your case! As a final check, you should have the following files:
+
+ * :download:`fdlf.re2 <../../../examples/fdlf/fdlf.re2>`
+ * :download:`fdlf.par <../../../examples/fdlf/fdlf.par>`
+ * :download:`fdlf.udf <../../../examples/fdlf/fdlf.udf>`
+ * :download:`fdlf.usr <../../../examples/fdlf/fdlf.usr>`
+
+If for some reason you encountered an insurmountable error and were unable to 
+generate any of the required files, you may use the provided links to download them. 
 Now you can run the case
 
 .. code-block:: console
 
-   $ nekbmpi fdlf 4
+   $ mpirun -np 4 nekrs --setup fdlf.par | tee logfile
 
-To launch an MPI jobs on your local machine using 4 ranks. The output will be redirected to ``logfile``.
+To launch an MPI jobs on your local machine using 4 ranks. The output will be 
+redirected to ``logfile``.
 
 Post-processing the results
 ___________________________
 
-Once execution is completed your directory should now contain 5 checkpoint files that look like this:
+Once execution is completed your directory should now contain 5 checkpoint files 
+that look like this:
 
 .. code-block:: none
 
@@ -287,13 +215,18 @@ Once execution is completed your directory should now contain 5 checkpoint files
    fdlf0.f00002
    ...
 
-The preferred mode for data visualization and analysis with *Nek5000* is to use Visit/ParaView. One can use the script *visnek*, to be found in ``/scripts``. It is sufficient to run:
+The preferred mode for data visualization and analysis with *NekRS* is to use
+Visit or ParaView. One can use the script *visnek*, to be found in ``/scripts``. 
+It is sufficient to run:
 
 .. code-block:: console
 
    $ visnek fdlf
 
-to obtain a file named ``fdlf.nek5000`` which can be recognized in Visit/ParaView. In the viewing window one can visualize the flow-field as depicted in :numref:`fig:velocity_paraview` as well as the temperature profile as depicted in :numref:`fig:temperature_paraview` below.
+to obtain a file named ``fdlf.nek5000`` which can be recognized in Visit/ParaView. 
+In the viewing window one can visualize the flow-field as depicted in 
+:numref:`fig:velocity_paraview` as well as the temperature profile as depicted 
+in :numref:`fig:temperature_paraview` below.
 
 .. _fig:velocity_paraview:
 
