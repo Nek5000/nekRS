@@ -14,12 +14,10 @@ residualTol = 1e-4
 [VELOCITY]
 density = 1.2        #kg/m3
 viscosity = 0.00002  #kg/m-s
-#boundaryTypeMap = v  ,o  ,sym,w  ,sym,sym
 
 [TEMPERATURE]
 rhoCp = 1200.0       #J/m3-K
 conductivity = 0.025 #W/m-K
-#boundaryTypeMap = t  ,o  ,i  ,f  ,p  ,p 
 
 [CASEDATA]
 height = 0.01
