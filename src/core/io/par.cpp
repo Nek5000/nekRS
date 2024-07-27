@@ -115,9 +115,7 @@ static bool enforceLowerCase = false;
 
 static std::vector<std::string> nothing = {};
 
-static std::vector<std::string> noSectionKeys = {
-    {"userSections"}
-};
+static std::vector<std::string> noSectionKeys = {{"userSections"}};
 
 static std::vector<std::string> generalKeys = {
     {"dt"},
@@ -225,7 +223,7 @@ static std::vector<std::string> cvodeKeys = {
     {"jtvrecycleproperties"},
     {"sharedrho"},
     {"dealiasing"},
-    {"jtvmixedprecision"},
+    {"regularization"},
     {"solver"},
 };
 
@@ -367,7 +365,7 @@ const std::vector<std::string> &getValidKeys(const std::string &section)
   }
 }
 
-void validate(const inipp::Ini::Sections &sections, const std::vector<std::string>& userSections)
+void validate(const inipp::Ini::Sections &sections, const std::vector<std::string> &userSections)
 {
   int err = 0;
   bool generalExists = false;
@@ -410,7 +408,8 @@ void validate(const inipp::Ini::Sections &sections, const std::vector<std::strin
     }
 
     // check that section exists
-    if (std::find(validSections.begin(), validSections.end(), sec.first) == validSections.end() && !isScalar) {
+    if (std::find(validSections.begin(), validSections.end(), sec.first) == validSections.end() &&
+        !isScalar) {
       std::ostringstream error;
       error << "Invalid section name: " << sec.first << std::endl;
       append_error(error.str());
@@ -418,7 +417,9 @@ void validate(const inipp::Ini::Sections &sections, const std::vector<std::strin
     } else {
       const auto &validKeys = getValidKeys(sec.first);
       for (auto const &val : sec.second) {
-        if (std::find(userSections.begin(), userSections.end(), sec.first) != userSections.end()) continue; 
+        if (std::find(userSections.begin(), userSections.end(), sec.first) != userSections.end()) {
+          continue;
+        }
 
         if (std::find(validKeys.begin(), validKeys.end(), val.first) == validKeys.end()) {
           if (std::find(commonKeys.begin(), commonKeys.end(), val.first) == commonKeys.end()) {
@@ -2005,20 +2006,21 @@ void parseGeneralSection(const int rank, setupAide &options, inipp::Ini *ini)
     append_error(error.str());
   }
 
-  int checkpointPrecision  = 0;
-  if (ini->extract("general", "checkpointprecision", checkpointPrecision)) { 
-    if (checkpointPrecision == 64) 
+  int checkpointPrecision = 0;
+  if (ini->extract("general", "checkpointprecision", checkpointPrecision)) {
+    if (checkpointPrecision == 64) {
       options.setArgs("CHECKPOINT PRECISION", "FP64");
-    else if (checkpointPrecision == 32) 
+    } else if (checkpointPrecision == 32) {
       options.setArgs("CHECKPOINT PRECISION", "FP32");
-    else
+    } else {
       append_error("invalid checkpointPrecision");
+    }
   }
 
   double writeInterval = 0;
   if (!ini->extract("general", "writeinterval", writeInterval)) {
     ini->extract("general", "checkpointinterval", writeInterval);
-  } 
+  }
   options.setArgs("CHECKPOINT INTERVAL", std::to_string(writeInterval));
 
   std::string writeControl;
@@ -2228,8 +2230,9 @@ void parseProblemTypeSection(const int rank, setupAide &options, inipp::Ini *ini
       }
 
       options.setArgs("ADVECTION", "TRUE");
-      if (eqn == "stokes") {
+      if (eqnType == "STOKES") {
         options.setArgs("ADVECTION", "FALSE");
+        options.removeArgs("ADVECTION TYPE");
       }
     }
   }
@@ -2259,18 +2262,18 @@ void parseNekNekSection(const int rank, setupAide &options, inipp::Ini *par)
       const auto correctorStepsStr = parseValueForKey(entry, "correctorsteps");
       if (!correctorStepsStr.empty()) {
         const int correctorSteps = std::stoi(correctorStepsStr);
-        options.setArgs("MULTIRATE CORRECTOR STEPS", std::to_string(correctorSteps));
+        options.setArgs("NEKNEK MULTIRATE CORRECTOR STEPS", std::to_string(correctorSteps));
       }
     }
     const bool multirate = checkForTrue(list[0]);
-    options.setArgs("MULTIRATE TIMESTEPPER", multirate ? "TRUE" : "FALSE");
+    options.setArgs("NEKNEK MULTIRATE TIMESTEPPER", multirate ? "TRUE" : "FALSE");
   }
 
-  const bool multirate = options.compareArgs("MULTIRATE TIMESTEPPER", "TRUE");
+  const bool multirate = options.compareArgs("NEKNEK MULTIRATE TIMESTEPPER", "TRUE");
 
   if (multirate) {
     int correctorSteps = 0;
-    options.getArgs("MULTIRATE CORRECTOR STEPS", correctorSteps);
+    options.getArgs("NEKNEK MULTIRATE CORRECTOR STEPS", correctorSteps);
     if (boundaryEXTOrder > 1 && correctorSteps == 0) {
       append_error("Multirate timestepper with boundaryEXTOrder > 1 and correctorSteps = 0 is unstable!\n");
     }
@@ -2391,11 +2394,15 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
 
   if (!foundDefaultScalarSection && nNonTemperatureScalars) {
     if (ini->sections.count("temperature")) {
-      if (minScalarId != 1) append_error("scalar index needs to start from 1"); 
+      if (minScalarId != 1) {
+        append_error("scalar index needs to start from 1");
+      }
     } else {
-      if (minScalarId != 0) append_error("scalar index needs to start from 0"); 
+      if (minScalarId != 0) {
+        append_error("scalar index needs to start from 0");
+      }
     }
-  
+
     processError();
 
     int nScalarIds = maxScalarId - minScalarId + 1;
@@ -2404,7 +2411,6 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
       processError();
     }
   }
-
 
   if (foundDefaultScalarSection && !optionalNscalar && nNonTemperatureScalars == 0) {
     append_error("[scalar] section specified, but no [scalar0x] section were found and generic::nscalars is "
@@ -2653,14 +2659,13 @@ void Par::parse(setupAide &options)
   int rank;
   MPI_Comm_rank(comm, &rank);
 
-  const auto userSections = [&]()
-  {
+  const auto userSections = [&]() {
     std::string value;
     ini->extract("", "usersections", value);
     return serializeString(value, ',');
   }();
 
-  for(auto& section : userSections) {
+  for (auto &section : userSections) {
     addValidSection(section);
   }
 

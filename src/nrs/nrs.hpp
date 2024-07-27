@@ -105,7 +105,7 @@ public:
 
   occa::memory o_idH;
 
-  occa::memory o_BF;
+  occa::memory o_JwF;
   occa::memory o_NLT;
 
   dfloat *coeffEXT, *coeffBDF;

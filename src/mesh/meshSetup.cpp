@@ -350,12 +350,15 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
   const int cubN = 0;
   meshLoadReferenceNodesHex3D(mesh, Nc, cubN);
 
-  const std::string meshPrefix = "pMGmesh-";
   const std::string orderSuffix = "_" + std::to_string(mesh->N);
 
-  mesh->velocityDirichletKernel = nullptr;
+  int p;
+  platform->options.getArgs("POLYNOMIAL DEGREE", p);
+  const std::string prefix = (mesh->N != p) ? "pMGmesh-" : "mesh-";
   mesh->geometricFactorsKernel =
-      platform->kernelRequests.load(meshPrefix + "geometricFactorsHex3D" + orderSuffix);
+      platform->kernelRequests.load(prefix + "geometricFactorsHex3D" + orderSuffix);
+
+  mesh->velocityDirichletKernel = nullptr;
   mesh->surfaceGeometricFactorsKernel = nullptr;
   mesh->cubatureGeometricFactorsKernel = nullptr;
   mesh->nStagesSumVectorKernel = nullptr;

@@ -189,12 +189,16 @@ static void updateFieldData(occa::memory& o_fields)
         mesh_data["fields/" + fieldNameXYZ + "/topology"] = "mesh";
         mesh_data["fields/" + fieldNameXYZ + "/values"].set_external((dfloat *)o_fldComp.ptr(), fieldLength);
 
+/* Bug in Ascent
+   https://github.com/stgeke/nekRS/issues/1387
+   https://github.com/Alpine-DAV/ascent/issues/1329
         // vector component
         if (idim==0) {
           mesh_data["fields/" + fieldName + "/association"] = "vertex";
           mesh_data["fields/" + fieldName + "/topology"] = "mesh";
         }
         mesh_data["fields/" + fieldName + "/values/" + str_uvw.at(idim)].set_external((dfloat *)o_fldComp.ptr(), fieldLength);
+*/
       }
     } else {
       if (platform->comm.mpiRank == 0) {
@@ -318,7 +322,9 @@ void nekAscent::setup(mesh_t *mesh_,
   if (platform->comm.mpiRank == 0) {
     printf("\ndone (%gs)\n\n", tSetup);
     if (verbose) {
-      mesh_data.print();
+      conduit::Node mesh_copy; // copy mesh_data to host
+      mesh_copy.set(mesh_data);
+      mesh_copy.print();
     }
   }
   fflush(stdout);
@@ -345,7 +351,9 @@ void nekAscent::run(const double time, const int tstep)
 
   if (platform->comm.mpiRank == 0 && verbose) {
     std::cout << "---------------- Ascent mesh_data ----------------" << std::endl;
-    mesh_data.print();
+    conduit::Node mesh_copy; // copy mesh_data to host
+    mesh_copy.set(mesh_data);
+    mesh_copy.print();
     fflush(stdout);
   }
   mAscent.publish(mesh_data);

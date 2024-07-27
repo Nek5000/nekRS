@@ -245,8 +245,8 @@ int main(int argc, char** argv)
     }
 
     if (rank == 0) std::cout << std::endl;
-    // time stepping loop 
 
+    // outer time stepping loop 
     fflush(stdout);
     MPI_Pcontrol(1);
     while (!isLastStep) {
@@ -254,31 +254,37 @@ int main(int argc, char** argv)
       const double timeStartStep = MPI_Wtime();
  
       ++tStep;
-      double dt = nekrs::dt(tStep);
-      isLastStep = nekrs::lastStep(time + dt, tStep, elapsedTime);
+      auto [dtInnerStep, dtOuterStep] = nekrs::dt(tStep);
+
+      const double endTimeOuterStep = time + dtOuterStep;
+ 
+      isLastStep = nekrs::lastStep(endTimeOuterStep, tStep, elapsedTime);
       if (sig_terminate) isLastStep = 1;
 
       if (isLastStep && nekrs::endTime() > 0) {
-        dt = nekrs::finalTimeStepSize(time);
+        dtInnerStep = nekrs::finalTimeStepSize(time);
       }
 
-      int checkpointStep = nekrs::checkpointStep(time + dt, tStep);
+      int checkpointStep = nekrs::checkpointStep(endTimeOuterStep, tStep);
       if (nekrs::writeInterval() == 0) checkpointStep = 0;
       if (isLastStep) checkpointStep = 1;
       if (nekrs::writeInterval() < 0) checkpointStep = 0;
       nekrs::checkpointStep(checkpointStep);
- 
-      nekrs::initStep(time, dt, tStep);
-      
-      int outerCorrector = 1;
-      bool converged = false;
-      do {
-        converged = nekrs::runStep(outerCorrector++);
-      } while (!converged);
 
-      tStep = nekrs::timeStep();
-      time = nekrs::finishStep();
+     { 
+        nekrs::initStep(time, dtInnerStep, tStep);
+
+        int outerCorrector = 1;
+        bool converged = false;
+        do {
+          converged = nekrs::runStep(outerCorrector++); // runs outer (sub) stepping if needed
+        } while (!converged);
  
+        tStep = nekrs::timeStep();
+        nekrs::finishStep();
+        time = endTimeOuterStep;
+      }
+
       if(sig_processUpdFile) {
         nekrs::processUpdFile();
         sig_processUpdFile = 0;

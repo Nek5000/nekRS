@@ -12,9 +12,7 @@ void registerMeshKernels(occa::properties kernelInfoBC)
 
   for (auto &N : Nlist) {
     const int Nq = N + 1;
-    const int cubNq = (N == p) ? pCub + 1 : 1;
     const int Np = Nq * Nq * Nq;
-    const int cubNp = cubNq * cubNq * cubNq;
 
     const std::string meshPrefix = "mesh-";
     const std::string orderSuffix = "_" + std::to_string(N);
@@ -26,20 +24,25 @@ void registerMeshKernels(occa::properties kernelInfoBC)
     std::string kernelName;
 
     occa::properties meshKernelInfo = kernelInfo;
-    meshKernelInfo["defines/p_cubNq"] = cubNq;
-    meshKernelInfo["defines/p_cubNp"] = cubNp;
-
+    
     kernelName = "geometricFactorsHex3D";
-    fileName = oklpath + "/mesh/" + kernelName + ".okl";
-    platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, meshKernelInfo);
-
-    kernelName = "cubatureGeometricFactorsHex3D";
     fileName = oklpath + "/mesh/" + kernelName + ".okl";
     platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, meshKernelInfo);
 
     kernelName = "surfaceGeometricFactorsHex3D";
     fileName = oklpath + "/mesh/" + kernelName + ".okl";
     platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, meshKernelInfo);
+
+    const int cubNq = (N == p) ? pCub + 1 : 1;
+    const int cubNp = cubNq * cubNq * cubNq;
+
+    auto meshCubKernelInfo = meshKernelInfo;
+    meshCubKernelInfo["defines/p_cubNq"] = cubNq;
+    meshCubKernelInfo["defines/p_cubNp"] = cubNp;
+
+    kernelName = "cubatureGeometricFactorsHex3D";
+    fileName = oklpath + "/mesh/" + kernelName + ".okl";
+    platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, meshCubKernelInfo);
 
     if (N == p) {
       kernelName = "velocityDirichletBCHex3D";
@@ -99,6 +102,10 @@ void registerMeshKernels(occa::properties kernelInfoBC)
       prop["defines/p_ndot"] = 1;
       kernelName = "surfaceAreaNormalMultiplyIntegrateHex3D-ndot";
       platform->kernelRequests.add(meshPrefix + kernelName, fileName, prop);
+
+      kernelName = "surfaceAreaMultiplyHex3D";
+      fileName = oklpath + "/mesh/" + kernelName + ".okl";
+      platform->kernelRequests.add(meshPrefix + kernelName, fileName, kernelInfo);
 
       kernelName = "setBIDHex3D";
       fileName = oklpath + "/mesh/" + kernelName + ".okl";

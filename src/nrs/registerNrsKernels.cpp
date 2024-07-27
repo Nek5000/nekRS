@@ -208,9 +208,9 @@ void registerNrsKernels(occa::properties kernelInfoBC)
       int Nsubsteps = 0;
       platform->options.getArgs("SUBCYCLING STEPS", Nsubsteps);
 
-      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE") && Nsubsteps) {
+      {
         auto subCycleKernel =
-            benchmarkAdvsub(3,
+            benchmarkAdvsub(NVfields,
                             NelemBenchmark,
                             Nq,
                             cubNq,

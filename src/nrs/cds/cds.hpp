@@ -120,7 +120,7 @@ public:
   occa::memory o_S, o_Se;
   occa::memory o_prop;
   occa::memory o_rho, o_diff;
-  occa::memory o_NLT, o_BF;
+  occa::memory o_NLT, o_JwF;
 
   dfloat *coeffEXT, *coeffBDF;
   occa::memory o_coeffEXT, o_coeffBDF;

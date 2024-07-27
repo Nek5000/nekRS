@@ -51,28 +51,29 @@
 #            z: 1.0
     pl4:
       f1:
+        type: "composite_vector"
+        params:
+          field1: "velocity_x"
+          field2: "velocity_y"
+          field3: "velocity_z"
+          output_name: "my_vel"
+      f2:
         type: "vector_magnitude"
         params:
-          field: "velocity"
+          field: "my_vel"
           output_name: "velocity_mag"
-    pl5:
-      f1:
-        type: "vector_component"
+      f3:
+        type: "clip"
         params:
-          field: "velocity"
-          component: 2
-          output_name: "vel_z"
-      f2:
-        type: "slice"
-        params:
-          point:
-            x: 0.0
-            y: 0.0
-            z: 0.0
-          normal:
-            x: 1.0
-            y: 0.0
-            z: 0.0
+          plane:
+            point:
+              x: 0.001
+              y: 0.0
+              z: 0.0
+            normal:
+              x: 1.0
+              y: 0.0
+              z: 0.0
 - 
   action: "add_scenes"
   scenes:
@@ -152,23 +153,3 @@
           screen_annotations: false
           image_width: 2048
           image_height: 512
-    s5:
-      plots:
-        p1:
-          type: "pseudocolor"
-          field: "vel_z"
-          pipeline: "pl5"
-          color_table:
-            name: "Cool to Warm Extended"
-          min_value: 0.0
-          max_value: 1.0
-      renders:
-        r1:
-          camera:
-            azimuth: 90
-            zoom: 8.0
-          image_prefix: "velz_%06d"
-          world_annotations: false
-          screen_annotations: false
-          image_width: 2048
-          image_height: 256

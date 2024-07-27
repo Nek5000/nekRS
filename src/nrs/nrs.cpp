@@ -274,9 +274,8 @@ static void setupEllipticSolvers(nrs_t *nrs)
             platform->device.malloc<dfloat>(nrs->uvwSolver->Nfields() * nrs->uvwSolver->fieldOffset());
         nrs->o_EToBVVelocity = platform->device.malloc<int>(nrs->meshV->Nlocal);
         createEToBV(nrs->meshV, nrs->uvwSolver->EToB(), nrs->o_EToBVVelocity);
-        auto o_EToB =
-            platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields(),
-                                         nrs->uvwSolver->EToB().data());
+        auto o_EToB = platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields(),
+                                                   nrs->uvwSolver->EToB().data());
         createZeroNormalMask(nrs, mesh, o_EToB, nrs->o_EToBVVelocity, nrs->o_zeroNormalMaskVelocity);
 
         auto applyZeroNormalMaskLambda =
@@ -292,9 +291,9 @@ static void setupEllipticSolvers(nrs_t *nrs)
         nrs->uvwSolver->applyZeroNormalMask(applyZeroNormalMaskLambda);
       }
     } else {
-        nrs->uSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBx, o_lambda0, o_lambda1);
-        nrs->vSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBy, o_lambda0, o_lambda1);
-        nrs->wSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBz, o_lambda0, o_lambda1);
+      nrs->uSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBx, o_lambda0, o_lambda1);
+      nrs->vSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBy, o_lambda0, o_lambda1);
+      nrs->wSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBz, o_lambda0, o_lambda1);
     }
   } // flow
 
@@ -630,8 +629,7 @@ void nrs_t::init()
   this->meshV = (mesh_t *)this->_mesh->fluid;
   auto mesh = this->meshV;
 
-  const auto [fieldOffset, cubatureOffset] = [&]()
-  {
+  const auto [fieldOffset, cubatureOffset] = [&]() {
     auto offset = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
     auto meshT = this->_mesh;
     offset = std::max(offset, meshT->Np * (meshT->Nelements + meshT->totalHaloPairs));
@@ -640,7 +638,7 @@ void nrs_t::init()
     if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
       cubOffset = std::max(offset, mesh->Nelements * mesh->cubNp);
     }
-    
+
     return std::tuple(alignStride<dfloat>(offset), alignStride<dfloat>(cubOffset));
   }();
 
@@ -648,8 +646,7 @@ void nrs_t::init()
   this->cubatureOffset = cubatureOffset;
   this->_mesh->fieldOffset = this->fieldOffset;
 
-  auto verifyBC = [&]() 
-  {
+  auto verifyBC = [&]() {
     auto fields = nrsFieldsToSolve(platform->options);
 
     for (const auto &field : fields) {
@@ -720,7 +717,7 @@ void nrs_t::init()
   this->P = (dfloat *)calloc(this->fieldOffset, sizeof(dfloat));
   this->o_P = platform->device.malloc<dfloat>(this->fieldOffset, this->P);
 
-  this->o_BF = platform->device.malloc<dfloat>(this->NVfields * this->fieldOffset);
+  this->o_JwF = platform->device.malloc<dfloat>(this->NVfields * this->fieldOffset);
   this->o_NLT = platform->device.malloc<dfloat>(this->NVfields * this->nEXT * this->fieldOffset);
 
   int nProperties = 2;
@@ -766,8 +763,7 @@ void nrs_t::init()
     this->gshMesh = oogs::setup(meshT->ogs, this->NVfields, this->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
   }
 
-  auto EToB = [&](const std::string& field)
-  {
+  auto EToB = [&](const std::string &field) {
     std::vector<int> EToB(mesh->Nelements * mesh->Nfaces);
     int cnt = 0;
     for (int e = 0; e < mesh->Nelements; e++) {
@@ -781,13 +777,12 @@ void nrs_t::init()
     return o_EToB;
   };
 
-
   if (this->flow) {
-    this->o_EToB = EToB("velocity"); 
+    this->o_EToB = EToB("velocity");
   }
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
-    this->o_EToBMeshVelocity = EToB("mesh"); 
+    this->o_EToBMeshVelocity = EToB("mesh");
   }
 
   if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "HPFRT")) {
@@ -796,7 +791,7 @@ void nrs_t::init()
     platform->options.getArgs("VELOCITY HPFRT STRENGTH", strength);
     platform->options.getArgs("VELOCITY HPFRT MODES", nModes);
     this->filterS = -std::abs(strength);
-    this->o_filterRT = lowPassFilterSetup(this->meshV, nModes); 
+    this->o_filterRT = lowPassFilterSetup(this->meshV, nModes);
   }
 
   assignKernels(this);
@@ -848,7 +843,7 @@ void nrs_t::init()
     if (this->userProperties) {
       cds->userProperties = this->userProperties;
     }
-    if(this->userScalarImplicitLinearTerm) {
+    if (this->userScalarImplicitLinearTerm) {
       this->cds->userImplicitLinearTerm = this->userScalarImplicitLinearTerm;
     }
   }
@@ -903,18 +898,17 @@ void nrs_t::setIC()
   }
   this->_mesh->update();
 
-  auto projC0 = [&](oogs_t *gsh, mesh_t *mesh, int nFields, dlong fieldOffset, occa::memory& o_in)
-  {
+  auto projC0 = [&](oogs_t *gsh, mesh_t *mesh, int nFields, dlong fieldOffset, occa::memory &o_in) {
     platform->linAlg->axmyMany(mesh->Nlocal, nFields, fieldOffset, 0, 1.0, mesh->o_LMM, o_in);
     oogs::startFinish(o_in, nFields, fieldOffset, ogsDfloat, ogsAdd, gsh);
     platform->linAlg->axmyMany(mesh->Nlocal, nFields, fieldOffset, 0, 1.0, mesh->o_invLMM, o_in);
   };
 
   this->o_U.copyFrom(this->U);
-  projC0(this->gsh, this->meshV, this->NVfields, this->fieldOffset, this->o_U); 
- 
+  projC0(this->gsh, this->meshV, this->NVfields, this->fieldOffset, this->o_U);
+
   this->o_P.copyFrom(this->P);
-  projC0(this->gsh, this->meshV, 1, this->fieldOffset, this->o_P); 
+  projC0(this->gsh, this->meshV, 1, this->fieldOffset, this->o_P);
 
   if (this->Nscalar) {
     this->cds->o_S.copyFrom(this->cds->S);
@@ -925,7 +919,7 @@ void nrs_t::setIC()
       }
       auto gsh = (s == 0) ? this->cds->gshT : this->cds->gsh;
       auto o_Si = this->cds->o_S + this->cds->fieldOffsetScan[s];
-      projC0(gsh, this->cds->mesh[s], 1, this->cds->fieldOffset[s], o_Si); 
+      projC0(gsh, this->cds->mesh[s], 1, this->cds->fieldOffset[s], o_Si);
     }
   }
 
@@ -937,7 +931,6 @@ void nrs_t::setIC()
   platform->options.getArgs("START TIME", startTime);
 
   nek::ocopyToNek(startTime, 0); // ensure both codes see the same mesh + IC
-
 }
 
 void nrs_t::printRunStat(int step)
@@ -1451,20 +1444,24 @@ void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforce
     platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
   }
 
-  auto FP64 = platform->options.compareArgs("CHECKPOINT PRECISION", "FP64"); 
-  if (enforceFP64) FP64 = true;
+  auto FP64 = platform->options.compareArgs("CHECKPOINT PRECISION", "FP64");
+  if (enforceFP64) {
+    FP64 = true;
+  }
 
-  auto outXYZ = platform->options.compareArgs("CHECKPOINT OUTPUT MESH", "TRUE"); 
-  if (enforceOutXYZ) outXYZ = true;
- 
+  auto outXYZ = platform->options.compareArgs("CHECKPOINT OUTPUT MESH", "TRUE");
+  if (enforceOutXYZ) {
+    outXYZ = true;
+  }
+
   std::vector<occa::memory> o_Slist;
   for (int i = 0; i < Nscalar; i++) {
     auto o_Si = cds->o_S.slice(cds->fieldOffsetScan[i], cds->fieldOffset[i]);
     o_Slist.push_back(o_Si);
   }
   std::vector<occa::memory> o_Ulist;
-  for (int i = 0; i < meshV->dim; i++) { 
-    auto o_Ui = o_U.slice(i*fieldOffset, meshV->Nlocal); 
+  for (int i = 0; i < meshV->dim; i++) {
+    auto o_Ui = o_U.slice(i * fieldOffset, meshV->Nlocal);
     o_Ulist.push_back(o_Ui);
   }
   fld::write(suffix, t, step, o_Ulist, o_P, o_Slist, outXYZ, FP64, Nout, uniform);
@@ -1505,7 +1502,7 @@ int nrs_t::setLastStep(double timeNew, int tstep, double elapsedTime)
 
   // disable for now as it breaks the neknek sync timer
 #if 0 
-  if (platform->options.compareArgs("MULTIRATE TIMESTEPPER", "TRUE")) {
+  if (platform->options.compareArgs("NEKNEK MULTIRATE TIMESTEPPER", "TRUE")) {
     MPI_Allreduce(MPI_IN_PLACE, &last, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
   }
 #endif

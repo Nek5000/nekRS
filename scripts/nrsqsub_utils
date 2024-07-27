@@ -35,7 +35,6 @@ if [ ! -f $case.par ]; then
       echo "ERROR: not enough of sessions in $case.sess"
       exit 1
     fi
-    echo "This is a neknek case with $nsessions sessions"
   fi
 fi
 

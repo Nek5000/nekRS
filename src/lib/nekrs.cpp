@@ -138,10 +138,11 @@ void setup(MPI_Comm commg_in,
 
   if (rank == 0) {
     printHeader();
-    std::cout << "default FP precision: "; 
+    std::cout << "default FP precision: ";
     if (sizeof(dfloat) == sizeof(double)) {
       std::cout << "64" << std::endl;
-    } if (sizeof(dfloat) == sizeof(float)) {
+    }
+    if (sizeof(dfloat) == sizeof(float)) {
       std::cout << "32" << std::endl;
     }
 
@@ -384,7 +385,7 @@ void nekUserchk(void)
   nek::userchk();
 }
 
-double dt(int tstep)
+std::tuple<double, double> dt(int tstep)
 {
   dfloat dt_ = -1;
   platform->options.getArgs("DT", dt_);
@@ -414,10 +415,18 @@ double dt(int tstep)
     }
   }
 
+  // limit dt to 5 significant digits
+  dt_ = setPrecision(dt_, 5);
+
   if (nrs->neknek) {
-    // call only once as neknek doesn't support variable dt 
-    if (tstep == 1) dt_ = nrs->neknek->adjustDt(dt_); 
+    // call only once as neknek doesn't support variable dt
+    if (tstep == 1) {
+      dt_ = nrs->neknek->adjustDt(dt_);
+    }
   }
+
+  int innerSteps = 1;
+  platform->options.getArgs("NEKNEK MULTIRATE STEPS", innerSteps);
 
   nekrsCheck(dt_ < 1e-10 || std::isnan(dt_) || std::isinf(dt_),
              MPI_COMM_SELF,
@@ -425,9 +434,8 @@ double dt(int tstep)
              "Invalid time step size %.2e\n",
              dt_);
 
-  // limit dt to 5 significant digits
-  dt_ = setPrecision(dt_, 5);
-  return dt_;
+
+  return std::make_tuple(dt_, innerSteps * dt_);
 }
 
 double writeInterval(void)
@@ -468,13 +476,6 @@ int checkpointStep(double time, int tStep)
 void checkpointStep(int val)
 {
   nrs->isCheckpointStep = val;
-}
-
-int checkpointStep(double time, double dt, int tStep)
-{
-  int innerSteps = 1;
-  platform->options.getArgs("MULTIRATE STEPS", innerSteps);
-  return checkpointStep(time + innerSteps * dt, tStep);
 }
 
 void writeCheckpoint(double time, int step)
@@ -678,15 +679,14 @@ int timeStep()
 double finalTimeStepSize(double time)
 {
   int innerSteps = 1;
-  platform->options.getArgs("MULTIRATE STEPS", innerSteps);
+  platform->options.getArgs("NEKNEK MULTIRATE STEPS", innerSteps);
 
   return (endTime() - time) / innerSteps;
 }
 
-double finishStep()
+void finishStep()
 {
   nrs->finishStep();
-  return nrs->timePrevious + setPrecision(currDt, 5);
 }
 
 bool stepConverged()

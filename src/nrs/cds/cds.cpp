@@ -42,7 +42,6 @@ occa::memory cds_t::advectionSubcyling(int nEXT, double time, int scalarIdx)
 
   auto o_U = this->o_S.slice(this->fieldOffsetScan[scalarIdx], fieldOffset);
 
-  auto o_Urst = (movingMesh) ? this->o_relUrst : this->o_Urst;
   auto kernel = (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
                       ? this->subCycleStrongCubatureVolumeKernel
                       : this->subCycleStrongVolumeKernel;
@@ -61,7 +60,7 @@ occa::memory cds_t::advectionSubcyling(int nEXT, double time, int scalarIdx)
                                fieldOffset,
                                this->vCubatureOffset,
                                fieldOffsetSum,
-                               o_Urst,
+                               (movingMesh) ? this->o_relUrst : this->o_Urst,
                                o_U);
 }
 
@@ -199,7 +198,7 @@ cds_t::cds_t(cdsConfig_t &cfg)
 
   if (this->anyEllipticSolver) {
     this->o_Se = platform->device.malloc<dfloat>(this->fieldOffsetSum);
-    this->o_BF = platform->device.malloc<dfloat>(this->fieldOffsetSum);
+    this->o_JwF = platform->device.malloc<dfloat>(this->fieldOffsetSum);
   }
 
   bool scalarFilteringEnabled = false;
@@ -331,7 +330,7 @@ void cds_t::makeNLT(double time, int tstep, occa::memory &o_Usubcycling)
       this->filterRTKernel(this->meshV->Nelements,
                            is,
                            1,
-                           fieldOffset,
+                           this->o_fieldOffsetScan,
                            this->o_applyFilterRT,
                            this->o_filterRT,
                            this->o_filterS,

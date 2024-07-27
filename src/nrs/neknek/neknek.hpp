@@ -167,6 +167,8 @@ private:
   occa::memory o_coeffEXT;
   bool globalMovingMesh;
 
+  std::vector<int> intBIDs;
+
   std::vector<std::string> fields;
 
   occa::memory o_x_;

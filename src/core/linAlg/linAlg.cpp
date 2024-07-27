@@ -237,6 +237,7 @@ void linAlg_t::setup()
     entrywiseMagKernel = kernelRequests.load("entrywiseMag");
     linearCombinationKernel = kernelRequests.load("linearCombination");
     relativeErrorKernel = kernelRequests.load("relativeError");
+    absoluteErrorKernel = kernelRequests.load("absoluteError");
     magSqrVectorKernel = kernelRequests.load("magSqrVector");
     magSqrSymTensorKernel = kernelRequests.load("magSqrSymTensor");
     magSqrSymTensorDiagKernel = kernelRequests.load("magSqrSymTensorDiag");
@@ -515,7 +516,7 @@ void linAlg_t::axdyz(const dlong N,
 }
 
 // \sum o_a
-dfloat linAlg_t::sum(const dlong N, occa::memory &o_a, MPI_Comm _comm, const dlong offset)
+dfloat linAlg_t::sum(const dlong N, const occa::memory &o_a, MPI_Comm _comm, const dlong offset)
 {
   int Nblock = (N + blocksize - 1) / blocksize;
   const size_t Nbytes = Nblock * sizeof(dfloat);
@@ -545,7 +546,7 @@ dfloat linAlg_t::sum(const dlong N, occa::memory &o_a, MPI_Comm _comm, const dlo
 dfloat linAlg_t::sumMany(const dlong N,
                          const dlong Nfields,
                          const dlong fieldOffset,
-                         occa::memory &o_a,
+                         const occa::memory &o_a,
                          MPI_Comm _comm)
 {
   int Nblock = (N + blocksize - 1) / blocksize;
@@ -1490,5 +1491,18 @@ dfloat linAlg_t::maxRelativeError(const dlong N,
 {
   auto o_err = platform->o_memPool.reserve<dfloat>(std::max(Nfields * fieldOffset, N));
   relativeErrorKernel(N, Nfields, fieldOffset, absTol, o_u, o_uRef, o_err);
+  return this->amaxMany(N, Nfields, fieldOffset, o_err, comm);
+}
+
+dfloat linAlg_t::maxAbsoluteError(const dlong N,
+                                  const dlong Nfields,
+                                  const dlong fieldOffset,
+                                  const dfloat absTol,
+                                  const occa::memory &o_u,
+                                  const occa::memory &o_uRef,
+                                  MPI_Comm comm)
+{
+  auto o_err = platform->o_memPool.reserve<dfloat>(std::max(Nfields * fieldOffset, N));
+  absoluteErrorKernel(N, Nfields, fieldOffset, absTol, o_u, o_uRef, o_err);
   return this->amaxMany(N, Nfields, fieldOffset, o_err, comm);
 }

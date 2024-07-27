@@ -1236,8 +1236,8 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
                     if (!reject_prior_step_q(fpt, resid, tmp, tol)) {
                       for (dlong d = 0; d < 3; ++d) {
                         steep[d] = 0;
-                        for (dlong e = 0; d < 3; ++d) {
-                          steep[d] += jac[d + e * 3] * resid[d];
+                        for (dlong e = 0; e < 3; ++e) {
+                          steep[d] += jac[d + e * 3] * resid[e];
                         }
                         steep[d] *= tmp->r[d];
                       }

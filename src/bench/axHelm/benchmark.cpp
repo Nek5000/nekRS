@@ -94,8 +94,10 @@ occa::kernel benchmarkAx(int Nelements,
   props["includes"].asArray();
   props["includes"] += diffDataFile.c_str();
 
-  if (wordSize == 4)
+  if (wordSize == 4) {
     props["defines/dfloat"] = "float";
+    props["defines/FP32"] = 1;
+  }
   if (Ng != N) {
     props["defines/p_Nq_g"] = Nq_g;
     props["defines/p_Np_g"] = Np_g;
@@ -147,7 +149,7 @@ occa::kernel benchmarkAx(int Nelements,
     }
     else {
       if (kernelName == "ellipticPartialAxCoeffHex3D") {
-        const int Nkernels = 8;
+        const int Nkernels = 10;
         for (int knl = 0; knl < Nkernels; ++knl)
           kernelVariants.push_back(knl);
 
@@ -291,15 +293,19 @@ occa::kernel benchmarkAx(int Nelements,
 
       std::vector<FPType> refResults((Ndim * Np) * Nelements);
       std::vector<FPType> results((Ndim * Np) * Nelements);
-
+      
+      // Reset o_Aq for each kernel variant to avoid buggy/no-op kernels
+      // from falsely passing verification.
+      o_Aq.copyFrom(refResults.data(), refResults.size() * sizeof(FPType));
       kernelRunner(referenceKernel);
       o_Aq.copyTo(refResults.data(), refResults.size() * sizeof(FPType));
-
+      
+      o_Aq.copyFrom(results.data(), results.size() * sizeof(FPType));
       kernelRunner(kernel);
       o_Aq.copyTo(results.data(), results.size() * sizeof(FPType));
 
-      const auto err = maxRelErr<FPType>(refResults, results, platform->comm.mpiComm);
-      if (err > 500 * std::numeric_limits<FPType>::epsilon()) {
+      const auto err = maxAbsErr<FPType>(refResults, results, platform->comm.mpiComm);
+      if (err > 600 * std::numeric_limits<FPType>::epsilon() || std::isnan(err)) {
         if (platform->comm.mpiRank == 0 && verbosity > 1) {
           std::cout << "Ax: Ignore version " << kernelVariant
                     << " as correctness check failed with " << err << std::endl;

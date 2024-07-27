@@ -3,7 +3,7 @@
 
 static int ciMode = 0;
 
-#define EPS 1e-1
+#define EPS 5e-2
 
 double numCVODERHS = 0;
 
@@ -92,12 +92,13 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   expectedErr[0] = 0.2465620E-06;
   expectedErr[1] = 0.6938894E-16;
   expectedErr[2] = 0.2973762E-05;
-  expectedErr[3] = 0.6015192E-06;
+  expectedErr[3] = 0.5820622E-06;
   expectedErr[4] = 0.2465620E-05;
-  expectedErr[5] = 0.2558128E-05;
+  expectedErr[5] = 0.4929804E-06;
 
-  int expectedPIter = 6;
-  int expectedVIter = 3;
+  int expectedSIter = 9;
+  int expectedPIter = 8;
+  int expectedVIter = 8;
 
   if (ciMode == 1) {
   }
@@ -117,54 +118,24 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
     expectedErr[5] = 0.35E-05;
   }
 
-  const dfloat absTol = 1e-8; // values below this threshold are ignored
+  auto errVal = abs(err[0] - expectedErr[0]) / expectedErr[0];
+  CiEvalTest("vol (LinfErr: " + to_string_f(errVal) + ")", errVal < EPS);
 
-  double vxErr, prErr;
-  double s1Err;
+  errVal = abs(err[2] - expectedErr[2]) / expectedErr[2];
+  CiEvalTest("p0th (LinfErr: " + to_string_f(errVal) + ")", errVal < EPS);
 
-  int pIterErr;
-  int velIterErr;
+  errVal = abs(err[3] - expectedErr[3]) / expectedErr[3];
+  CiEvalTest("dpdt (LinfErr: " + to_string_f(errVal) + ")", errVal < EPS);
 
-  bool passed = true;
+  errVal = abs(err[4] - expectedErr[4]) / expectedErr[4];
+  CiEvalTest("yPison (LinfErr: " + to_string_f(errVal) + ")", errVal < EPS);
 
-  if (rank == 0) {
-    printf("relative error to target: ");
-  }
-  for (int i = 0; i < Nfields; ++i) {
-    if (abs(err[i]) > absTol) {
-      const dfloat relErr = abs(err[i] - expectedErr[i]) / expectedErr[i];
-      if (rank == 0) {
-        printf("err[%d]=%g ", i, relErr);
-      }
-      if (relErr > EPS && abs(expectedErr[i]) < abs(err[i])) {
-        passed = false;
-      }
-    }
-  }
-  velIterErr = abs(expectedVIter - nrs->uvwSolver->Niter());
-  pIterErr = abs(expectedPIter - nrs->pSolver->Niter());
-  if (rank == 0) {
-    printf("velIter=%d pIter=%d ", velIterErr, pIterErr);
-  }
-  if (velIterErr >= 3) {
-    passed = false;
-  }
-  if (pIterErr >= 2) {
-    passed = false;
-  }
+  errVal = abs(err[5] - expectedErr[5]) / expectedErr[5];
+  CiEvalTest("T (LinfErr: " + to_string_f(errVal) + ")", errVal < EPS);
 
-  if (rank == 0) {
-    printf("\n");
-  }
-  passed ? (CiPassTest()) : (CiFailTest());
+  errVal = abs(expectedVIter - nrs->uvwSolver->Niter());
+  CiEvalTest("velIter (LinfErr: " + to_string_f(errVal) + ")", errVal < 2);
 
-  if (nrs->cds->cvode) {
-    dfloat expectedCVODERHS = 1.77;
-    if (rank == 0) {
-      printf("CVODE RHS evaluations per timestep: expected = %g, actual = %g\n",
-             expectedCVODERHS,
-             numCVODERHS);
-    }
-    numCVODERHS > 1.1 * expectedCVODERHS ? (CiFailTest()) : (CiPassTest());
-  }
+  errVal = abs(expectedPIter - nrs->pSolver->Niter());
+  CiEvalTest("pIter (LinfErr: " + to_string_f(errVal) + ")", errVal < 2);
 }

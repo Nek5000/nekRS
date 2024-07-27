@@ -11,8 +11,12 @@
 #include "gslib.h" // needed for sarray_transfer
 
 lpm_t::lpm_t(dfloat bb_tol_, dfloat newton_tol_)
-    : nrs(dynamic_cast<nrs_t *>(platform->solver)), solverOrder(nrs->nEXT), bb_tol(bb_tol_),
-      newton_tol(newton_tol_), interp(std::make_unique<pointInterpolation_t>(nrs->meshV, bb_tol, newton_tol))
+    : nrs(dynamic_cast<nrs_t *>(platform->solver)), 
+      solverOrder(nrs->nEXT), 
+      bb_tol(bb_tol_),
+      newton_tol(newton_tol_), 
+      interp(std::make_unique<pointInterpolation_t>(nrs->meshV, platform->comm.mpiComm, 
+        nrs->meshV->Nlocal, nrs->meshV->Nlocal, bb_tol, newton_tol))
 {
   nekrsCheck(!kernelsRegistered_,
              platform->comm.mpiComm,
@@ -497,7 +501,9 @@ void lpm_t::integrate(double tf)
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     interp.reset();
-    interp = std::make_unique<pointInterpolation_t>(nrs->meshV, bb_tol, newton_tol);
+
+    interp = std::make_unique<pointInterpolation_t>(nrs->meshV, platform->comm.mpiComm,
+      nrs->meshV->Nlocal, nrs->meshV->Nlocal, bb_tol, newton_tol);
   }
 
   // set extrapolated state to t^n (copy from laggedInterpFields)

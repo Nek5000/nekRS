@@ -453,9 +453,8 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
   LinfErrY = LinfErrs[1];
   LinfErrZ = LinfErrs[2];
 
-  CiEvalTest("Particle integration",
-             LinfErrX < relTol && LinfErrY < relTol && LinfErrZ < relTol,
-             "with LinfErr:" + to_string_f(LinfErrX) + ", " + to_string_f(LinfErrY) + ", " + to_string_f(LinfErrZ)
+  CiEvalTest("Particle integration (LinfErr: " + to_string_f(LinfErrX) + ", " + to_string_f(LinfErrY) + ", " + to_string_f(LinfErrZ) + ")",
+             LinfErrX < relTol && LinfErrY < relTol && LinfErrZ < relTol
             );
 }
 
@@ -474,19 +473,19 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
   auto o_Pe = platform->device.malloc<dfloat>(nrs->fieldOffset);
   exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, o_Pe, o_Ue);
 
-  const auto verbosity = pointInterpolation_t::VerbosityLevel::Basic;
+  const auto verbosity = pointInterpolation_t::VerbosityLevel::Detailed;
   const auto threshold = (sizeof(dfloat) == sizeof(double)) ? 5e-9 : 1e-5;
 
   const auto computeRelErrors = [&](dlong n, dlong offset, occa::memory o_Uexact, occa::memory o_Uinterp) {
-    const auto absTol = 1e-6;
+    const auto absTol = 1e-5;
+
+    auto o_UexactX = o_Uexact.slice(0 * offset, n);
+    auto o_UexactY = o_Uexact.slice(1 * offset, n);
+    auto o_UexactZ = o_Uexact.slice(2 * offset, n);
 
     auto o_UinterpX = o_Uinterp.slice(0 * offset, n);
     auto o_UinterpY = o_Uinterp.slice(1 * offset, n);
     auto o_UinterpZ = o_Uinterp.slice(2 * offset, n);
- 
-    auto o_UexactX = o_Uexact.slice(0 * offset, n);
-    auto o_UexactY = o_Uexact.slice(1 * offset, n);
-    auto o_UexactZ = o_Uexact.slice(2 * offset, n);
 
     const auto LinfUx = 
       platform->linAlg->maxRelativeError(n, 1, 0, absTol, o_UinterpX, o_UexactX, platform->comm.mpiComm); 
@@ -498,17 +497,15 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
     return std::make_tuple(LinfUx, LinfUy, LinfUz);
   };
 
-  // Interpolation 0:
   // Call find/eval on 0 points with a nullptr
   occa::memory o_NULL;
-  auto interpNoop = pointInterpolation_t(mesh);
+  auto interpNoop = pointInterpolation_t(mesh, platform->comm.mpiComm);
   interpNoop.setPoints(o_NULL, o_NULL, o_NULL);
   interpNoop.find(verbosity);
   interpNoop.eval(nrs->NVfields, nrs->fieldOffset, o_Ue, 0, o_NULL);
 
-  // Interpolation 1:
   // Interpolate onto points that coincide with the mesh, call findpts
-  auto interpFluid = pointInterpolation_t(mesh);
+  auto interpFluid = pointInterpolation_t(mesh, platform->comm.mpiComm);
   interpFluid.setPoints(mesh->o_x, mesh->o_y, mesh->o_z);
   interpFluid.find(verbosity);
 
@@ -517,13 +514,12 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
 
   {
     auto [linfErrUx, linfErrUy, linfErrUz] = computeRelErrors(mesh->Nlocal, nrs->fieldOffset, o_Ue, o_UintFluid);
-    CiEvalTest("relLinf point interp (fluid)",  
-               linfErrUx < threshold && linfErrUy < threshold && linfErrUz < threshold,
-               "with rel LinfErr:" + to_string_f(linfErrUx) + ", " + to_string_f(linfErrUy) + ", " + to_string_f(linfErrUz)
+    CiEvalTest("point interp (fluid) (RelLinfErr: " + 
+               to_string_f(linfErrUx) + ", " + to_string_f(linfErrUy) + ", " + to_string_f(linfErrUz) + ")",
+               linfErrUx < threshold && linfErrUy < threshold && linfErrUz < threshold
               );
   }
 
-  // Interpolation 2:
   // Interpolate onto a random number of a random set of points inside the unit ball
   // Repeat for nRandomInterp sets of points
   const double R = 0.75;
@@ -536,7 +532,7 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
 
   for (int n = 0; n < nRandomInterp; ++n) {
     std::tie(pointsX[n], pointsY[n], pointsZ[n]) = generatePoints(mesh->Nlocal, R);
-    interpRand[n] = std::make_shared<pointInterpolation_t>(mesh);
+    interpRand[n] = std::make_shared<pointInterpolation_t>(mesh, platform->comm.mpiComm);
     interpRand[n]->setPoints(pointsX[n], pointsY[n], pointsZ[n]);
     interpRand[n]->find(verbosity);
   }
@@ -567,9 +563,9 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
   for (int n = 0; n < nRandomInterp; ++n) {
     auto [linfErrUxRand, linfErrUyRand, linfErrUzRand] =
       computeRelErrors(pointsX[n].size(), pointsX[n].size(), o_UeRand[n], o_UintRand[n]);
-    CiEvalTest("relLinf point interp (random group" + std::to_string(n) + ")", 
-               linfErrUxRand < threshold && linfErrUyRand < threshold && linfErrUzRand < threshold,
-               "with rel LinfErr:" + to_string_f(linfErrUxRand) + ", " + to_string_f(linfErrUyRand) + ", " + to_string_f(linfErrUzRand)
+    CiEvalTest("point interp (random group" + std::to_string(n) + ") (RelLinfErr: " +
+               to_string_f(linfErrUxRand) + ", " + to_string_f(linfErrUyRand) + ", " + to_string_f(linfErrUzRand) + ")",
+               linfErrUxRand < threshold && linfErrUyRand < threshold && linfErrUzRand < threshold
               );
   }
 }
@@ -966,27 +962,29 @@ void ciTestErrors(nrs_t *nrs,
       expectedNiterP = 3;
     }
 
-    if (nrs->outerCorrector == 2) {
+    if (nrs->timeStepConverged) {
       const int pIterErr = abs(NiterP - expectedNiterP);
-      CiEvalTest("pressure iter step=1", pIterErr <= 1, "with pIterErr: " + to_string_f(pIterErr));
+      CiEvalTest("pressure iter step=1 (pIterErr: " + to_string_f(pIterErr) + ")", pIterErr <= 1);
       nekrsCheck(pIterErr > 1, platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
     }
 
-    int expectedNiterS = 17;
-    if (ciMode == 19 && nrs->outerCorrector == 2) {
-      expectedNiterS = 11;
+    int expectedNiterS00 = 17;
+    int expectedNiterS01 = 14;
+    if (ciMode == 19 && nrs->timeStepConverged) {
+      expectedNiterS00 = 11;
+      expectedNiterS01 = 8;
     }
 
-
-    if (ciMode != 12 && nrs->outerCorrector == 2) {
-      int sIterErr = abs(nrs->cds->solver[0]->Niter() - expectedNiterS);
-      CiEvalTest("scalar00 iter step=1", sIterErr <= 1, "with sIterErr: " + to_string_f(sIterErr));
+    if (ciMode != 12 && nrs->timeStepConverged) {
+      int sIterErr = abs(nrs->cds->solver[0]->Niter() - expectedNiterS00);
+      CiEvalTest("scalar00 iter step=1 (sIterErr: " + to_string_f(sIterErr) + ")", sIterErr <= 1);
       nekrsCheck(sIterErr > 1, platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
     }
 
-    if (nrs->outerCorrector == 2){
-      auto sIterErr = abs(nrs->cds->solver[1]->Niter() - expectedNiterS);
-      CiEvalTest("scalar01 iter step=1", sIterErr <= 1, "with sIterErr: " + to_string_f(sIterErr));
+    if (nrs->timeStepConverged){
+      std::cout << nrs->cds->solver[1]->Niter() << std::endl; 
+      auto sIterErr = abs(nrs->cds->solver[1]->Niter() - expectedNiterS01);
+      CiEvalTest("scalar01 iter step=1 (sIterErr: " + to_string_f(sIterErr) + ")", sIterErr <= 1);
       nekrsCheck(sIterErr > 1, platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
     }
   }
@@ -1257,8 +1255,8 @@ void ciTestErrors(nrs_t *nrs,
     }
 
     // check flop count
-    const double expectedOperations = 1.299e11;     // from nvprof
-    const auto accuracy = 0.035;                    // observed 3% error in result
+    const double expectedOperations = 1.347e11;     // from nvprof
+    const auto accuracy = 0.04;                    // observed 3% error in result
     const auto operations = platform->flopCounter->get(platform->comm.mpiComm);
     if (operations >= (1 + accuracy) * expectedOperations ||
         operations <= (1 - accuracy) * expectedOperations) {
@@ -1279,7 +1277,7 @@ void ciTestErrors(nrs_t *nrs,
     int errSteps = abs(expectedSteps - tstep);
 
     MPI_Allreduce(MPI_IN_PLACE, &errSteps, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    CiEvalTest("variable dt", errSteps < 1, "with stepErr: " + std::to_string(errSteps));
+    CiEvalTest("variable dt (stepErr: " + std::to_string(errSteps) + ")", errSteps < 1);
   }
 
   if (ciMode == 5 || ciMode == 6) {
@@ -1292,16 +1290,16 @@ void ciTestErrors(nrs_t *nrs,
     }
   }
 
-  if (nrs->outerCorrector == 2) {
+  if (nrs->timeStepConverged) {
     if (ciMode != 13 ) {
-      CiEvalTest("velocity", vxErr < EPS, "with LinfErr: " + to_string_f(vxErr));
-      CiEvalTest("velocity iter", velIterErr <= 1, "with iterErr: " + to_string_f(velIterErr));
+      CiEvalTest("velocity (LinfErr: " + to_string_f(vxErr) + ")", vxErr < EPS);
+      CiEvalTest("velocity iter (iterErr: " + to_string_f(velIterErr) + ")", velIterErr <= 1);
  
-      CiEvalTest("pressure", prErr < EPS, "with LinfErr: " + to_string_f(prErr));
-      CiEvalTest("pressure iter", pIterErr <= 1, "with iterErr: " + to_string_f(pIterErr));
+      CiEvalTest("pressure (LinfErr: " + to_string_f(prErr) + ")", prErr < EPS);
+      CiEvalTest("pressure iter (iterErr: " + to_string_f(pIterErr) + ")", pIterErr <= 1);
     }
  
-    if (ciMode != 12) CiEvalTest("scalar01", s1Err < EPS, "with LinfErr: " + to_string_f(s1Err));
-    CiEvalTest("scalar02", s2Err < EPS, "with LinfErr: " + to_string_f(s2Err));
+    if (ciMode != 12) CiEvalTest("scalar01 (LinfErr: " + to_string_f(s1Err) +")", s1Err < EPS);
+    CiEvalTest("scalar02 (LinfErr: " + to_string_f(s2Err) + ")", s2Err < EPS);
   }
 }

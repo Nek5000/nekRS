@@ -201,6 +201,7 @@ void applyDirichletScalars(nrs_t *nrs, double time, occa::memory& o_S, occa::mem
                              o_rho_i,
                              neknekFieldOffset,
                              nrs->neknek ? nrs->neknek->o_pointMap() : o_NULL,
+                             nrs->neknek ? static_cast<int>(nrs->neknek->o_U().isInitialized()) : 0,
                              nrs->neknek ? nrs->neknek->o_U() : o_NULL,
                              nrs->neknek ? nrs->neknek->o_S() : o_NULL,
                              nrs->neknek ? nrs->neknek->o_scalarIndices() : o_NULL,

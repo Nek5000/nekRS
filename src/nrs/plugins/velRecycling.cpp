@@ -207,7 +207,7 @@ void velRecycling::setup(occa::memory o_wrk_,
   }
   o_maskIds.copyFrom(maskIds.data());
 
-  interp = new pointInterpolation_t(mesh);
+  interp = new pointInterpolation_t(mesh, platform->comm.mpiComm);
 
   auto o_xBid = platform->device.malloc<dfloat>(nPoints, xBid.data());
   auto o_yBid = platform->device.malloc<dfloat>(nPoints, yBid.data());

@@ -7,7 +7,6 @@
 #include "applyDirichlet.hpp"
 #include "bdry.hpp"
 
-
 static void lagFields(nrs_t *nrs)
 {
   // lag velocity
@@ -119,8 +118,8 @@ static void computeUrst(nrs_t *nrs)
 {
   const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
-  const bool relative = movingMesh && nrs->Nsubsteps; 
-  const bool cubature = platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"); 
+  const bool relative = movingMesh && nrs->Nsubsteps;
+  const bool cubature = platform->options.compareArgs("ADVECTION TYPE", "CUBATURE");
 
   occa::memory &o_Urst = relative ? nrs->o_relUrst : nrs->o_Urst;
   auto mesh = nrs->meshV;
@@ -141,8 +140,7 @@ static void computeUrst(nrs_t *nrs)
     flopCount += 6 * mesh->Nq * mesh->cubNp;
     flopCount += 24 * mesh->cubNp;
     flopCount *= mesh->Nelements;
-  }
-  else {
+  } else {
     nrs->UrstKernel(mesh->Nelements,
                     static_cast<int>(relative),
                     mesh->o_vgeo,
@@ -153,7 +151,6 @@ static void computeUrst(nrs_t *nrs)
     flopCount += 24 * static_cast<double>(mesh->Nlocal);
   }
   platform->flopCounter->add("Urst", flopCount);
-
 }
 
 dfloat nrs_t::adjustDt(int tstep)
@@ -164,7 +161,7 @@ dfloat nrs_t::adjustDt(int tstep)
 
   const double TOLToZero = 1e-6;
 
-  double dt_ = -1;  
+  double dt_ = -1;
 
   dfloat targetCFL;
   platform->options.getArgs("TARGET CFL", targetCFL);
@@ -224,16 +221,20 @@ dfloat nrs_t::adjustDt(int tstep)
     return dt_;
   }
 
-  dt_ = this->dt[0];  
+  dt_ = this->dt[0];
   const auto dtOld = this->dt[0];
 
   auto CFLold = CFL;
   CFL = this->computeCFL();
-  if (firstTime) CFLold = CFL;
+  if (firstTime) {
+    CFLold = CFL;
+  }
 
   auto unitTimeCFLold = unitTimeCFL;
   unitTimeCFL = CFL / dtOld;
-  if (firstTime) unitTimeCFLold = unitTimeCFL;
+  if (firstTime) {
+    unitTimeCFLold = unitTimeCFL;
+  }
 
   const auto CFLpred = 2.0 * CFL - CFLold;
   const dfloat TOL = 1e-3;
@@ -264,17 +265,17 @@ dfloat nrs_t::adjustDt(int tstep)
   }
   firstTime = false;
 
-  if (platform->verbose && platform->comm.mpiRank == 0)
-    printf("adjustDt: dt=%g CFL= %g CFLpred= %g CFLmax= %g CFLmin= %g\n", 
-           dt_, CFL, CFLpred, CFLmax, CFLmin); 
+  if (platform->verbose && platform->comm.mpiRank == 0) {
+    printf("adjustDt: dt=%g CFL= %g CFLpred= %g CFLmax= %g CFLmin= %g\n", dt_, CFL, CFLpred, CFLmax, CFLmin);
+  }
 
   return dt_;
 }
 
-static occa::memory meshSolve(nrs_t* nrs, double time, int iter)
+static occa::memory meshSolve(nrs_t *nrs, double time, int iter)
 {
   mesh_t *mesh = nrs->_mesh;
-  linAlg_t* linAlg = platform->linAlg;
+  linAlg_t *linAlg = platform->linAlg;
 
   auto o_rhs = platform->o_memPool.reserve<dfloat>(mesh->dim * nrs->fieldOffset);
   platform->linAlg->fill(mesh->dim * nrs->fieldOffset, 0, o_rhs);
@@ -284,10 +285,11 @@ static occa::memory meshSolve(nrs_t* nrs, double time, int iter)
   auto o_lambda0 = nrs->o_meshMue;
 
   auto o_U = platform->o_memPool.reserve<dfloat>(mesh->dim * nrs->fieldOffset);
-  if (platform->options.compareArgs("MESH INITIAL GUESS", "EXTRAPOLATION") && iter == 1)
+  if (platform->options.compareArgs("MESH INITIAL GUESS", "EXTRAPOLATION") && iter == 1) {
     o_U.copyFrom(mesh->o_Ue);
-  else
+  } else {
     o_U.copyFrom(mesh->o_U);
+  }
 
   nrs->meshSolver->solve(o_lambda0, o_NULL, o_rhs, o_U);
 
@@ -298,7 +300,7 @@ static occa::memory meshSolve(nrs_t* nrs, double time, int iter)
 
 void nrs_t::initStep(double time, dfloat _dt, int tstep)
 {
-  if (platform->options.compareArgs("MULTIRATE TIMESTEPPER", "TRUE")) {
+  if (platform->options.compareArgs("NEKNEK MULTIRATE TIMESTEPPER", "TRUE")) {
     initOuterStep(time, _dt, tstep);
   } else {
     initInnerStep(time, _dt, tstep);
@@ -342,11 +344,11 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
       double flops = 18 * (mesh->Np * mesh->Nq + mesh->Np);
       flops *= static_cast<double>(mesh->Nelements);
       this->divergenceVolumeKernel(mesh->Nelements,
-                                  mesh->o_vgeo,
-                                  mesh->o_D,
-                                  this->fieldOffset,
-                                  mesh->o_U,
-                                  mesh->o_divU);
+                                   mesh->o_vgeo,
+                                   mesh->o_D,
+                                   this->fieldOffset,
+                                   mesh->o_U,
+                                   mesh->o_divU);
       platform->flopCounter->add("divergenceVolumeKernel", flops);
     }
   }
@@ -357,7 +359,7 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
     if (cds->anyEllipticSolver) {
       platform->timer.tic("makeq", 1);
 
-      occa::memory o_Usubcycling; 
+      occa::memory o_Usubcycling;
       platform->linAlg->fill(cds->fieldOffsetSum, 0.0, cds->o_NLT);
       cds->makeNLT(time, tstep, o_Usubcycling);
 
@@ -365,16 +367,16 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
         if (!cds->compute[is] || cds->cvodeSolve[is]) {
           continue;
         }
-  
+
         const std::string sid = scalarDigitStr(is);
-  
+
         auto mesh = (is) ? cds->meshV : cds->mesh[0];
         const dlong isOffset = cds->fieldOffsetScan[is];
 
         this->sumMakefKernel(mesh->Nlocal,
                              0,
                              mesh->o_LMM,
-                             1/this->dt[0],
+                             1 / this->dt[0],
                              this->o_coeffEXT,
                              this->o_coeffBDF,
                              isOffset,
@@ -384,46 +386,46 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
                              cds->o_S,
                              o_Usubcycling,
                              cds->o_NLT,
-                             cds->o_BF);
+                             cds->o_JwF);
 
         dfloat scalarSumMakef = (3 * this->nEXT + 3);
         scalarSumMakef += (this->Nsubsteps) ? 1 : 3 * this->nBDF;
         platform->flopCounter->add("scalarSumMakef", scalarSumMakef * static_cast<double>(mesh->Nlocal));
-    
+
         if (platform->verbose) {
           const dfloat debugNorm = platform->linAlg->weightedNorm2Many(mesh->Nlocal,
                                                                        1,
                                                                        isOffset,
                                                                        mesh->ogs->o_invDegree,
-                                                                       cds->o_BF + cds->fieldOffsetScan[is],
+                                                                       cds->o_JwF + cds->fieldOffsetScan[is],
                                                                        platform->comm.mpiComm);
           if (platform->comm.mpiRank == 0) {
             printf("BF scalar=%d norm: %.15e\n", is, debugNorm);
           }
         }
       }
- 
+
       for (int s = std::max(this->nBDF, this->nEXT); s > 1; s--) {
         const auto N = cds->fieldOffsetSum;
         cds->o_NLT.copyFrom(cds->o_NLT, N, (s - 1) * N, (s - 2) * N);
       }
 
-     platform->timer.toc("makeq");
+      platform->timer.toc("makeq");
     }
   }
 
   if (this->flow) {
     platform->timer.tic("makef", 1);
 
-    occa::memory o_Usubcycling; 
+    occa::memory o_Usubcycling;
     platform->linAlg->fill(this->fieldOffset * this->NVfields, 0.0, this->o_NLT);
     this->makeNLT(time, tstep, o_Usubcycling);
 
     auto mesh = this->meshV;
     this->sumMakefKernel(mesh->Nlocal,
-                         1, 
+                         1,
                          mesh->o_LMM,
-                         1/this->dt[0],
+                         1 / this->dt[0],
                          this->o_coeffEXT,
                          this->o_coeffBDF,
                          this->fieldOffset,
@@ -433,17 +435,17 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
                          this->o_U,
                          o_Usubcycling,
                          this->o_NLT,
-                         this->o_BF);
- 
+                         this->o_JwF);
+
     dfloat sumMakefFlops = (this->Nsubsteps) ? (6 + 6 * this->nEXT) : (6 * this->nEXT + 12 * this->nBDF);
     platform->flopCounter->add("sumMakef", sumMakefFlops * static_cast<double>(mesh->Nlocal));
- 
+
     if (platform->verbose) {
       const dfloat debugNorm = platform->linAlg->weightedNorm2Many(mesh->Nlocal,
                                                                    this->NVfields,
                                                                    this->fieldOffset,
                                                                    mesh->ogs->o_invDegree,
-                                                                   this->o_BF,
+                                                                   this->o_JwF,
                                                                    platform->comm.mpiComm);
       if (platform->comm.mpiRank == 0) {
         printf("BF velocity norm: %.15e\n", debugNorm);
@@ -496,7 +498,7 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
 
 void nrs_t::finishStep()
 {
-  if (platform->options.compareArgs("MULTIRATE TIMESTEPPER", "TRUE")) {
+  if (platform->options.compareArgs("NEKNEK MULTIRATE TIMESTEPPER", "TRUE")) {
     finishOuterStep();
   } else {
     finishInnerStep();
@@ -513,7 +515,7 @@ void nrs_t::finishInnerStep()
 
 bool nrs_t::runStep(std::function<bool(int)> convergenceCheck, int iter)
 {
-  if (platform->options.compareArgs("MULTIRATE TIMESTEPPER", "TRUE")) {
+  if (platform->options.compareArgs("NEKNEK MULTIRATE TIMESTEPPER", "TRUE")) {
     return runOuterStep(convergenceCheck, iter);
   } else {
     return runInnerStep(convergenceCheck, iter);
@@ -528,8 +530,7 @@ bool nrs_t::runInnerStep(std::function<bool(int)> convergenceCheck, int iter)
   this->outerCorrector = iter;
 
   const auto tstep = this->tstep;
-  const double timeNew =
-      this->timePrevious + setPrecision(this->dt[0], 5);
+  const double timeNew = this->timePrevious + setPrecision(this->dt[0], 5);
 
   const int isCheckpointStep = this->isCheckpointStep;
 
@@ -548,20 +549,22 @@ bool nrs_t::runInnerStep(std::function<bool(int)> convergenceCheck, int iter)
   }
 
   {
-    if (this->flow)
+    if (this->flow) {
       applyDirichletVelocity(this, timeNew, this->o_U, this->o_Ue, this->o_P);
- 
-    if (this->Nscalar)
+    }
+
+    if (this->Nscalar) {
       applyDirichletScalars(this, timeNew, this->cds->o_S, this->cds->o_Se);
- 
-    if (!platform->options.compareArgs("MESH SOLVER", "NONE"))
+    }
+
+    if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
       applyDirichletMesh(this, timeNew, this->_mesh->o_U, this->_mesh->o_Ue, this->o_U);
- 
+    }
+
     if (this->neknek) {
       this->neknek->fixCoupledSurfaceFlux(this->o_U);
     }
   }
-
 
   if (this->Nscalar) {
     cds->solve(timeNew, iter);
@@ -584,11 +587,11 @@ bool nrs_t::runInnerStep(std::function<bool(int)> convergenceCheck, int iter)
 
     platform->timer.tic("pressureSolve", 1);
     {
-      const auto& o_Pnew = tombo::pressureSolve(this, timeNew, iter); 
+      const auto &o_Pnew = tombo::pressureSolve(this, timeNew, iter);
       this->o_P.copyFrom(o_Pnew, mesh->Nlocal);
     }
     platform->timer.toc("pressureSolve");
- 
+
     platform->timer.tic("velocitySolve", 1);
     {
       auto o_Unew = tombo::velocitySolve(this, timeNew, iter);
@@ -596,7 +599,6 @@ bool nrs_t::runInnerStep(std::function<bool(int)> convergenceCheck, int iter)
       o_Unew.free();
     }
     platform->timer.toc("velocitySolve");
- 
 
     if (platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")) {
       this->adjustFlowRate(tstep, timeNew);

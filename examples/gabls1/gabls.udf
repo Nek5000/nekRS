@@ -106,7 +106,7 @@ auto planarAverage()
 
   // d<u,w,temp>/dy(y)
   auto o_ddyAvg = o_work.slice(3 * nrs->fieldOffset, 3 * nrs->fieldOffset);
-  gradY(mesh->Nelements, mesh->o_vgeo, mesh->o_D, nrs->fieldOffset, mesh->o_invAJw, o_work, o_ddyAvg);
+  vecGradY(mesh->Nelements, mesh->o_vgeo, mesh->o_D, nrs->fieldOffset, mesh->o_invAJw, o_work, o_ddyAvg);
   nrs->qqt->startFinish("+", o_ddyAvg, nrs->fieldOffset);
 
   planarAvg(mesh, "xz", NUMBER_ELEMENTS_X, NUMBER_ELEMENTS_Y, NUMBER_ELEMENTS_Z, 6, nrs->fieldOffset, o_work);
@@ -123,7 +123,7 @@ void userf(double time)
 void userq(double time)
 {
   auto mesh = nrs->meshV;
-  auto o_divTauY = o_divTau.slice(1 * nrs->fieldOffset , nrs->fieldOffset);
+  auto o_divTauY = o_divTau.slice(2 * nrs->fieldOffset , nrs->fieldOffset);
   platform->linAlg->axpby(mesh->Nlocal, -1.0, o_divTauY, 1.0, nrs->cds->o_NLT, 0, 0);
 }
 
@@ -144,13 +144,13 @@ void writeProfiles(double time, int tstep)
  
     auto o_gradY = o_work.slice(workOffset, 3 * nrs->fieldOffset);
     workOffset += 3 * nrs->fieldOffset;
-    gradY(mesh->Nelements, 
-          mesh->o_vgeo, 
-          mesh->o_D, 
-          nrs->fieldOffset, 
-          mesh->o_invAJw, 
-          tavg::o_avg(), 
-          o_gradY);
+    vecGradY(mesh->Nelements, 
+             mesh->o_vgeo, 
+             mesh->o_D, 
+             nrs->fieldOffset, 
+             mesh->o_invAJw, 
+             tavg::o_avg(), 
+             o_gradY);
  
     o_work.copyFrom(tavg::o_avg() + 3 * nrs->fieldOffset, 
                     3 * nrs->fieldOffset,
@@ -196,7 +196,7 @@ void writeProfiles(double time, int tstep)
       }
     }
 
-    interpolator = new pointInterpolation_t(mesh);
+    interpolator = new pointInterpolation_t(mesh, platform->comm.mpiComm);
     interpolator->setPoints(xp, yp, zp);
     interpolator->find(pointInterpolation_t::VerbosityLevel::Detailed);
 
@@ -439,7 +439,7 @@ void UDF_ExecuteStep(double time, int tstep)
    
     std::vector<dfloat> avgUWallValues(mesh->dim);
     for (int i = 0; i < mesh->dim; i++) {
-      auto o_u = o_avg.slice(0 * nrs->fieldOffset, mesh->Nlocal);
+      auto o_u = o_avg.slice(i * nrs->fieldOffset, mesh->Nlocal);
       auto avg = mesh->surfaceAreaMultiplyIntegrate(o_bid.size(), o_bid, o_u);
       avgUWallValues[i] = std::accumulate(avg.begin(), avg.end(), 0.0) / surArea;
     }

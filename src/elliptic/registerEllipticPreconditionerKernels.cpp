@@ -113,19 +113,14 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo, i
   const bool serial = platform->serial;
   const std::string extension = serial ? ".c" : ".okl";
 
-  int M;
-  platform->options.getArgs("POLYNOMIAL DEGREE", M);
+  int p;
+  platform->options.getArgs("POLYNOMIAL DEGREE", p);
 
-  {
+  if (N != p){
     std::string fileName;
     const std::string oklpath = getenv("NEKRS_KERNEL_DIR");
 
     auto meshKernelInfo = platform->kernelInfo + meshKernelProperties(N);
-
-    int cubN = 0;
-    const auto cubNq = cubN + 1;
-    meshKernelInfo["defines/p_cubNq"] = cubNq;
-    meshKernelInfo["defines/p_cubNp"] = cubNq * cubNq * cubNq;
 
     kernelName = "geometricFactorsHex3D";
     fileName = oklpath + "/mesh/" + kernelName + ".okl";

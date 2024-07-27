@@ -80,15 +80,8 @@ void neknek_t::updateInterpPoints()
 
   auto mesh = nrs->_mesh;
 
-  // Setup findpts
-  const dfloat tol = (sizeof(dfloat) == sizeof(double)) ? 5e-13 : 1e-6;
-  constexpr dlong npt_max = 1;
-  const dfloat bb_tol = 0.01;
-
-  auto &device = platform->device.occaDevice();
-
   this->interpolator.reset();
-  this->interpolator = std::make_shared<pointInterpolation_t>(mesh, bb_tol, tol, true, sessionID_, true);
+  this->interpolator = std::make_shared<pointInterpolation_t>(mesh, platform->comm.mpiCommParent, true, intBIDs);
   this->interpolator->setTimerName("neknek_t::");
 
   // neknekX[:] = mesh->x[pointMap[:]]
@@ -114,15 +107,8 @@ void neknek_t::findIntPoints()
 
   auto mesh = nrs->_mesh;
 
-  // Setup findpts
-  const dfloat tol = (sizeof(dfloat) == sizeof(double)) ? 5e-13 : 1e-6;
-  constexpr dlong npt_max = 1;
-  const dfloat bb_tol = 0.01;
-
-  auto &device = platform->device.occaDevice();
-
   this->interpolator.reset();
-  this->interpolator = std::make_shared<pointInterpolation_t>(mesh, bb_tol, tol, true, sessionID_, true);
+  this->interpolator = std::make_shared<pointInterpolation_t>(mesh, platform->comm.mpiCommParent, true, intBIDs);
   this->interpolator->setTimerName("neknek_t::");
 
   // int points are the same for all neknek fields
@@ -142,7 +128,7 @@ void neknek_t::findIntPoints()
   std::vector<dfloat> neknekX(numPoints, 0.0);
   std::vector<dfloat> neknekY(numPoints, 0.0);
   std::vector<dfloat> neknekZ(numPoints, 0.0);
-  std::vector<dlong> session(numPoints, 0.0);
+  std::vector<dlong> session(numPoints, -1);
 
   std::vector<dlong> pointMap(mesh->Nlocal, -1);
 
@@ -163,7 +149,6 @@ void neknek_t::findIntPoints()
             neknekY[ip] = mesh->y[idM];
             neknekZ[ip] = mesh->z[idM];
             session[ip] = sessionID;
-
             pointMap[idM] = ip;
             ++ip;
           }
@@ -221,8 +206,7 @@ void neknek_t::setup()
   MPI_Allreduce(MPI_IN_PLACE, &movingMesh, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
   this->globalMovingMesh = movingMesh;
 
-  this->fields = [&]()
-  {
+  this->fields = [&]() {
     std::vector<std::string> list;
     for (auto &&field : nrsFieldsToSolve(platform->options)) {
       int intFound = 0;
@@ -236,7 +220,7 @@ void neknek_t::setup()
       MPI_Allreduce(MPI_IN_PLACE, &intFound, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
       if (intFound) {
         list.push_back(field);
-      } 
+      }
     }
 
     return list;
@@ -244,16 +228,16 @@ void neknek_t::setup()
 
   // check if all exchanged fields (within the same session) share the same INT boundaries
   std::ostringstream errorLogger;
-  std::set<int> intBIDs;
+  std::set<int> intBIDFields;
   for (auto &&field : this->fields) {
     for (int bID = 1; bID <= bcMap::size(field); ++bID) {
       const auto isInt = isIntBc(bcMap::id(bID, field), field);
 
       if (isInt) {
-        intBIDs.insert(bID);
+        intBIDFields.insert(bID);
       }
 
-      if ((intBIDs.find(bID) != intBIDs.end()) && !isInt) {
+      if ((intBIDFields.find(bID) != intBIDFields.end()) && !isInt) {
         errorLogger << "ERROR: expected INT boundary condition on boundary id " << bID << " for field "
                     << field << "\n";
       }
@@ -274,6 +258,12 @@ void neknek_t::setup()
   }
 
   this->o_scalarIndices_ = platform->device.malloc<int>(nrs->Nscalar, scalarIndices.data());
+
+  for (int bID = 1; bID <= bcMap::size(this->fields[0]); ++bID) {
+    if (isIntBc(bcMap::id(bID, this->fields[0]), this->fields[0])) { 
+       intBIDs.push_back(bID);
+    }
+  }
 
   this->findIntPoints();
 
@@ -330,7 +320,7 @@ neknek_t::neknek_t(nrs_t *nrs_, dlong nsessions, dlong sessionID)
   // set boundary ext order to report to user, if not specified
   platform->options.setArgs("NEKNEK BOUNDARY EXT ORDER", std::to_string(this->nEXT_));
 
-  this->multirate_ = platform->options.compareArgs("MULTIRATE TIMESTEPPER", "TRUE");
+  this->multirate_ = platform->options.compareArgs("NEKNEK MULTIRATE TIMESTEPPER", "TRUE");
 
   this->coeffEXT.resize(this->nEXT_);
   this->o_coeffEXT = platform->device.malloc<dfloat>(this->nEXT_);
@@ -377,13 +367,11 @@ occa::memory neknek_t::partitionOfUnity()
   }
   recomputePartition = false;
 
-  const dfloat tol = (sizeof(dfloat) == sizeof(double)) ? 5e-13 : 1e-6;
-  constexpr dlong npt_max = 1;
-  const dfloat bb_tol = 0.01;
   auto mesh = nrs->_mesh;
 
-  auto pointInterp = pointInterpolation_t(mesh, bb_tol, tol, true, sessionID_, true);
-  auto o_dist = pointInterp.distance();
+  auto pointInterp = pointInterpolation_t(mesh, platform->comm.mpiCommParent, true, intBIDs);
+
+  auto o_dist = pointInterp.distanceINT();
 
   auto o_sess = platform->o_memPool.reserve<dlong>(nrs->fieldOffset);
   auto o_sumDist = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
@@ -557,8 +545,8 @@ double neknek_t::adjustDt(double dt)
     double maxDt = dt;
     MPI_Allreduce(MPI_IN_PLACE, &maxDt, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiCommParent);
 
-    const auto relErr = std::abs(maxDt - minDt)/maxDt;
-    nekrsCheck(relErr > 100*std::numeric_limits<double>::epsilon(),
+    const auto relErr = std::abs(maxDt - minDt) / maxDt;
+    nekrsCheck(relErr > 100 * std::numeric_limits<double>::epsilon(),
                platform->comm.mpiComm,
                EXIT_FAILURE,
                "Time step size needs to be the same across all sessions.\n"
@@ -589,6 +577,6 @@ double neknek_t::adjustDt(double dt)
 
   // rescale dt to be an _exact_ integer multiple of minDt
   dt = maxDt / timeStepRatio;
-  platform->options.setArgs("MULTIRATE STEPS", std::to_string(timeStepRatio));
+  platform->options.setArgs("NEKNEK MULTIRATE STEPS", std::to_string(timeStepRatio));
   return dt;
 }

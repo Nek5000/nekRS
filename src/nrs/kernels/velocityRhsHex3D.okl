@@ -26,15 +26,17 @@
 
 @kernel void velocityRhsHex3D(const dlong N,
                               const dlong fieldOffset,
+                              @ restrict const dfloat *RHO,
                               @ restrict const dfloat *BF,
                               @ restrict const dfloat *GMUEDIV,
                               @ restrict const dfloat *GP,
                               @ restrict dfloat *rhsU)
 {
   for (dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)) {
-    // BF = -rho/dt * v^*
-    rhsU[id + 0 * fieldOffset] = BF[id + 0 * fieldOffset] + GP[id + 0 * fieldOffset] + GMUEDIV[id + 0 * fieldOffset];
-    rhsU[id + 1 * fieldOffset] = BF[id + 1 * fieldOffset] + GP[id + 1 * fieldOffset] + GMUEDIV[id + 1 * fieldOffset];
-    rhsU[id + 2 * fieldOffset] = BF[id + 2 * fieldOffset] + GP[id + 2 * fieldOffset] + GMUEDIV[id + 2 * fieldOffset];
+    // BF = -1/dt * v^*
+    const dfloat rho = RHO[id];
+    rhsU[id + 0 * fieldOffset] = rho * BF[id + 0 * fieldOffset] + GP[id + 0 * fieldOffset] + GMUEDIV[id + 0 * fieldOffset];
+    rhsU[id + 1 * fieldOffset] = rho * BF[id + 1 * fieldOffset] + GP[id + 1 * fieldOffset] + GMUEDIV[id + 1 * fieldOffset];
+    rhsU[id + 2 * fieldOffset] = rho * BF[id + 2 * fieldOffset] + GP[id + 2 * fieldOffset] + GMUEDIV[id + 2 * fieldOffset];
   }
 }

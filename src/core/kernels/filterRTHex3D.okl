@@ -27,7 +27,7 @@
 @kernel void filterRTHex3D(const dlong Nelements,
                            const dlong startScalar,
                            const dlong Nscalar,
-                           const dlong fieldOffset,
+                           @ restrict const dlong *fieldOffsetScan,
                            @ restrict const dlong *applyFilterRT,
                            @ restrict const dfloat *fMT,
                            @ restrict const dfloat *filterS,
@@ -35,9 +35,8 @@
                            @ restrict const dfloat *U,
                            @ restrict dfloat *NU)
 {
-  for (dlong scalarId = startScalar; scalarId < (startScalar + Nscalar); ++scalarId;
-       @outer(1)) {                                    // for all scalars
-    for (dlong e = 0; e < Nelements; ++e; @outer(0)) { // for all elements
+  for (dlong scalarId = startScalar; scalarId < (startScalar + Nscalar); ++scalarId; @outer(1)) { 
+    for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
       if (applyFilterRT[scalarId]) {
         @shared dfloat s_U[p_Nq][p_Nq];
         @shared dfloat s_FT[p_Nq][p_Nq];
@@ -64,7 +63,7 @@
 #pragma unroll p_Nq
             for (int k = 0; k < p_Nq; ++k) {
               const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-              const dfloat uc = U[id + scalarId * fieldOffset];
+              const dfloat uc = U[id + fieldOffsetScan[scalarId]];
 
               // Could be hold for less global reads
               r_U[k] = uc;
@@ -129,8 +128,8 @@
 #pragma unroll p_Nq
             for (int k = 0; k < p_Nq; ++k) {
               const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
-              const dfloat rhoM = RHO[id + scalarId * fieldOffset];
-              NU[id + scalarId * fieldOffset] += filterS[scalarId] * rhoM * (r_U[k] - r_Un[k]);
+              const dfloat rhoM = RHO[id + fieldOffsetScan[scalarId]];
+              NU[id + fieldOffsetScan[scalarId]] += filterS[scalarId] * rhoM * (r_U[k] - r_Un[k]);
             }
           }
         }

@@ -8,13 +8,16 @@
 * [ADIOS2](https://adios2.readthedocs.io/) field file writer
 * Addtional output options (element filter and interpolation on uniform grid / different polynomial-order)
 * Multi session nek-nek including multi-rate time stepping
-* Combined CG for improved performance
 * CHT nek-nek support
+* nek-nek support for nrsqsub scripts
 * Improved JIT compilation performance
 * HIP support for BoomerAMG
 * Intel GPU support
 * Aero forces
-* User friendly opSEM class
+* opSEM class
+* Mesh surface ops
+* Linear implicit velocity source term
+* Combined CG for improved performance
 * Various bug fixes
 
 ## Good to know
@@ -62,7 +65,7 @@ This list provides an overview of the most significant changes in this release, 
 
 ## Thanks to our Contributors
 
-@kris-rowe, @MalachiTimothyPhillips, @yslan, @tcew
+@kris-rowe, @yslan, @MalachiTimothyPhillips, @tcew
 
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.

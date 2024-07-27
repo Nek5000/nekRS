@@ -375,6 +375,7 @@ void udfBuild(setupAide &options)
             << solverIncludes()
 
             << "#include \"udfHelper.hpp\"" << std::endl
+            << "#include \"ci.hpp\"" << std::endl
             << "#include \"" << udfFile << "\"" << std::endl;
 
           // autoload plugins

@@ -13,10 +13,9 @@
       const dfloat sumY = -CU[n + 1 * fieldOffset] + factor * gDIV[n + 1 * fieldOffset];
       const dfloat sumZ = -CU[n + 2 * fieldOffset] + factor * gDIV[n + 2 * fieldOffset];
 
-      const dfloat invRho = iRHO[n];
-      const dfloat mue = MUE[n];
-      rhsU[n + 0 * fieldOffset] = invRho * (BF[n + 0 * fieldOffset] + mue * sumX);
-      rhsU[n + 1 * fieldOffset] = invRho * (BF[n + 1 * fieldOffset] + mue * sumY);
-      rhsU[n + 2 * fieldOffset] = invRho * (BF[n + 2 * fieldOffset] + mue * sumZ);
+      const dfloat nu = iRHO[n] * MUE[n];
+      rhsU[n + 0 * fieldOffset] = BF[n + 0 * fieldOffset] + nu * sumX;
+      rhsU[n + 1 * fieldOffset] = BF[n + 1 * fieldOffset] + nu * sumY;
+      rhsU[n + 2 * fieldOffset] = BF[n + 2 * fieldOffset] + nu * sumZ;
   }
 }
