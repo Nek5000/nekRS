@@ -14,6 +14,18 @@ merged.
 The documentation requires a python 3 installation and a few pip packages including 
 [Sphinx](https://pypi.python.org/pypi/Sphinx) and [sphinx_rtd_theme](https://pypi.python.org/pypi/sphinx_rtd_theme) Python packages.
 
+In case you don't have the appropriate git and python dependencies these can be installed if using Debian/apt using the following command. If using alternative setups this may need adapting appropriately 
+
+```
+apt update && apt install -y git python3 python3-pip python3.10-venv
+```
+
+You can then clone the nekRS repository.
+
+```
+git clone https://github.com/JezSw/nekRS.git
+```
+
 The recommended way to setup the build environment is to create a local venv and 
 then install the packages via the requirement.txt file.
 
