@@ -106,7 +106,7 @@ html_css_files = [
 ]
 
 html_extra_path = [
-    "doxygen"
+#    "doxygen"
 ]
 
 # -- Options for HTMLHelp output ------------------------------------------
@@ -232,5 +232,5 @@ def build_doxygen(app):
 
 
 def setup(app):
-    app.connect("builder-inited", build_doxygen)
+#    app.connect("builder-inited", build_doxygen)
     pass
