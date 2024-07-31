@@ -1,0 +1,128 @@
+#include "RANSktau.hpp"
+
+#include "ci.inc"
+
+static dfloat rho, mueLam;
+
+#ifdef __okl__
+
+#include "channel.oudf"
+
+#endif
+
+void extractLine(nrs_t *nrs, double time)
+{
+  const auto np = (platform->comm.mpiRank == 0) ? 200 : 0;
+  const auto offset = np;
+
+  static pointInterpolation_t *interpolator = nullptr;
+  static std::vector<dfloat> xp, yp, zp;
+  static deviceMemory<dfloat> o_Up;
+
+  if (!interpolator) {
+    auto mesh = nrs->meshV;
+    const auto yMin = platform->linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+    const auto yMax = platform->linAlg->max(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
+
+    if (np) {
+      const auto x0 = 7.0;
+      const auto z0 = 0.5;
+
+      xp.push_back(x0);
+      yp.push_back(yMin);
+      zp.push_back(z0);
+
+      const auto betaY = 2.2;
+      const auto dy = (yMax - yMin) / (np - 1);
+      for (int i = 1; i < np - 1; i++) {
+        xp.push_back(x0);
+        yp.push_back(tanh(betaY * (i * dy - 1)) / tanh(betaY));
+        zp.push_back(z0);
+      }
+
+      xp.push_back(x0);
+      yp.push_back(yMax);
+      zp.push_back(z0);
+      o_Up.resize(nrs->NVfields * offset);
+    }
+
+    interpolator = new pointInterpolation_t(nrs->meshV);
+    interpolator->setPoints(np, xp.data(), yp.data(), zp.data());
+    interpolator->find();
+  }
+
+  interpolator->eval(nrs->NVfields, nrs->fieldOffset, nrs->o_U, offset, o_Up);
+
+  if (platform->comm.mpiRank == 0) {
+    std::vector<dfloat> Up(nrs->NVfields * np);
+    o_Up.copyTo(Up);
+
+    std::ofstream f("profile.dat", std::ios::app);
+    for (int i = 0; i < np; i++) {
+      f << std::scientific << time << " " << xp[i] << " " << yp[i] << " " << zp[i] << " "
+        << Up[i + 0 * offset] << " " << Up[i + 1 * offset] << " " << Up[i + 2 * offset] << std::endl;
+    }
+    f.close();
+  }
+}
+
+void userq(double time)
+{
+  RANSktau::updateSourceTerms();
+}
+
+void uservp(double time)
+{
+  auto mesh = nrs->meshV;
+  auto cds = nrs->cds;
+
+  RANSktau::updateProperties();
+
+  dfloat conductivity;
+  platform->options.getArgs("SCALAR00 DIFFUSIVITY", conductivity);
+  const dfloat Pr_t = 0.7;
+  auto o_mue_t = RANSktau::o_mue_t();
+  auto o_temp_mue = cds->o_diff + 0 * cds->fieldOffset[0];
+  scalarScaledAdd(mesh->Nlocal, conductivity, 1 / Pr_t, o_mue_t, o_temp_mue);
+}
+
+void UDF_LoadKernels(deviceKernelProperties& kernelInfo)
+{
+#if 0
+  {
+    auto props = kernelInfo;
+    props.define("p_sigma_k") = 0.6;
+    RANSktau::buildKernel(props);
+  }
+#endif
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.getArgs("CI-MODE", ciMode);
+  if (ciMode) {
+    ciSetup(comm, options);
+  }
+}
+
+void UDF_Setup()
+{
+  nrs->userProperties = &uservp;
+  nrs->userScalarSource = &userq;
+
+  const int scalarFieldStart = 1;
+  platform->options.getArgs("VISCOSITY", mueLam);
+  platform->options.getArgs("DENSITY", rho);
+
+  RANSktau::setup(mueLam, rho, scalarFieldStart);
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  if (ciMode) {
+    ciTestErrors(nrs, time, tstep);
+  }
+  if (nrs->isCheckpointStep) {
+    extractLine(nrs, time);
+  }
+}
