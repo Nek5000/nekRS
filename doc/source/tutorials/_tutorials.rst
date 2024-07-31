@@ -14,6 +14,8 @@ documentation (https://nek5000.github.io/NekDoc/tutorials.html)
     :maxdepth: 1
 
     fdlf
-    tutorial_2
-    tutorial_3
-    tutorial_4
+    periodic_hill
+    conjugate_heat_transfer
+    overlapping_overset_grids
+    rans_channel
+    multi_component_rans
