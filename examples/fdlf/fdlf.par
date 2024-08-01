@@ -1,6 +1,3 @@
-#
-# nek parameter file
-#
 [GENERAL]
 polynomialOrder = 7
 cubaturePolynomialOrder = 11
