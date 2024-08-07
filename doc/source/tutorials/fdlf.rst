@@ -73,9 +73,8 @@ with the files in the fdlf directory within examples directory of nekRS, or crea
 it within a directory of your choice.
 
 If you have chosen to create the example as following along, you will need to 
-compile the *Nek5000* tool ``genbox`` for the initial mesh generation and have
-access to the ``visnek`` tool to visualise the final result. Please follow the 
-instructions in the :ref:`Building the Nek5000 Tool Scripts <scripts>` section.
+compile the *Nek5000* tool ``genbox`` for the initial mesh generation. Please follow
+the instructions in the :ref:`Building the Nek5000 Tool Scripts <scripts>` section.
 
 Mesh Generation
 _______________
@@ -87,8 +86,15 @@ To create the input file, copy the following script and save the file as ``fdlf.
    :language: none
 
 For this mesh we are specifying 50 uniform elements in the stream-wise (:math:`x`) 
-direction and 5 uniform elements in the span-wise (:math:`y`) direction. As 
-*NekRS* can only solve 3D problems we also create a single element in the z-direction.
+direction, 5 uniform elements in the span-wise (:math:`y`) direction, and single
+element in :math:`z`-direction.
+
+.. note::
+    As *NekRS* can only solve 3D problems, we put an element in the z-direction
+    with periodic boundary condition. However, *Nek5000* requires at least
+    3 layers to correctly construct the connectivity. The typical workaround is to
+    overwrite the vertices index with ``subroutine usrsetvert`` inside
+    `fdlf.usr <../../../examples/fdlf/fdlf.usr>`_
 
 The velocity boundary conditions in the x-direction are a standard Dirichlet 
 velocity boundary condition at :math:`x_{min}` and an open boundary condition 
@@ -108,6 +114,7 @@ Note that the boundary conditions specified with lower case letters must have
 values assigned in relevant functions in the udf file, which will be shown later
 in this tutorial (see :ref:`bc_ic_udf`). Now we can generate the mesh with:
 
+
 .. code-block:: console
 
    $ genbox
@@ -118,7 +125,7 @@ be renamed to ``fdlf.re2``:
 
 .. code-block:: console
 
-   $ mv box.re fdlf.re2
+   $ mv box.re2 fdlf.re2
 
 .. Once we have the mesh file, we need to run the domain partitioning tool, ``genmap``.
 
@@ -134,6 +141,8 @@ be renamed to ``fdlf.re2``:
 .. tip:: If ``genbox`` cannot be located by your shell, check to make sure the 
          ``Nek5000/tools`` directory is in your path. For help see 
          `here <https://nek5000.github.io/NekDoc/quickstart.html#sec-path>`_.
+         A detailed explaination of the *Nek5000* box format can be found at
+         `here <https://nek5000.github.io/NekDoc/tools/genbox.html>`_
 
 Control parameters
 __________________
@@ -142,6 +151,7 @@ The control parameters for any case are given in the ``.par`` file. For this cas
 create a new file called ``fdlf.par`` with the following:
 
 .. literalinclude:: ../../../examples/fdlf/fdlf.par
+   :language: ini
 
 Here we have set our polynomial order to be :math:`N=7` which indicates that
 there are 8 points in each spatial dimension of every element. The case has been
@@ -171,25 +181,26 @@ Loading parameters
 ^^^^^^^^^^^^^^^^^^
 
 Firstly, the channel height, mean velocity, heat flux, and mean inlet temperature 
-parameters that were set in the ``.par`` file must be loaded for later use. 
-These are loaded through the ``UDF_Setup0`` method.
+parameters are declared as global varialbles.
+
+.. literalinclude:: ../../../examples/fdlf/fdlf.udf
+   :language: c++
+   :lines: 2
+
+Then, the values set in the ``.par`` file are loaded inside the ``UDF_Setup0`` function.
 
 .. literalinclude:: ../../../examples/fdlf/fdlf.udf
    :language: c++
    :lines: 82-88
 
-The ``UDF_LoadKernels`` function is used to load the remaining parameters
-of the temperature density and diffusivity/conductivity.
+The ``UDF_LoadKernels`` function is used to define the constant variables for use
+within the device kernels and device functions where the diffusivity/conductivity
+are extracted via ``options.getArgs``.
 
 .. literalinclude:: ../../../examples/fdlf/fdlf.udf
    :language: c++
-   :lines: 65-71
+   :lines: 65-80
 
-All these values can then be set as variables for use within the device kernel.
-
-.. literalinclude:: ../../../examples/fdlf/fdlf.udf
-   :language: c++
-   :lines: 73-80
 
 .. _bc_ic_udf:
 
@@ -207,17 +218,24 @@ by Eqs. :eq:`fdlf_vel` and :eq:`fdlf_temp` and the heat flux is set to a constan
    :lines: 41-61
    :emphasize-lines: 5,15,20
 
+.. tip:: All device kernels and device function must be put between the directives
+         ``#ifdef __okl__`` and the corresponding ``#endif``. They will be compiled
+         by *OCCA*.
+
 The next step is to specify the initial conditions. This is done in the 
 ``UDF_Setup`` function as shown. Again, the actual inlet condition is specified 
 with the highlighted lines.
 
 .. literalinclude:: ../../../examples/fdlf/fdlf.udf
    :language: c++
-   :lines: 117-132
-   :emphasize-lines: 12,16
+   :lines: 116-131
+   :emphasize-lines: 10,14
 
 As with the boundary conditions, the inlet temperature and mean velocity are set
 from the list of user defined parameters in the ``.par`` file. 
+
+.. _exact_sol_udf:
+
 
 Running the case
 ________________
@@ -235,7 +253,7 @@ Now you can run the case
 
 .. code-block:: console
 
-   $ mpirun -np 4 nekrs --setup fdlf.par | tee logfile
+   $ nrsbmpi fdlf 4
 
 To launch an MPI jobs on your local machine using 4 ranks. The output will be 
 redirected to ``logfile``.
@@ -254,15 +272,7 @@ that look like this:
    fdlf0.f00002
    ...
 
-The preferred mode for data visualization and analysis with *NekRS* is to use
-Visit or ParaView. One can use the script *visnek*, to be found in ``/scripts``. 
-It is sufficient to run:
-
-.. code-block:: console
-
-   $ visnek fdlf
-
-to obtain a file named ``fdlf.nek5000`` which can be recognized in Visit/ParaView. 
+and a file named ``fdlf.nek5000`` which can be recognized in Visit/ParaView.
 In the viewing window one can visualize the flow-field as depicted in 
 :numref:`fig:velocity_paraview` as well as the temperature profile as depicted 
 in :numref:`fig:temperature_paraview` below.
@@ -300,3 +310,19 @@ Plots of the velocity and temperature varying along the y-axis as evaluated by *
    :figclass: align-center
 
    *Nek5000* temperature solutions plotted against analytical solutions.
+
+We also print the relative :math:`\ell^\infty` error every 100 time steps, computed in the ``UDF_ExecuteStep`` function. User can get the values with the following command.
+
+.. code-block:: console
+
+   $ grep relLinfErr logfile |tail
+   relLinfErr: 9100 9.10e-01 8.4746e-09 3.1876e-06
+   relLinfErr: 9200 9.20e-01 8.4746e-09 2.2902e-06
+   relLinfErr: 9300 9.30e-01 8.4746e-09 1.6368e-06
+   relLinfErr: 9400 9.40e-01 8.4746e-09 1.1638e-06
+   relLinfErr: 9500 9.50e-01 8.4746e-09 8.2329e-07
+   relLinfErr: 9600 9.60e-01 8.4746e-09 5.7952e-07
+   relLinfErr: 9700 9.70e-01 8.4746e-09 4.0602e-07
+   relLinfErr: 9800 9.80e-01 8.4746e-09 2.8322e-07
+   relLinfErr: 9900 9.90e-01 8.4746e-09 1.9679e-07
+   relLinfErr: 10000 1.00e+00 8.4746e-09 1.3632e-07

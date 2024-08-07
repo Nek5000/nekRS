@@ -60,7 +60,7 @@ void scalarNeumannConditions(bcData *bc)
   bc->flux = p_tflux;
 }
 
-#endif
+#endif // __okl__
 
 void UDF_LoadKernels(deviceKernelProperties& kernelInfo)
 { 
@@ -114,9 +114,6 @@ void UDF_Setup()
   }
 
   // set IC 
-  dfloat rhocp, cond;
-  platform->options.getArgs("SCALAR00 DENSITY", rhocp);
-  platform->options.getArgs("SCALAR00 DIFFUSIVITY", cond);
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
     for (int n = 0; n < mesh->Nlocal; n++) {
       const auto x = mesh->x[n];
@@ -145,7 +142,7 @@ void UDF_ExecuteStep(double time, int tstep)
   }
 */
 
-  // dump exact sol.
+  // compute and dump exact sol.
   if (tstep==0) {
     o_Uexact.resize(mesh->Nlocal);
     o_Texact.resize(mesh->Nlocal);
@@ -158,20 +155,20 @@ void UDF_ExecuteStep(double time, int tstep)
     fld::write("ref", time, tstep, o_fldList, true, false, 0, false);
   }
 
+  // check error
   if (tstep % 100 == 0) {
-
     auto o_ux = nrs->o_U.slice(0 * nrs->fieldOffset, nrs->fieldOffset);
-    auto o_t  = nrs->cds->o_S.slice(0 * nrs->cds->fieldOffset[0], nrs->cds->fieldOffset[0]);
-    auto o_err = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+    auto o_t  = nrs->cds->o_S.slice(nrs->cds->fieldOffsetScan[0], nrs->cds->fieldOffset[0]);
+    auto Uerr = platform->linAlg->maxRelativeError(
+                  mesh->Nlocal, 1, nrs->fieldOffset, 1e-16,
+                  o_ux, o_Uexact, platform->comm.mpiComm);
 
-    platform->linAlg->axpbyz(mesh->Nlocal, 1.0, o_Uexact, -1.0, o_ux, o_err);
-    auto Uerr = platform->linAlg->amax(mesh->Nlocal, o_err, platform->comm.mpiComm);
-
-    platform->linAlg->axpbyz(mesh->Nlocal, 1.0, o_Texact, -1.0, o_t, o_err);
-    auto Terr = platform->linAlg->amax(mesh->Nlocal, o_err, platform->comm.mpiComm);
+    auto Terr = platform->linAlg->maxRelativeError(
+                  mesh->Nlocal, 1, nrs->cds->fieldOffset[0], 1e-16,
+                  o_t, o_Texact, platform->comm.mpiComm);
 
     if (platform->comm.mpiRank == 0) {
-      printf("LinfErr: %d %2.2e %2.4e %2.4e\n",tstep, time, Uerr, Terr);
+      printf("relLinfErr: %d %2.2e %2.4e %2.4e\n",tstep, time, Uerr, Terr);
     }
   }
 }
