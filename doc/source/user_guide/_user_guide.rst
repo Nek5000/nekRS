@@ -20,4 +20,4 @@ The image below shows the high level dataflow of using nekRS.
     running
     detailed_usage
     plugins
-    just_in_time_compilation
+    debugging

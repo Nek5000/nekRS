@@ -20,7 +20,66 @@ You will require the following to compile/run nekRS.
       or NVHPC are recognised
 * GNU/Intel/NVHPC Fortran compiler
 * MPI-3.1 or later
-* CMake version 3.18 or later 
+* CMake version 3.18 or later
+
+Most of these should either be available by default in your OS of choice, or can
+be using a common package manager.
+
+.. tabs::
+
+   .. tab:: Debian/Ubuntu
+
+    Debian based systems (such as Ubuntu) use the ``apt`` package manager. GNU 
+    Compilers for C++ and fortran alongside compatible OpenMPI and CMake 
+    installs can be acquired with:
+
+    .. code-block:: 
+
+        sudo apt update
+        sudo apt install build-essential libopenmpi-dev cmake
+
+   .. tab:: Mac
+
+        The ``brew`` package manager is commonly used on Mac to provide similar
+        functionality to Linux package managers.
+
+        .. code-block::
+
+            brew install ????????
+        
+    
+   .. tab:: HPC
+
+        Many HPC environments will provide the requirements by default or 
+        through the use of `Modules <https://modules.readthedocs.io/en/stable/index.html>`_ 
+        environments. This may allow you to load the requirements through a command such as:
+
+        .. code-block:: 
+
+            module load cmake
+        
+        You can search for potential modules with the ``avail`` or ``spider`` 
+        (if available) commands:
+
+        .. code-block::
+
+            module avail | grep cmake
+            module spider cmake
+        
+        Please consult your local HPC documentation or system support for further 
+        advice.
+
+.. tip:: 
+
+    A large variety of MPI implementations are available, but it is important to
+    ensure the version is related to the installed compiler, and potentially CPU
+    architecture. E.G. GNU compilers will usually use 
+    `OpenMPI <https://www.open-mpi.org/>`_, whereas if you 
+    are using the 
+    `Intel OneAPI <https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html>`_
+    compilers you will likely want to use the 
+    `Intel MPI <https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html>`_
+    implementation.
 
 It is also suggested that you have a GPU and the corresponding drivers/API 
 installed to increase performance. This will likely be a NVidia (:term:`CUDA`), 

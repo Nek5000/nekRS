@@ -1,7 +1,16 @@
+.. _Debugging:
+
+Debugging Tips
+==============
+
+This page contains a few topics that, although aren't necessary to know about to
+run nekRS be default, can be the source of issues while trying to get nekRS 
+running in more complex environments or while making multiple changes.
+
 .. _just_in_time_compilation:
 
 Just-in-time Compilation
-========================
+------------------------
 
 nekRS uses just-in-time compilation to build the functions in the ``.udf`` and ``.oudf`` 
 case files, as well as for compiling certain fixed-size arrays based on the order of
