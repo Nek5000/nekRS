@@ -33,7 +33,7 @@ The scope of this page is merely to introduce the format and purpose of the four
 files needed to set up a nekRS simulation. Much more detailed instructions are provided
 on the :ref:`FAQs <detailed>` page.
 
-.. _parameterFile:
+.. _parameter_file:
 
 Parameter File (.par)
 _____________________
@@ -975,6 +975,16 @@ Each of these functions is *only* called on boundaries that contain that boundar
 if only boundaries 3 and 4 are primitive conditions on velocity, then ``velocityDirichletConditions``
 is only called on boundaries 3 and 4. See the :ref:`Setting Boundary Conditions <boundary_conditions>`
 section for several examples on how to set boundary conditions with device functions.
+
+.. _trigger_file:
+
+Trigger Files (.upd)
+____________________
+
+TODO Full description
+
+Allows modifications to the simulation during execution. Can be edited and then
+notify of changes through sending a signal MPI rank 0.
 
 .. rubric:: Footnotes
 
