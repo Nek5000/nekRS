@@ -27,69 +27,69 @@ be using a common package manager.
 
 .. tabs::
 
-   .. tab:: Debian/Ubuntu
+    .. tab:: Debian/Ubuntu
 
-    Debian based systems (such as Ubuntu) use the ``apt`` package manager. GNU 
-    Compilers for C++ and fortran alongside compatible OpenMPI and CMake 
-    installs can be acquired with:
+        Debian based systems (such as Ubuntu) use the ``apt`` package manager. GNU 
+        Compilers for C++ and fortran alongside compatible OpenMPI and CMake 
+        installs can be acquired with:
 
-    .. code-block:: bash
+        .. code-block:: bash
 
-        sudo apt update
-        sudo apt install build-essential libopenmpi-dev cmake
+            sudo apt update
+            sudo apt install build-essential libopenmpi-dev cmake
 
-   .. tab:: Mac
+    .. tab:: Mac
 
-    The `Homebrew <https://brew.sh/>`_ package manager is commonly used on Mac 
-    to provide similar functionality to Linux package managers. GNU Compilers
-    for C++ and fortran alongside compatible OpenMPI and CMake installs can be
-    acquired with:
+        The `Homebrew <https://brew.sh/>`_ package manager is commonly used on Mac 
+        to provide similar functionality to Linux package managers. GNU Compilers
+        for C++ and fortran alongside compatible OpenMPI and CMake installs can be
+        acquired with:
 
-    .. code-block:: bash
+        .. code-block:: bash
 
-        brew install gcc open-mpi cmake
+            brew install gcc open-mpi cmake
+            
+        You will need to set some additional environment variables to ensure the 
+        correct compiler is used by OpenMPI when compiling (see :ref:`cmake`). In 
+        your .zshrc, in addition to setting the NEKRS_HOME (see :ref:`nekrs_home`),
+        you should set a ``GCC_HOME`` variable according to whether your using
+        an Intel Mac (``/usr/local``) or Apple Silicon (M1, M2 etc. ``/opt/homebrew``). 
+        Then modify the ``OMP_`` variables according to the specific compiler version
+        you have.
+
+        Here is an example for a M1 mac using the GCC 13.X compilers.
         
-    You will need to set some additional environment variables to ensure the 
-    correct compiler is used by OpenMPI when compiling (see :ref:`cmake`). In 
-    your .zshrc, in addition to setting the NEKRS_HOME (see :ref:`nekrs_home`),
-    you should set a ``GCC_HOME`` variable according to whether your using
-    an Intel Mac (``/usr/local``) or Apple Silicon (M1, M2 etc. ``/opt/homebrew``). 
-    Then modify the ``OMP_`` variables according to the specific compiler version
-    you have.
+        .. code-block:: bash
 
-    Here is an example for a M1 mac using the GCC 13.X compilers.
+            GCC_HOME=/opt/homebrew
+            export PATH=$GCC_HOME/bin:$PATH
+            export OMPI_CXX=$GCC_HOME/bin/g++-13
+            export OMPI_CC=$GCC_HOME/bin/gcc-13
+            export OMPI_FC=$GCC_HOME/bin/gfortran-13
     
-    .. code-block:: bash
+    .. tab:: HPC
 
-        GCC_HOME=/opt/homebrew
-        export PATH=$GCC_HOME/bin:$PATH
-        export OMPI_CXX=$GCC_HOME/bin/g++-13
-        export OMPI_CC=$GCC_HOME/bin/gcc-13
-        export OMPI_FC=$GCC_HOME/bin/gfortran-13
-    
-   .. tab:: HPC
+        HPC system will usually not allow regular users to install via the package
+        managers as they require administrator permissions to run. However, many
+        will provide commonly used software through the use of 
+        `Modules <https://modules.readthedocs.io/en/stable/index.html>`_ 
+        environments. This may allow you to load the requirements through a command
+        such as:
 
-    HPC system will usually not allow regular users to install via the package
-    managers as they require administrator permissions to run. However, many
-    will provide commonly used software through the use of 
-    `Modules <https://modules.readthedocs.io/en/stable/index.html>`_ 
-    environments. This may allow you to load the requirements through a command
-    such as:
+        .. code-block:: bash
 
-    .. code-block:: bash
+            module load cmake
+        
+        You can search for potential modules with the ``avail`` or ``spider`` 
+        (if available) commands:
 
-        module load cmake
-    
-    You can search for potential modules with the ``avail`` or ``spider`` 
-    (if available) commands:
+        .. code-block:: bash
 
-    .. code-block:: bash
-
-        module avail | grep cmake
-        module spider cmake
-    
-    Please consult your local HPC documentation or system support for further 
-    advice.
+            module avail | grep cmake
+            module spider cmake
+        
+        Please consult your local HPC documentation or system support for further 
+        advice.
 
 .. tip:: 
 
