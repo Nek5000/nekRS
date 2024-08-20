@@ -288,6 +288,8 @@ relies instead on the scripts available with :term:`Nek5000` such as ``genbox``,
 clone the Nek5000 repository, and then navigate to the ``tools`` directory and 
 run the makefile to compile the relevant scripts.
 
+For example, if you want to make the ``genbox`` tool available.
+
 .. code-block:: bash
 
   git clone https://github.com/Nek5000/Nek5000.git
