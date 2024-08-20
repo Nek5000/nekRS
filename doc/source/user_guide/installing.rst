@@ -51,7 +51,7 @@ be using a common package manager.
             
         You will need to set some additional environment variables to ensure the 
         correct compiler is used by OpenMPI when compiling (see :ref:`cmake`). In 
-        your .zshrc, in addition to setting the NEKRS_HOME (see :ref:`nekrs_home`),
+        your .zshrc, in addition to setting the ``NEKRS_HOME`` (see :ref:`nekrs_home`),
         you should set a ``GCC_HOME`` variable according to whether your using
         an Intel Mac (``/usr/local``) or Apple Silicon (M1, M2 etc. ``/opt/homebrew``). 
         Then modify the ``OMP_`` variables according to the specific compiler version
@@ -137,13 +137,13 @@ For example, this can be:
 
 .. code-block::
 
-    user$ export NEKRS_HOME=$HOME/.local/nekrs
+    export NEKRS_HOME=$HOME/.local/nekrs
 
 Then, be sure to add this directory to your path:
 
 .. code-block::
 
-    user$ export PATH=${NEKRS_HOME}:${PATH}
+    export PATH=${NEKRS_HOME}:${PATH}
 
 To avoid repeating these steps for every new shell, you may want to add these environment
 variable settings in a ``.bashrc``.
