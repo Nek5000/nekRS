@@ -14,11 +14,9 @@ Requirements
 You will require the following to compile/run nekRS.
 
 * Linux, Mac OS X (Microsoft WSL and Windows is not supported) 
-* C++17/C99 compatible compiler 
-
-    * I.E. GNU (needs to be >=9.1), IntelLLVM, Clang, ARMClang, AppleClang 
-      or NVHPC are recognised
-* GNU/Intel/NVHPC Fortran compiler
+* C++17/C99 compatible compiler (only GNU (needs to be >=9.1), IntelLLVM, Clang, 
+  ARMClang, AppleClang (Intel only) or NVHPC are recognised)
+* Fortran compiler (only GNU/Intel/NVHPC are recognised)
 * MPI-3.1 or later
 * CMake version 3.18 or later
 
@@ -48,24 +46,6 @@ be using a common package manager.
         .. code-block:: bash
 
             brew install gcc open-mpi cmake
-            
-        You will need to set some additional environment variables to ensure the 
-        correct compiler is used by OpenMPI when compiling (see :ref:`cmake`). In 
-        your .zshrc, in addition to setting the ``NEKRS_HOME`` (see :ref:`nekrs_home`),
-        you should set a ``GCC_HOME`` variable according to whether your using
-        an Intel Mac (``/usr/local``) or Apple Silicon (M1, M2 etc. ``/opt/homebrew``). 
-        Then modify the ``OMP_`` variables according to the specific compiler version
-        you have.
-
-        Here is an example for a M1 mac using the GCC 13.X compilers.
-        
-        .. code-block:: bash
-
-            GCC_HOME=/opt/homebrew
-            export PATH=$GCC_HOME/bin:$PATH
-            export OMPI_CXX=$GCC_HOME/bin/g++-13
-            export OMPI_CC=$GCC_HOME/bin/gcc-13
-            export OMPI_FC=$GCC_HOME/bin/gfortran-13
     
     .. tab:: HPC
 
@@ -93,15 +73,54 @@ be using a common package manager.
 
 .. tip:: 
 
-    A large variety of MPI implementations are available, but it is important to
-    ensure the version is related to the installed compiler, and potentially CPU
-    architecture. E.G. GNU compilers will usually use 
-    `OpenMPI <https://www.open-mpi.org/>`_, whereas if you 
-    are using the 
-    `Intel OneAPI <https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html>`_
-    compilers you will likely want to use the 
-    `Intel MPI <https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html>`_
-    implementation.
+    There are many MPI implementations available, and it is important to ensure 
+    that this uses the indented compiler which may not be the default for that 
+    implementation. This can be checked with the following command(s):
+
+    .. tabs::
+
+        .. tab:: Open MPI/Intel MPI
+
+            .. code-block:: bash
+
+                mpicc -show
+                mpif90 -show
+        
+        .. tab:: MPICH
+
+            .. code-block:: bash
+                
+                mpicxx -show
+                mpifort -show
+        
+        .. tab:: Cray MPI
+
+            .. code-block:: bash
+                
+                CC -craype-verbose
+                ftn -craype-verbose
+
+    Therefore, you should manually set the environment variables
+    for the underlying compilers. This can be set by adding the following to
+    your ``.bashrc``, ``.zshrc`` or similar:
+
+    .. tabs::
+
+        .. tab:: Open MPI/Intel MPI
+
+            .. code-block:: bash
+
+                export OMPI_CXX=/path/to/compiler/c_++_executable
+                export OMPI_CC=/path/to/compiler/c_executable
+                export OMPI_FC=/path/to/compiler/fortran_executable
+        
+        .. tab:: MPICH
+
+            .. code-block:: bash
+                
+                export MPICH_CXX=/path/to/compiler/c_++_executable
+                export MPICH_CC=/path/to/compiler/c_executable
+                export MPICH_FC=/path/to/compiler/fortran_executable
 
 It is also suggested that you have a GPU and the corresponding drivers/API 
 installed to increase performance. This will likely be a NVidia (:term:`CUDA`), 
@@ -159,7 +178,7 @@ variables set for the C++ and Fortran compilers on the system.
 
 .. code-block:: bash
 
-    CC=mpicc CXX=mpicxx FC=mpif90 ./build.sh -DCMAKE_INSTALL_PREFIX=$HOME/.local/nekrs
+    CC=mpicc CXX=mpicxx FC=mpif90 ./build.sh
 
 .. tip::
 
@@ -187,8 +206,8 @@ C/C++/Fortran compiler that MPI will use and whether it will target CPU (I.E.
 
 .. code-block:: bash
 
-    $ CC=mpicc CXX=mpicxx FC=mpif90 ./build.sh -DCMAKE_INSTALL_PREFIX=$HOME/.local/nekrs
-    cmake -S . -B build -Wfatal-errors -DCMAKE_INSTALL_PREFIX=/home/abc/.local/nekrs
+    $ CC=mpicc CXX=mpicxx FC=mpif90 ./build.sh
+    cmake -S . -B build -Wfatal-errors
     -- The C compiler identification is GNU 9.4.0
     -- The CXX compiler identification is GNU 9.4.0
     -- The Fortran compiler identification is GNU 9.4.0
@@ -238,7 +257,7 @@ to CMake to compile the code.
 
 .. code-block:: console
 
-    CC=mpicc CXX=mpic++ FC=mpif90 ./batch.sh -DOCCA_ENABLE_CUDA=OFF -DENABLE_CPPTRACE=ON
+    CC=mpicc CXX=mpic++ FC=mpif90 ./batch.sh -DOCCA_ENABLE_CUDA=OFF -DCMAKE_INSTALL_PREFIX=$HOME/.local/nekrs
 
 The following flags can be provided to cmake to customise the build process. 
 The ``OCCA_ENABLE`` feature flags that are set to be on by 
@@ -250,32 +269,25 @@ All of the optional features have the required features located within the
 `3rd_party <https://github.com/Nek5000/nekRS/tree/master/3rd_party>`__ directory
 of the repository.
 
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-|          Flag          |                     Description                     | Default |                           Notes                            |
-+========================+=====================================================+=========+============================================================+
-| ``OCCA_ENABLE_CUDA``   | Enables NVIDIA :term:`CUDA` :term:`GPU` support     | ON      |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``OCCA_ENABLE_HIP``    | Enables :term:`AMD` :term:`HIP` :term:`GPU` support | ON      |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``OCCA_ENABLE_DPCPP``  | Enables Intel :term:`DPC++` :term:`GPU` support     | ON      |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``OCCA_ENABLE_OPENCL`` | Enable Khronos :term:`OpenCL` support               | **OFF** |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``OCCA_ENABLE_METAL``  | Enable Apple Metal support                          | **OFF** |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``NEKRS_GPU_MPI``      | Enable :term:`GPU` aware :term:`MPI`                | ON      |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``ENABLE_HYPRE_GPU``   | Enable HYPRE GPU support                            | **OFF** |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``ENABLE_AMGX``        | Enable NVIDIA AMGX support                          | **OFF** | Requires CUDA (I.E. ``ENABLE_CUDA`` to evaluate correctly) |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``ENABLE_CVODE``       | Enable CVODE support                                | **OFF** | Unsupported when ``OCCA_OPENCL_ENABLED``,                  |
-|                        |                                                     |         | ``OCCA_DPCPP_ENABLED`` or ``OCCA_HIP_ENABLED`` are on      |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``ENABLE_CPPTRACE``    | Enable cpptrace for stack tracing                   | **OFF** |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
-| ``NEKRS_BUILD_FLOAT``  | Build dfloat = float version                        | ON      |                                                            |
-+------------------------+-----------------------------------------------------+---------+------------------------------------------------------------+
++--------------------------+------------------------------------------------------------------+------------------------+
+|           Flag           |                           Description                            |        Default         |
++==========================+==================================================================+========================+
+| ``OCCA_ENABLE_CUDA``     | Enables OCCA NVIDIA :term:`CUDA` :term:`GPU` support             | ON                     |
++--------------------------+------------------------------------------------------------------+------------------------+
+| ``OCCA_ENABLE_HIP``      | Enables OCCA :term:`AMD` :term:`HIP` :term:`GPU` support         | ON                     |
++--------------------------+------------------------------------------------------------------+------------------------+
+| ``OCCA_ENABLE_DPCPP``    | Enables OCCA Intel :term:`DPC++`/:term:`SYCL`:term:`GPU` support | ON                     |
++--------------------------+------------------------------------------------------------------+------------------------+
+| ``OCCA_ENABLE_OPENCL``   | Enable OCCA Khronos :term:`OpenCL` support                       | **OFF**                |
++--------------------------+------------------------------------------------------------------+------------------------+
+| ``NEKRS_GPU_MPI``        | Enable :term:`GPU` aware :term:`MPI`                             | ON                     |
++--------------------------+------------------------------------------------------------------+------------------------+
+| ``ENABLE_HYPRE_GPU``     | Enable HYPRE GPU support                                         | **OFF**                |
++--------------------------+------------------------------------------------------------------+------------------------+
+| ``ENABLE_CVODE``         | Enable CVODE support                                             | **OFF**                |
++--------------------------+------------------------------------------------------------------+------------------------+
+| ``CMAKE_INSTALL_PREFIX`` | Set install directory                                            | ``$HOME/.local/nekrs`` |
++--------------------------+------------------------------------------------------------------+------------------------+
 
 .. _scripts:
 
@@ -284,7 +296,7 @@ Building the Nek5000 Tool Scripts
 
 NekRS itself does not have functionality for creating or adapting meshes and
 relies instead on the scripts available with :term:`Nek5000` such as ``genbox``, 
-``exo2nek`` and ``gmsk2nek``. To build these scripts, you will need to separately
+``exo2nek`` and ``gmsh2nek``. To build these scripts, you will need to separately
 clone the Nek5000 repository, and then navigate to the ``tools`` directory and 
 run the makefile to compile the relevant scripts.
 

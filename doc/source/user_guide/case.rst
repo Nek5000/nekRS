@@ -1,6 +1,6 @@
-.. _input:
+.. _case:
 
-The nekRS Input Files
+Case files
 =====================
 
 This page describes the input file structure and syntax needed to run a nekRS simulation.

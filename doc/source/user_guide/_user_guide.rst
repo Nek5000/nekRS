@@ -15,7 +15,7 @@ The image below shows the high level dataflow of using nekRS.
 .. toctree::
     
     installing
-    input_files
+    case
     commonly_used_variables
     running
     detailed_usage

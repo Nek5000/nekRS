@@ -5,7 +5,7 @@ Running nekRS
 
 This page gives information on how to run nekRS has been installed 
 (see :ref:`installing` ) and appropriate input files have been generated 
-(see :ref:`input`).
+(see :ref:`case`).
 
 Basic Running
 -------------
