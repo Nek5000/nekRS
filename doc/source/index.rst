@@ -18,7 +18,7 @@ nekRS, some aspects of the current nekRS design are selected to enable faster tr
 and several additional input files, all new users are encouraged to adopt the nekRS-based problem setup.
 
 We recommend working through this user guide in the order below. At the very least, please
-read :ref:`The nekRS Input Files <input>` page before reading the :ref:`FAQs <detailed>`
+read :ref:`case` page before reading the :ref:`FAQs <detailed>`
 page, as some necessary concepts are introduced in this order.
 
 .. note::
