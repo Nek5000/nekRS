@@ -1,7 +1,7 @@
 .. _running:
 
-Running nekRS
-=============
+Running
+=======
 
 This page gives information on how to run nekRS has been installed 
 (see :ref:`installing` ) and appropriate input files have been generated 

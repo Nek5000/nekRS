@@ -1,7 +1,9 @@
-.. _commonly_used_variables:
+.. _data_structures:
 
-Commonly-Used Variables in nekRS
-================================
+Data Structures
+===============
+
+UDF Only??
 
 To become a proficient user of nekRS requires some knowledge of the data structures
 used to store the mesh, solution fields, and simulation settings. While many
@@ -26,6 +28,16 @@ represents all the :math:`x`-coordinates of the quadrature points, and is stored
 The same data, but accessible on the device, is ``mesh->o_x``. Not all variables and arrays
 are automatically available on both the host and device, but those that are available are
 indicated with a :math:`\checkmark` in the "Device?" table column.
+
+Platform
+--------
+
+.. _fig:case_overview:
+
+.. figure:: ../doxygen/doxygen_html/structplatform__t__coll__graph.png
+   :align: center
+   :figclass: align-center
+   :alt: Diagram of platform elements
 
 
 Mesh

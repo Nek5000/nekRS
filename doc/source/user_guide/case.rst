@@ -3,25 +3,37 @@
 Case files
 =====================
 
-This page describes the input file structure and syntax needed to run a nekRS simulation.
-A nekRS simulation is referred to as a "case," and at a minimum requires four files to run -
+A nekRS simulation is referred to as a "case," which utilises a number of files
+which are described in this page. An overview of these are presented in the the 
+image below .
+
+.. _fig:case_overview:
+
+.. figure:: ../_static/img/overview.svg
+   :align: center
+   :figclass: align-center
+   :alt: An overview of nekRS case files
+
+There are a minimum of three files required to run a case:
 
 * Parameter file, with ``.par`` extension
 * Mesh file, with ``.re2`` extension
 * User-defined functions for the host, with ``.udf`` extension
-* User-defined functions for the device, with ``.oudf`` extension
+
+With one optional file
+
+* Trigger file  with ``.upd`` extension
 
 The "case name" is then the common prefix applied to these files - for instance,
 a complete input description with a case name of "eddy" would be given by the files
-``eddy.par``, ``eddy.re2``, ``eddy.udf``, and ``eddy.oudf``.
+``eddy.par``, ``eddy.re2``, ``eddy.udf``, and ``eddy.upd``.
 The only restrictions on the case name are:
 
 * It must be used as the prefix on all simulation files, and
 * Typical restrictions for naming files for your operating system
 
-The next four sections describe the structure and syntax for each of these four files
-for a general case.
-Because the :term:`Nek5000` code is a predecessor to
+The next four sections describe the structure and syntax for each of these files
+for a general case. Because the :term:`Nek5000` code is a predecessor to
 nekRS, some aspects of the current nekRS input file design are selected to enable faster translation of
 Nek5000 input files into nekRS input files. Because these
 Nek5000-based approaches require proficiency in Fortran, the inclusion of several additional input

@@ -1,7 +1,7 @@
 .. _installing:
 
-Installing nekRS
-================
+Installing
+==========
 
 This page gives a variety of information to help install nekRS. This includes 
 how to acquire & build nekRS appropriately to your environment, as well as some 

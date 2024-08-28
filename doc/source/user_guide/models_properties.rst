@@ -1,5 +1,7 @@
-Plugins
-=======
+.. _models_properties:
+
+Models and Physical properties
+==============================
 
 nekRS contains several "plugins" that provide both physics models and postprocessing
 capabilities. nekRS's :term:`RANS` and low-Mach models, for instance, are provided as
@@ -9,13 +11,16 @@ modifications to the ``.udf`` files. Before reading this page, first consult
 :ref:`User-Defined Host Functions (.udf) <udf_functions>` so that you have the necessary
 background on each of the ``.udf`` functions that will be discussed.
 
-.. _rans_plugin:
+Turbulence models
+-----------------
 
-RANS :math:`k`-:math:`\tau` Plugin
-----------------------------------
+.. _rans_model:
+
+RANS :math:`k`-:math:`\tau` Model
+"""""""""""""""""""""""""""""""""
 
 The :term:`RANS` :math:`k`-:math:`\tau` plugin is available in the ``src/plugins/RANSktau.hpp``
-header file. In order to add the :math:`k`-:math:`\tau` model to your case, you need
+header file. In order to add the :math:`k`-:math:`\tau` model to youddisplr case, you need
 to include this file in your ``.udf`` file and manually add all the requisite parts of
 the :math:`k`-:math:`\tau` methodology. Unless otherwise noted, all code snippets in
 this section are placed in the ``.udf`` file.
@@ -34,7 +39,8 @@ following sections then each describe a step in the :term:`RANS` model setup usi
 .. _kernels:
 
 Add the Physics Kernels
-"""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^
+
 The calculations performed to add contributions to the residuals occur within
 :term:`OCCA` kernels. In order to add the :term:`RANS` equations, the corresponding
 physics kernels must first be included. The :term:`RANS` kernels are added to by
@@ -58,7 +64,8 @@ The ``RANSKtau::buildKernel`` function performs two main actions -
 .. _rans_props:
 
 Add the Closure Properties Calculation
-""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Next, add the function that will update the properties used in the governing equations.
 An example is shown in :ref:`Setting Custom Properties <custom_properties>` for setting
 custom user-defined properties for a laminar flow scenario. The necessary steps to add
@@ -112,7 +119,8 @@ The ``RANSktau::updateProperties`` function performs two main actions:
      :math:`\mu+\mu_T/\sigma_k`, and :math:`\mu+\mu_T/\sigma_\tau`, respectively.
 
 Add the Source Terms Calculation
-""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 The same passive scalar infrastructure that is used to solve the energy conservation
 equation is used to solve the :math:`k` and :math:`\tau` passive scalar equations.
 However, these equations clearly have different forms - therefore, we need to explicitly
@@ -153,7 +161,8 @@ in the ``.udf`` file:
   }
 
 Add the Turbulent Prandtl Number
-""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 For cases with passive scalar equations, you must manually
 add the additional component to the diffusivity, :math:`\mu_T/Pr_T`. This is done
 in the function pointer to be the ``udf.properties`` function pointer *after*
@@ -232,7 +241,7 @@ the diffusion coefficient in the temperature passive scalar equation as
   k+\frac{\mu_T}{Pr_T}C_p
 
 Initialize the RANS Solve
-"""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Finally, the last step to initialize the :term:`RANS` solve is to call the
 ``RANSktau::setup`` function. This function has signature
@@ -278,12 +287,5 @@ then the :math:`k` scalar should be positioned as the second scalar, and ``ifld 
   scalar. Be sure to order the scalars in the input file to respect this assumption.
 
 
-Low-Mach Plugin
----------------
-
-Turbulence Statistics Plugin
-----------------------------
-
-Velocity Recycling Plugin
--------------------------
-
+Low-Mach Model
+--------------
