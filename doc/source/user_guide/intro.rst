@@ -3,10 +3,13 @@
 Introduction
 ============
 
+This section will introduce some main concepts that are needed to setup cases in
+nekRS.
+
 .. _nondimensional:
 
-Solving in Non-Dimensional Form
--------------------------------
+Solving in Dimensional vs Non-Dimensional Form
+----------------------------------------------
 
 nekRS can solve its governing equations in either dimensional or non-dimensional form
 with careful attention to the specification of the material properties. To solve in
@@ -16,7 +19,7 @@ in *non-dimensional* form requires only small changes from the dimensional appro
 For the case of constant properties, the transformation to non-dimensional form is
 trivial, but slightly more care is required to solve in non-dimensional form with
 variable properties. These two approaches are described next with reference to
-the incompressible Navier-Stokes model described in :ref:`Incompressible Flow Model <ins_model>`.
+the incompressible Navier-Stokes model described in :ref:`ins_model`.
 
 .. _constant_p:
 

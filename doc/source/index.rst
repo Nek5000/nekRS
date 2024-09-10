@@ -36,6 +36,7 @@ Table of Contents
    user_guide/_user_guide
    tutorials/_tutorials
    developer_guide/_developer_guide
+   theory
    other_resources
    glossary
    references
