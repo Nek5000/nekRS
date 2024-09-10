@@ -17,7 +17,7 @@ nekRS, ``parHelp.txt`` and below.
 
 For each of the values that have a function name present, this must be created
 within the udf file when used (E.G setting a ``codedFixedValue`` boundary will 
-require the ``velocityDirichletConditions`` to be present).
+require the ``velocityDirichletConditions`` to be present in the OKL section).
 
 To setup some cases (E.G. periodic boundary conditions or other 
 scenarios where conditions have been applied to the mesh), you may need to use the 
@@ -32,12 +32,10 @@ Periodic
 
 Periodic boundaries are not considered to be boundary conditional as part of the 
 ``boundaryTypeMap`` and must be set to ``none`` for the relevant boundaries. 
-Instead it must be set as part of the mesh generation (see :ref:`periodic_mesh`)
+Instead it must be set as part of the mesh generation (see :ref:`meshing`)
 
-Flow - constFlowRate, boundary force???????????
-
-Plugins
--------
+Turbulent Inflow
+----------------
 
 Velocity Recycling
 """"""""""""""""""

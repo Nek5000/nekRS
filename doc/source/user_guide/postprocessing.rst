@@ -5,8 +5,34 @@ Postprocessing
 
 .. _writing_output:
 
-Writing an Output File - using UDF_ExecuteStep
-----------------------------------------------
+Checkpointing & Visualization
+-----------------------------
+
+nekRS output files all have the form ``<case0>.fld<n>``, where ``<case>`` is the case
+name and ``<n>`` is a five-digit number indicating the number of the output file (each output
+file represents a single time step that is output according to the settings for
+``writeControl`` and ``writeInterval`` in the ``.par`` file). These output files are in a custom
+binary format that requires an additional postprocessing step in order to visualize in Paraview.
+In the directory where the case files are located, run the ``visnek`` script:
+
+.. code-block::
+
+  user$ visnek case
+
+which will create a ``case.nek5000`` file that is viewable in Paraview. See
+:ref:`Building the Nek5000 Tool Scripts <scripts>` for instructions on compiling the ``visnek`` program.
+
+
+User defined
+------------
+
+Generally needs to be through UDF_ExecuteStep
+
+Compute Derived Quantity
+""""""""""""""""""""""""
+
+Output Custom Fields
+""""""""""""""""""""
 
 nekRS will automatically write output files according to the ``writeControl`` criterion
 set in the ``.par`` file. However, it may be desirable to have finer-grained control of
@@ -115,24 +141,8 @@ This will write three output files, which contain the following.
 * ``fl2case0.f<time_step>`` contains ``o_field2``, but named ``pressure``
 * ``fl3case0.f<time_step>`` contains ``o_field3``, but named ``pressure``
 
-.. _vis_output:
-
-Visualizing Output Files
-------------------------
-
-nekRS output files all have the form ``<case0>.fld<n>``, where ``<case>`` is the case
-name and ``<n>`` is a five-digit number indicating the number of the output file (each output
-file represents a single time step that is output according to the settings for
-``writeControl`` and ``writeInterval`` in the ``.par`` file). These output files are in a custom
-binary format that requires an additional postprocessing step in order to visualize in Paraview.
-In the directory where the case files are located, run the ``visnek`` script:
-
-.. code-block::
-
-  user$ visnek case
-
-which will create a ``case.nek5000`` file that is viewable in Paraview. See
-:ref:`Building the Nek5000 Tool Scripts <scripts>` for instructions on compiling the ``visnek`` program.
 
 Turbulence Statistics
 """""""""""""""""""""
+
+.. _vis_output:

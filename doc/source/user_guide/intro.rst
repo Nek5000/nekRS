@@ -109,8 +109,8 @@ information on the kernel setup.
 
 .. _data_model:
 
-Data model (Device and Host)
-----------------------------
+Compute Backend Abstraction (OCCA)
+----------------------------------
 
 One other overarching concept that needs to be understood is the data 
 model utilised by OCCA to adapt execution to a variety of execution targets 
@@ -120,6 +120,15 @@ by OCCA on the execution device (The device memory).
 
 N.B. The OCCA device memory should be considered as a separate location if the
 final target will be the CPU.
+
+Memory
+""""""
+
+Functions
+"""""""""
+
+OKL - C with keywords but allows unified across different backends which is then
+translated to device specific code (E.G. CUDA).
 
 .. _data_structures:
 

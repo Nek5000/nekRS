@@ -40,10 +40,25 @@ To convert from a Gmsh format mesh (for this case, named ``my_mesh.msh``) to the
   Enter mesh dimension: 3
   Input (.msh) file name: my_mesh
 
+
 All your mesh should be hexahedral elements. Before exporting from Gmsh, you will need to set the mesh order to 2.
 The Gmsh mesh format must also be version 2, ASCII/binary format. If your Gmsh version
 shows a pop-up box when exporting the mesh, do *not* click "Save all elements"
 or "Save parametric elements".
+
+.. _periodic_mesh:
+
+Setting up Mesh for Periodic Boundary Condition
+"""""""""""""""""""""""""""""""""""""""""""""""
+
+NekRS supports periodic boundary conditions. To set up a periodic case, first
+you need to run ``exo2nek`` to establish the pairings between the periodic sidesets.
+All this information will be prompted on the screen by ``exo2nek``;
+You will provide the sideset IDs of the periodic boundaries, a search tolerance
+for identifying paired sides, and a translation vector that points from one of the
+paired sidesets to the other. For example, if you want to have one periodic surface
+that is a :math:`z`-plane at :math:`z=-1.0` that is paired to another :math:`z`-plane
+at :math:`z=1.0`, the translation vector would be :math:`(0.0, 0.0, 2.0)`.
 
 .. _cht_mesh:
 
@@ -58,17 +73,3 @@ from Nek5000. Unfortunately, you cannot
 simply use a standard commercial meshing tool and define fluid and solid
 regions according to block IDs - you must individually create the mesh for the fluid and
 the solid, and then merge them with the ``pretex`` script.
-
-.. _periodic_mesh:
-
-Setting up Mesh for Periodic Boundary Condition
------------------------------------------------
-
-NekRS supports periodic boundary conditions. To set up a periodic case, first
-you need to run ``exo2nek`` to establish the pairings between the periodic sidesets.
-All this information will be prompted on the screen by ``exo2nek``;
-You will provide the sideset IDs of the periodic boundaries, a search tolerance
-for identifying paired sides, and a translation vector that points from one of the
-paired sidesets to the other. For example, if you want to have one periodic surface
-that is a :math:`z`-plane at :math:`z=-1.0` that is paired to another :math:`z`-plane
-at :math:`z=1.0`, the translation vector would be :math:`(0.0, 0.0, 2.0)`.

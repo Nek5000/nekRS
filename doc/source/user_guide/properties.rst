@@ -301,8 +301,8 @@ more complex ``viscosity`` kernel. Here, we need to pass in the scalar :math:`\p
 The final kernel that wraps up this example is the ``heatCapacity`` kernel.
 
 
-Constant terms
---------------
+Constant
+--------
 
-Variable terms
---------------
+Variable
+--------

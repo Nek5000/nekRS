@@ -753,8 +753,10 @@ ships with the :term:`Nek5000` dependency.
 
 .. _udf_functions:
 
-User-Defined Host Functions (.udf)
+User-Defined Host File (.udf)
 __________________________________
+
+OKL and C++ mixed language source file
 
 User-defined functions for the host are specified in the ``.udf`` file. These
 functions can be used to perform virtually any action that can be programmed in C++.
@@ -765,57 +767,16 @@ examples shown on the :ref:`Detailed Usage <detailed>` page, you will see that u
 of these functions requires some proficiency in the C++
 language as well as some knowledge of the nekRS source code internals.
 
-``UDF_ExecuteStep(nrs_t* nrs, dfloat time, int tstep)``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OKL
+^^^
 
-This user-defined function is probably the most flexible of the nekRS user-defined
-functions. This function is called once at the start of the simulation just before
-beginning the time stepping, and then once per time step after running each step.
+Ifdef OKL
 
-``UDF_LoadKernels(nrs_t*  nrs)``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tip can be an include
 
-This user-defined function is used to load case-specific device kernels that are
-used in other UDF functions. For instance, if you add a custom forcing term to the
-momentum equations, you need to tell nekRS to compile that kernel by loading it in
-this function. The custom material property example shown in the
-:ref:`Setting Custom Properties with UDF_Setup <custom_properties>` section
-demonstrates how to load kernels with this function. The process is quite simple,
-and only involves:
+Give example Kernel
 
-* Declaring all kernels as ``static occa::kernel`` at the top of the ``.udf`` file
-* Loading those kernels in ``UDF_LoadKernels``
-* Defining those kernels in the device user file (the ``.oudf`` file)
-
-The only kernels in the ``.oudf`` file that don't need to be explicitly loaded are
-the boundary condition kernels that ship with nekRS. During the ``.oudf`` just-in-time
-compilation, nekRS will search the ``.oudf`` file for any functions that match the
-nekRS boundary condition functions, and automatically create and load a kernel based
-on the function internals set by the user. For instance, in the ``setOUDF`` function
-in the nekRS source code,
-the ``.oudf`` file is scanned for a string matching ``scalarDirichletConditions`` (one
-of the boundary condition functions in Table :ref:`Passive Scalar Boundary Conditions <scalar_bcs>`).
-If this string is found, then the function internals written by the user are cast
-into a generic :term:`OCCA` kernel that is then written into a just-in-time compiled
-:term:`OKL`-language file at ``.cache/udf/udf.okl``.
-
-.. code-block:: cpp
-
-   found = buffer.str().find("void scalarDirichletConditions");
-   if (found == std::string::npos)
-     out << "void scalarDirichletConditions(bcData *bc){}\n";
-
-   out <<
-     "@kernel void __dummy__(int N) {"
-     "  for (int i = 0; i < N; ++i; @tile(16, @outer, @inner)) {}"
-     "}";
-
-The ``UDF_LoadKernels`` function is passed the nekRS simulation object ``nrs`` to provide optional
-access to the ``occa::properties`` object on the ``nrs->kernelInfo`` object. In
-addition to loading kernels, this function can also be used to propagate user-defined
-variables to the kernels. See
-the :ref:`Defining Variables to Access in Device Kernels <defining_variables_for_device>`
-section for a description of this feature.
+functions of boundary conditions
 
 .. _udf_setup0:
 
@@ -850,6 +811,13 @@ commonly used to:
 
 Any other additional setup actions that depend on initialization of the solution arrays
 and mesh can of course also be placed in this function.
+
+UDF_ExecuteStep
+^^^^^^^^^^^^^^^
+
+This user-defined function is probably the most flexible of the nekRS user-defined
+functions. This function is called once at the start of the simulation just before
+beginning the time stepping, and then once per time step after running each step.
 
 Other Functions for Custom Sources on the ``udf`` Structure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -912,81 +880,6 @@ The legacy alternative to user-defined functions in the ``.udf`` file is to writ
 Fortran routines in a ``.usr`` file based on Nek5000 code internals.
 
 .. TODO: describe how to use the ``.usr`` file
-
-.. _oudf_functions:
-
-User-Defined Device Functions (.oudf)
-_____________________________________
-
-This file contains all user-defined functions that are to run on the device. These functions include
-all functions used to apply boundary conditions that are built in to nekRS, as well as any other
-problem-specific device functions.
-
-Boundary Condition Functions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The type of condition to apply for each boundary is specified by the ``boundaryTypeMap`` parameter
-in the ``.par`` file. A character or longer-form word is used to indicate each boundary condition, where the
-entries in ``boundaryTypeMap`` are listed in increasing boundary ID order.
-However, this single line only specifies the *type* of boundary condition.
-If that boundary condition requires additional information, such as a value to impose for
-a Dirichlet velocity condition, or a flux to impose for a Neumann temperature condition, then
-a device function must be provided in the ``.oudf`` file. A list of all possible boundary
-conditions is as follows. For boundary conditions that require additional input from the user,
-a device function is also listed. For other boundary conditions that are fully specified simply
-by the type of condition (such as a wall boundary condition for velocity, which sets all
-three components of velocity to zero without additional user input), no device function is
-needed to apply that condition.
-
-.. _flow_bcs:
-
-.. table:: Flow Boundary Conditions
-
-  =========================================== ============================== =============================
-  Function                                    Character Map                  Purpose
-  =========================================== ============================== =============================
-  ``pressureDirichletConditions(bcData* bc)``                                Dirichlet pressure condition
-  ``velocityDirichletConditions(bcData* bc)`` ``v``, ``inlet``               Dirichlet velocity condition
-  ``velocityNeumannConditions(bcData* bc)``                                  Neumann velocity condition
-  N/A                                         ``p``                          Periodic
-  N/A                                         ``w``, ``wall``                No-slip wall for velocity
-  N/A                                         ``o``, ``outlet``, ``outflow`` Zero-gradient velocity
-  N/A                                         ``slipx``                      ?
-  N/A                                         ``slipy``                      ?
-  N/A                                         ``slipz``                      ?
-  N/A                                         ``symx``                       ?
-  N/A                                         ``symy``                       ?
-  N/A                                         ``symz``                       ?
-  =========================================== ============================== =============================
-
-.. _scalar_bcs:
-
-.. table:: Passive Scalar Boundary Conditions
-
-  =========================================== ============================== ===================
-  Function                                    Character Map                  Purpose
-  =========================================== ============================== ===================
-  ``scalarDirichletConditions(bcData* bc)``   ``t``, ``inlet``               Dirichlet condition
-  ``scalarNeumannConditions(bcData* bc)``     ``f``, ``flux``                Neumann condition
-  N/A                                         ``p``                          Periodic
-  N/A                                         ``i``, ``zeroflux``            Zero-gradient
-  N/A                                         ``o``, ``outlet``, ``outflow`` Zero-gradient
-  =========================================== ============================== ===================
-
-Each function has the same signature, and takes as input the ``bc`` object. This object contains
-all information needed to apply a boundary condition - the position, unit normals, and solution
-components. The "character map" refers to the character in the ``boundaryTypeMap`` key in the
-``.par`` file that will trigger this boundary condition. The character map can either be a single
-letter, or a more verbose (and equivalent) string.
-
-The ``scalar``-type boundary conditions
-are called for boundary conditions on passive scalars, while the ``pressure``- and ``velocity``-type
-conditions are called for the boundary conditions on the flow.
-
-Each of these functions is *only* called on boundaries that contain that boundary. For instance,
-if only boundaries 3 and 4 are primitive conditions on velocity, then ``velocityDirichletConditions``
-is only called on boundaries 3 and 4. See the :ref:`Setting Boundary Conditions <boundary_conditions>`
-section for several examples on how to set boundary conditions with device functions.
 
 .. _trigger_file:
 
