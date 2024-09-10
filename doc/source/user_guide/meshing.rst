@@ -59,6 +59,8 @@ simply use a standard commercial meshing tool and define fluid and solid
 regions according to block IDs - you must individually create the mesh for the fluid and
 the solid, and then merge them with the ``pretex`` script.
 
+.. _periodic_mesh:
+
 Setting up Mesh for Periodic Boundary Condition
 -----------------------------------------------
 

@@ -21,6 +21,9 @@ trivial, but slightly more care is required to solve in non-dimensional form wit
 variable properties. These two approaches are described next with reference to
 the incompressible Navier-Stokes model described in :ref:`ins_model`.
 
+It is recommended to use non-dimensional solves and the other sections of the
+documentation will use this as a default.
+
 .. _constant_p:
 
 Constant Properties
