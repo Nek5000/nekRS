@@ -7,6 +7,7 @@ CMakeFiles
 plugin_config.cu
 *.swp
 .cache/
+cmake.log
 
 # Docs
 doc/venv/*
