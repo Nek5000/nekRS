@@ -10,11 +10,13 @@ changes please look at the :ref:`developer`.
 
 .. toctree::
     
+    intro
     installing
     meshing
-    boundary_initial_conditions
-    models_properties
-    data_structures
+    boundary_conditions
+    initial_conditions
+    models
+    properties
     postprocessing
     case
     running

@@ -1,6 +1,6 @@
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Key                         Value(s)                                   Description / Comment
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 userSections                <string>                                   user defined par sections
 
 [OCCA]
@@ -75,7 +75,7 @@ usr                         "<string>"                                 name of .
 nScalars                    <int>                                      number of non-temperature scalars
                                                                        by default, the scalars will have the settings
                                                                        as outlined by the default [SCALAR] section
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [NEKNEK]
 boundaryEXTOrder            <int>                                      boundary extrapolation order
                             1 [D]                                      order unity extrapolation is unconditionally stable
@@ -83,13 +83,13 @@ boundaryEXTOrder            <int>                                      boundary 
 multirate                   true, false [D]                            use multirate time stepping
                               +correctorSteps=<int>                    multirate corrector steps
                               0 [D]                                    NOTE: boundaryEXTOrder > 1 requires correctorSteps > 0
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [PROBLEMTYPE]
 equation                    stokes
                             navierStokes [D]
                               +variableViscosity                       use stress formulation
                                                                        (required for spatially varying viscosity)
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 COMMON field settings:
 
 
@@ -141,25 +141,29 @@ smootherType                Jacobi
                               +minEigenvalueBoundFactor=<float>        only for 1st Kind Chebyshev required
                               +maxEigenvalueBoundFactor=<float> 
 
-boundaryTypeMap             <...>, <...>, ...                          boundary type for each boundary ID
-
-                            none                                       not used or internal 
+boundaryTypeMap             <...>, <...>, ...                          boundary type for each boundary ID                                 Function Name
+  VELOCITY                  none                                       not used or internal 
                             zeroValue                                  zero Dirichlet (w, wall)
-                            codedFixedValue                            user specified Dirichlet (v, t, inlet)
-                            interpolation                              neknek boundary (int)
+                            codedFixedValue                            user specified Dirichlet (v, inlet, mv, codedfixedvalue+moving)    velocityDirichletConditions
+                            interpolation                              neknek boundary (int)                                              velocityDirichletConditions
                             zeroXValue/zeroGradient                    symmetry x-normal plane (slipx, symx)
                             zeroYValue/zeroGradient                    symmetry y-normal plane (slipy, symy)
                             zeroZValue/zeroGradient                    symmetry z-normal plane (slipz, symz)
                             zeroNValue/zeroGradient                    unaligned symmetry (slip, sym)
-                            zeroXValue/codedFixedGradient              traction x-normal plane (tractionx, shlx)
-                            zeroYValue/codedFixedGradient              traction y-normal plane (tractiony, shly)
-                            zeroZValue/codedFixedGradient              traction z-normal plane (tractionz, shlz)
-                            zeroNValue/codedFixedGradient              unaligned traction (traction, shl)
-                            zeroXYValue/fixedGradient                  (onx) 
-                            zeroYZValue/fixedGradient                  (ony)
-                            zeroXZValue/fixedGradient                  (onz)
-                            zeroGradient                               (I, insulated, O, outlet, outflow) 
-                            fixedGradient                              (f, flux, o, outlet, outflow)
+                            zeroXValue/codedFixedGradient              traction x-normal plane (tractionx, shlx)                          velocityNeumannConditions
+                            zeroYValue/codedFixedGradient              traction y-normal plane (tractiony, shly)                          velocityNeumannConditions
+                            zeroZValue/codedFixedGradient              traction z-normal plane (tractionz, shlz)                          velocityNeumannConditions
+                            zeroNValue/codedFixedGradient              unaligned traction (traction, shl)                                 velocityNeumannConditions
+                            zeroXYValue/fixedGradient                  (onx)                                                              pressureDirichletConditions
+                            zeroYZValue/fixedGradient                  (ony)                                                              pressureDirichletConditions
+                            zeroXZValue/fixedGradient                  (onz)                                                              pressureDirichletConditions
+                            fixedGradient                              (outlet, outflow, o)                                               pressureDirichletConditions
+                            
+  SCALAR                    none                                       not used or internal
+  (TEMPERATURE,             codedFixedValue                            user specified Dirichlet (t, inlet)                                scalarDirichletConditions
+   PRESSURE,                interpolation                              neknek boundary (int)                                              scalarDirichletConditions
+   SCALAR01)                zeroGradient                               (i, insulated, zeroflux, o, outflow, outlet)
+                            codedFixedGradient                         (f, flux)                                                          scalarNeumannConditions
 
 regularization                                                         
                             hpfrt                                      HPF stabilization
@@ -171,7 +175,7 @@ regularization
                               +highestModalDecay                       use Persson's highest modal decay model 
                                 +threshold=<float>
                                 +activationWidth=<float>
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [MESH]
 
 partitioner                 rbc, rsb, rbc+rsb [D]                      partitioning method
@@ -183,7 +187,7 @@ connectivityTol             <float>
                             0.2 [D]
 
 file                        "<string>"                                 name of .re2 file
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [VELOCITY]
 
 density                     <float>                                    density
@@ -191,7 +195,7 @@ rho
 
 viscosity                   <float>                                    dynamic viscosity
 mu
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [TEMPERATURE]
 
 heatCapacity                <float>                                    rho*Cp 
@@ -199,7 +203,7 @@ rhoCp
 
 conductivity                <float>                                    thermal conductivity
 k 
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [SCALAR]                                                               default scalar section, see general::nScalars
                                                                        all non-temperature scalars will have settings
                                                                        as set from this section, unless explicitly overriden
@@ -209,11 +213,11 @@ rho
 
 diffusivity                 <float>                                    diffusivity
 D
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [SCALAR01]
 
 ...
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [BOOMERAMG]
 
 coarsenType                 <int>                                      
@@ -225,7 +229,7 @@ nonGalerkinTol              <float>                                    set 0 to 
 aggressiveCoarseningLevels  <int>
 chebyshevRelaxOrder         <int>
 chebyshevFraction           <float>
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [CVODE]
 solver                      cbGMRES [D], GMRES                         linear solver
                               +nVector=<int>                           dimension of Krylov space
@@ -240,7 +244,7 @@ maxSteps                    <int>
 sharedRho                   true, false [D]                            use same "density" field for all but the first scalar
 jtvRecycleProperties        true [D], false                            recycle property (freeze) evaluation for Jv
 dealiasing                  true, false
-----------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 NOTES
 * section name and key/value pairs are treated as case insensitive

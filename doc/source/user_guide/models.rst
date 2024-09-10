@@ -1,23 +1,26 @@
 .. _models_properties:
 
-Models and Physical properties
-==============================
+Models
+======
 
-nekRS contains several "plugins" that provide both physics models and postprocessing
-capabilities. nekRS's :term:`RANS` and low-Mach models, for instance, are provided as
-plugins. While significant attention is not provided to most of the inner source code structure of nekRS,
-these plugins require more in-depth explanation because their usage requires non-trivial
-modifications to the ``.udf`` files. Before reading this page, first consult
-:ref:`User-Defined Host Functions (.udf) <udf_functions>` so that you have the necessary
-background on each of the ``.udf`` functions that will be discussed.
+.. nekRS contains several "plugins" that provide both physics models and postprocessing
+.. capabilities. nekRS's :term:`RANS` and low-Mach models, for instance, are provided as
+.. plugins. While significant attention is not provided to most of the inner source code structure of nekRS,
+.. these plugins require more in-depth explanation because their usage requires non-trivial
+.. modifications to the ``.udf`` files. Before reading this page, first consult
+.. :ref:`User-Defined Host Functions (.udf) <udf_functions>` so that you have the necessary
+.. background on each of the ``.udf`` functions that will be discussed.
 
 Turbulence models
 -----------------
 
-.. _rans_model:
+RANS models
+"""""""""""
 
-RANS :math:`k`-:math:`\tau` Model
-"""""""""""""""""""""""""""""""""
+.. _ktau_model:
+
+:math:`k`-:math:`\tau` Model
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :term:`RANS` :math:`k`-:math:`\tau` plugin is available in the ``src/plugins/RANSktau.hpp``
 header file. In order to add the :math:`k`-:math:`\tau` model to youddisplr case, you need
@@ -39,7 +42,7 @@ following sections then each describe a step in the :term:`RANS` model setup usi
 .. _kernels:
 
 Add the Physics Kernels
-^^^^^^^^^^^^^^^^^^^^^^^
+_______________________
 
 The calculations performed to add contributions to the residuals occur within
 :term:`OCCA` kernels. In order to add the :term:`RANS` equations, the corresponding
@@ -64,7 +67,7 @@ The ``RANSKtau::buildKernel`` function performs two main actions -
 .. _rans_props:
 
 Add the Closure Properties Calculation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+______________________________________
 
 Next, add the function that will update the properties used in the governing equations.
 An example is shown in :ref:`Setting Custom Properties <custom_properties>` for setting
@@ -112,14 +115,14 @@ in the ``.udf`` file:
 The ``RANSktau::updateProperties`` function performs two main actions:
 
   1. Apply a limiter to :math:`k` and :math:`\tau` as described in
-     :ref:`RANS Models <rans_models>`.
+     :ref:`RANS Models <ktau_models>`.
   2. Compute the turbulent viscosity as :math:`\mu_T\equiv\rho k\tau`
      and then set the diffusion coefficients in the momentum, :math:`k`,
      and :math:`\tau` equations to be :math:`\mu+\mu_T`,
      :math:`\mu+\mu_T/\sigma_k`, and :math:`\mu+\mu_T/\sigma_\tau`, respectively.
 
 Add the Source Terms Calculation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+________________________________
 
 The same passive scalar infrastructure that is used to solve the energy conservation
 equation is used to solve the :math:`k` and :math:`\tau` passive scalar equations.
@@ -161,7 +164,7 @@ in the ``.udf`` file:
   }
 
 Add the Turbulent Prandtl Number
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+________________________________
 
 For cases with passive scalar equations, you must manually
 add the additional component to the diffusivity, :math:`\mu_T/Pr_T`. This is done
@@ -241,7 +244,7 @@ the diffusion coefficient in the temperature passive scalar equation as
   k+\frac{\mu_T}{Pr_T}C_p
 
 Initialize the RANS Solve
-^^^^^^^^^^^^^^^^^^^^^^^^^
+_________________________
 
 Finally, the last step to initialize the :term:`RANS` solve is to call the
 ``RANSktau::setup`` function. This function has signature
@@ -286,6 +289,20 @@ then the :math:`k` scalar should be positioned as the second scalar, and ``ifld 
   :math:`k` passive scalar and ``ifld + 1`` corresponds to the :math:`\tau` passive
   scalar. Be sure to order the scalars in the input file to respect this assumption.
 
+Large Eddy Simulation (LES)
+"""""""""""""""""""""""""""
+
+High pass filter relaxation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Low-Mach Model
 --------------
+
+Generic Source Terms
+--------------------
+
+Momentum
+""""""""
+
+Scalars
+"""""""

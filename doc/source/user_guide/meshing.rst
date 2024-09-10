@@ -58,3 +58,15 @@ from Nek5000. Unfortunately, you cannot
 simply use a standard commercial meshing tool and define fluid and solid
 regions according to block IDs - you must individually create the mesh for the fluid and
 the solid, and then merge them with the ``pretex`` script.
+
+Setting up Mesh for Periodic Boundary Condition
+-----------------------------------------------
+
+NekRS supports periodic boundary conditions. To set up a periodic case, first
+you need to run ``exo2nek`` to establish the pairings between the periodic sidesets.
+All this information will be prompted on the screen by ``exo2nek``;
+You will provide the sideset IDs of the periodic boundaries, a search tolerance
+for identifying paired sides, and a translation vector that points from one of the
+paired sidesets to the other. For example, if you want to have one periodic surface
+that is a :math:`z`-plane at :math:`z=-1.0` that is paired to another :math:`z`-plane
+at :math:`z=1.0`, the translation vector would be :math:`(0.0, 0.0, 2.0)`.
