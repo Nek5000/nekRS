@@ -1,0 +1,10 @@
+---
+# adios2 config file in yaml format
+- IO: "TestIO"
+    
+  Variables:
+    
+  - Variable: "r32"
+    Operations:
+    # throw an exception since type is not a keyword, but Type
+    - { type: zfp, rate: 8 }

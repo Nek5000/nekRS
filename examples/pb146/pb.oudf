@@ -1,5 +1,5 @@
 // Boundary conditions
-void velocityDirichletConditions(bcData *bc)
+void codedFixedValueVelocity(bcData *bc)
 {
   bc->u = 0.0;
   bc->v = 0.0;
@@ -7,7 +7,7 @@ void velocityDirichletConditions(bcData *bc)
 }
 
 // Stabilized outflow (Dong et al)
-void pressureDirichletConditions(bcData *bc)
+void codedFixedValuePressure(bcData *bc)
 {
   const dfloat iU0delta = 20.0;
   const dfloat un = bc->u * bc->nx + bc->v * bc->ny + bc->w * bc->nz;
@@ -15,12 +15,12 @@ void pressureDirichletConditions(bcData *bc)
   bc->p = -0.5 * (bc->u * bc->u + bc->v * bc->v + bc->w * bc->w) * s0;
 }
 
-void scalarDirichletConditions(bcData *bc)
+void codedFixedValueScalar(bcData *bc)
 {
   bc->s = 0.0;
 }
 
-void scalarNeumannConditions(bcData *bc)
+void codedFixedGradientScalar(bcData *bc)
 {
   bc->flux = 1.0;
 }

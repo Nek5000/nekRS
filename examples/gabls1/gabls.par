@@ -25,16 +25,16 @@ preconditioner = multigrid
 smootherType = JAC+Chebyshev
 
 [VELOCITY]
-boundaryTypeMap = v, shl
+boundaryTypeMap = codedFixedValue, zeroNValue/codedFixedGradient 
 residualTol = 1e-06
-density = 1.0
+rho = 1.0
 viscosity = 1/50e6
 
-[TEMPERATURE]
-boundaryTypeMap = flux, flux 
+[SCALAR00]
+boundaryTypeMap = codedFixedGradient, codedFixedGradient 
 residualTol = 1e-06
-rhoCp = 1.0
-conductivity = 1/50e6
+rho = 1.0
+diffusivity = 1/50e6
 
 [BOOMERAMG]
 iterations = 1

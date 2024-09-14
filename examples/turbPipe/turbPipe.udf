@@ -1,22 +1,61 @@
 #include "velRecycling.hpp"
 #include "tavg.hpp"
+#include "avm.hpp"
 //#include "nekAscent.hpp"
-//#include "nekAdios.hpp"
 
 static int NSLABS;
 static int NELSLAB;
 static int renderStep;
-deviceMemory<dfloat> o_qcriterion;
 
-#ifdef NEKRS_ADIOS_ENABLED
-NekAdios *nekAdios;
-#endif
+deviceMemory<dfloat> o_qcriterion;
+deviceMemory<dfloat> o_nuAVM;
+
+std::unique_ptr<iofld> iofld;
 
 #ifdef __okl__
 
 #include "turbPipe.oudf"
 
 #endif
+
+void uservp(double time)
+{
+  auto mesh = nrs->meshV;
+  auto cds = nrs->cds;
+
+  static auto firstTime = true;
+  if (firstTime) {
+    avm::setup(mesh, nrs->gsh);
+    o_nuAVM.resize(mesh->Nlocal);
+    nrs->addUserCheckpointField("scalar01", std::vector<deviceMemory<dfloat>>{o_nuAVM});
+    firstTime = false; 
+  }
+  const auto scalarIndex = 0;
+  const auto sid = scalarDigitStr(scalarIndex);
+
+  dfloat kappa = 1.0;
+  platform->options.getArgs("SCALAR" + sid + " REGULARIZATION AVM ACTIVATION WIDTH", kappa);
+
+  dfloat logS0 = 2.0;
+  platform->options.getArgs("SCALAR" + sid + " REGULARIZATION AVM DECAY THRESHOLD", logS0);
+
+  dfloat scalingCoeff = 1.0;
+  platform->options.getArgs("SCALAR" + sid + " REGULARIZATION AVM SCALING COEFF", scalingCoeff);
+
+  dfloat absTol = 0;
+  platform->options.getArgs("SCALAR" + sid + " REGULARIZATION AVM ABSOLUTE TOL", absTol);
+
+  dfloat rhoD0;
+  platform->options.getArgs("SCALAR" + sid + " DIFFUSIVITY", rhoD0);
+
+  auto o_rhoD = cds->o_diff.slice(cds->fieldOffsetScan[scalarIndex], mesh->Nlocal);
+  platform->linAlg->fill(mesh->Nlocal, rhoD0, o_rhoD); 
+
+  auto o_S = cds->o_S.slice(cds->fieldOffsetScan[scalarIndex], mesh->Nlocal);
+  std::cout << "apply avm " << absTol << "," << scalingCoeff << std::endl;
+  avm::viscosity(nrs->fieldOffset, nrs->o_U, o_S, o_nuAVM, absTol, scalingCoeff);
+  platform->linAlg->axpby(mesh->Nlocal, 1.0, o_nuAVM, 1.0, o_rhoD);
+}
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
@@ -27,12 +66,40 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup()
 {
-  auto nrs = dynamic_cast<nrs_t*>(platform->solver);
+#if 0
+  nrs->userProperties = &uservp;
+#endif
+
   auto mesh = nrs->meshV;
   const auto zLen = abs( 
               platform->linAlg->max(mesh->Nlocal, mesh->o_z, platform->comm.mpiComm) - 
               platform->linAlg->min(mesh->Nlocal, mesh->o_z, platform->comm.mpiComm)
             ); 
+
+  o_qcriterion.resize(mesh->Nlocal);
+
+#if 0
+  iofld = iofldFactory::create();
+  iofld->open(mesh, iofld::mode::write, "qcrit");
+  iofld->writeAttribute("uniform", "true");
+  iofld->writeAttribute("polynomialOrder", std::to_string(mesh->N + 2));
+
+#if 0
+  auto elementFilter = [&]() 
+  {
+    std::vector<int> elementFilter;
+    for(int e = 0; e < mesh->Nelements; e++) {
+       auto zmaxLocal = std::numeric_limits<dfloat>::lowest();
+       for(int i = 0; i < mesh->Np; i++) zmaxLocal = std::max(mesh->z[i + e * mesh->Np], zmaxLocal);
+       if (zmaxLocal > zRecycLayer) elementFilter.push_back(e);
+    }
+    return elementFilter;
+  }();
+  iofld->writeElementFilter(elementFilter);
+#endif
+
+  iofld->addVariable("scalar00", std::vector<occa::memory>{mesh->o_x});
+#endif
 
   // set IC
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
@@ -88,19 +155,6 @@ void UDF_Setup()
   velRecycling::setup(nrs->o_usrwrk, 0.0, 0.0, zRecycLayer, bID, uBulk);
 #endif
 
-  // remove recycling section from field output
-  const auto subMeshElements = [&] ()
-  {
-    std::vector<int> elements;
-    for(int e = 0; e < mesh->Nelements; e++) {
-       auto zmaxLocal = std::numeric_limits<dfloat>::lowest();
-       for(int i = 0; i < mesh->Np; i++) zmaxLocal = std::max(mesh->z[i + e * mesh->Np], zmaxLocal);
-       if (zmaxLocal > zRecycLayer) elements.push_back(e);
-    }
-    return elements;
-  }();
-  fld::elementFilter.set(subMeshElements);
-
   {
     std::vector< std::vector<deviceMemory<dfloat>> > tavgFields;
 
@@ -127,8 +181,6 @@ void UDF_Setup()
     tavg::setup(nrs->fieldOffset, tavgFields);
   }
 
-  o_qcriterion.resize(nrs->meshV->Nlocal);
-
 #ifdef NEKRS_ASCENT_ENABLED 
   {
     auto cds = nrs->cds;
@@ -145,27 +197,11 @@ void UDF_Setup()
   }
 #endif
 
-#ifdef NEKRS_ADIOS_ENABLED
-  {
-    const int Nviz = 1.5 * mesh->N;
-    const auto uniform = true;
-    nekAdios = new NekAdios(nrs->_mesh, "simdata"); // Nviz, uniform);
-
-    auto meshV = nrs->meshV;
-    auto meshT = (nrs->cds) ? nrs->cds->mesh[0] : meshV;
-    auto cds = nrs->cds;
-
-    nekAdios->addVectorField("velocity", nrs->o_U, meshV, nrs->fieldOffset);
-    nekAdios->addScalarField("scalar00", cds->o_S.slice(cds->fieldOffsetScan[0]), meshT);
-    nekAdios->addScalarField("Qcriterion", o_qcriterion, meshV);
-  }
-#endif
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  auto nrs = dynamic_cast<nrs_t*>(platform->solver);
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->meshV;
 
   if (tstep == 0) {
     nrs->writeCheckpoint(time, tstep); 
@@ -192,21 +228,17 @@ void UDF_ExecuteStep(double time, int tstep)
       printf(" uBulk: %g\n", ubar);
     }
 
-#ifdef NEKRS_ADIOS_ENABLED 
-    {
-      nekAdios->write<float>(time, tstep);
-      if (nrs->lastStep) nekAdios->close();
-    }
-#endif
-
-    tavg::outfld();
+    tavg::outfld(mesh);
   }
+
+#if 0
+  iofld->addVariable("time", time);
+  iofld->process();
+  if (nrs->lastStep) iofld->close();
+#endif
 
 #ifdef NEKRS_ASCENT_ENABLED 
   if (tstep % renderStep == 0) {
-    //std::vector<occa::memory> o_fldList;
-    //o_fldList.push_back(o_qcriterion);
-    //fld::write("qcrit", time, tstep, o_fldList, true, false, mesh->N, true);
     nekAscent::run(time, tstep);
   }
 #endif

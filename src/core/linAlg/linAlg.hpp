@@ -367,6 +367,11 @@ public:
                           const occa::memory &o_uRef,
                           MPI_Comm comm);
 
+  // matrix is in row major ordering
+  std::vector<dfloat> matrixInverse(const int N, const std::vector<dfloat>& A);
+  std::vector<dfloat> matrixPseudoInverse(const int N, const std::vector<dfloat>& A);
+  std::vector<dfloat> matrixTranspose(const int N, const std::vector<dfloat>& A);
+
   occa::kernel fillKernel;
   occa::kernel pfillKernel;
   occa::kernel absKernel;

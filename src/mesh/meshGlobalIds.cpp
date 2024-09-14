@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+#include "platform.hpp"
 #include "mesh.h"
 #include "nekInterfaceAdapter.hpp"
 

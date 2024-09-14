@@ -30,12 +30,9 @@ smootherType = Jac+Cheby
 
 [VELOCITY]
 boundaryTypeMap = none
-density = 1.0
-viscosity = -1600
+rho = 1.0
+viscosity = 1/1600
 residualTol = 1e-06
-
-[SCALAR00] #lambda2
-solver = none
 
 [CASEDATA]
 eps = 1.0

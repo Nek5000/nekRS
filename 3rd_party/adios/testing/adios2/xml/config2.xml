@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<adios-config>
+    <io name="Test IO 2">
+        <engine type="BPFile" />
+        <engine type="Other" /> <!-- std::invalid_argument exception -->
+    </io>
+</adios-config>

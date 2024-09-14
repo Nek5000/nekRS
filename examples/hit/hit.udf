@@ -1,8 +1,9 @@
 #include "udf.hpp"
 
+deviceMemory<dfloat> o_qcriterion;
+
 static constexpr dfloat L = 2*M_PI;   // domain (box) length
 static constexpr dfloat l = 0.19 * L; // integral length scale (given by method) 
-
 static dfloat uPrime;
 static dfloat A;
 
@@ -176,11 +177,12 @@ void UDF_Setup()
       nrs->U[n + 2 * nrs->fieldOffset] = -eps * alpha * cos(alpha * x) * sin(beta * z);
     }
   }
+  o_qcriterion.resize(mesh->Nlocal);
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
    if (nrs->isCheckpointStep) {
-     nrs->Qcriterion(nrs->o_U, nrs->cds->o_S);
+     nrs->Qcriterion(o_qcriterion);
    }
 }

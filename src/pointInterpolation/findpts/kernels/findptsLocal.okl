@@ -158,7 +158,7 @@ get_face(const dfloat *elx[3], dfloat *wtend[3], dlong fi, dfloat *workspace, dl
     face.dxdn[d] = workspace + (3 + d) * p_Nfp;
   }
 
-  const dlong mask = 1u << (fi / 2);
+  const dlong mask = 1u << fi;
   if ((side_init & mask) == 0) {
     const dlong elx_stride[3] = {1, p_Nq, p_Nq * p_Nq};
 #define ELX(d, j, k, l) elx[d][j * elx_stride[d1] + k * elx_stride[d2] + l * elx_stride[dn]]
@@ -201,7 +201,7 @@ get_edge(const dfloat *elx[3], dfloat *wtend[3], dlong ei, dfloat *workspace, dl
     edge.d2xdn2[d] = workspace + (12 + d) * p_Nq;
   }
 
-  const dlong mask = 8u << (ei / 2);
+  const dlong mask = 64u << ei;
   if ((side_init & mask) == 0) {
     if (j < p_Nq) {
       const dlong elx_stride[3] = {1, p_Nq, p_Nq * p_Nq};

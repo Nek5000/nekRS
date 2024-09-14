@@ -61,6 +61,10 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
    buildOnly = true; 
   }
 
+  if (options.getArgs("CHECKPOINT ENGINE").empty()) {
+    options.setArgs("CHECKPOINT ENGINE", "NEK");
+  }
+
   exitValue = 0;
 
   // only relevant for SERIAL backend

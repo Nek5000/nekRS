@@ -1,5 +1,5 @@
 // Boundary conditions
-void velocityDirichletConditions(bcData *bc)
+void codedFixedValueVelocity(bcData *bc)
 {
   const dfloat arg = bc->z * M_PI * 0.5 / 0.6;
   if (arg > 0.5 * M_PI) {
@@ -13,7 +13,7 @@ void velocityDirichletConditions(bcData *bc)
 }
 
 // Stabilized outflow (Dong et al)
-void pressureDirichletConditions(bcData *bc)
+void codedFixedValuePressure(bcData *bc)
 {
   const dfloat iU0delta = 10.0;
   const dfloat un = bc->u * bc->nx + bc->v * bc->ny + bc->w * bc->nz;

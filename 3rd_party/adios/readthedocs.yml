@@ -1,0 +1,19 @@
+# .readthedocs.yml
+version: 2
+
+conda:
+  environment: docs/environment.yml
+
+build:
+    os: "ubuntu-22.04"
+    tools:
+        python: "miniconda3-4.7"
+    jobs:
+        pre_install:
+            - cmake -B build -S . -DADIOS2_USE_Python=ON
+            - cmake --build build
+            # Sphinx can locate the python module at $HOME/.local
+            - cmake --install build --prefix "$HOME/.local"
+formats:
+  - pdf
+  - epub

@@ -21,6 +21,7 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/mesh
   ${NEKRS_INSTALL_DIR}/include/core
   ${NEKRS_INSTALL_DIR}/include/core/io
+  ${NEKRS_INSTALL_DIR}/include/core/bdry
   ${NEKRS_INSTALL_DIR}/include/core/ogs
   ${NEKRS_INSTALL_DIR}/include/core/linAlg
   ${NEKRS_INSTALL_DIR}/include/utils
@@ -30,7 +31,7 @@ set(INCLUDE_DIRS
   ${NEKRS_INSTALL_DIR}/include/nrs/io
   ${NEKRS_INSTALL_DIR}/include/nrs/plugins
   ${NEKRS_INSTALL_DIR}/include/nrs/postProcessing
-  ${NEKRS_INSTALL_DIR}/include/nrs/nekInterface
+  ${NEKRS_INSTALL_DIR}/include/nekInterface
   ${NEKRS_INSTALL_DIR}/include/nrs/neknek
   ${NEKRS_INSTALL_DIR}/include/nrs/bdry
   ${NEKRS_INSTALL_DIR}/include/setup
@@ -78,15 +79,6 @@ if(DEFINED ENV{NEKRS_ASCENT_INSTALL_DIR})
   if (ASCENT_FOUND)
     target_link_libraries(udf PRIVATE ascent::ascent_mpi)
     target_compile_definitions(udf PUBLIC NEKRS_ENABLE_ASCENT)
-  endif()
-endif()
-
-if(DEFINED ENV{NEKRS_ADIOS2_INSTALL_DIR})
-  find_package(adios2
-               HINTS $ENV{NEKRS_ADIOS2_INSTALL_DIR})
-  if (ADIOS2_FOUND)
-    target_link_libraries(udf PRIVATE adios2::cxx11_mpi)
-    target_compile_definitions(udf PUBLIC NEKRS_ENABLE_ADIOS)
   endif()
 endif()
 

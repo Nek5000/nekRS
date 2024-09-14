@@ -5,11 +5,11 @@ userSections                <string>                                   user defi
 
 [OCCA]
 
-backend                     SERIAL, CUDA, HIP, DPCPP, OPENCL           default defined in $NEKRS_HOME/nekrs.conf
+backend                     SERIAL (CPU), CUDA, HIP, DPCPP             default defined in $NEKRS_HOME/nekrs.conf
 
 deviceNumber                <int>, LOCAL-RANK [D]
 
-platformNumber              <int>                                      only used by OPENCL and DPCPP
+platformNumber              <int>                                      only used by DPCPP
                             0 [D]
 
 [GENERAL]
@@ -29,9 +29,8 @@ startFrom                   "<string>"
                               + time=<float>                           reset to specified time 
                               + x                                      read mesh coordinates 
                               + u                                      read velocity 
-                              + t
-                              + s1 s2 s3 ...
-                              + int                                    interpolate restart data onto current mesh
+                              + t                                      read temperature
+                              + s00 s01 s02 ...                        read scalars 
 
 timeStepper                 tombo1, tombo2 [D], tombo3
 
@@ -50,6 +49,10 @@ dt                          <float> [D]
 
 subCyclingSteps             <int>, auto                                number of OIFS sub-steps for advection
                             0 [D]                             
+
+
+checkpointEngine            <string>
+                            nek [D], adios
 
 checkpointPrecision         <int>
                             32[D], 64 
@@ -78,11 +81,13 @@ nScalars                    <int>                                      number of
 ----------------------------------------------------------------------------------------------------------------------
 [NEKNEK]
 boundaryEXTOrder            <int>                                      boundary extrapolation order
-                            1 [D]                                      order unity extrapolation is unconditionally stable
-                                                                       higher orders, however, may require additional corrector steps
-multirate                   true, false [D]                            use multirate time stepping
-                              +correctorSteps=<int>                    multirate corrector steps
+                            1 [D]                                      >1 may require additional inner (Schwarz iterations) 
+                                                                       corrector steps
+
+multirateTimeStepping       true, false [D] 
+                              +correctorSteps=<int>                    outer corrector steps
                               0 [D]                                    NOTE: boundaryEXTOrder > 1 requires correctorSteps > 0
+                                                                             for stability
 ----------------------------------------------------------------------------------------------------------------------
 [PROBLEMTYPE]
 equation                    stokes
@@ -141,36 +146,50 @@ smootherType                Jacobi
                               +minEigenvalueBoundFactor=<float>        only for 1st Kind Chebyshev required
                               +maxEigenvalueBoundFactor=<float> 
 
-boundaryTypeMap             <...>, <...>, ...                          boundary type for each boundary ID
+boundaryTypeMap             <bcType for ID 1>, <bcType for ID 1>, ...  boundary type for each boundary ID
 
-                            none                                       not used or internal 
-                            zeroValue                                  zero Dirichlet (w, wall)
-                            codedFixedValue                            user specified Dirichlet (v, t, inlet)
+                            none                                       no-op (internal or periodic) 
                             interpolation                              neknek boundary (int)
+                                                                       assign int values in codedFixedValue
+
+                            zeroValue                                  velocity only (w, wall)
+                            codedFixedValue                            user specified Dirichlet (v, t, inlet)
+                                                                       specify okl function codedFixedValueVelocity 
+                                                                       or codedFixedValueScalar in udf
+
+                            zeroGradient                               (I, o, O, insulated, outlet, outflow) 
+                            codedFixedGradient                         user specified scalar Neumann (f, flux)
+                                                                       specify okl function codedFixedGradientScalar in udf 
+
                             zeroXValue/zeroGradient                    symmetry x-normal plane (slipx, symx)
                             zeroYValue/zeroGradient                    symmetry y-normal plane (slipy, symy)
                             zeroZValue/zeroGradient                    symmetry z-normal plane (slipz, symz)
                             zeroNValue/zeroGradient                    unaligned symmetry (slip, sym)
+                            zeroYZValue/zeroGradient                   (onx) 
+                            zeroXZValue/zeroGradient                   (ony)
+                            zeroXYValue/zeroGradient                   (onz)
+
                             zeroXValue/codedFixedGradient              traction x-normal plane (tractionx, shlx)
+                                                                       specify okl function codedFixedGradientVelocity in udf 
                             zeroYValue/codedFixedGradient              traction y-normal plane (tractiony, shly)
+                                                                       specify okl function codedFixedGradientVelocity in udf 
                             zeroZValue/codedFixedGradient              traction z-normal plane (tractionz, shlz)
+                                                                       specify okl function codedFixedGradientVelocity in udf 
                             zeroNValue/codedFixedGradient              unaligned traction (traction, shl)
-                            zeroXYValue/fixedGradient                  (onx) 
-                            zeroYZValue/fixedGradient                  (ony)
-                            zeroXZValue/fixedGradient                  (onz)
-                            zeroGradient                               (I, insulated, O, outlet, outflow) 
-                            fixedGradient                              (f, flux, o, outlet, outflow)
+                                                                       specify okl function codedFixedGradientVelocity in udf 
+
+checkpointing               true [D], false
 
 regularization                                                         
                             hpfrt                                      HPF stabilization
                               +nModes=<int>                            number of modes                                 
                               +scalingCoeff=<float>                    filter strength
                             avm                                        artificial viscosity method
-                              +c0                                      make viscosity C0 continous across elements
-                              +scalingCoeff=<float>                    strength of artifical viscosity
-                              +highestModalDecay                       use Persson's highest modal decay model 
-                                +threshold=<float>
-                                +activationWidth=<float>
+                                                                       (has to be applied manually in case user user props)
+                              +c0                                      make viscosity C0
+                              +scalingCoeff=<float>
+                              +decaythreshold=<float>                  decay exponent threshold
+                              +activationWidth=<float>                 half-width of activation function
 ----------------------------------------------------------------------------------------------------------------------
 [MESH]
 

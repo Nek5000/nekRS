@@ -167,7 +167,7 @@ jobs:
     - name: 'ethier FP32 cimode 2'
       working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
       run: |
-        NEKRS_FP32=1 NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 22 
+        FP32=1 NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 22 
 
   lowMach:
     needs: install

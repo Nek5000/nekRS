@@ -1,0 +1,3 @@
+from .adios2_bindings@ADIOS2_LIBRARY_SUFFIX@ import *
+
+__version__ = "@ADIOS2_VERSION@"

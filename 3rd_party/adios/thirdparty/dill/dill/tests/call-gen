@@ -1,0 +1,205 @@
+
+######################################################################
+#
+# Call tests
+#
+$maxargs=10;
+$no_float = 0;
+### BEGIN ###
+foreach $_ (@ARGV) {
+      last if /^--$/;
+      /^-no_float/ && ($no_float=1);
+      /^-max_arg=(\w+)$/ && ($maxargs = $1);
+}
+
+%type = ("uc", "unsigned char", "c", "char", "us", "unsigned short", 
+	 "s", "short", "u", "unsigned", "i", "int", "l", "long", 
+	 "ul", "unsigned long", "p", "void *", "f", "float", 
+	 "d", "double", ); 
+
+%rtype = (
+        "uc", "u",
+        "c", "i",
+        "us", "u",
+        "s", "i",
+        "u", "u",
+        "i", "i",
+        "l", "l",
+        "ul", "ul",
+        "p", "p",
+        "f",    "f",
+        "d", "d",
+);
+
+%c_print_formats = (
+	'c', '%d', 
+	'uc', '%u', 
+	's', '%d', 
+	'us', '%u', 
+	'i', '%d', 
+	'u', '%u',
+	'l', '%ld', 
+	'ul', '%lu', 
+	'p', '%lx', 
+	'f', '%g', 
+	'd', '%g'
+);
+
+&prologue;
+
+&emit_calls;
+
+# finish up
+print<<EOF;
+    if (dill_errors != 0) {
+	printf("*** %d Errors ! ****\\n", dill_errors);
+    } else {
+	printf("No errors!\\n");
+    }
+    return dill_errors;
+}
+
+EOF
+# End of main program
+
+sub emit_uniform_call {
+    local($type) = @_;
+    local($arg_list, @args, $type_str, $s2, @cast, $cast);
+    local(@arg_list);
+    @args = ();
+    $type_str = "";
+
+    $s2 = "s2$type";
+    foreach (1..$maxargs) {
+	$cur_arg_count = $_;
+	$max_arg_num = $_ - 1;
+	$arg_str = "";
+	$cast_str = "";
+	$param_str = "";
+	$arg_param_str = "";
+	foreach (0..$max_arg_num -1) {
+	    $arg_str .= "%$type";
+	    $cast_str .= "$type{$type}, ";
+	    $param_str .= "s1$type, ";
+	    $arg_param_str .= "dill_param_reg(s2, $_), ";
+	}
+	$arg_str .= "%$type";
+	$cast_str .= "$type{$type}";
+	$param_str .= "s2$type";
+	$arg_param_str .= "dill_param_reg(s2, $max_arg_num)";
+
+	$uptype = "\U$type\E";
+print<<"EOF";
+    {	/* test for $cur_arg_count of type $type */
+	dill_stream s = dill_create_raw_stream();
+	dill_stream s2 = dill_create_raw_stream();
+	dill_reg param$max_arg_num;
+	dill_exec_handle h, h2;
+	$type{$type} (*proc)($cast_str);
+	$type{$type} (*proc2)($cast_str);
+	$type{$type} result;
+	if (verbose) {
+	    printf("test for $cur_arg_count of type $type ...");
+	}
+	dill_start_proc(s, \"param${cur_arg_count}_$type\", DILL_$uptype, \"$arg_str\");
+	param$max_arg_num = dill_param_reg(s, $max_arg_num);
+	dill_ret$rtype{$type}(s, param$max_arg_num);
+	h = dill_finalize(s);
+	proc = ($type{$type} (*)($cast_str)) dill_get_fp(h);
+	result = proc($param_str);
+	if (result != s2$type) {
+	    printf(\"test for $cur_arg_count arguments of type \\\"$type\\\" failed, expected $c_print_formats{$type}, got $c_print_formats{$type}\\n\",
+		   s2$type, result);
+	    dill_dump(s);
+	    printf("\\n*************\\n\\n");
+	    dill_errors++;
+	}
+
+	dill_start_proc(s2, \"call${cur_arg_count}_$type\", DILL_$uptype, \"$arg_str\");
+	reg = dill_scall$type(s2, (void*)proc, \"proc_${cur_arg_count}_${type}\", \"$arg_str\", $arg_param_str);
+	dill_ret$rtype{$type}(s2, reg);
+	h2 = dill_finalize(s2);
+	proc2 = ($type{$type} (*) ($cast_str)) dill_get_fp(h2);
+	result = proc2($param_str);
+	if (result != s2$type) {
+	    printf(\"test for calling procedure with %d arguments of type %s failed\\n\", $cur_arg_count,
+		   \"$type\");
+	    dill_dump(s2);
+	    printf("\\n*************\\n\\n");
+	    dill_errors++;
+	} else if (verbose) {
+	    printf(" passed\\n");
+	}
+	dill_free_handle(h);
+	dill_free_handle(h2);
+	dill_free_stream(s);
+	dill_free_stream(s2);
+    }
+EOF
+    }
+}
+
+
+sub emit_calls {
+	# try all uniform combinations of (i l u ul f d) upto $maxargs
+	&emit_uniform_call("i");
+	&emit_uniform_call("u");
+	&emit_uniform_call("l");
+	&emit_uniform_call("ul");
+	if ($no_float == 0) {
+	    &emit_uniform_call("f");
+	    &emit_uniform_call("d");
+	}
+
+	# try arbitrary args upto 2 * $maxargs
+}
+
+sub prologue {
+	print "int dill_errors;\n#include <math.h>\n#include \"dill.h\"\n#include \"stdio.h\"\n#include <stdlib.h>\n#include <string.h>\n";
+
+print<<EOF;
+
+
+int main(int argc, char *argv[]) {
+    dill_reg	reg;
+    int 	     	s1i, s2i;
+    unsigned     	s1u, s2u;
+    unsigned long   s1ul, s2ul;
+    long     	s1l, s2l;
+    float		s1f, s2f;
+    double		s1d, s2d;
+    int		i;
+    int verbose = 0;
+
+    for (i=1; i < argc; i++) {
+	if (strcmp(argv[i], "-v") == 0) {
+	    verbose++;
+	}
+    }
+
+    s1i = rand() - rand();
+    s2i = rand() - rand();
+    if(!(s2i = rand() - rand()))
+        s2i = rand() + 1;
+
+    s1u = rand() - rand();
+    if(!(s2u = rand() - rand()))
+	s2u = rand() + 1;
+
+    s1ul = rand() - rand();
+    if(!(s2ul = rand() - rand()))
+	s2ul = rand() + 1;
+
+    s1l = rand() - rand();
+    if(!(s2l = rand() - rand()))
+	s2l = rand() + 1;
+
+    s1f = (float)rand() / rand();
+    s2f = (float)rand() / (float) ((rand()+1) * ((rand()%1) ? 1. : -1.));
+
+    s1d = (double)rand() / rand();
+    s2d = (double)rand() / (rand()+1) * ((rand()%1) ? 1. : -1.);
+
+EOF
+}
+

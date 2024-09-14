@@ -1,0 +1,315 @@
+#!perl
+sub upperc {
+    local($_) = pop(@_);
+    tr/[a-z]/[A-Z]/;
+    return $_;
+}
+
+&output_header;
+
+&arith_insn("add", "i u ul l p", "sparc_FORM3_arith", "0x0", "0");
+&arith_insn("sub", "i u ul l p", "sparc_FORM3_arith", "0x4", "0");
+&arith_insn("mul", "u ul", "sparc_FORM3_arith", "0x9/*umul*/", "0");
+&arith_insn("mul", "i l", "sparc_FORM3_arith", "0x9/*smul*/", "0");
+&arith_insn("div", "u", "sparc_div", "0x0d/*udiv*/", 0); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("div", "ul", "sparc_div", "0x0d/*udiv*/", 1); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("div", "i", "sparc_div", "0x2d/*sdivx*/", 0); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("div", "l", "sparc_div", "0x2d/*sdivx*/", 1); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("mod", "u", "sparc_mod", "0x0/*umod*/", 0); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("mod", "ul", "sparc_mod", "0x0/*umod*/", 1); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("mod", "i", "sparc_mod", "0x1/*smod*/", 0); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("mod", "l", "sparc_mod", "0x1/*smod*/", 1); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("and", "i u ul l", "sparc_FORM3_arith", "0x1", "0");
+&arith_insn("or", "i u ul l", "sparc_FORM3_arith", "0x2", "0");
+&arith_insn("xor", "i u ul l", "sparc_FORM3_arith", "0x3", "0");
+&arith2_insn("com", "i u ul l", "(arith_op2)sparc_FORM2_arith", "0x07", "2");
+&arith2_insn("neg", "i u ul l", "(arith_op2)sparc_FORM2_arith", "0x04", "2");
+&arith2_insn("not", "i u ul l", "(arith_op2)sparc_FORM2_arith", dill_jmp_noti, "0");
+&arith_insn("lsh", "i u", "sparc_FORM3_arith", "0x25", "0");
+&arith_insn("lsh", "ul l", "sparc_FORM3_arith", "0x25", "1");
+&arith_insn("rsh", "i", "sparc_FORM3_arith", "0x27", "0");
+&arith_insn("rsh", "l", "sparc_FORM3_arith", "0x27", "1");
+&arith_insn("rsh", "u", "sparc_FORM3_arith", "0x26", "0");
+&arith_insn("rsh", "ul", "sparc_FORM3_arith", "0x26", "1");
+&arith_insn("add", "f", "sparc_FORM3_farith", "0x34", "0x041");
+&arith_insn("add", "d", "sparc_FORM3_farith", "0x34", "0x042");
+&arith_insn("sub", "f", "sparc_FORM3_farith", "0x34", "0x045");
+&arith_insn("sub", "d", "sparc_FORM3_farith", "0x34", "0x046");
+&arith_insn("mul", "f", "sparc_FORM3_farith", "0x34", "0x049");
+&arith_insn("mul", "d", "sparc_FORM3_farith", "0x34", "0x04a");
+&arith_insn("div", "f", "sparc_FORM3_farith", "0x34", "0x04d");
+&arith_insn("div", "d", "sparc_FORM3_farith", "0x34", "0x04e");
+&arith2_insn("neg", "f", "sparc_FORM2_farith", "0x34", "0x05");
+&arith2_insn("neg", "d", "sparc_FORM2_farith", "0x34", "0x06");
+&arith2_insn("bswap", "s us i u ul l f d", "sparc_bswap", "0", "T");
+
+&arithi_insn("add", "i u ul l p", "sparc_FORM3imm_arith", "0x0", "0");
+&arithi_insn("sub", "i u ul l p", "sparc_FORM3imm_arith", "0x4", "0");
+&arithi_insn("mul", "u ul", "sparc_FORM3imm_arith", "0x9/*umul*/", "0");
+&arithi_insn("mul", "i l", "sparc_FORM3imm_arith", "0x9/*smul*/", "0");
+&arithi_insn("div", "u", "sparc_divi", "0x0d/*udiv*/", "0");
+&arithi_insn("div", "ul", "sparc_divi", "0x0d/*udiv*/", "1");
+&arithi_insn("div", "i", "sparc_divi", "0x2d/*sdiv*/", "0");
+&arithi_insn("div", "l", "sparc_divi", "0x2d/*sdiv*/", "1");
+&arithi_insn("mod", "u ul", "sparc_modi", "0x0/*umod*/", "2");
+&arithi_insn("mod", "i l", "sparc_modi", "0x1/*smod*/", "2");
+&arithi_insn("and", "i u ul l", "sparc_FORM3imm_arith", "0x1", "0");
+&arithi_insn("or", "i u ul l", "sparc_FORM3imm_arith", "0x2", "0");
+&arithi_insn("xor", "i u ul l", "sparc_FORM3imm_arith", "0x3", "0");
+&arithi_insn("lsh", "i u", "sparc_FORM3imm_arith", "0x25", "0");
+&arithi_insn("lsh", "ul l", "sparc_FORM3imm_arith", "0x25", "1");
+&arithi_insn("rsh", "i", "sparc_FORM3imm_arith", "0x27", "0");
+&arithi_insn("rsh", "l", "sparc_FORM3imm_arith", "0x27", "1");
+&arithi_insn("rsh", "u", "sparc_FORM3imm_arith", "0x26", "0");
+&arithi_insn("rsh", "ul", "sparc_FORM3imm_arith", "0x26", "1");
+&branch_insn( "eq ge gt le lt ne", "c uc s us i u ul l p d f", "sparc_branch");
+&branchi_insn( "eq ge gt le lt ne", "c uc s us i u ul l p", "sparc_branchi");
+&compare_insn( "eq ge gt le lt ne", "c uc s us i u ul l p d f", "sparc_compare");
+&comparei_insn( "eq ge gt le lt ne", "c uc s us i u ul l p", "sparc_comparei");
+
+print COUT <<EOF;
+extern void sparc_FORM3_farith(s, op3, fop, dest, src1, src2)
+dill_stream s;
+int op3;
+int fop;
+int dest;
+int src1;
+int src2;
+{
+    /* format 3 */
+    INSN_OUT(s, HDR(0x2)|OP3(op3)|RD(dest)|RS1(src1)|OPF(fop)|RS2(src2));
+}
+
+extern void sparc_FORM2_farith(s, op3, fop, dest, src)
+dill_stream s;
+int op3;
+int fop;
+int dest;
+int src;
+{
+    /* format 3 */
+    INSN_OUT(s, HDR(0x2)|OP3(op3)|RD(dest)|OPF(fop)|RS2(src));
+}
+
+extern void sparc_FORM2_arith(s, op3, op, dest, src)
+dill_stream s;
+int op3;
+int op;
+int dest;
+int src;
+{
+    if (op != 0) {
+	/* format 3 with g0 as rs1*/
+	INSN_OUT(s, HDR(op)|OP3(op3)|RD(dest)|RS1(_g0)|RS2(src));
+    } else {
+	/* must be NOT */
+	INSN_OUT(s, HDR(0x2)|RD(_g0)|OP3(0x14)|RS1(_g0)|RS2(src));/* subcc */
+	INSN_OUT(s, HDR(0x2)|RD(dest)|OP3(0xc)|RS1(_g0)|IM|SIMM13(-1));
+    }
+}
+
+static struct jmp_table_s ${mach}_jump_table_struct;
+static arith_op3 ${mach}_arith_op3_table[dill_jmp_a3_size + 1];
+static jmp_data  ${mach}_arith_op3_data[dill_jmp_a3_size + 1];
+static arith_op3i ${mach}_arith_op3i_table[dill_jmp_a3_size + 1];
+static jmp_data  ${mach}_arith_op3i_data[dill_jmp_a3_size + 1];
+static arith_op2 ${mach}_arith_op2_table[dill_jmp_a2_size + 1];
+static jmp_data  ${mach}_arith_op2_data[dill_jmp_a2_size + 1];
+static branch_op ${mach}_branch_table[dill_jmp_branch_size + 1];
+static branch_opi ${mach}_branchi_table[dill_jmp_branch_size + 1];
+static jmp_data  ${mach}_branch_data[dill_jmp_branch_size + 1];
+static compare_op ${mach}_compare_table[dill_jmp_compare_size + 1];
+static compare_opi ${mach}_comparei_table[dill_jmp_compare_size + 1];
+static jmp_data ${mach}_compare_data[dill_jmp_compare_size + 1];
+
+jmp_table ${mach}_jump_table;
+static void gen_${mach}_jump_table()
+{
+    ${mach}_jump_table = &${mach}_jump_table_struct;          
+    memset(${mach}_jump_table, 0, sizeof(struct jmp_table_s));
+    /* arith3 */
+    ${mach}_jump_table->jmp_a3 = ${mach}_arith_op3_table;
+    memset(${mach}_jump_table->jmp_a3, 0, sizeof(${mach}_arith_op3_table));
+    ${mach}_jump_table->a3_data = ${mach}_arith_op3_data;
+    memset(${mach}_jump_table->a3_data, 0, sizeof(${mach}_arith_op3_data));
+    /* arith3i */
+    ${mach}_jump_table->jmp_a3i = ${mach}_arith_op3i_table;
+    memset(${mach}_jump_table->jmp_a3i, 0, sizeof(${mach}_arith_op3i_table));
+    ${mach}_jump_table->a3i_data = ${mach}_arith_op3i_data;
+    memset(${mach}_jump_table->a3i_data, 0, sizeof(${mach}_arith_op3i_data));
+    /* arith2 */
+    ${mach}_jump_table->jmp_a2 = ${mach}_arith_op2_table;
+    memset(${mach}_jump_table->jmp_a2, 0, sizeof(${mach}_arith_op2_table));
+    ${mach}_jump_table->a2_data = ${mach}_arith_op2_data;
+    memset(${mach}_jump_table->a2_data, 0, sizeof(${mach}_arith_op2_data));
+    /* branch */
+    ${mach}_jump_table->jmp_b = ${mach}_branch_table;
+    memset(${mach}_jump_table->jmp_b, 0, sizeof(${mach}_branch_table));
+    /* branchi */
+    ${mach}_jump_table->jmp_bi = ${mach}_branchi_table;
+    memset(${mach}_jump_table->jmp_bi, 0, sizeof(${mach}_branch_table));
+    ${mach}_jump_table->b_data = ${mach}_branch_data;
+    memset(${mach}_jump_table->b_data, 0, sizeof(${mach}_branch_data));
+    /* compare */
+    ${mach}_jump_table->jmp_c = ${mach}_compare_table;
+    memset(${mach}_jump_table->jmp_c, 0, sizeof(${mach}_compare_table));
+    /* comparei */
+    ${mach}_jump_table->jmp_ci = ${mach}_comparei_table;
+    memset(${mach}_jump_table->jmp_ci, 0, sizeof(${mach}_compare_table));
+    ${mach}_jump_table->c_data = ${mach}_compare_data;
+    memset(${mach}_jump_table->c_data, 0, sizeof(${mach}_compare_data));
+EOF
+print COUT $jmp_a3_assigns;
+print COUT $jmp_a3i_assigns;
+print COUT $jmp_a2_assigns;
+print COUT $jmp_b_assigns;
+print COUT $jmp_c_assigns;
+print COUT "    ${mach}_jump_table->proc_start = (dill_mach_proc_start) sparc_proc_start;\n";
+print COUT "    ${mach}_jump_table->end = sparc_end;\n";
+print COUT "    ${mach}_jump_table->package_end = sparc_package_end;\n";
+print COUT "    ${mach}_jump_table->clone_code = sparc_clone_code;\n";
+print COUT "    ${mach}_jump_table->type_align = sparc_type_align;\n";
+print COUT "    ${mach}_jump_table->type_size = sparc_type_size;\n";
+print COUT "    ${mach}_jump_table->ret = sparc_ret;\n";
+print COUT "    ${mach}_jump_table->reti = sparc_reti;\n";
+print COUT "    ${mach}_jump_table->retf = (ret_opf)sparc_reti;\n";
+print COUT "    ${mach}_jump_table->load = sparc_pload;\n";
+print COUT "    ${mach}_jump_table->bsload = sparc_pbsload;\n";
+print COUT "    ${mach}_jump_table->loadi = sparc_ploadi;\n";
+print COUT "    ${mach}_jump_table->bsloadi = sparc_pbsloadi;\n";
+print COUT "    ${mach}_jump_table->loadi = sparc_ploadi;\n";
+print COUT "    ${mach}_jump_table->store = sparc_pstore;\n";
+print COUT "    ${mach}_jump_table->storei = sparc_pstorei;\n";
+print COUT "    ${mach}_jump_table->convert = sparc_convert;\n";
+print COUT "    ${mach}_jump_table->mov = sparc_mov;\n";
+print COUT "    ${mach}_jump_table->set = sparc_pset;\n";
+print COUT "    ${mach}_jump_table->setf = sparc_setf;\n";
+print COUT "    ${mach}_jump_table->setp = sparc_setp;\n";
+print COUT "    ${mach}_jump_table->jv = sparc_jump_to_label;\n";
+print COUT "    ${mach}_jump_table->jp = sparc_jump_to_reg;\n";
+print COUT "    ${mach}_jump_table->jpi = sparc_jump_to_imm;\n";
+print COUT "    ${mach}_jump_table->jal = sparc_jal;\n";
+print COUT "    ${mach}_jump_table->push = sparc_push;\n";
+print COUT "    ${mach}_jump_table->pushi = sparc_pushi;\n";
+print COUT "    ${mach}_jump_table->pushfi = sparc_pushfi;\n";
+print COUT "    ${mach}_jump_table->pushpi = sparc_pushpi;\n";
+print COUT "    ${mach}_jump_table->calli = sparc_calli;\n";
+print COUT "    ${mach}_jump_table->callr = sparc_callr;\n";
+print COUT "    ${mach}_jump_table->local = sparc_local_op;\n";
+print COUT "    ${mach}_jump_table->save_restore = sparc_save_restore_op;\n";
+#print COUT "    ${mach}_jump_table->lea = sparc_lea;\n";
+print COUT "    ${mach}_jump_table->init_disassembly = sparc_init_disassembly_info;\n";
+print COUT "    ${mach}_jump_table->print_insn = sparc_print_insn;\n";
+print COUT "    ${mach}_jump_table->print_reg = sparc_print_reg;\n";
+print COUT "    ${mach}_jump_table->count_insn = sparc_count_insn;\n";
+print COUT "    ${mach}_jump_table->do_reverse_push = 0;\n";
+print COUT "    ${mach}_jump_table->target_byte_order = 1;  /* Format_Integer_bigendian */\n";
+print COUT "    ${mach}_jump_table->target_float_format = 1;  /* Format_IEEE_754_bigendian */ \n";
+print COUT "}\n\n";
+print COUT "extern void dill_sparc_init(dill_stream s)\n{\n";
+print COUT "    gen_sparc_jump_table();\n";
+print COUT "    s->j = sparc_jump_table;\n";
+print COUT "    s->dill_local_pointer = _fp;\n";
+print COUT "    s->dill_param_reg_pointer = _fp;\n";
+print COUT "    s->p->mach_info = (void*)gen_sparc_mach_info(s,/*v9*/ 0);\n";
+print COUT "    s->p->machine_strr_tmp_reg = _g1;\n";
+print COUT "    return;\n";
+print COUT "}\n";
+print COUT "extern void dill_sparcv9_init(dill_stream s)\n{\n";
+print COUT "        gen_sparc_jump_table();\n";
+print COUT "    s->j = sparc_jump_table;\n";
+print COUT "    s->dill_local_pointer = _fp;\n";
+print COUT "    s->dill_param_reg_pointer = _fp;\n";
+print COUT "    s->p->mach_info = (void*)gen_sparc_mach_info(s,/*v9*/ 1);\n";
+print COUT "    s->p->machine_strr_tmp_reg = _g1;\n";
+print COUT "    return;\n";
+print COUT "}\n";
+
+sub arith_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    foreach(split(' ', $type_list)) {
+	$jmp_a3_assigns = $jmp_a3_assigns . "    ${mach}_jump_table->jmp_a3[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a3_assigns = $jmp_a3_assigns . "    ${mach}_jump_table->a3_data[dill_jmp_${op}${_}].data1 = $code1;\n";
+	$jmp_a3_assigns = $jmp_a3_assigns . "    ${mach}_jump_table->a3_data[dill_jmp_${op}${_}].data2 = $code2;\n";
+    }
+}
+
+sub arith2_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    foreach(split(' ', $type_list)) {
+	$pcode2 = $code2;
+	if ($code2 eq "T") {
+	    $pcode2 = "DILL_". &upperc(${_});
+	}
+	$jmp_a2_assigns = $jmp_a2_assigns . "    ${mach}_jump_table->jmp_a2[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a2_assigns = $jmp_a2_assigns . "    ${mach}_jump_table->a2_data[dill_jmp_${op}${_}].data1 = $code1;\n";
+	$jmp_a2_assigns = $jmp_a2_assigns . "    ${mach}_jump_table->a2_data[dill_jmp_${op}${_}].data2 = $pcode2;\n";
+    }
+}
+
+sub arithi_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    foreach(split(' ', $type_list)) {
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "    ${mach}_jump_table->jmp_a3i[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "    ${mach}_jump_table->a3i_data[dill_jmp_${op}${_}].data1 = $code1;\n";
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "    ${mach}_jump_table->a3i_data[dill_jmp_${op}${_}].data2 = $code2;\n";
+    }
+}
+
+sub branch_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_b_assigns = $jmp_b_assigns . "    ${mach}_jump_table->jmp_b[dill_jmp_b${op}${_}] = $subr;\n";
+	    $jmp_b_assigns = $jmp_b_assigns . "    ${mach}_jump_table->b_data[dill_jmp_b${op}${_}].data1 = dill_${op}_code;\n";
+	    $jmp_b_assigns = $jmp_b_assigns . "    ${mach}_jump_table->b_data[dill_jmp_b${op}${_}].data2 = DILL_". &upperc(${_}). ";\n";
+	}
+    }
+}
+
+sub compare_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_c_assigns = $jmp_c_assigns . "  ${mach}_jump_table->jmp_c[dill_jmp_c${op}${_}] = $subr;\n";
+	    $jmp_c_assigns = $jmp_c_assigns . "  ${mach}_jump_table->c_data[dill_jmp_c${op}${_}].data1 = dill_${op}_code;\n";
+	    $jmp_c_assigns = $jmp_c_assigns . "  ${mach}_jump_table->c_data[dill_jmp_c${op}${_}].data2 = DILL_". &upperc(${_}). ";\n";
+	}
+    }
+}
+
+sub branchi_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_b_assigns = $jmp_b_assigns . "    ${mach}_jump_table->jmp_bi[dill_jmp_b${op}${_}] = $subr;\n";
+	}
+    }
+}
+
+sub comparei_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_c_assigns = $jmp_c_assigns . "  ${mach}_jump_table->jmp_ci[dill_jmp_c${op}${_}] = $subr;\n";
+	}
+    }
+}
+
+sub output_header {
+    $mach = sparc;
+    open(COUT, ">dill_${mach}.c") || die "Can't open header output";
+print COUT<<EOF;
+/* This file is generated from sparc.ops.  Do not edit directly. */
+
+#include "config.h"
+#include "dill.h"
+#include "dill_internal.h"
+#include "sparc.h"
+#include <string.h>
+EOF
+}

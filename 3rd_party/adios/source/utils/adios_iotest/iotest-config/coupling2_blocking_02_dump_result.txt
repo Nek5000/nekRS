@@ -1,0 +1,56 @@
+# Config file for Task 1 in a pipeline
+#   - Produce variables  a  b  c 
+#   - Write variable     a  b  c   to   stream_T1.bp
+#   - Read in variables  d  e      from stream_T2.bp      from Task2
+#   - Write variables    d  e      to   debug_T2_to_T1.bp
+
+# Config file for Task 2 in a pipeline
+#   - Read in variables  a  b      from stream_T1.bp      from Task 1 (ignore c)
+#   - Produce variable   d  e
+#   - Write variables    d  e      to   stream_T2.bp
+#   - Write variables    a  b      to   debug_T1_to_T2.bp
+
+
+group  io_T1
+  # item  type    varname     N   [dim1 dim2 ... dimN  decomp1 decomp2 ... decompN]
+  array   double  a           2    100   200              X       YZ
+  array   float   b           1    100                    XYZ 
+  array   float   c           3    100   200   300        x       y     z
+
+group io_T2
+  # item  type    varname     N   [dim1 dim2 ... dimN  decomp1 decomp2 ... decompN]
+  array   int     d           3    100   200   300        XY      z     1
+  array   float   e           2    250   128              X       YZ
+
+group debug_2_1
+  link group io_T2 d e
+
+group debug_1_2
+  link group io_T1  a  b
+
+## Task 1 actions
+app 1
+  steps   3
+  sleep   2.0      
+    # write all of io_T1 into stream_T1.bp
+  write   stream_T1.bp    io_T1
+  sleep   0.1
+    # read select variables from stream_T2 using io_T2 definition
+  read next  stream_T2.bp    io_T2   -1    d   e
+  cond stream_T2.bp  sleep   1.123456789
+  cond stream_T2.bp  write   debug_T2_to_T1.bp  debug_2_1  d  e
+
+## Task 2 actions
+app 2
+  steps   over stream_T1.bp
+  sleep   0.1
+  #  read a & b from stream_T1.bp using io_T1 definition
+  read next   stream_T1.bp    io_T1   -1   a   b
+  sleep   2.0      
+  #  write d & e from io_T2 into stream_T2.bp
+  cond stream_T1.bp   write   stream_T2.bp    io_T2   d   e
+  #  write a & b coming from stream_T1.bp into debug_T1_to_T2.bp
+  cond stream_T1.bp   write   debug_T1_to_T2.bp   debug_1_2  a  b
+  cond stream_T1.bp   sleep   1.123456789
+
+

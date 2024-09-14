@@ -26,7 +26,7 @@ residualTol = 1e-04
 
 [VELOCITY]
 boundaryTypeMap = inlet, outlet, wall
-density = 1.0
+rho = 1.0
 viscosity = 1/19000
 residualTol = 1e-06
 
@@ -35,7 +35,7 @@ rho = 1.0
 diffusivity = 1/19000
 boundaryTypeMap = codedFixedValue, zeroFlux, codedFixedValue
 residualTol = 1e-06
-regularization = avm+highestModalDecay  
+regularization = avm+absoluteTol=1e-3
 
 [CASEDATA]
 # adjust to actual mesh 

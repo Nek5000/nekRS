@@ -1,0 +1,10 @@
+packages:
+  all:
+    target: [haswell]
+    provides:
+      mpi: [openmpi]
+  adios2:
+    variants: +mpi+blosc+bzip2+zfp+sz+png+sst+dataman+ssc+hdf5+python+fortran
+  mpich:
+    version: [3.3.2]
+    variants: device=ch3 netmod=tcp

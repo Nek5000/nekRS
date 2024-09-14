@@ -1,0 +1,219 @@
+#!perl
+sub upperc {
+    local($_) = pop(@_);
+    tr/[a-z]/[A-Z]/;
+    return $_;
+}
+
+&output_header;
+
+&arith_insn("add", "i u ul l p", "arm6_dproc", "ADD", "0");
+&arith_insn("sub", "i u ul l p", "arm6_dproc", "SUB", "0");
+&arith_insn("mul", "u ul", "arm6_mul", "1", "0");
+&arith_insn("mul", "i l", "arm6_mul", "0", "0");
+&arith_insn("div", "u ul", "arm6_div", "1", 0);
+&arith_insn("div", "i l", "arm6_div", "0", 0);
+&arith_insn("mod", "u", "arm6_mod", "0x0/*umod*/", 0); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("mod", "ul", "arm6_mod", "0x0/*umod*/", 1); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("mod", "i", "arm6_mod", "0x1/*smod*/", 0); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("mod", "l", "arm6_mod", "0x1/*smod*/", 1); #"FORM3(2,0x0,dest,src1,src2)", 
+&arith_insn("and", "i u ul l", "arm6_dproc", "AND", "0");
+&arith_insn("or", "i u ul l", "arm6_dproc", "ORR", "0");
+&arith_insn("xor", "i u ul l", "arm6_dproc", "EOR", "0");
+&arith2_insn("com", "i u ul l", "(arith_op2)arm6_dproc2", "MVN", "2");
+&arith2_insn("neg", "i u ul l", "(arith_op2)arm6_dproc2", "RSB", "2");
+&arith2_insn("not", "i u ul l", "(arith_op2)arm6_dproc2", "CMN", "0");
+&arith_insn("lsh", "i u ul l", "arm6_dproc", "MOV", LLshift);
+&arith_insn("rsh", "i l", "arm6_dproc", "MOV", ARshift);
+&arith_insn("rsh", "u ul", "arm6_dproc", "MOV", LRshift);
+&arith_insn("add", "f", "arm6_fproc", "0x6", "0x0");
+&arith_insn("add", "d", "arm6_fproc", "0x6", "0x1");
+&arith_insn("sub", "f", "arm6_fproc", "0x7", "0x0");
+&arith_insn("sub", "d", "arm6_fproc", "0x7", "0x1");
+&arith_insn("mul", "f", "arm6_fproc", "0x4", "0x0");
+&arith_insn("mul", "d", "arm6_fproc", "0x4", "0x1");
+&arith_insn("div", "f", "arm6_fproc", "0x8", "0x0");
+&arith_insn("div", "d", "arm6_fproc", "0x8", "0x1");
+&arith2_insn("neg", "f", "arm6_negf", "0x1", "0x0");
+&arith2_insn("neg", "d", "arm6_negf", "0x1", "0x1");
+&arith2_insn("bswap", "s us i u ul l f d", "arm6_bswap", "T", "0");
+
+&arithi_insn("add", "i u ul l p", "arm6_dproci", "ADD", "0");
+&arithi_insn("sub", "i u ul l p", "arm6_dproci", "SUB", "0");
+&arithi_insn("mul", "u ul", "arm6_muli", "1", "0");
+&arithi_insn("mul", "i l", "arm6_muli", "0", "0");
+&arithi_insn("div", "u ul", "arm6_divi", "1", "0");
+&arithi_insn("div", "i l", "arm6_divi", "0", "0");
+&arithi_insn("mod", "u ul", "arm6_modi", "0", "0");
+&arithi_insn("mod", "i l", "arm6_modi", "1", "0");
+&arithi_insn("and", "i u ul l", "arm6_dproci", "AND", "0");
+&arithi_insn("or", "i u ul l", "arm6_dproci", "ORR", "0");
+&arithi_insn("xor", "i u ul l", "arm6_dproci", "EOR", "0");
+&arithi_insn("lsh", "i l u ul", "arm6_dproci", "MOV", "LLshift");
+&arithi_insn("rsh", "i l", "arm6_dproci", "MOV", "ARshift");
+&arithi_insn("rsh", "u ul", "arm6_dproci", "MOV", "LRshift");
+&branch_insn( "eq ge gt le lt ne", "c uc s us i u ul l p d f", "arm6_branch");
+&branchi_insn( "eq ge gt le lt ne", "c uc s us i u ul l p", "arm6_branchi");
+&compare_insn( "eq ge gt le lt ne", "c uc s us i u ul l p d f", "arm6_compare");
+&comparei_insn( "eq ge gt le lt ne", "c uc s us i u ul l p", "arm6_comparei");
+
+print COUT "DECLARE_JUMP_TABLE(${mach});\n";
+print COUT "static void gen_arm6_jump_table()\n";
+print COUT "{\n";
+print COUT "\t  FILL_JUMP_STRUCTURE($mach);\n";
+print COUT $jmp_a3_assigns;
+print COUT $jmp_a3i_assigns;
+print COUT $jmp_a2_assigns;
+print COUT $jmp_b_assigns;
+print COUT $jmp_c_assigns;
+print COUT "\t  ${mach}_jump_table->proc_start = (dill_mach_proc_start) arm6_proc_start;\n";
+print COUT "\t  ${mach}_jump_table->end = arm6_end;\n";
+print COUT "\t  ${mach}_jump_table->package_end = arm6_package_end;\n";
+print COUT "\t  ${mach}_jump_table->clone_code = arm6_clone_code;\n";
+print COUT "\t  ${mach}_jump_table->type_align = arm6_type_align;\n";
+print COUT "\t  ${mach}_jump_table->type_size = arm6_type_size;\n";
+print COUT "\t  ${mach}_jump_table->clone_code = arm6_clone_code;\n";
+print COUT "\t  ${mach}_jump_table->ret = arm6_ret;\n";
+print COUT "\t  ${mach}_jump_table->reti = arm6_reti;\n";
+print COUT "\t  ${mach}_jump_table->retf = (ret_opf)arm6_retf;\n";
+print COUT "\t  ${mach}_jump_table->load = arm6_pload;\n";
+print COUT "\t  ${mach}_jump_table->bsload = arm6_pbsload;\n";
+print COUT "\t  ${mach}_jump_table->loadi = arm6_ploadi;\n";
+print COUT "\t  ${mach}_jump_table->bsloadi = arm6_pbsloadi;\n";
+print COUT "\t  ${mach}_jump_table->loadi = arm6_ploadi;\n";
+print COUT "\t  ${mach}_jump_table->store = arm6_pstore;\n";
+print COUT "\t  ${mach}_jump_table->storei = arm6_pstorei;\n";
+print COUT "\t  ${mach}_jump_table->convert = arm6_convert;\n";
+print COUT "\t  ${mach}_jump_table->mov = arm6_mov;\n";
+print COUT "\t  ${mach}_jump_table->set = arm6_pset;\n";
+print COUT "\t  ${mach}_jump_table->setf = arm6_setf;\n";
+print COUT "\t  ${mach}_jump_table->jv = arm6_jump_to_label;\n";
+print COUT "\t  ${mach}_jump_table->jp = arm6_jump_to_reg;\n";
+print COUT "\t  ${mach}_jump_table->jpi = arm6_jump_to_imm;\n";
+print COUT "\t  ${mach}_jump_table->jal = arm6_jal;\n";
+print COUT "\t  ${mach}_jump_table->push = arm6_push;\n";
+print COUT "\t  ${mach}_jump_table->pushi = arm6_pushi;\n";
+print COUT "\t  ${mach}_jump_table->pushfi = arm6_pushfi;\n";
+print COUT "\t  ${mach}_jump_table->pushpi = arm6_pushpi;\n";
+print COUT "\t  ${mach}_jump_table->calli = arm6_calli;\n";
+print COUT "\t  ${mach}_jump_table->callr = arm6_callr;\n";
+print COUT "\t  ${mach}_jump_table->local = arm6_local_op;\n";
+print COUT "\t  ${mach}_jump_table->setp = arm6_setp;\n";
+print COUT "\t  ${mach}_jump_table->save_restore = arm6_save_restore_op;\n";
+#print COUT "\t  ${mach}_jump_table->lea = arm6_lea;\n";
+print COUT "\t  ${mach}_jump_table->init_disassembly = arm6_init_disassembly_info;\n";
+print COUT "\t  ${mach}_jump_table->print_insn = arm6_print_insn;\n";
+print COUT "\t  ${mach}_jump_table->print_reg = arm6_print_reg;\n";
+print COUT "\t  ${mach}_jump_table->count_insn = arm6_count_insn;\n";
+print COUT "\t  ${mach}_jump_table->do_reverse_push = 0;\n";
+print COUT "\t  ${mach}_jump_table->target_byte_order = 2;  /* Format_Integer_littleendian */\n";
+print COUT "\t  ${mach}_jump_table->target_float_format = 3;  /* Format_IEEE_754_mixedendian */ \n";
+print COUT "}\n\n";
+print COUT "extern void dill_arm6_init(dill_stream s)\n{\n";
+print COUT "\tgen_arm6_jump_table();\n";
+print COUT "\ts->j = ${mach}_jump_table;\n";
+print COUT "\ts->dill_local_pointer = _fp;\n";
+print COUT "\ts->dill_param_reg_pointer = _fp;\n";
+print COUT "\ts->p->mach_info = (void*)gen_arm6_mach_info(s,/*v9*/ 0);\n";
+print COUT "\ts->p->machine_strr_tmp_reg = _v1;\n";
+print COUT "\treturn;\n";
+print COUT "}\n";
+print COUT "extern void dill_armv6_init(dill_stream s)\n{\n";
+print COUT "\tgen_arm6_jump_table();\n";
+print COUT "\ts->j = ${mach}_jump_table;\n";
+print COUT "\ts->dill_local_pointer = _fp;\n";
+print COUT "\ts->dill_param_reg_pointer = _fp;\n";
+print COUT "\ts->p->mach_info = (void*)gen_arm6_mach_info(s,/*v9*/ 1);\n";
+print COUT "\ts->p->machine_strr_tmp_reg = _v1;\n";
+print COUT "\treturn;\n";
+print COUT "}\n";
+
+sub arith_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    foreach(split(' ', $type_list)) {
+	$jmp_a3_assigns = $jmp_a3_assigns . "\t  ${mach}_jump_table->jmp_a3[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a3_assigns = $jmp_a3_assigns . "\t  ${mach}_jump_table->a3_data[dill_jmp_${op}${_}].data1 = $code1;\n";
+	$jmp_a3_assigns = $jmp_a3_assigns . "\t  ${mach}_jump_table->a3_data[dill_jmp_${op}${_}].data2 = $code2;\n";
+    }
+}
+
+sub arith2_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    local $pcode1 = $code1;
+    if ($code1 eq "T") {
+	$pcode1 = "DILL_". &upperc(${_});
+    }
+    foreach(split(' ', $type_list)) {
+	if ($code1 eq "T") {
+	    $pcode1 = "DILL_". &upperc(${_});
+	}
+	$jmp_a2_assigns = $jmp_a2_assigns . "\t  ${mach}_jump_table->jmp_a2[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a2_assigns = $jmp_a2_assigns . "\t  ${mach}_jump_table->a2_data[dill_jmp_${op}${_}].data1 = $pcode1;\n";
+	$jmp_a2_assigns = $jmp_a2_assigns . "\t  ${mach}_jump_table->a2_data[dill_jmp_${op}${_}].data2 = $code2;\n";
+    }
+}
+
+sub arithi_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    foreach(split(' ', $type_list)) {
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "\t  ${mach}_jump_table->jmp_a3i[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "\t  ${mach}_jump_table->a3i_data[dill_jmp_${op}${_}].data1 = $code1;\n";
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "\t  ${mach}_jump_table->a3i_data[dill_jmp_${op}${_}].data2 = $code2;\n";
+    }
+}
+
+sub branch_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_b_assigns = $jmp_b_assigns . "\t  ${mach}_jump_table->jmp_b[dill_jmp_b${op}${_}] = $subr;\n";
+	    $jmp_b_assigns = $jmp_b_assigns . "\t  ${mach}_jump_table->b_data[dill_jmp_b${op}${_}].data1 = dill_${op}_code;\n";
+	    $jmp_b_assigns = $jmp_b_assigns . "\t  ${mach}_jump_table->b_data[dill_jmp_b${op}${_}].data2 = DILL_". &upperc(${_}). ";\n";
+	}
+    }
+}
+
+sub branchi_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_b_assigns = $jmp_b_assigns . "\t  ${mach}_jump_table->jmp_bi[dill_jmp_b${op}${_}] = $subr;\n";
+	}
+    }
+}
+
+sub compare_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_c_assigns = $jmp_c_assigns . "\t  ${mach}_jump_table->jmp_c[dill_jmp_c${op}${_}] = $subr;\n";
+	    $jmp_c_assigns = $jmp_c_assigns . "\t  ${mach}_jump_table->c_data[dill_jmp_c${op}${_}].data1 = dill_${op}_code;\n";
+	    $jmp_c_assigns = $jmp_c_assigns . "\t  ${mach}_jump_table->c_data[dill_jmp_c${op}${_}].data2 = DILL_". &upperc(${_}). ";\n";
+	}
+    }
+}
+
+sub comparei_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_c_assigns = $jmp_c_assigns . "\t  ${mach}_jump_table->jmp_ci[dill_jmp_c${op}${_}] = $subr;\n";
+	}
+    }
+}
+
+sub output_header {
+    $mach = arm6;
+    open(COUT, ">dill_${mach}.c") || die "Can't open header output";
+print COUT<<EOF;
+/* This file is generated from arm6.ops.  Do not edit directly. */
+
+#include "dill.h"
+#include "dill_internal.h"
+#include "arm6.h"
+EOF
+}

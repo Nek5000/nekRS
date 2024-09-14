@@ -1,0 +1,134 @@
+# Ad-hoc build that runs in the ECP Hardware, concretely in OLCF Ascent.
+.setup_env_ecpci: &setup_env_ecpci |
+  module purge
+  module load ${JOB_MODULES}
+  module list
+  export PATH="/gpfs/wolf/csc303/scratch/vbolea/ci/utils:$PATH"
+
+.ascent-common:
+  except:
+    - schedules
+  tags:
+    - batch
+  interruptible: true
+  variables:
+    CCACHE_BASEDIR:       "/gpfs/wolf/"
+    CCACHE_DIR:           "/gpfs/wolf/csc303/scratch/vbolea/ci/ccache"
+    # -isystem= is not affected by CCACHE_BASEDIR, thus we must ignore it
+    CCACHE_IGNOREOPTIONS: "-isystem=*"
+    CCACHE_NOHASHDIR:     "true"
+
+    CUDAHOSTCXX:          "g++"
+    CUSTOM_CI_BUILDS_DIR: "/gpfs/wolf/csc303/scratch/vbolea/ci/adios2"
+    GITLAB_SITE:          "OLCF Ascent"
+    CI_BIN_DIR:           "$CI_PROJECT_DIR/build"
+    SCHEDULER_PARAMETERS: -P CSC303 -W 1:00 -nnodes 1 -alloc_flags gpudefault
+  before_script:
+    - *setup_env_ecpci
+    - ccache -z
+  script:
+    - bash scripts/ci/gitlab-ci/run.sh update
+    - bash scripts/ci/gitlab-ci/run.sh configure
+    - jsrun -n1 -a1 -g1 -c40 -bpacked:40 bash scripts/ci/gitlab-ci/run.sh build
+    - jsrun -n1 -a1 -g1 -c2 bash scripts/ci/gitlab-ci/run.sh test
+  after_script:
+    - *setup_env_ecpci
+    - bash scripts/ci/gitlab-ci/run.sh submit
+    - ccache -s
+
+ascent-cuda:
+  variables:
+    # Order matters
+    JOB_MODULES: >-
+      DefApps
+      zstd
+      cuda/11.4.2
+      git
+      gcc/10.2.0
+      ninja
+      spectrum-mpi
+      lsf-tools
+      libffi
+      hdf5
+      cmake
+  extends:
+    - .ascent-common
+
+ascent-kokkos-cuda:
+  variables:
+    # Order matters
+    JOB_MODULES: >-
+      DefApps
+      zstd
+      cuda/11.4.2
+      git
+      gcc/10.2.0
+      ninja
+      spectrum-mpi
+      lsf-tools
+      libffi
+      hdf5
+      cmake
+    KOKKOS_VER: 3.7.01
+    Kokkos_DIR: "$CI_PROJECT_DIR/deps/kokkos_install"
+    # Cmake would not install a RPATH inside the source dir
+    LD_LIBRARY_PATH: "$Kokkos_DIR/lib64/:$LD_LIBRARY_PATH"
+    KOKKOS_OPTS: >-
+      -DKokkos_ARCH_POWER9=ON
+      -DKokkos_ARCH_VOLTA70=ON
+      -DKokkos_ENABLE_CUDA=ON
+      -DKokkos_ENABLE_CUDA_LAMBDA=ON
+      -DCMAKE_INSTALL_PREFIX:PATH=$Kokkos_DIR
+      -DCMAKE_CXX_COMPILER:STRING=$CI_PROJECT_DIR/deps/kokkos-$KOKKOS_VER/bin/nvcc_wrapper
+  before_script:
+    - *setup_env_ecpci
+    - mkdir -p "$CI_PROJECT_DIR/deps"
+    - ccache -z
+    - .gitlab/config/kokkos.sh "$CI_PROJECT_DIR/deps" "$KOKKOS_VER" $KOKKOS_OPTS
+  extends:
+    - .ascent-common
+
+ascent-nvhpc:
+  variables:
+    # Order matters
+    JOB_MODULES: >-
+      DefApps
+      zstd
+      nvhpc
+      git
+      spectrum-mpi
+      lsf-tools
+      libffi
+      hdf5
+      cmake
+  extends:
+    - .ascent-common
+
+ascent-xl:
+  variables:
+    # Order matters
+    JOB_MODULES: >-
+      DefApps
+      zstd
+      cuda/11.4.2
+      git
+      xl
+      ninja
+      spectrum-mpi
+      lsf-tools
+      libffi
+      hdf5
+      cmake
+  extends:
+    - .ascent-common
+
+sync-github-prs:
+  tags:
+    - nobatch
+  only:
+    - schedules
+  variables:
+    CUSTOM_CI_BUILDS_DIR: "/gpfs/wolf/csc303/scratch/vbolea/ci/adios2"
+  script:
+    - export PATH="/gpfs/wolf/csc303/scratch/vbolea/ci/utils:$PATH"
+    - .gitlab/config/SpackCIBridge.py ornladios/ADIOS2 git@code.ornl.gov:ecpcitest/adios2.git https://code.ornl.gov/ ecpcitest/adios2 --prereq-check=format --prereq-check=git_checks

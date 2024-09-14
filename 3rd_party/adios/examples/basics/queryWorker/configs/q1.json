@@ -1,0 +1,38 @@
+{
+   "io": {
+      "name": "query",
+      "var": {
+         "name": "T",
+         "boundingbox": {	
+            "start": "5,0",
+            "count": "12,12"
+         },
+         "op": {		
+            "value": "OR",
+            "range": [
+               {
+                  "compare": "GT",
+                  "value": "6.6"
+               },
+               {
+                  "compare": "LT",
+                  "value": "-0.17"
+               }
+            ],
+            "op": {
+               "value": "AND",
+               "range": [
+                  {
+                     "compare": "LT",
+                     "value": "2.9"
+                  },
+                  {
+                     "compare": "GT",
+                     "value": "2.8"
+                  }
+               ]
+            }
+         }
+      }
+   }
+}

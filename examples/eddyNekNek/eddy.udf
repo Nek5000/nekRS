@@ -80,14 +80,14 @@ void exact(dfloat *uu, dfloat *vv, dfloat *ww, dfloat xx, dfloat yy, dfloat zz, 
 }
 
 // Boundary conditions
-void velocityDirichletConditions(bcData *bc)
+void codedFixedValueVelocity(bcData *bc)
 {
   bc->u = bc->uinterp;
   bc->v = bc->vinterp;
   bc->w = bc->winterp;
 }
 
-void scalarDirichletConditions(bcData *bc)
+void codedFixedValueScalar(bcData *bc)
 {
   if(bc->scalarId == 0){
     bc->s = bc->sinterp;

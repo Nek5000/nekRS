@@ -1,0 +1,13 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: EVPath
+Description: 
+URL: https://github.com/GTkorvo/evpath.git
+Version: @EVPath_VERSION@
+Requires: @_pkg_config_reqs@
+Requires.private: @_pkg_config_private_reqs@
+Cflags: -I${includedir}
+Libs: -L${libdir} -l@FFS_LIBRARY_PREFIX@evpath @_pkg_config_libs@
+Libs.private: @_pkg_config_private_libs@

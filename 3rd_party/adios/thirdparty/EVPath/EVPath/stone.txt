@@ -1,0 +1,83 @@
+The idea of EVPATH is to push most ECho-style data routing, processing and
+transport down to a CM-like layer that is divorced from the logic of how
+that processing is determined and controlled.  Ideally we would also like to
+address some of the deficiencies of ECho, such as rigidity in type handling,
+as well as maintaining all of ECho's current capabilities (protochannels,
+derived event channels, multisubscribes, etc.)  We'd also like to be able to
+handle some of the things that ECho doesn't do yet, such as congestion
+handlers (backpressure on transmit causing application-specific adaptation),
+multicast channel segments and hopefully dynamic reconfiguration of overlay
+networks.  (Most of the hard work of placement decisions, etc is punted to
+some higher level, EVPATH would only implement the transport and respond to
+reconfiguration commands.) 
+
+In early discussions we've talked about "queues" and "actions", constituting
+"paths".  A single process might contain a number of queues and actions,
+implementing the event flow processing that occurs in that process, and data
+flows between processes would be tagged with a "path ID" that would identify
+their destination path on the remote process.  Unicast communication links
+can use "local" (not globally unique) path IDs, but multicast links would
+require some non-local path identification.  An early decision was made not
+to embed unique name generation in EVPATH.  Instead higher layers would
+supply such names when required.  We also arbitrarily associated a queue
+with each action with the idea that these queues might serve to hold
+messages when actions were "held" pending reconfiguration (as well as for
+uniformity). 
+
+However, there were two things that were not really specified in early
+discussions: the role of types and what the "path ID" in an incoming message
+really identified (I.E. a queue?  an action?).  Types are important,
+particularly because some actions are by nature type-rigid (such as
+application-supplied handlers), and our current conception of most ECho
+abstractions are relatively type-rigid (derived event channels require a
+matching type for input, multisubscribe event queues are mono-typed, etc.),
+yet one of the goals is to relax some of ECho's type rigidity and hopefully
+accomodate some of the message evolution techniques that Sandip has
+developed. 
+
+To try to address both of these concerns I've introduced the concept of a
+"stone".  (Think of multiple stepping stones making up a "path".)  The idea
+is that a stone will serve as a "target" (I.E. the "path ID" I've previously
+referred to is actually a "stone ID".  This is probably better nomenclature
+since path ID implies an end-to-end continuity of identification that is not
+intended.)   Also, the stone will serve as a point at which we will perform
+type-based matching with actions.  That is, actions, both typed and untyped,
+will be associated with stones.  Essentially, when an event arrives, we
+match it against the set of typed actions that have been registered with the
+stone.  If there are no compatible matches, we attempt to find a
+backwards-compatible match (a la Sandip).  Finally we would apply an untyped
+action. 
+
+Optimization notes:  events might arrive at a stone in either encoded (raw
+from the network) or decoded (from another action or the application) state.
+EVPATH would use a lazy mechanism for deciding when to transition between
+states.  The full resolution action resolution protocol described above
+would be applied only the first time a particular PBIO format ID appeared at
+a particular stone.  A cache would remember the result of prior decisions so
+that the same action could be applied quickly.  I would tend to structure
+the decision/action process where the rollback/decode steps would be
+performed and then the event resubmitted to the decision process.  This is
+anticipation that some future less-rigid definition of ECho-style actions
+might require new DCG for compatible but not identical types. 
+
+Patrick raised the question of whether or not the stones should be
+first-class objects.  In particular, my observation that they act as
+mini-CMs implies that they are relatively heavy-weight (a disadvantage since
+they would be created and destroyed when channels/overlays were
+reconfigured) and that they seemed to serve no purpose except as
+containers.  I've thought about this a fair amount.  Probably we could do
+away with stones and simply index registered actions by stone ID, and have
+everything be relatively global.  That might make it easier to share, for
+example, generated code between stones that use the same formats.  That
+could be important if there were many identical paths through a node (like
+if there were many channels of the same type on a node).  However, I still
+tend to prefer keeping the stone as a first class object.  I think it makes
+sense as a basic unit of reconfiguration to offer to the higher layers,
+which tends to make me think that it should have some incarnation in the
+EVPATH layer.  And I think that it is not as heavy weight as one might
+think.  Or rather, alternative implementations are just as heavy weight
+(requiring the creation/destruction of code and caches when a particularly
+stone ID was created/destroyed) unless additional mechanisms (code caches,
+etc.) were implemented (and those mechanisms could be implemented whether or
+not stones are first-class objects).
+

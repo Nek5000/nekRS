@@ -1,0 +1,17 @@
+name: adios2-python-docs
+
+channels:
+  - conda-forge
+
+dependencies:
+  - breathe
+  - cmake
+  - docutils
+  - libpython-static
+  - numpy
+  - pip
+  - sphinx
+  - pip:
+    - blockdiag
+    - sphinxcontrib-blockdiag
+    - sphinx_rtd_theme

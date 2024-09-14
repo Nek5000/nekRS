@@ -18,9 +18,9 @@ regularization = hpfrt + nModes=1 + scalingCoeff=5
 residualTol = 1e-04
 
 [VELOCITY]
-boundaryTypeMap = wall
+boundaryTypeMap = zeroValue 
 viscosity = 1/10000
-density = 1.0
+rho = 1.0
 residualTol = 1e-06
 
 [CASEDATA]

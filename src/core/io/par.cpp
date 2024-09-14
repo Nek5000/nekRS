@@ -130,8 +130,9 @@ static std::vector<std::string> generalKeys = {
     {"timestepper"},
     {"subCyclingSteps"},
     {"subCycling"},
-    {"redirectoutputto"},
+    {"redirectOutputTo"},
     {"writeControl"},
+    {"checkpointEngine"},
     {"checkpointControl"},
     {"writeInterval"},
     {"checkpointInterval"},
@@ -148,7 +149,7 @@ static std::vector<std::string> generalKeys = {
 
 static std::vector<std::string> neknekKeys = {
     {"boundaryextorder"},
-    {"multirate"},
+    {"multiratetimestepping"},
 };
 
 static std::vector<std::string> problemTypeKeys = {
@@ -170,6 +171,7 @@ static std::vector<std::string> commonKeys = {
     {"boundaryTypeMap"},
     {"maxIterations"},
     {"regularization"},
+    {"checkpointing"},
 
     // deprecated filter params
     {"filtering"},
@@ -1430,6 +1432,24 @@ void parseInitialGuess(const int rank, setupAide &options, inipp::Ini *ini, std:
   }
 }
 
+void parseCheckpointing(const int rank, setupAide &options, inipp::Ini *ini, std::string parSection)
+{
+  std::string val = "true";
+  if (ini->extract(parSection, "checkpointing", val)) {
+     if (val == "true") {
+       val = "true"; 
+     } else {
+       val = "false";
+     }
+  }
+  upperCase(val);
+
+  std::string parPrefix = parPrefixFromParSection(parSection);
+  upperCase(parPrefix);
+
+  options.setArgs(parPrefix + "CHECKPOINTING", val);
+}
+
 void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, std::string parSection)
 {
   int N;
@@ -1450,14 +1470,13 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
           {"none"},
           {"avm"},
           {"c0"},
-          {"highestmodaldecay"},
-          {"hpfresidual"},
           {"nmodes"},
           {"cutoffratio"},
           {"scalingcoeff"},
-          {"vismaxcoeff"},
           {"activationwidth"},
-          {"threshold"},
+          {"decaythreshold"},
+          {"absolutetol"},
+
       };
       const std::vector<std::string> list = serializeString(regularization, '+');
       for (const std::string s : list) {
@@ -1488,44 +1507,30 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
       }
 
       if (usesAVM) {
-        options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_HIGHEST_MODAL_DECAY");
-        options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", "0.5");
-        options.setArgs(parPrefix + "REGULARIZATION MDH ACTIVATION WIDTH", to_string_f(1.0));
-        options.setArgs(parPrefix + "REGULARIZATION MDH THRESHOLD", to_string_f(-4.0));
+        options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_AVERAGED_MODAL_DECAY");
+        options.setArgs(parPrefix + "REGULARIZATION AVM ACTIVATION WIDTH", to_string_f(1.0));
+        options.setArgs(parPrefix + "REGULARIZATION AVM DECAY THRESHOLD", to_string_f(2.0));
         options.setArgs(parPrefix + "REGULARIZATION AVM C0", "FALSE");
-        options.setArgs(parPrefix + "REGULARIZATION HPF MODES", "1");
-
-        if (regularization.find("hpfresidual") != std::string::npos) {
-          options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_RESIDUAL");
-          options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", "1.0");
-        }
 
         for (std::string s : list) {
 
           const auto nmodeStr = parseValueForKey(s, "nmodes");
           if (!nmodeStr.empty()) {
-            if (regularization.find("highestmodaldecay") != std::string::npos) {
-              append_error("nmodes qualifier is invalid for avm highestmodaldecay!\n");
-            }
-
-            double value = std::stod(nmodeStr);
-            value = round(value);
-            options.setArgs(parPrefix + "REGULARIZATION HPF MODES", to_string_f(value));
+            append_error("nModes qualifier is invalid for avm!\n");
+          }
+          const auto cutoffratioStr = parseValueForKey(s, "cutoffratio");
+          if (!cutoffratioStr.empty()) {
+            append_error("cutoffRatio qualifier is invalid for avm!\n");
           }
 
-          const auto vismaxcoeffStr = parseValueForKey(s, "vismaxcoeff");
-          if (!vismaxcoeffStr.empty()) {
-            options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", vismaxcoeffStr);
+          const auto absTolStr = parseValueForKey(s, "absolutetol");
+          if (!absTolStr.empty()) {
+            options.setArgs(parPrefix + "REGULARIZATION AVM ABSOLUTE TOL", absTolStr);
           }
 
           const auto scalingcoeffStr = parseValueForKey(s, "scalingcoeff");
           if (!scalingcoeffStr.empty()) {
-            if (regularization.find("highestmodaldecay") != std::string::npos) {
-              // in this context, the scaling coefficient can only be vismax
-              options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", scalingcoeffStr);
-            } else {
-              options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", scalingcoeffStr);
-            }
+            options.setArgs(parPrefix + "REGULARIZATION AVM SCALING COEFF", scalingcoeffStr);
           }
 
           if (s.find("c0") != std::string::npos) {
@@ -1534,13 +1539,18 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
 
           const auto rampConstantStr = parseValueForKey(s, "activationwidth");
           if (!rampConstantStr.empty()) {
-            options.setArgs(parPrefix + "REGULARIZATION MDH ACTIVATION WIDTH", rampConstantStr);
+            options.setArgs(parPrefix + "REGULARIZATION AVM ACTIVATION WIDTH", rampConstantStr);
           }
-          const auto thresholdStr = parseValueForKey(s, "threshold");
+          const auto thresholdStr = parseValueForKey(s, "decaythreshold");
           if (!thresholdStr.empty()) {
-            options.setArgs(parPrefix + "REGULARIZATION MDH THRESHOLD", thresholdStr);
+            options.setArgs(parPrefix + "REGULARIZATION AVM DECAY THRESHOLD", thresholdStr);
           }
         }
+
+        if (options.getArgs(parPrefix + "REGULARIZATION AVM ABSOLUTE TOL").empty()) {
+          append_error("absoluteTol qualifier required for avm!\n");
+        }
+
       }
 
       if (usesHPFRT) {
@@ -2006,6 +2016,21 @@ void parseGeneralSection(const int rank, setupAide &options, inipp::Ini *ini)
     append_error(error.str());
   }
 
+  options.setArgs("CHECKPOINT ENGINE", "NEK");
+  std::string checkpointEngine;
+  if (ini->extract("general", "checkpointengine", checkpointEngine)) {
+    if (checkpointEngine == "nek") {
+      options.setArgs("CHECKPOINT ENGINE", "NEK");
+    } else if (checkpointEngine == "adios") {
+      options.setArgs("CHECKPOINT ENGINE", "ADIOS");
+#ifndef NEKRS_ENABLE_ADIOS
+      append_error("ADIOS engine was requested but is not enabled!\n");
+#endif
+    } else {
+      append_error("invalid checkpointEngine");
+    }
+  }
+
   int checkpointPrecision = 0;
   if (ini->extract("general", "checkpointprecision", checkpointPrecision)) {
     if (checkpointPrecision == 64) {
@@ -2133,6 +2158,8 @@ void parsePressureSection(const int rank, setupAide &options, inipp::Ini *ini)
 {
   options.setArgs("PRESSURE ELLIPTIC COEFF FIELD", "FALSE");
 
+  parseCheckpointing(rank, options, ini, "pressure");
+
   parseSolverTolerance(rank, options, ini, "pressure");
 
   parseInitialGuess(rank, options, ini, "pressure");
@@ -2163,6 +2190,8 @@ void parseVelocitySection(const int rank, setupAide &options, inipp::Ini *ini)
   if (options.getArgs("VELOCITY STRESSFORMULATION").empty()) {
     options.setArgs("VELOCITY STRESSFORMULATION", "FALSE");
   }
+
+  parseCheckpointing(rank, options, ini, "velocity");
 
   parseInitialGuess(rank, options, ini, "velocity");
 
@@ -2246,7 +2275,7 @@ void parseNekNekSection(const int rank, setupAide &options, inipp::Ini *par)
   }
 
   std::string multirateStr;
-  if (par->extract("neknek", "multirate", multirateStr)) {
+  if (par->extract("neknek", "multiratetimestepping", multirateStr)) {
     const std::vector<std::string> validValues = {
         {"yes"},
         {"true"},
@@ -2307,9 +2336,8 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
     nscal++;
     isStart++;
 
-    {
-      parseRegularization(rank, options, ini, "temperature");
-    }
+    parseCheckpointing(rank, options, ini, "temperature");
+    parseRegularization(rank, options, ini, "temperature");
 
     options.setArgs("SCALAR" + sid + " IS TEMPERATURE", "TRUE");
 
@@ -2448,9 +2476,8 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
       sidPar = "scalar";
     }
 
-    {
-      parseRegularization(rank, options, ini, parScope);
-    }
+    parseCheckpointing(rank, options, ini, parScope);
+    parseRegularization(rank, options, ini, parScope);
 
     std::string solver;
     ini->extract(parScope, "solver", solver);

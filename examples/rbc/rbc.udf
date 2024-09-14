@@ -43,12 +43,12 @@ void UDF_ExecuteStep(double time, int tstep)
     o_hist.copyTo(hist.data());
     MPI_Allreduce(MPI_IN_PLACE, hist.data(), hist.size(), MPI_FLOAT, MPI_SUM, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0) {
-      std::ofstream outputFile("temperature.pdf");
+      std::ofstream outputFile("pdf_scalar00.dat");
       for (auto& entry : hist) outputFile << entry / mesh->volume << std::endl;
       outputFile.close();
     }
 
-    nek::ocopyToNek(time, tstep);
+    nrs->ocopyToNek(time, tstep);
     nek::userchk();
   }
 }

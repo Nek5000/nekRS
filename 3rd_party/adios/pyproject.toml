@@ -1,0 +1,89 @@
+[build-system]
+requires = ["scikit-build-core", "numpy", "setuptools_scm>=8"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "adios2"
+dynamic = ["version"]
+authors = [
+  { name="Caitlin Ross", email="caitlin.ross@kitware.com" },
+  { name="Chuck Atkins", email="chuck.atkins@kitware.com" },
+  { name="Greg S. Eisenhauer", email="eisen@cc.gatech.edu" },
+  { name="Junmin Gu", email="jgu@lbl.gov" },
+  { name="Norbert Podhorszki", email="pnorbert@ornl.gov" },
+  { name="Ruonan (Jason) Wang", email="wangr1@ornl.gov" },
+  { name="Scott Wittenburg", email="scott.wittenburg@kitware.com" },
+  { name="Spiros Tsalikis", email="spiros.tsalikis@kitware.com" },
+  { name="V. A. Bolea Sanchez", email="vicente.bolea@kitware.com" },
+  { name="William F. Godoy", email="godoywf@ornl.gov" },
+]
+description = "The Adaptable Input Output System version 2"
+readme = "ReadMe.md"
+requires-python = ">=3.8"
+keywords = [
+    "Python",
+    "Web",
+    "Application",
+    "Framework",
+]
+classifiers = [
+    "Programming Language :: C++",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "numpy",
+]
+
+[project.optional-dependencies]
+dev = [
+  'black',
+  "pip>=21.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/ornladios/adios2"
+Documentation = "https://adios2.readthedocs.io/"
+"Bug Tracker" = "https://github.com/ornladios/adios2/issues"
+Discussions = "https://github.com/ornladios/ADIOS2/discussions"
+Changelog = "https://github.com/ornladios/ADIOS2/releases"
+
+[project.entry-points."xarray.backends"]
+adios = "adios2.xarraybackend:AdiosBackendEntrypoint"
+
+[tool.cibuildwheel]
+# Trigger an install of the package, and run a basic test
+test-command = "python -m unittest adios2.test.simple_read_write.TestSimpleReadWrite"
+
+[tool.scikit-build]
+wheel.packages = ["adios2"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "VERSION.TXT"
+regex = "^(?P<value>.+?)$"
+
+[tool.scikit-build.cmake.define]
+ADIOS2_USE_PIP = "ON"
+ADIOS2_USE_Python = "ON"
+ADIOS2_USE_Fortran = "OFF"
+ADIOS2_USE_MPI = "OFF"
+ADIOS2_USE_HDF5 = "OFF"
+ADIOS2_USE_HDF5_VOL = "OFF"
+ADIOS2_USE_BZip2 = "OFF"
+ADIOS2_USE_Blosc2 = "OFF"
+ADIOS2_USE_DataMan = "OFF"
+ADIOS2_USE_SZ = "OFF"
+ADIOS2_USE_ZeroMQ = "OFF"
+ADIOS2_USE_ZFP = "OFF"
+BUILD_TESTING = "OFF"
+ADIOS2_INSTALL_GENERATE_CONFIG = "OFF"
+
+[tool.black]
+line-length = 99
+target-version = ['py38', 'py39', 'py310']
+include = 'python/adios2/.*.py|testing/adios2/python/.*.py'
+
+[tool.pylint]
+disable = ['E0401', 'W0102', 'R0904', 'R0913', 'R0401']
+good-names = ['io']

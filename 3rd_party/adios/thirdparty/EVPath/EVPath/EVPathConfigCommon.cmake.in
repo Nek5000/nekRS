@@ -1,0 +1,41 @@
+include(CMakeFindDependencyMacro)
+
+find_dependency(atl @atl_VERSION@)
+find_dependency(ffs @ffs_VERSION@)
+
+if(NOT @BUILD_SHARED_LIBS@)
+  find_dependency(dill @dill_VERSION@)
+
+  if(@NVML_FOUND@)
+    find_dependency(NVML)
+  endif()
+
+  if(NOT @EVPATH_TRANSPORT_MODULES@)
+    if(@ENET_FOUND@)
+      find_dependency(enet @enet_VERSION@)
+    endif()
+
+    if(@LIBFABRIC_FOUND@)
+      find_dependency(LIBFABRIC)
+    endif()
+
+    if(@NNTI_FOUND@)
+     find_dependency(NNTI)
+    endif()
+  endif()
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/EVPathConfigVersion.cmake")
+
+include(FindPackageHandleStandardArgs)
+set(EVPath_CONFIG "${CMAKE_CURRENT_LIST_FILE}")
+find_package_handle_standard_args(EVPath CONFIG_MODE)
+
+if(NOT TARGET EVPath::EVPath)
+  include("${CMAKE_CURRENT_LIST_DIR}/EVPathTargets.cmake")
+endif()
+
+set(EVPath_LIBRARIES EVPath::EVPath)
+set(EVPath_INCLUDE_DIRS
+  $<TARGET_PROPERTY:EVPath::EVPath,INTERFACE_INCLUDE_DIRECTORIES>
+)

@@ -21,22 +21,22 @@ file = "ethier.re2"
 residualTol = 1e-08
 
 [VELOCITY]
-boundaryTypeMap = inlet 
-residualTol = 1e-12
-density = 1.0
-viscosity = -100
-
-[TEMPERATURE]
-boundaryTypeMap = inlet 
-residualTol = 1e-12
-rhoCp = 1.0
-conductivity = -100
-
-[SCALAR01]
-boundaryTypeMap = flux
+boundaryTypeMap = codedFixedValue 
 residualTol = 1e-12
 rho = 1.0
-diffusivity = -100
+viscosity = 1/100
+
+[SCALAR00]
+boundaryTypeMap = codedFixedValue 
+residualTol = 1e-12
+rho = 1.0
+diffusivity = 1/100
+
+[SCALAR01]
+boundaryTypeMap = codedFixedGradient 
+residualTol = 1e-12
+rho = 1.0
+diffusivity = 1/100
 
 [CASEDATA]
 P_U0 = 0.5

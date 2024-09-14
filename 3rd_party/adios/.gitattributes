@@ -1,0 +1,22 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+*       text=auto
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.cxx   text
+*.h     text
+*.hxx   text
+*.tcc   text
+*.cu    text
+*.c     text
+*.h     text
+*.py    text
+*.f90   text
+*.F90   text
+*.sh    text
+
+*.cmake whitespace=tab-in-indent
+*.md    whitespace=tab-in-indent whitespace=-blank-at-eol conflict-marker-size=79
+*.rst   whitespace=tab-in-indent conflict-marker-size=79
+*.txt   whitespace=tab-in-indent
+*.xml   whitespace=tab-in-indent

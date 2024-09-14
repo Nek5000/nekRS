@@ -1,6 +1,6 @@
 // Boundary conditions
 
-void scalarDirichletConditions(bcData *bc)
+void codedFixedValueScalar(bcData *bc)
 {
   bc->s = 1.f - bc->z;
 }

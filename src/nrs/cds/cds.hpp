@@ -47,11 +47,13 @@ public:
 
   cds_t(cdsConfig_t &cfg);
   void solve(double time, int stage);
-  void makeNLT(double time, int tstep, occa::memory &o_Subcycling);
+  void makeNLT(int is, double time, int tstep, occa::memory &o_Subcycling);
   occa::memory advectionSubcyling(int nEXT, double time, int scalarIdx);
 
   void saveSolutionState();
   void restoreSolutionState();
+
+  void applyAVM();
 
   userSource_t userSource = nullptr;
   userProperties_t userProperties = nullptr;

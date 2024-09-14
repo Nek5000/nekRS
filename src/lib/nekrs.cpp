@@ -14,6 +14,7 @@
 #include "hypreWrapper.hpp"
 #include "hypreWrapperDevice.hpp"
 #include "compileKernels.hpp"
+#include "tavg.hpp"
 
 // define extern variable from nekrsSys.hpp
 platform_t *platform;
@@ -337,9 +338,10 @@ void setup(MPI_Comm commg_in,
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if (rank == 0) {
     std::cout << "\noptions:\n"
-              << platform->options << std::endl
-              << "occa memory usage: " << platform->device.memoryUsage() / 1e9 << " GB" << std::endl;
+              << platform->options << std::endl;
   }
+
+  platform->device.printMemoryUsage(platform->comm.mpiComm);
 
   platform->flopCounter->clear();
 
@@ -359,7 +361,7 @@ void setup(MPI_Comm commg_in,
 
 void copyFromNek(double time, int tstep)
 {
-  nek::ocopyToNek(time, tstep);
+  nrs->ocopyToNek(time, tstep);
 }
 
 void udfExecuteStep(double time, int tstep, int isCheckpointStep)
@@ -459,7 +461,10 @@ int checkpointStep(double time, int tStep)
     if (lastCheckpointTime == 0 && val > 0) {
       lastCheckpointTime = val;
     }
-    outputStep = ((time - lastCheckpointTime) + 1e-10) > nekrs::writeInterval();
+
+    static auto cnt = 1;
+    outputStep = time > cnt*nekrs::writeInterval();
+    if (outputStep) cnt++;
   } else {
     if (writeInterval() > 0) {
       outputStep = (tStep % (int)writeInterval() == 0);
@@ -513,11 +518,6 @@ int lastStep(double timeNew, int tstep, double elapsedTime)
   return nrs->lastStep;
 }
 
-void *platformPtr(void)
-{
-  return platform;
-}
-
 int runTimeStatFreq()
 {
   int freq = 500;
@@ -525,7 +525,7 @@ int runTimeStatFreq()
   return freq;
 }
 
-int printInfoFreq()
+int printStepInfoFreq()
 {
   int freq = 1;
   platform->options.getArgs("PRINT INFO FREQUENCY", freq);
@@ -619,12 +619,12 @@ void processUpdFile()
   }
 }
 
-void printInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo)
+void printStepInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo)
 {
-  nrs->printInfo(time, tstep, printStepInfo, printVerboseInfo);
+  nrs->printStepInfo(time, tstep, printStepInfo, printVerboseInfo);
 }
 
-void verboseInfo(bool enabled)
+void verboseStepInfo(bool enabled)
 {
   platform->options.setArgs("VERBOSE SOLVER INFO", "FALSE");
   if (enabled) {
@@ -700,6 +700,8 @@ int finalize()
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     nrs->finalize();
 
+    tavg::free();
+
     hypreWrapper::finalize();
     hypreWrapperDevice::finalize();
     AMGXfinalize();
@@ -708,7 +710,7 @@ int finalize()
 
   MPI_Allreduce(MPI_IN_PLACE, &exitValue, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
   if (platform->comm.mpiRank == 0) {
-    std::cout << "finished with exit code " << exitValue << std::endl;
+    std::cout << std::endl << "finished with exit code " << exitValue << std::endl;
   }
 
   return exitValue;

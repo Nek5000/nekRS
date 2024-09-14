@@ -21,6 +21,7 @@ static int pressureDirichletConditions = 0;
 static int scalarDirichletConditions = 0;
 static int scalarNeumannConditions = 0;
 
+static void *libudfHandle = nullptr;
 static std::string udfFile;
 
 static void verifyOudf()
@@ -63,17 +64,17 @@ void oudfFindDirichlet(std::string &field)
              MPI_COMM_SELF,
              EXIT_FAILURE,
              "%s\n",
-             "Cannot find velocityDirichletConditions!");
+             "Cannot find okl function codedFixedValueVelocity!");
 
   nekrsCheck(field.find("scalar") != std::string::npos && !scalarDirichletConditions,
              MPI_COMM_SELF,
              EXIT_FAILURE,
              "%s\n",
-             "Cannot find scalarDirichletConditions!");
+             "Cannot find okl function codedFixedValueScalar!");
 
   if (field == "pressure" && !pressureDirichletConditions) {
     if (platform->comm.mpiRank == 0) {
-      std::cout << "WARNING: Cannot find pressureDirichletConditions!\n";
+      std::cout << "WARNING: Cannot find okl function codedFixedValuePressure => fallback to zero value!\n";
     }
   }
 
@@ -84,13 +85,13 @@ void oudfFindDirichlet(std::string &field)
           MPI_COMM_SELF,
           EXIT_FAILURE,
           "%s\n",
-          "meshVelocityDirichletConditions is defined although derived mesh boundary conditions are used!");
+          "okl function codedFixedValueMesh is defined although derived mesh boundary conditions are used!");
     } else {
       nekrsCheck(!meshVelocityDirichletConditions,
                  MPI_COMM_SELF,
                  EXIT_FAILURE,
                  "%s\n",
-                 "Cannot find meshVelocityDirichletConditions!");
+                 "Cannot find okl function codedFixedValueMesh!");
     }
   }
 }
@@ -101,12 +102,12 @@ void oudfFindNeumann(std::string &field)
              MPI_COMM_SELF,
              EXIT_FAILURE,
              "%s\n",
-             "Cannot find velocityNeumannConditions!");
+             "Cannot find codedFixedGradientVelocity!");
   nekrsCheck(field.find("scalar") != std::string::npos && !scalarNeumannConditions,
              MPI_COMM_SELF,
              EXIT_FAILURE,
              "%s\n",
-             "Cannot find scalarNeumannConditions!");
+             "Cannot find codedFixedGradientScalar!");
 }
 
 void adjustOudf(bool buildRequired, const std::string &postOklSource, const std::string &filePath)
@@ -126,51 +127,51 @@ void adjustOudf(bool buildRequired, const std::string &postOklSource, const std:
     f << "#ifdef __okl__\n";
   }
 
-  bool found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityDirichletConditions)"));
+  bool found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+codedFixedValueVelocity)"));
   velocityDirichletConditions = found;
   if (!found && buildRequired) {
-    f << "void velocityDirichletConditions(bcData *bc){}\n";
+    f << "void codedFixedValueVelocity(bcData *bc){}\n";
   }
 
-  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+meshVelocityDirichletConditions)"));
+  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+codedFixedValueMesh)"));
   meshVelocityDirichletConditions = found;
 
   if (buildRequired) {
     if (bcMap::useDerivedMeshBoundaryConditions()) {
-      f << "void meshVelocityDirichletConditions(bcData *bc){\n"
-           "  velocityDirichletConditions(bc);\n"
+      f << "void codedFixedValueMesh(bcData *bc){\n"
+           "  codedFixedValueVelocity(bc);\n"
            "}\n";
     } else if (!meshVelocityDirichletConditions) {
       if (platform->options.getArgs("MESH SOLVER").empty() ||
           platform->options.compareArgs("MESH SOLVER", "NONE")) {
-        f << "void meshVelocityDirichletConditions(bcData *bc){}\n";
+        f << "void codedFixedValueMesh(bcData *bc){}\n";
       }
     }
   }
 
-  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+velocityNeumannConditions)"));
+  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+codedFixedGradientVelocity)"));
   velocityNeumannConditions = found;
   if (!found && buildRequired) {
-    f << "void velocityNeumannConditions(bcData *bc){}\n";
+    f << "void codedFixedGradientVelocity(bcData *bc){}\n";
   }
 
-  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+pressureDirichletConditions)"));
+  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+codedFixedValuePressure)"));
   pressureDirichletConditions = found;
   if (!found && buildRequired) {
-    f << "void pressureDirichletConditions(bcData *bc){}\n";
+    f << "void codedFixedValuePressure(bcData *bc){}\n";
   }
 
-  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+scalarNeumannConditions)"));
+  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+codedFixedGradientScalar)"));
   scalarNeumannConditions = found;
   if (!found && buildRequired) {
-    f << "void scalarNeumannConditions(bcData *bc){}\n";
+    f << "void codedFixedGradientScalar(bcData *bc){}\n";
   }
 
-  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+scalarDirichletConditions)"));
+  found = std::regex_search(buffer.str(), std::regex(R"(\s*void\s+codedFixedValueScalar)"));
   scalarDirichletConditions = found;
 
   if (!found && buildRequired) {
-    f << "void scalarDirichletConditions(bcData *bc){}\n";
+    f << "void codedFixedValueScalar(bcData *bc){}\n";
   }
 
   if (buildRequired) {
@@ -530,8 +531,7 @@ void udfBuild(setupAide &options)
 
 void *udfLoadFunction(const char *fname, int errchk)
 {
-  static void *h = nullptr;
-  if (!h) {
+  if (!libudfHandle) {
     std::string cache_dir(getenv("NEKRS_CACHE_DIR"));
     if (platform->cacheBcast) {
       cache_dir = fs::path(platform->tmpDir);
@@ -543,16 +543,21 @@ void *udfLoadFunction(const char *fname, int errchk)
       std::cout << "loading " << udfLib << std::endl;
     }
 
-    h = dlopen(udfLib.c_str(), RTLD_NOW | RTLD_GLOBAL);
-    nekrsCheck(!h, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", dlerror());
+    libudfHandle = dlopen(udfLib.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    nekrsCheck(!libudfHandle, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", dlerror());
   }
 
-  void *fptr = dlsym(h, fname);
+  void *fptr = dlsym(libudfHandle, fname);
   nekrsCheck(!fptr && errchk, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", dlerror());
 
   dlerror();
 
   return fptr;
+}
+
+void udfUnload()
+{
+  dlclose(libudfHandle);
 }
 
 void udfLoad()

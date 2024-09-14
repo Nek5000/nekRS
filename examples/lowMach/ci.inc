@@ -216,7 +216,7 @@ void ciTestDistance(nrs_t *nrs)
   auto mesh = nrs->meshV;
   auto dist = mesh->minDistance({1}, "cheap_dist");
 
-  nek::ocopyToNek();
+  nrs->ocopyToNek();
   nek::userchk();
   auto n5kDist = nek::ptr<double>("dist");
 
@@ -263,7 +263,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
 
   const int rank = platform->comm.mpiRank;
 
-  nek::ocopyToNek(time, tstep);
+  nrs->ocopyToNek(time, tstep);
   nek::userchk();
 
   auto err = nek::ptr<double>("errors");

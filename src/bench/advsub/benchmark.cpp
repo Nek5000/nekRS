@@ -282,7 +282,7 @@ occa::kernel benchmarkAdvsub(int Nfields,
     auto kernel = buildKernel(kernelVariant);
     if (!kernel.isInitialized()) return occa::kernel();
 
-    auto o_NUref = platform->device.malloc(wordSize * o_NU.size());
+    auto o_NUref = platform->device.malloc(o_NU.size());
     kernelRunner(referenceKernel);
     o_NU.copyTo(o_NUref);
 
@@ -292,12 +292,14 @@ occa::kernel benchmarkAdvsub(int Nfields,
       std::vector<dfloat> referenceResults(Ntotal);
       std::vector<dfloat> results(referenceResults.size());
 
-      o_NUref.copyTo(referenceResults.data(), referenceResults.size(), i*fieldOffset);
-      o_NU.copyTo(results.data(), results.size(), i*fieldOffset);
+      o_NUref.copyTo(referenceResults.data(), referenceResults.size() * wordSize, i*fieldOffset * wordSize);
+      o_NU.copyTo(results.data(), results.size() * wordSize, i*fieldOffset * wordSize);
 
-      const auto err = maxAbsErr<dfloat>(referenceResults, results, platform->comm.mpiComm, 1e-4);
+      const auto absTol = 1e-2;
+      const auto err = maxRelErr<dfloat>(referenceResults, results, platform->comm.mpiComm, absTol);
+      const auto scale = 100 * range<dfloat>(referenceResults, absTol);
  
-      if (err > 1e5 * std::numeric_limits<dfloat>::epsilon() || std::isnan(err)) {
+      if (err > scale * std::numeric_limits<dfloat>::epsilon() || std::isnan(err)) {
         if (platform->comm.mpiRank == 0 && verbosity > 1) {
           std::cout << "advSub: Ignore version " << kernelVariant << " as correctness check failed with " << err
                     << std::endl;

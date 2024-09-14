@@ -1,0 +1,223 @@
+## While parsing near l, offset = 18, line = 4 ####
+    static hort l = 3;
+                 ^
+## Ecode Error:  Reference must be structured type at line 6, char 12
+    return l.l * (j + k + i.j);
+           ^
+## Ecode Error:  Reference must be structured type at line 6, char 27
+    return l.l * (j + k + i.j);
+                          ^
+Output for code string1
+## Ecode Error:  Unknown field reference, "m". at line 2, char 46
+turn input * (input.j + input.k + input.m);
+                                       ^
+Output for code string2
+## Ecode Error:  Undefined Symbol "output" at line 2, char 21
+    return input * (output.j + input.k + input.m);
+                    ^
+## Ecode Error:  Unknown field reference, "m". at line 2, char 47
+urn input * (output.j + input.k + input.m);
+                                       ^
+Output for code string3
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 2, char 18
+    return input * (input.j + input.k + input.i);
+                 ^
+Output for code string4
+## Ecode Error:  Right hand side must be pointer type at line 2, char 14
+     input = 5;
+             ^
+Output for code string5
+## Ecode Error:  Void type may not appear with other specifiers at line 2, char 6
+     void int j = 5;
+     ^
+Output for code string6
+## Ecode Error:  String type may not appear with other specifiers at line 2, char 6
+     string int j = 5;
+     ^
+Output for code string7
+## Ecode Error:  Only one of long or short permitted at line 2, char 6
+     long short j = 5;
+     ^
+Output for code string8
+## Ecode Error:  Bad type spec at line 2, char 6
+     unsigned signed int j = 5;
+     ^
+Output for code string9
+## Ecode Error:  Short may not be specified with double or float at line 2, char 6
+     short double j = 5;
+     ^
+Output for code string10
+## Ecode Error:  Short may not be specified with double or float at line 2, char 6
+     short float j = 5;
+     ^
+Output for code string11
+## Ecode Error:  Bad type spec at line 2, char 6
+     long float int j = 5;
+     ^
+Output for code string12
+## Ecode Error:  Operands must be integral. at line 3, char 14
+    return 2 && j;
+             ^
+Output for code string13
+## Ecode Error:  Identifier is not subroutine "j". at line 3, char 13
+    return j();
+            ^
+Output for code string14
+## Ecode Error:  Undefined Subroutine "j". at line 2, char 12
+    return j();
+           ^
+Output for code string15
+## Ecode Error:  Only one integer size spec may be specified at line 2, char 5
+    short char j;
+    ^
+Output for code string16
+## Ecode Error:  Duplicate Symbol "j" at line 3, char 9
+    int j;
+        ^
+Output for code string17
+## Ecode Error:  Static initializer not constant. Variable "j" at line 6, char 26
+     static int j = input.i;
+                         ^
+Output for code string18
+## Ecode Error:  Indexed element must be array, string or reference type. at line 2, char 21
+     int j = input.i[14];
+                    ^
+Output for code string19
+## Error Unterminated string constant
+## While parsing near 
+, offset = 17, line = 6 ####
+     string j = " stuff here 
+                ^
+Output for code string20
+## Error bad octal escape character
+## While parsing near \406, offset = 17, line = 2 ####
+     string j = "\406";
+                ^
+Output for code string21
+## Error bad character escape
+## While parsing near \948, offset = 17, line = 2 ####
+     string j = "\948";
+                ^
+Output for code string22
+## Ecode Error:  Right hand side must be pointer type at line 2, char 16
+     int *pi = 3.14;
+               ^
+Output for code string23
+## Ecode Error:  Invalid assignment, left side is const at line 3, char 10
+				     pi = 5;
+				     ^
+Output for code string24
+## Ecode Error:  Array size expression must be constant. at line 3, char 19
+				     int array[input];
+				              ^
+Output for code string25
+## Ecode Error:  Array size expression must be constant. at line 3, char 19
+				     int array[pi+input.i];
+				              ^
+## Ecode Error:  External symbol lacking address "printf" at line 1, char 5
+int printf(string format, ...);
+    ^
+## Ecode Error:  Undefined Subroutine "printf". at line 1, char 5
+{			printf("values are is %d, %g\n", i, d);		}
+ 			^
+## Ecode Error:  Type mismatch, parameter "format". at line 1, char 12
+{			printf(i, "values are is %d, %g\n", i, d);		}
+ 			       ^
+## Ecode Error:  Too many arguments to subroutine at line 1, char 18
+{			junk(1, 3.5, 4);		}
+ 			             ^
+## Ecode Error:  Index for element reference must be integer type at line 8, char 28
+			sum = sum + input.levels[sum];
+			                        ^
+## Ecode Error:  Illegal pointer arithmetic. Left side is of incompatible type. at line 9, char 14
+			sum = sum + input.levels;
+			          ^
+## Ecode Error:  Invalid operand to unary minus
+ at line 10, char 9
+    p = - q;
+        ^
+## Ecode Error:  Invalid operand to unary plus
+ at line 11, char 9
+    p = + q;
+        ^
+## Ecode Error:  Invalid operands to binary plus at line 14, char 11
+    p = p + q;
+          ^
+## Ecode Error:  Incompatible pointer arguments to binary minus at line 16, char 11
+    p = p - r;
+          ^
+## Ecode Error:  Illegal pointer arithmetic. Right side is of incompatible type. at line 19, char 11
+    p = p + f;
+          ^
+## Ecode Error:  Illegal pointer arithmetic. Right side is of incompatible type. at line 20, char 11
+    p = p - f;
+          ^
+## Ecode Error:  Illegal pointer arithmetic. Right side is of incompatible type. at line 21, char 11
+    p = p + d;
+          ^
+## Ecode Error:  Illegal pointer arithmetic. Right side is of incompatible type. at line 22, char 11
+    p = p - d;
+          ^
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 25, char 11
+    p = p % i;
+          ^
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 26, char 11
+    p = p | i;
+          ^
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 27, char 11
+    p = p ^ i;
+          ^
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 28, char 11
+    p = p & i;
+          ^
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 29, char 11
+    p = p >> 1;
+          ^
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 30, char 11
+    p = p >> i;
+          ^
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 31, char 11
+    p = p << 1;
+          ^
+## Ecode Error:  Operator cannot be applied to pointer types!
+ at line 32, char 11
+    p = p << i;
+          ^
+## Ecode Error:  Invalid operand to address operator at line 2, char 12
+    return &(2+3);
+           ^
+## Ecode Error:  Return value missing in non-VOID subroutine at line 2, char 5
+    return;
+    ^
+## Ecode Error:  Return value supplied in subroutine declared to return VOID at line 2, char 5
+    return 1;
+    ^
+## Ecode Error:  Label "where" not found.  Goto has no target. at line 2, char 5
+    goto where;
+    ^
+## Ecode Error:  Label "what" not found.  Goto has no target. at line 3, char 5
+    goto what;
+    ^
+## Ecode Error:  Continue or Break statement not contained inside an iterator. at line 4, char 2
+	continue;
+	^
+## Ecode Error:  Continue or Break statement not contained inside an iterator. at line 4, char 2
+	break;
+	^
+## Ecode Error:  Control reaches end of non-void function. at line 0, char 0
+{
+^
+## Ecode Error:  Invalid assignment, left side is const at line 2, char 9
+			input.val = 5.5;
+			     ^
+## Ecode Error:  Invalid assignment, left side is const at line 2, char 19
+			input.levels[0][0] = 5.5;
+			               ^

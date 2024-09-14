@@ -79,6 +79,7 @@ using dlong = long long int;
 #include <cstddef>
 #include <unistd.h>
 #include <getopt.h>
+#include <cstdint>
 #include <sys/stat.h>
 #include <cfenv>
 

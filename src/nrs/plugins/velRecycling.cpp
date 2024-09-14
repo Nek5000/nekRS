@@ -131,7 +131,7 @@ void velRecycling::setup(occa::memory o_wrk_,
   // relies on a special global element numbering (extruded mesh)
   auto ids = (hlong *)calloc(Ntotal, sizeof(hlong));
   for (int e = 0; e < mesh->Nelements; e++) {
-    const hlong eg = nek::lglel(e); // 0-based
+    auto eg = nek::localElementIdToGlobal(e);
 
     for (int n = 0; n < mesh->Np; n++) {
       ids[e * mesh->Np + n] = eg * mesh->Np + (n + 1);

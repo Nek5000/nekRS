@@ -1,0 +1,36 @@
+package:
+  name: adios2
+  version: {{ GIT_DESCRIBE_TAG }}
+
+build:
+  number: {{ GIT_DESCRIBE_NUMBER }}
+  string: {{ GIT_BUILD_STR }}
+  script:
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_PREFIX_PATH="{{ PREFIX }}" {{ RECIPE_DIR }}/superbuild
+    - cmake --build .
+
+source:
+  git_url: https://github.com/ornladios/adios2.git
+  git_rev: master
+
+requirements:
+  build:
+    - python
+    - mpi4py
+    - numpy
+    - cmake
+  run:
+    - python
+    - mpi4py
+    - numpy
+
+test:
+  imports:
+    - adios2
+
+about:
+  home: https://github.com/ornladios/adios2
+  license: Apache2
+  license_file: LICENSE

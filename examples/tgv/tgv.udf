@@ -1,3 +1,5 @@
+deviceMemory<dfloat> o_qcriterion;
+
 #ifdef __okl__
 
 @kernel void
@@ -111,6 +113,9 @@ void UDF_Setup()
       nrs->U[n + 2 * nrs->fieldOffset] = W0;
     }
   }
+
+  o_qcriterion.resize(mesh->Nlocal);
+  nrs->addUserCheckpointField("scalar00", std::vector<deviceMemory<dfloat>>{o_qcriterion});
 }
 
 void UDF_ExecuteStep(double time, int tstep)
@@ -118,7 +123,6 @@ void UDF_ExecuteStep(double time, int tstep)
   printDiagnostics(nrs, time, tstep);
 
   if (nrs->isCheckpointStep) {
-    nek::ocopyToNek(time, tstep);
-    nek::userchk();
+    nrs->Qcriterion(o_qcriterion);
   }
 }

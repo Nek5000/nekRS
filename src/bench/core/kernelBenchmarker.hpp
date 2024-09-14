@@ -57,3 +57,15 @@ T maxAbsErr(const std::vector<T>& uRef, const std::vector<T>& u, MPI_Comm comm, 
   MPI_Allreduce(MPI_IN_PLACE, &err, 1, MPI_DOUBLE, MPI_MAX, comm);
   return static_cast<T>(err);
 }
+
+template <typename T>
+T range(const std::vector<T>& u, T absTol)
+{
+  T minAbsValue = std::numeric_limits<T>::max();
+  for (const auto& val : u) {
+      if (std::abs(val) < absTol) continue;
+      if (std::abs(val) < minAbsValue) minAbsValue = std::abs(val);
+  }
+  const auto maxValue = *std::max_element(u.begin(), u.end());
+  return std::abs(maxValue) / minAbsValue;
+}

@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<!-- Config XML file fo the
+     - adios2_simulations_heatTransferWrite
+     - adios2_simulations_heatTransferRead
+     executables in build/bin
+
+When using this XML config, one must launch the reader and writer
+application together with a single mpirun command. They will share
+the MPI_COMM_WORLD and create two partitions of the processes.
+
+-->
+
+<adios-config>
+
+    <!--====================================
+           Configuration for the Writer
+        ====================================-->
+
+    <io name="writer">
+        <engine type="SSC">
+            <parameter key="verbose" value="5"/>
+
+            <!-- Microseconds (default), Milliseconds, Seconds,
+                 Minutes, Hours -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+        </engine>
+    </io>
+
+
+    <!--=======================================
+           Configuration for the Reader input
+        =======================================-->
+
+    <io name="readerInput">
+        <engine type="SSC">
+            <parameter key="verbose" value="5"/>
+
+            <!-- Microseconds (default), Milliseconds, Seconds,
+                 Minutes, Hours -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+        </engine>
+    </io>
+
+
+    <!--=======================================
+           Configuration for the Reader output
+        =======================================-->
+
+    <io name="readerOutput">
+        <engine type="File">
+        </engine>
+    </io>
+</adios-config>

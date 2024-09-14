@@ -1,0 +1,23 @@
+@headers@
+
+#include <stdio.h>
+
+#ifdef __CLASSIC_C__
+int main(argc, argv) int argc; char *argv[];
+#else
+int main(int argc, char *argv[])
+#endif
+{
+  @type@ sample = @value@;
+  const unsigned char* ptr = (const unsigned char*) &sample;
+  size_t i;
+
+  for (i = 0; i < sizeof(@type@); ++i) {
+    printf("%.2x", ptr[i] & 0xFF);
+  }
+  fflush(stdout);
+
+  (void)argc;
+  (void)argv;
+  return 0;
+}

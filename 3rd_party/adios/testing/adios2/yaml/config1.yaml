@@ -1,0 +1,23 @@
+---
+# adios2 config file in yaml format
+
+## 1st IO ###
+- IO: "Test IO 1"
+  Engine:
+      # only type must be lower case
+    Type: "BPFile"
+    Threads: 1
+    ProfileUnits: Microseconds
+    MaxBufferSize: 20Mb
+    InitialBufferSize: 1Mb
+    BufferGrowthFactor: 2
+    
+  Transports:
+      - {Type: file, Library: fstream, ProfileUnits: Milliseconds }
+     
+     
+### 2nd IO ####
+- IO: "Test IO 2"
+  
+  Engine:
+    Type: "BPFile"

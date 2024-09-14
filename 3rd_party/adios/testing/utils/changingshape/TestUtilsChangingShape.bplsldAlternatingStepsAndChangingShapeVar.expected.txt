@@ -1,0 +1,8 @@
+  double   AlternatingStepsAndChangingShapeVar  5*{1, __} = 0 / 8.1
+ERROR: This variable has a changing shape over time, so bpls cannot dump it as a global array. 
+You can dump a single step with
+    bpls -d AlternatingStepsAndChangingShapeVar -s "T,0,0" -c "1,-1,-1"
+where T is a number between 0 and 4,
+or dump each block separately with 
+    bpls -dD AlternatingStepsAndChangingShapeVar
+

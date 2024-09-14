@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!-- Config XML file for the
+        hello_skeleton*
+     executables in build/bin -->
+
+<adios-config>
+
+    <!--====================================
+           Configuration for the Writer
+        ====================================-->
+
+    <io name="writer">
+        <variable name="data">
+            <operation type="plugin">
+                <parameter key="PluginName" value="OperatorPlugin"/>
+                <parameter key="PluginLibrary" value="EncryptionOperator" />
+                <parameter key="SecretKeyFile" value="test-key" />
+            </operation>
+        </variable>
+        <engine type="BP4">
+        </engine>
+    </io>
+
+
+    <!--====================================
+           Configuration for the Reader
+        ====================================-->
+
+    <io name="reader">
+        <variable name="data">
+            <operation type="plugin">
+                <parameter key="PluginName" value="OperatorPlugin"/>
+                <parameter key="PluginLibrary" value="EncryptionOperator" />
+                <parameter key="SecretKeyFile" value="test-key" />
+            </operation>
+        </variable>
+        <engine type="BPFile">
+        </engine>
+    </io>
+</adios-config>

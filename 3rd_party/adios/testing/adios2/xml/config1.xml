@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<adios-config>
+    <io name="Test IO 1">
+        <engine type="BPFile">
+            <parameter key="Threads" value="1"/>
+            <parameter key="ProfileUnits" value="Microseconds"/>
+            <parameter key="MaxBufferSize" value="20Mb"/>
+            <parameter key="InitialBufferSize" value="1Mb"/>
+            <parameter key="BufferGrowthFactor" value="2"/>
+        </engine>
+        <transport type="File">
+            <parameter key="Library" value="fstream"/>
+            <parameter key="ProfileUnits" value="Milliseconds"/>
+        </transport>
+    </io>
+    <io name="Test IO 2">
+        <engine type="BPFile" />
+    </io>
+</adios-config>

@@ -1,0 +1,14 @@
+  double   a     3*{100, 200} = 0 / 0
+        step 0: 
+          block 0: [ 0:99,   0:199] = 0 / 0
+        step 1: 
+          block 0: [ 0:99,   0:199] = 0 / 0
+        step 2: 
+          block 0: [ 0:99,   0:199] = 0 / 0
+  float    b     3*{100} = 0 / 0
+        step 0: 
+          block 0: [ 0:99] = 0 / 0
+        step 1: 
+          block 0: [ 0:99] = 0 / 0
+        step 2: 
+          block 0: [ 0:99] = 0 / 0

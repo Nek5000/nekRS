@@ -1,0 +1,4 @@
+margin = 80
+join_lines_based_on_source = true
+style = "sciml"
+format_doctrings = true

@@ -1,0 +1,32 @@
+#!/bin/bash
+
+FNAME=$1
+if [ "x$FNAME" == "x" ]; then
+    echo "Missing BP data set name"
+    exit 1
+fi
+
+if [ ! -d $FNAME ]; then
+    echo "Not a valid BP output: $FNAME"
+    echo "BP data set should be a directory"
+    exit 2
+fi
+
+if [ ! -f $FNAME/md.idx ]; then
+    echo "Not a valid BP output: $FNAME"
+    echo "Missing $FNAME/md.idx file"
+    exit 3
+fi
+
+# Get BP version
+v=`od -An -j 37 -N 1 -tu1 $FNAME/md.idx`
+
+if (( v == 4 )); then
+    printf '\x00' | dd of=$FNAME/md.idx bs=1 seek=38 conv=notrunc
+elif (( v == 5 )); then
+    printf '\x00' | dd of=$FNAME/md.idx bs=1 seek=39 conv=notrunc
+else
+    echo "This BP version is not supported by this script. Version found: $v"
+fi
+
+

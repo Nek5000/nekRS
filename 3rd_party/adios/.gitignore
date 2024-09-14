@@ -1,0 +1,46 @@
+# Vi(m) temporary buffer files
+*.sw?
+
+# Emacs temporary files
+*~
+
+#Eclipse
+.cproject
+.project
+.settings/
+.pydevproject
+
+#binary, library, or temporary build files
+*.o
+*.a
+*.so
+*.tmp
+*.exe
+*.bp
+*.out
+*.pyc
+*.bp
+*.bp.dir
+build/
+
+# Mac OSX finder-related files
+.DS_Store
+
+# Doxygen generated files
+html/
+*.html
+docs/api_doxygen/CXX11/xml/
+docs/api_doxygen/C/xml/
+
+# readthedocs generated:
+docs/bin/
+docs/lib/
+docs/pyvenv.cfg
+
+# Visual Studio
+.vs/
+CMakeSettings.json
+
+# Python wheels stuff
+
+*.egg-info/

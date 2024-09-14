@@ -1,0 +1,26 @@
+
+# /
+/*.exp
+/*.la
+/*.lib
+/*.lo
+/.deps
+/.libs
+/.~*
+/Makefile
+/atom_server
+/atom_test
+/attr_dump
+/attr_test
+/autom4te.cache
+/config.cache
+/config.h
+/config.log
+/config.status
+/libtool
+/msvc.txt
+/stamp-h*
+/stamp-h.in
+/vc*.pch
+/atl.vcproj.*
+/atom_check

@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<Object name="VisIt">
+    <Field name="Version" type="string">3.0.0b</Field>
+    <Object name="GUI">
+        <Object name="FileServerList">
+            <Field name="path" type="string">gs.bp</Field>
+            <Field name="filter" type="string">*</Field>
+            <Field name="useCurrentDir" type="bool">true</Field>
+            <Field name="automaticFileGrouping" type="bool">true</Field>
+            <Field name="smartFileGrouping" type="bool">true</Field>
+            <Field name="showDotFiles" type="bool">false</Field>
+            <Object name="recentpaths">
+                <Field name="localhost" type="stringVector">"gs.bp" </Field>
+            </Object>
+        </Object>
+        <Object name="AppearanceAttributes">
+            <Field name="useSystemDefault" type="bool">true</Field>
+            <Field name="background" type="string">#c0c0c0</Field>
+            <Field name="foreground" type="string">#000000</Field>
+            <Field name="fontName" type="string">Helvetica,12,-1,5,50,0,0,0,0,0</Field>
+            <Field name="style" type="string">gtk</Field>
+            <Field name="orientation" type="int">0</Field>
+            <Field name="defaultForeground" type="string">#000000</Field>
+            <Field name="defaultBackground" type="string">#efefef</Field>
+            <Field name="defaultFontName" type="string">"Sans Serif,9,-1,5,50,0,0,0,0,0"</Field>
+            <Field name="defaultStyle" type="string">Fusion</Field>
+            <Field name="defaultOrientation" type="int">0</Field>
+        </Object>
+        <Field name="postWhenShown" type="bool">false</Field>
+        <Object name="MainWin">
+            <Field name="x" type="int">4</Field>
+            <Field name="y" type="int">52</Field>
+            <Field name="width" type="int">398</Field>
+            <Field name="height" type="int">2104</Field>
+            <Field name="SPLITTER_VALUES_V2" type="floatVector">0 0.544259 0.4537178 </Field>
+        </Object>
+        <Object name="Contour plot attributes">
+            <Field name="x" type="int">2742</Field>
+            <Field name="y" type="int">916</Field>
+            <Field name="width" type="int">498</Field>
+            <Field name="height" type="int">832</Field>
+            <Field name="visible" type="bool">false</Field>
+            <Field name="posted" type="bool">false</Field>
+        </Object>
+        <Field name="plotDatabases" type="stringVector">"localhost:gs.bp/md.0" </Field>
+        <Object name="TimeFormat">
+            <Field name="displayMode" type="string">Cycles</Field>
+            <Field name="precision" type="int">5</Field>
+        </Object>
+        <Field name="showSelectedFiles" type="bool">false</Field>
+        <Field name="allowFileSelectionChange" type="bool">true</Field>
+        <Field name="enableWarningMessagePopups" type="bool">true</Field>
+    </Object>
+</Object>

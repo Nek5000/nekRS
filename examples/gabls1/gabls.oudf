@@ -1,13 +1,13 @@
 // Boundary conditions
 // =============================================================================
-void velocityDirichletConditions(bcData *bc)
+void codedFixedValueVelocity(bcData *bc)
 {
   bc->u = 1.0;
   bc->v = 0;
   bc->w = 0;
 }
 
-void velocityNeumannConditions(bcData *bc)
+void codedFixedGradientVelocity(bcData *bc)
 {
   const dfloat invMagUWall = 1 / bc->usrwrk[1];
   const dfloat uTau = bc->usrwrk[3];
@@ -19,7 +19,7 @@ void velocityNeumannConditions(bcData *bc)
   bc->tr2 = -ut2x * invMagUWall * uTau * uTau;
 }
 
-void scalarNeumannConditions(bcData *bc)
+void codedFixedGradientScalar(bcData *bc)
 {
   bc->flux = p_cond * p_TsGrad;
   if (bc->id == 2) {

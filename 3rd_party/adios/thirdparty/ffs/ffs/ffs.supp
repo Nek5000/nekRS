@@ -1,0 +1,91 @@
+{
+   Known DILL leak
+   Memcheck:Leak
+   fun:malloc
+   fun:alloc_dill_jump_table
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:malloc
+   fun:libgenthreads_init3
+}
+{
+   Atom strings persist
+   Memcheck:Leak
+   fun:malloc
+...
+   fun:set_string_and_atom
+}
+{
+   Atom strings persist
+   Memcheck:Leak
+   fun:malloc
+...
+   fun:attr_atom_from_string
+}
+{
+   Atom strings persist
+   Memcheck:Leak
+   fun:malloc
+...
+   fun:init_atom_server
+}
+{
+   Funky strcpy overlap in decode
+   Memcheck:Overlap
+   fun:strcpy
+...
+   fun:FFSconvert_record
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:*
+   fun:init_env_table
+}
+{
+   Unpleasant leak of string constant.  Generated code references this.  Bad.
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:cg_expr
+}
+{
+   Less painful, but could be better.  Leak name of subroutine being called.
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:cg_subroutine_call
+}
+{
+   This seems to be a Bison/Yacc issue.  Possible non-reentrant.
+   Memcheck:Leak
+...
+   fun:yyensure_buffer_stack
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Cond
+   fun:__intel_sse2_strlen
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Addr8
+   fun:__intel_sse2_strlen
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Cond
+   fun:FMstr_to_data_type
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Addr8
+   fun:FMstr_to_data_type
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Value8
+   fun:FMstr_to_data_type
+}

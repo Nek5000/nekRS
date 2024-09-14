@@ -1,0 +1,21 @@
+/**
+ * @mainpage EVpath functionality
+
+ \section intro Introduction
+
+The EVPath system consists of several sets of related interfaces, as well as
+supporting libraries maintained in separate repositories.  This particular
+document contains information about the nature and usage of the baseline
+EVPath APIs, the slightly-higher-level EVdfg API, as well as the underlying
+Connection Manager (CM) APIs.
+
+- \link evpath-intro EVPath functions \endlink
+- \link evdfg-intro EVdfg functionality \endlink
+- \link cm-intro Connection Manager functionality \endlink
+
+Other useful information:
+- \link evpath-creation The EVPath creation myth \endlink
+- \link ffs-intro Fast Flexible Serialization (types in EVPath) \endlink
+- \link atl-intro The attribute library \endlink
+
+*/

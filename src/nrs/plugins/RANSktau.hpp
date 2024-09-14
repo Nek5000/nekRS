@@ -8,7 +8,7 @@ namespace RANSktau
 {
 void buildKernel(occa::properties kernelInfo);
 void updateSourceTerms();
-void setup(dfloat mue, dfloat rho, int startIndex);
+void setup(int startFieldIndex);
 void updateProperties();
 const deviceMemory<dfloat> o_mue_t();
 }

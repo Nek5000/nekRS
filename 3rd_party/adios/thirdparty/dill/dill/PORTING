@@ -1,0 +1,170 @@
+
+
+		Lasciate ogne speranza, voi ch'intrate.
+
+
+Starting:
+	Copy files (arch.c and arch.ops) from some other platform (notes
+below on how to choose), rename all internal routines not to conflict, add
+dill_arch.c and arch.c to SOURCES in Makefile.am, dill_arch.c to
+CLEANFILES, copy dill_arch.c target (like other archs).  In configure.ac,
+extend $host_cpu case to cover new target, probably you can copy and modify
+a current entry.  In dill_util.c, add an extern for dr_arch_init(), and add
+an entry in set_mach_reset for the new arch.
+	You'll need a disassembler to make any progress, there is one in
+libopcodes (which comes with binutils).  If necessary, build libopcodes for
+the new arch and look to be sure what the disassembly routine is.  You
+should have a "arch_print_insn()" routine in your arch.c file.  This calls
+the appropriate libopcodes routine to dump an instruction.  The
+arch_init_disassembly_info() routine may need to setup the binutils
+disassemble_info (for things like instruction arch, etc.)
+	After all that, you should be able to link tests/t1.  If you run it,
+it'll blow up, but at least you can link.
+
+Organization:
+	The arch.ops basically exists to generate a jump table.  Dill
+operations, (like dr_addi() for example) are macros that compile down to a
+call through the jump table (through a routine of the type arith_op3 for
+dr_addi()).  The routines that get jumped to live in arch.c.  Because dill
+dispatches through a jump table, different dill implementations can
+co-exist in the same address space (so we can potentially do cross targets,
+etc).  The target routines take the same parameters as the dr_ instructions
+(dill_ctx, registers, immediate, etc) along with "extra" parameters.  These
+extra parameters can be used to pass opcodes, etc.  (For example, the sparc
+add, sub, mul, and, or, xor, lsh, rsh all jump to sparc_FORM3_arith(),
+passing in the appropriate opcode for each operation.)  So, as this goes
+forward, you'll likely modify arch.ops and arch.c both as you implement
+instructions.
+
+First steps:
+	Start with tests/t1.  This test just trys to create a subroutine
+that returns an integer value.  Requires you to at least get simple
+subroutine entry/exit code and setting the return register.  Then you can
+move on to the rest of the "tests" directory.  BTW, the tests directory
+contains tests that can be run without register allocation.  Generally one
+or two input parameters, return values, arithmetic, function calls, etc.
+Probably the most complex thing to get right is arch_proc_start, which
+handles incoming parameters and builds the datastructures we'll use to
+locate them later.  This is easiest if you pick an architecture that is
+similar.  Dill tries to leave parameters in registers.  At the end of
+arch_proc_start(), all params that can be should be in registers where then
+can stay or they should be stored on the stack.  (You need at least two of
+them in registers for most of the stuff in tests to work.  The rest we won't
+really test until you get to the "vtests" directory.)  On archs like sparc
+which use register windows, this is easy.  sparc_proc_start() doesn't do
+much at all for integer params, just noting that the arrive in i0, i1, etc.
+These registers are preserved across calls and we don't have to use them for
+outgoing parameters, so there's no need to move most of them.  (Float params
+get moved to float regs, some odd cases get handled, but nothing much
+happens for the first bunch of parameters.)  For arch like x86_64, the regs
+that are used for our incoming parameters are the same ones we have to use
+for any outgoing parameters, so it's best not to leave anything there.
+x86_64_proc_start moves some of the (up to 6) incoming register params to
+new registers (prefer "var" regs that are preserved across calls) and moves
+the rest to storage on the stack.  Don't use all your regs for parameters as
+you'll need some for other stuff later.  Also, in configure.ac we setup
+TEST_PERL_FLAGS that influences test generation in the "tests" directory.
+Two important flags are "-max_arg=" and "-no_float".  Set -max_arg to the
+number of parameters you can leave in registers.  Use -no_float if you have
+no floating point registers (currently only x86, which has that stupid 8087
+stack thing).
+
+Random notes:
+ - You can generally look at gcc output to get idea what code to
+generate for particular situations.  Write a simple test and do "gcc -S -O0".
+In gdb, "x /i addr" will show an instruction and "x /x addr" will show the
+encoding.
+ - Some systems have different caches for instructions and data.
+Particularly when you hit the tests where we generate and regenerate code in
+the same memory areas it's possible to get *really* confusing results.  The
+arch_flush() routine will be called at the end of every code generation to
+flush the data cache (so that the instruction fetch will get the right
+data).  Figure out how to flush the cache on your arch and implement it in
+arch_flush().
+ - We try to avoid data associated with the generated instruction
+stream, so all constants get generated inline (I.E. with instructions that
+have immediate operands) rather than using .data statements and loading them
+from memory (like gcc tends to do for non-small constants.)
+ - arch_save_restore_op() is called to save/restore in-use registers
+before and after generated subroutine calls.  For callee-saved registers, it
+should do nothing.  For others it should save/restore to a stack area
+allocated in the activation record.
+ - arch_pbsload() is a byte-swaping load operation.  This is an
+optimization used by PBIO on architectures that can do the byteswapping on
+load more efficiently than as a separate operation (sparc can use an
+alternative byte-swapped address space).
+ - Some simple operations, usually things like convert unsigned long to
+double or modulus of long operands, require *many* instructions.  Sometimes
+we just punt on those and implement the operation with a call to a "hidden"
+routine like: 
+ - static long ia64_hidden_mod(long a, long b){ return a % b; }
+If we ever try to generate code for cross-targets, these will have to be
+removed (or provided in the target environment).
+ - Most architectures us PC-relative addressing for branches, some
+calls, etc.  Because dill uses realloc() to resize the instruction buffer
+as we generate code, no instruction has a final location in memory until
+dr_end() is called.  Because of that, those instructions cannot be finalized
+until dr_end().  So, branches are marked and tentative instructions emitted,
+but then finalizeed in arch_branch_link().  The marking operation saves the
+offset of the original branch and generates the final branch in its place.
+(If instruction sizes are variable, ensure that the temporary reserves
+enough space for the final and that any unused bits are noops.)  Similar
+things happen for PC-relative calls and data labels.  (Data labels are
+little-used, but provide a mechanism for accessing the address of a label in
+the generated code.)  On some archs (64-bit for example), we reserve space
+for 32-bit offsets in the instruction stream, yet some calls have targets
+that are farther away than that (Solaris DLL routines, like printf are
+common examples).  In that case, we emit a procedure linkage table (PLT).
+The in-line jump goes to the PLT, where we've generated the jump to the
+longer offset.
+ - arch_clone_code() is used in some kernel apps.  Basically it
+implements what is necessary to make a working copy of generated code.
+Generally this involves copying the generated code and then rerunning the
+branch/call/data link operations.
+ - in the arch_reg_init() routine you initialize 4 register sets,
+temporary and variable sets for integer and float.  The "var" set should
+contain registers that the generated code is free to use and not have them
+destroyed.  I.E. callee-saved regs, regs like the sparc "local" set, etc.
+Other registers may appear in the "tmp" set, but they have to be saved and
+restored around calls, so they are less efficient to use.  Each register set
+has "members" and "init_avail" sets.  The init_avail are the registers that
+are to be considered allocable at the beginning of every routine while
+members should list all registers in that class.  Sometimes arch_proc_start
+may modify the register set, for example on sparc making sure that the
+in-use incoming param regs (i0-i5) are not available, but that the unused
+ones are.  Some registers may not be in any class.  For example, there is
+usually a designated "temporary" register, SP, PC, FP, etc.  Other registers
+are required for use in special ops (CL on x86) and it's easiest simply not
+to use them.
+ - arch_mach_info is an architecture-specific data area associated with
+the dill_ctx.  If you need to keep track of something across multiple
+instructions, maybe the number of floating point arguments you've pushed in
+the call you're generating, or something else that the generic dill
+framework doesn't do for you, add it to the arch_mach_info structure.
+ - in arch_proc_start(), *don't* assume that you know statically exactly how
+many parameters you are able to keep in registers.  PBIO, which uses DILL
+directly, does something a bit interesting.  In order to preserve some
+registers for temporary use, it does a some dill_raw_getreg()s in order to leave
+fewer available for parameters.  If you don't have the registers you need to
+store the parameters (I.E. getreg fails), store them on the stack and make
+sure that the correct offset is in the args[].offset structure.  Offsets are
+from the frame pointer (usualy the value of SP, saved upon proc entrance).
+
+The virtual target...  OK.  Raw dill doesn't offer register assignment.
+You ask for a register, if there are no more available, you just don't get
+one.  This isn't good for ECL.  So, the virtual target solves this.
+Generally, it's like the raw dill targets, but we generate "virtual" code
+without register assignments on the first pass, do some analysis and then
+regenerate "native" code on a second pass with assigned registers.  You do
+the register sets right, you'll never have to touch anything in virtual.c or
+dill_virtual.c.  Cross your fingers.
+
+However, when you get to the virtual tests is when you'll have to fix
+lurking problems in arch_proc_start, etc.  For example, that's when you get
+to calls that have more than -max_arg's incoming parameters, etc.  (That's
+because the virtual model lets us handle parameters that are on the stack as
+well as in registers, etc.  For the parameters that are on the stack, make
+sure the args[i].offset values are right.  Make sure that the generated code
+is preserving all the callee-saved registers that subroutines are supposed to.
+
+good luck.

@@ -174,7 +174,7 @@ occa::kernel benchmarkAx(int Nelements,
         props["defines/pts_per_thread"] = Nq/n_plane;              
       }
       if (kernelName == "ellipticBlockPartialAxCoeffHex3D") {
-        const int Nkernels = 2;
+        const int Nkernels = 3;
         for (int knl = 0; knl < Nkernels; ++knl)
           kernelVariants.push_back(knl);
 
@@ -250,8 +250,8 @@ occa::kernel benchmarkAx(int Nelements,
     auto Aq = randomVector<FPType>((Ndim * Np) * Nelements, 0, 1, true);
     auto exyz = randomVector<FPType>((3 * Np_g) * Nelements, 0, 1, true);
     auto gllwz = randomVector<FPType>(2 * Nq_g, 0, 1, true);
-    auto lambda0 = randomVector<FPType>(Np * Nelements, 0, 1, true);
-    auto lambda1 = randomVector<FPType>(Np * Nelements, 0, 1, true);
+    auto lambda0 = randomVector<FPType>(Np * Nelements, 0.01, 0.02, true);
+    auto lambda1 = randomVector<FPType>(Np * Nelements, 0.2, 0.3, true);
 
     // elementList[e] = e
     std::vector<dlong> elementList(Nelements);
@@ -265,9 +265,11 @@ occa::kernel benchmarkAx(int Nelements,
     auto o_ggeo = platform->device.malloc(Np_g * Nelements * p_Nggeo * wordSize, ggeo.data());
     auto o_vgeo = platform->device.malloc(Np * Nelements * p_Nvgeo * wordSize, vgeo.data());    
     auto o_q = platform->device.malloc((Ndim * Np) * Nelements * wordSize, q.data());
-    auto o_Aq = platform->device.malloc((Ndim * Np) * Nelements * wordSize, Aq.data());
     auto o_exyz = platform->device.malloc((3 * Np_g) * Nelements * wordSize, exyz.data());
     auto o_gllwz = platform->device.malloc(2 * Nq_g * wordSize, gllwz.data());
+
+    auto o_Aq = platform->device.malloc((Ndim * Np) * Nelements * wordSize);
+    o_Aq.copyFrom(Aq.data());
 
     auto o_lambda0 = platform->device.malloc(Np * Nelements * wordSize, lambda0.data());
     auto o_lambda1 = platform->device.malloc(Np * Nelements * wordSize, lambda1.data());
@@ -296,16 +298,19 @@ occa::kernel benchmarkAx(int Nelements,
       
       // Reset o_Aq for each kernel variant to avoid buggy/no-op kernels
       // from falsely passing verification.
-      o_Aq.copyFrom(refResults.data(), refResults.size() * sizeof(FPType));
+      o_Aq.copyFrom(refResults.data());
       kernelRunner(referenceKernel);
-      o_Aq.copyTo(refResults.data(), refResults.size() * sizeof(FPType));
+      o_Aq.copyTo(refResults.data());
       
-      o_Aq.copyFrom(results.data(), results.size() * sizeof(FPType));
+      o_Aq.copyFrom(results.data());
       kernelRunner(kernel);
-      o_Aq.copyTo(results.data(), results.size() * sizeof(FPType));
+      o_Aq.copyTo(results.data());
 
-      const auto err = maxAbsErr<FPType>(refResults, results, platform->comm.mpiComm);
-      if (err > 600 * std::numeric_limits<FPType>::epsilon() || std::isnan(err)) {
+      const auto absTol = 1e-2;
+      const auto err = maxRelErr<FPType>(refResults, results, platform->comm.mpiComm, absTol);
+      const auto scale = 10 * range<FPType>(refResults, absTol);
+
+      if (err > scale * std::numeric_limits<FPType>::epsilon() || std::isnan(err)) {
         if (platform->comm.mpiRank == 0 && verbosity > 1) {
           std::cout << "Ax: Ignore version " << kernelVariant
                     << " as correctness check failed with " << err << std::endl;

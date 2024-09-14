@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!-- Config XML file for the 
+        skeleton*
+     executables in build/bin -->
+
+<adios-config>
+
+    <!--====================================
+           Configuration for the Writer 
+        ====================================-->
+
+    <io name="writer">
+        <engine type="Skeleton">
+            <parameter key="verbose" value="5"/>
+        </engine>
+    </io>
+
+
+    <!--====================================
+           Configuration for the Reader 
+        ====================================-->
+
+    <io name="reader">
+        <engine type="Skeleton">
+            <parameter key="verbose" value="5"/>
+        </engine>
+    </io>
+</adios-config>

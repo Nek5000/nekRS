@@ -10,9 +10,9 @@ checkpointInterval = 100
 residualTol = 1e-06
 
 [VELOCITY]
-boundaryTypeMap = v, O, W
+boundaryTypeMap = codedFixedValue, zeroGradient, zeroValue 
 residualTol = 1e-08
 
 [TEMPERATURE]
-boundaryTypeMap = t, O, I
+boundaryTypeMap = codedFixedValue, zeroGradient, zeroGradient 
 residualTol = 1e-08

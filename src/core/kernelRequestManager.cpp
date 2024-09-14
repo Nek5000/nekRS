@@ -55,15 +55,13 @@ void kernelRequestManager_t::add(kernelRequest_t request, bool checkUnique)
     nekrsCheck(request.props.hash() != exisitingProps.hash(),
                platformRef.comm.mpiComm,
                EXIT_FAILURE,
-               "%s\n",
-               "detected different kernel hash for same request name\n%s", request.to_string().c_str());
+               "detected different kernel hash for same request\n%s", request.to_string().c_str());
 
     auto exisitingFileName = (requestMap.find(request.requestName)->second).fileName;
     nekrsCheck(request.fileName != exisitingFileName,
                platformRef.comm.mpiComm,
                EXIT_FAILURE,
-               "%s\n",
-               "detected different kernel hash for same request name\n%s", request.to_string().c_str());
+               "detected different kernel hash for same request\n%s", request.to_string().c_str());
 
     return;
   }

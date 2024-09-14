@@ -22,7 +22,7 @@ smootherType = Jac+FourthOptChebyshev
 
 [VELOCITY]
 boundaryTypeMap = none
-density = 1.0
+rho = 1.0
 
 viscosity = 1 / 60  # based on Taylor-scale Re  
 residualTol = 1e-06

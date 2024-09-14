@@ -16,7 +16,7 @@ cfill(const dlong N, const dlong offset, const dfloat angle, const dfloat dp, @ 
 }
 
 // Boundary conditions
-void velocityNeumannConditions(bcData *bc)
+void codedFixedGradientVelocity(bcData *bc)
 {
   bc->tr1 = -3.0 * p_visc;
   bc->tr2 = 0.0;

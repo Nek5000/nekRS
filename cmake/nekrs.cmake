@@ -31,7 +31,10 @@ set(OGS_SOURCES
 
 set(NRS_SRC 
     src/lib/nekrs.cpp
-    src/core/io/writeFld.cpp
+    src/core/io/iofld.cpp
+    src/core/io/iofldFactory.cpp
+    src/core/io/iofldNek.cpp
+    src/core/io/iofldAdios.cpp
     src/utils/fileUtils.cpp
     src/utils/sha1.cpp
     src/utils/inipp.cpp
@@ -42,9 +45,9 @@ set(NRS_SRC
     src/core/setupAide.cpp
     src/core/printHeader.cpp
     src/core/lowPassFilter.cpp
-    src/nrs/cds/regularization/avm.cpp
-    src/nrs/bdry/bcMap.cpp
-    src/nrs/bdry/alignment.cpp
+    src/core/avm.cpp
+    src/core/bdry/bcMap.cpp
+    src/core/bdry/alignment.cpp
     src/nrs/neknek/registerNekNekKernels.cpp
     src/nrs/postProcessing/registerPostProcessingKernels.cpp
     src/elliptic/registerEllipticKernels.cpp
@@ -53,7 +56,7 @@ set(NRS_SRC
     src/core/linAlg/registerLinAlgKernels.cpp
     src/mesh/registerMeshKernels.cpp
     src/core/LVector.cpp
-    src/nrs/bdry/createEToBV.cpp
+    src/core/bdry/createEToBV.cpp
     src/nrs/registerNrsKernels.cpp
     src/nrs/cfl.cpp
     src/nrs/nrs.cpp
@@ -97,7 +100,7 @@ set(NRS_SRC
     src/nrs/neknek/multirateNekNek.cpp
     src/udf/udf.cpp
     src/udf/compileUDFKernels.cpp
-    src/nrs/nekInterface/nekInterfaceAdapter.cpp
+    src/nekInterface/nekInterfaceAdapter.cpp
     src/nrs/postProcessing/strainRotationRate.cpp
     src/nrs/postProcessing/aeroForces.cpp
     src/nrs/postProcessing/Qcriterion.cpp
@@ -115,7 +118,7 @@ set(NRS_INCLUDE
     src
     src/nrs
     src/nrs/plugins
-    src/nrs/nekInterface
+    src/nekInterface
     src/nrs/bdry
     src/nrs/io
     src/nrs/neknek
@@ -125,16 +128,16 @@ set(NRS_INCLUDE
     src/nrs/cds/cvode
     src/core
     src/core/io
+    src/core/bdry
     src/core/linAlg
     src/core/ogs
-
     src/utils
     src/lib
     src/udf
     src/plugins
     src/pointInterpolation/findpts
     src/pointInterpolation
-    src/nrs/nekInterface
+    src/nekInterface
     ${BENCH_SOURCE_DIR}
     ${BENCH_SOURCE_DIR}/core
     ${BENCH_SOURCE_DIR}/fdm
@@ -179,9 +182,9 @@ if (NEKRS_BUILD_FLOAT)
   target_compile_definitions(nekrs-lib-fp32 PUBLIC NEKRS_USE_DFLOAT_FLOAT)
 endif()
 
-add_executable(nekrs-bin src/main.cpp)
+add_executable(nekrs-bin src/bin/main.cpp)
 if (NEKRS_BUILD_FLOAT)
-  add_executable(nekrs-bin-fp32 src/main.cpp)
+  add_executable(nekrs-bin-fp32 src/bin/main.cpp)
 endif()
 
 target_include_directories(nekrs-bin PRIVATE src/lib src/utils)

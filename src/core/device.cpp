@@ -378,7 +378,34 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
   deviceAtomic = atomicsAvailable(*this, _comm.mpiComm);
 }
 
-size_t device_t::memoryUsage()
+size_t device_t::memoryUsage() const
 {
   return platform->device.occaDevice().memoryAllocated();
+} 
+
+void device_t::printMemoryUsage(MPI_Comm comm) const
+{
+  const auto maxMemSizes = [&]()
+  {
+    std::vector<uint64_t> work;
+    work.push_back(platform->device.occaDevice().maxMemoryAllocated());
+    work.push_back(platform->o_memPool.size());
+    work.push_back(platform->memPool.size());
+
+    MPI_Allreduce(MPI_IN_PLACE, work.data(), work.size(), MPI_UINT64_T, MPI_MAX, comm); 
+    return std::make_tuple(work[0], work[1], work[2]);
+  }();
+
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  if (rank == 0) {
+    int width = 12;
+    std::cout << "occa max memory usage: " << std::setw(width) << std::right 
+              << std::get<0>(maxMemSizes)  << " bytes" << std::endl;
+    std::cout << "  o_mempool:           " << std::setw(width) << std::right 
+              << std::get<1>(maxMemSizes)  << " bytes" << std::endl;
+    std::cout << "  mempool:             " << std::setw(width) << std::right 
+              << std::get<2>(maxMemSizes)  << " bytes" << std::endl << std::flush;
+  }
 } 

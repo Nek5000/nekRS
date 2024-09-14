@@ -1,0 +1,13 @@
+/*
+ * Distributed under the OSI-approved Apache License, Version 2.0.  See
+ * accompanying file Copyright.txt for details.
+ */
+
+#ifndef SSTCONFIG_H_
+#define SSTCONFIG_H_
+
+/* Everything past this line is programatically generated */
+
+@SST_CONFIG_DEFINES@
+
+#endif /* SSTCONFIG_H_ */

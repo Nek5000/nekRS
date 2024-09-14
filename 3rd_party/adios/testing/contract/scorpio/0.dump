@@ -1,0 +1,91 @@
+  int64_t   /__pio__/decomp/512       [1]*{16}
+        step 0: 
+          block 0: [0:15]
+    ( 0)    1 2 3 4 5 6
+    ( 6)    7 8 9 10 11 12
+    (12)    13 14 15 16 
+
+  int64_t   /__pio__/decomp/513       [1]*{32}
+        step 0: 
+          block 0: [0:31]
+    ( 0)    1 2 3 4 5 6
+    ( 6)    7 8 9 10 11 12
+    (12)    13 14 15 16 17 18
+    (18)    19 20 21 22 23 24
+    (24)    25 26 27 28 29 30
+    (30)    31 32 
+
+  uint64_t  /__pio__/dim/varname_len  scalar
+3 
+
+  uint64_t  /__pio__/dim/x            scalar
+64 
+
+  uint64_t  /__pio__/dim/y            scalar
+128 
+
+  int32_t   /__pio__/info/nproc       scalar
+4 
+
+  float     bar                       [1]*{32}
+        step 0: 
+          block 0: [0:31]
+    ( 0)    42 42 42 42 42 42
+    ( 6)    42 42 42 42 42 42
+    (12)    42 42 42 42 42 42
+    (18)    42 42 42 42 42 42
+    (24)    42 42 42 42 42 42
+    (30)    42 42 
+
+  int32_t   decomp_id/bar             [1]*{1}
+        step 0: 
+          block 0: [0:0]
+    (0)    -513 
+
+  int32_t   decomp_id/foo             [1]*{1}
+        step 0: 
+          block 0: [0:0]
+    (0)    -512 
+
+  int32_t   decomp_id/foo2            [1]*{1}
+        step 0: 
+          block 0: [0:0]
+    (0)    -512 
+
+  int32_t   foo                       [1]*{16}
+        step 0: 
+          block 0: [0:15]
+    ( 0)    42 42 42 42 42 42
+    ( 6)    42 42 42 42 42 42
+    (12)    42 42 42 42 
+
+  int32_t   foo2                      [1]*{16}
+        step 0: 
+          block 0: [0:15]
+    ( 0)    42 42 42 42 42 42
+    ( 6)    42 42 42 42 42 42
+    (12)    42 42 42 42 
+
+  int32_t   frame_id/bar              [1]*{1}
+        step 0: 
+          block 0: [0:0]
+    (0)    -1 
+
+  int32_t   frame_id/foo              [1]*{1}
+        step 0: 
+          block 0: [0:0]
+    (0)    -1 
+
+  int32_t   frame_id/foo2             [1]*{1}
+        step 0: 
+          block 0: [0:0]
+    (0)    -1 
+
+  uint8_t   varname                   [1]*{19}
+        step 0: 
+          block 0: [0:18]
+    ( 0)    0 0 0 0 0 0
+    ( 6)    0 0 3 0 0 0
+    (12)    0 0 0 0 102 111
+    (18)    111 
+

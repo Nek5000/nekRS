@@ -1,0 +1,15 @@
+---
+# adios2 config file in yaml format
+
+## 1st IO ###
+- IO: "io_T1"
+  Engine:
+    Type: "BP4"
+    BurstBufferPath: "bb"
+    BurstBufferDrain: "true"
+    BurstBufferVerbose: 2
+    SubStreams: 2
+    
+  #Transports:
+  #    - {Type: file, Library: fstream, ProfileUnits: Milliseconds }
+     

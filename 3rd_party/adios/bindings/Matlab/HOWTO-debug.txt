@@ -1,0 +1,68 @@
+https://www.mathworks.com/help/matlab/matlab_external/debugging-on-linux-platforms.html
+
+
+The GNU® Debugger gdb, available on Linux® systems, provides complete source code debugging, including the ability to set breakpoints, examine variables, and step through the source code line-by-line.
+
+In this procedure, the MATLAB® command prompt >> is shown in front of MATLAB commands, and linux> represents a Linux prompt; your system might show a different prompt. The debugger prompt is <gdb>.
+
+To debug with gdb:
+
+    Compile the source MEX file with the -g option, which builds the file with debugging symbols included. For this example, at the Linux prompt, type:
+
+    linux> mex -g yprime.c
+
+    At the Linux prompt, start the gdb debugger using the matlab function -D option.
+
+    linux> matlab -Dgdb
+
+    Tell gdb to stop for debugging.
+
+    <gdb> handle SIGSEGV SIGBUS nostop noprint
+    <gdb> handle SIGUSR1 stop print
+
+    Start MATLAB without the Java® Virtual Machine (JVM™) by using the -nojvm startup flag.
+
+    <gdb> run -nojvm
+
+    In MATLAB, enable debugging with the dbmex function and run your binary MEX file.
+
+    >> dbmex on
+    >> yprime(1,1:4)
+
+    You are ready to start debugging.
+
+    It is often convenient to set a breakpoint at mexFunction so you stop at the beginning of the gateway routine.
+
+    <gdb> break mexFunction
+    <gdb> r
+
+    Once you hit one of your breakpoints, you can make full use of any commands the debugger provides to examine variables, display memory, or inspect registers.
+
+    To proceed from a breakpoint, type:
+
+    <gdb> continue
+
+    After stopping at the last breakpoint, type:
+
+    <gdb> continue
+
+    yprime finishes and MATLAB displays:
+
+    ans =
+
+        2.0000    8.9685    4.0000   -1.0947
+
+    From the MATLAB prompt you can return control to the debugger by typing:
+
+    >> dbmex stop
+
+    Or, if you are finished running MATLAB, type:
+
+    >> quit
+
+    When you are finished with the debugger, type:
+
+    <gdb> quit
+
+    You return to the Linux prompt.
+

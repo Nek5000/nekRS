@@ -1,0 +1,36 @@
+%\documentstyle[fancyvrb,code,indent,wrapfig]{article}
+\documentclass{article}
+\usepackage{fancyvrb,code,indent,wrapfig}
+\usepackage{makeidx}
+\usepackage{epsfig}
+\setlength{\topmargin}{-0.4in}
+\setlength{\oddsidemargin}{+0.0in}
+\setlength{\evensidemargin}{+0.0in}
+\setlength{\textheight}{8.5in}
+\setlength{\textwidth}{6.50in}
+\setlength{\marginparwidth}{0.0in}
+\setlength{\marginparsep}{0.0in}
+\setlength{\marginparpush}{0.0in}
+\setlength{\unitlength}{1.0in}
+\setlength{\parskip}{.1in}
+\renewcommand{\bottomfraction}{.5}
+\renewcommand{\topfraction}{.5}
+\pagestyle{empty}
+\renewcommand{\baselinestretch}{.95}   % -- double spaced lines
+\title{FFS Users Guide and Reference}
+\author{ {\large\bf Greg Eisenhauer }\\
+}
+\newcommand{\routine}[1]{\index{#1}{\tt #1}}
+\makeindex
+\makeatletter
+\newfont{\titlefont}{cmr17 at 40pt} 
+\makeatother
+\begin{document}
+\bibliographystyle{plain}
+\maketitle
+\begin{center}
+%{\bf\titlefont FFS Reference Manual}\\
+\today{} -- FFS Version 1.2
+\end{center}
+\thispagestyle{empty}
+\input{manual_body.tex}

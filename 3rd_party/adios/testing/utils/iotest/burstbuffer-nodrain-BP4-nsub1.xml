@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<adios-config>
+
+    <!--===========================================
+           Configuration for io_T1 group
+        ==========================================-->
+
+    <io name="io_T1">
+        <engine type="BP4">
+            <parameter key="BurstBufferPath" value="bb"/>
+            <parameter key="BurstBufferDrain" value="Off"/>
+            <parameter key="BurstBufferVerbose" value="2"/>
+            <parameter key="SubStreams" value="1"/>
+        </engine>
+    </io>
+
+
+</adios-config>

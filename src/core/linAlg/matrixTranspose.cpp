@@ -24,32 +24,19 @@
 
  */
 
-#include <unistd.h>
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <mesh.h>
+#include "nekrsSys.hpp"
+#include "linAlg.hpp"
 
-void matrixTranspose(const int M, const int N,
-                     const dfloat* A, const int LDA,
-                     dfloat* AT, const int LDAT)
+std::vector<dfloat> linAlg_t::matrixTranspose(const int N, const std::vector<dfloat>& A)
 {
-  //A & A^T - Row major ordering
-  //M = number of rows of A, columns of A^T
-  //N = number of columns of A, rows of A^T
-  //LDA  - leading dimension of A (>=M)
-  //LDAT - leading dimension of A^T (>=N)
+  const auto M = A.size() / N; // number of rows of A
 
-  //quick return
-  if (N < 1 || M < 1) return;
+  if (N < 1 || M < 1) return std::vector<dfloat>{};
 
-  //check for weird input
-  if (LDA < N || LDAT < M) {
-    printf("Bad input to matrixTranspose\n");
-    return;
-  }
+  std::vector<dfloat> AT(N * M);
+  for (int n = 0; n < N; n++)
+    for (int m = 0; m < M; m++)
+      AT[n * M + m] = A[m * N + n];
 
-  for (int n = 0; n < N; n++) //for all cols of A^T
-    for (int m = 0; m < M; m++) //for all rows of A^T
-      AT[n * LDAT + m] = A[m * LDA + n];
+  return AT;
 }

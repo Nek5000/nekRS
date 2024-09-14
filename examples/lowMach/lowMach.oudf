@@ -1,12 +1,12 @@
 // Boundary conditions
-void velocityDirichletConditions(bcData *bc)
+void codedFixedValueVelocity(bcData *bc)
 {
   bc->u = 0.5 * (3.0 + tanh(bc->x / p_DELTA));
   bc->v = 0.0;
   bc->w = 0.0;
 }
 
-void scalarDirichletConditions(bcData *bc)
+void codedFixedValueScalar(bcData *bc)
 {
   bc->s = 0.5 * (3.0 + tanh(bc->x / p_DELTA));
 }

@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: ATL
+Description: Efficient binary lists of name-value pairs
+URL: https://github.com/GTkorvo/atl.git
+Version: @ATL_VERSION@
+Cflags: -I${includedir}
+Libs: -L${libdir} -l@ATL_LIBRARY_PREFIX@atl

@@ -104,7 +104,7 @@
               bc.winterp = neknekU[neknekId + 2 * neknekOffset];
             }
           }
-          scalarDirichletConditions(&bc);
+          codedFixedValueScalar(&bc);
           S[idM] = bc.s;
         }
       }

@@ -1,0 +1,80 @@
+% CODE STYLE -- Released 10.02.2002
+%    for LaTeX-2e
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{code}
+\typeout{Document Style `code' - floating environment}
+
+\RequirePackage{float}
+\RequirePackage{ifthen}
+\newcommand{\CD@within}{nothing}
+\newboolean{CD@within}
+\setboolean{CD@within}{false}
+\newcommand{\CD@floatstyle}{ruled}
+\newcommand{\CD@name}{Code Example}
+\newcommand{\listcodename}{List of \CD@name s}
+
+% Declare Options
+% first appearance
+\DeclareOption{plain}{
+  \renewcommand{\CD@floatstyle}{plain}
+}
+\DeclareOption{ruled}{
+  \renewcommand{\CD@floatstyle}{ruled}
+}
+\DeclareOption{boxed}{
+  \renewcommand{\CD@floatstyle}{boxed}
+}
+% then numbering convention
+\DeclareOption{part}{
+  \renewcommand{\CD@within}{part}
+  \setboolean{CD@within}{true}
+}
+\DeclareOption{chapter}{
+  \renewcommand{\CD@within}{chapter}
+  \setboolean{CD@within}{true}
+}
+\DeclareOption{section}{
+  \renewcommand{\CD@within}{section}
+  \setboolean{CD@within}{true}
+}
+\DeclareOption{subsection}{
+  \renewcommand{\CD@within}{subsection}
+  \setboolean{CD@within}{true}
+}
+\DeclareOption{subsubsection}{
+  \renewcommand{\CD@within}{subsubsection}
+  \setboolean{CD@within}{true}
+}
+\DeclareOption{nothing}{
+  \renewcommand{\CD@within}{nothing}
+  \setboolean{CD@within}{true}
+}
+\DeclareOption*{\edef\CD@name{\CurrentOption}}
+
+% CODE
+%
+\ProcessOptions
+\floatstyle{\CD@floatstyle}
+\ifthenelse{\boolean{CD@within}}{
+  \ifthenelse{\equal{\CD@within}{part}}
+     {\newfloat{code}{htbp}{loa}[part]}{}
+  \ifthenelse{\equal{\CD@within}{chapter}}
+     {\newfloat{code}{htbp}{loa}[chapter]}{}
+  \ifthenelse{\equal{\CD@within}{section}}
+     {\newfloat{code}{htbp}{loa}[section]}{}
+  \ifthenelse{\equal{\CD@within}{subsection}}
+     {\newfloat{code}{htbp}{loa}[subsection]}{}
+  \ifthenelse{\equal{\CD@within}{subsubsection}}
+     {\newfloat{code}{htbp}{loa}[subsubsection]}{}
+  \ifthenelse{\equal{\CD@within}{nothing}}
+     {\newfloat{code}{htbp}{loa}}{}
+}{
+  \newfloat{code}{htbp}{loa}
+}
+\floatname{code}{\CD@name}
+
+
+%\newcommand{\listofcodes}{\listof{code}{\listcodename}}
+
+

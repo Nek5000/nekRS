@@ -11,6 +11,7 @@
 #include "platform.hpp"
 #include "ascent.hpp"
 #include "vtkh/vtkh.hpp"
+#include "mesh.h"
 
 namespace nekAscent
 {
@@ -130,13 +131,13 @@ static void updateFieldData(occa::memory& o_fields)
     const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
     if (updateMesh || movingMesh) {
       if (uniform) {
-        mesh_in->map2Uniform(mesh_vis, mesh_in->o_x, mesh_vis->o_x);
-        mesh_in->map2Uniform(mesh_vis, mesh_in->o_y, mesh_vis->o_y);
-        mesh_in->map2Uniform(mesh_vis, mesh_in->o_z, mesh_vis->o_z);
+        mesh_in->map2Uniform(mesh_in->o_x, mesh_vis, mesh_vis->o_x);
+        mesh_in->map2Uniform(mesh_in->o_y, mesh_vis, mesh_vis->o_y);
+        mesh_in->map2Uniform(mesh_in->o_z, mesh_vis, mesh_vis->o_z);
       } else {
-        mesh_in->interpolate(mesh_vis, mesh_in->o_x, mesh_vis->o_x);
-        mesh_in->interpolate(mesh_vis, mesh_in->o_y, mesh_vis->o_y);
-        mesh_in->interpolate(mesh_vis, mesh_in->o_z, mesh_vis->o_z);
+        mesh_in->interpolate(mesh_in->o_x, mesh_vis, mesh_vis->o_x);
+        mesh_in->interpolate(mesh_in->o_y, mesh_vis, mesh_vis->o_y);
+        mesh_in->interpolate(mesh_in->o_z, mesh_vis, mesh_vis->o_z);
       }
       updateMesh = false;
     }

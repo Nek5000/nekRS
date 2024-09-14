@@ -16,6 +16,9 @@ double run(int Nsamples, std::function<void(occa::kernel &)> kernelRunner, occa:
     kernelRunner(kernel);
   }
 
+  // reset in case something weired happened because of an invalid kernel
+  std::feclearexcept(FE_ALL_EXCEPT);
+
   platform->device.finish();
   return (MPI_Wtime() - start) / Nsamples;
 }
@@ -93,14 +96,10 @@ benchmarkKernel(std::function<occa::kernel(int kernelVariant)> kernelBuilder,
     }
 
     if (check) {
-
-      // evaluation
       double elapsed = run(Nbaseline, kernelRunner, candidateKernel);
       int Ntests = std::max(1, static_cast<int>(targetTime / elapsed));
       MPI_Allreduce(MPI_IN_PLACE, &Ntests, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
 
-      // warmup
-      run(Nwarmup, kernelRunner, candidateKernel);
       double candidateKernelTiming = run(Ntests, kernelRunner, candidateKernel);
 
       double tMax;

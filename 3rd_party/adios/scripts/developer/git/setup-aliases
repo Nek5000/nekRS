@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+echo "Setting up git aliases..."
+if ! which clang-format 1>/dev/null 2>&1
+then
+  echo "Warning: ADIOS uses clang-format to enforce style guidelines but no"
+  echo "         clang-format binary was found in your path"
+fi
+
+if ! git config alias.clang-format "!scripts/developer/git/git-clang-format"
+then
+  echo "Waring: Error adding clang-format alias"
+fi
+
+exit 0

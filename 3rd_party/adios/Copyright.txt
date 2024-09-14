@@ -1,0 +1,40 @@
+Copyright Oak Ridge National Laboratory and Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+------------------------------------------------------------------------------
+
+The following individuals and institutions are among the Contributors:
+
+* Ana Gainaru <gainarua@ornl.gov>
+* Caitlin Ross <caitlin.ross@kitware.com>
+* Chuck Atkins <chuck.atkins@kitware.com>
+* Greg Eisenhauer <eisen@cc.gatech.edu>
+* Dmitry Ganyushin <ganyushindi@ornl.gov>
+* Junmin Gu <jgu@lbl.gov>
+* Norbert Podhorszki <pnorbert@ornl.gov>
+* Ruonan (Jason) Wang <wangr1@ornl.gov>
+* Scott Wittenburg <scott.wittenburg@kitware.com>
+* Spiros Tsalikis <spiros.tsalikis@kitware.com>
+* V. A. Bolea Sanchez <vicente.bolea@kitware.com>
+* William F. Godoy <godoywf@ornl.gov>
+
+See version control history for details of individual contributions.
+
+------------------------------------------------------------------------------
+
+The above copyright and license notice applies to distributions of
+ADIOS in source and binary form.  Third-party software packages supplied
+with ADIOS under compatible licenses provide their own copyright notices
+documented in corresponding subdirectories or source files.
+

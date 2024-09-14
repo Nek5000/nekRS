@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: enet
+Description: Reliable UDP Networking
+URL: http://enet.bespin.org
+Version: @ENET_VERSION@
+Cflags: -I${includedir}
+Libs: -L${libdir} -l@ENET_LIBRARY_PREFIX@enet

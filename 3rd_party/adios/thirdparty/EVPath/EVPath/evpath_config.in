@@ -1,0 +1,97 @@
+#!/bin/bash
+#
+# Print compiler/linker flags to use ADIOS
+
+#
+# Configuration values from configure script
+#
+function Usage () {
+    echo "`basename $0` [-d | -c | -l] [-f] [-r] [-s] [-1] [-m] [-v] [-i]
+Arguments
+   -d   Base directory for EVPath install
+   -c   Compiler flags for EVPATH WITH C/C++
+   -l   Linker flags for EVPath with C/C++
+   -s   Linker flags for statically linking EVPath with C/C++
+
+   -v   Version of the installed package
+   -i   More installation information about the package
+
+Notes
+   - Multiple options of d,c,l are enabled. In such a case, the output is
+     a list of FLAG=flags, where FLAG is one of (DIR, CFLAGS, LDFLAGS)
+   - If none of d,c,l are given, all of them are printed
+
+"
+}
+
+export PKG_CONFIG_LIBDIR="@_pkg_config_pfxs@"
+
+# default
+PRINT_DIR=no
+PRINT_CFLAGS=no
+PRINT_LDFLAGS=no
+NFLAGS_ASKED=0
+
+while getopts ":dclsvih" Option
+do          
+  case $Option in               
+        d) PRINT_DIR=yes; let "NFLAGS_ASKED=NFLAGS_ASKED+1";;
+        c) PRINT_CFLAGS=yes; let "NFLAGS_ASKED=NFLAGS_ASKED+1";;
+        l) PRINT_LDFLAGS=yes; let "NFLAGS_ASKED=NFLAGS_ASKED+1";;
+        s) PRINT_STATIC_LDFLAGS=yes; let "NFLAGS_ASKED=NFLAGS_ASKED+1";;
+        v) echo "@EVPath_VERSION@"; 
+           exit 0;;
+        i) echo "EVPath @EVPath_VERSION@"; 
+           echo "Installed from "
+           echo "  source directory: @CMAKE_CURRENT_SOURCE_DIR@"; 
+           echo "  build directory:  @CMAKE_CURRENT_BINARY_DIR@"; 
+           if [ ! -z "@GITLOG@" ]; then echo "@GITLOG@"; fi 
+           if [ ! -z "@GITSTAT@" ]; then echo "Git status of source directory:"; echo "@GITSTAT@"; fi 
+           exit 0;;
+        h) Usage; exit 0;;
+        *) echo "Invalid option -$Option."; Usage; exit 255;;   # DEFAULT
+  esac
+done
+shift $(($OPTIND - 1))
+
+if [ $NFLAGS_ASKED == 0 ]; then
+    NFLAGS_ASKED=4;
+    PRINT_DIR=yes
+    PRINT_CFLAGS=yes
+    PRINT_LDFLAGS=yes
+    PRINT_STATIC_LDFLAGS=yes
+fi
+
+
+if [ -z "#" ]; then
+    OPT_SEQ=yes
+fi
+
+# Print requested values
+if [ "$PRINT_DIR" == "yes" ]; then
+    if [ $NFLAGS_ASKED -gt 1 ]; then
+        echo -n "DIR="
+    fi
+    echo $(pkg-config evpath --variable=prefix)
+fi
+
+if [ "$PRINT_CFLAGS" == "yes" ]; then
+    if [ $NFLAGS_ASKED -gt 1 ]; then
+        echo -n "CFLAGS="
+    fi
+    echo $(pkg-config evpath --cflags)
+fi
+
+if [ "$PRINT_LDFLAGS" == "yes" ]; then
+    if [ $NFLAGS_ASKED -gt 1 ]; then
+        echo -n "LDFLAGS="
+    fi
+    echo $(pkg-config evpath --libs)
+fi
+
+if [ "$PRINT_STATIC_LDFLAGS" == "yes" ]; then
+    if [ $NFLAGS_ASKED -gt 1 ]; then
+        echo -n "STATIC LDFLAGS="
+    fi
+    echo $(pkg-config evpath --libs --static)
+fi

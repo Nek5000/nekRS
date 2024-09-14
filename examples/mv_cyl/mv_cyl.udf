@@ -19,7 +19,7 @@ deviceMemory<dfloat> o_kappa;
 
 #include "mv_cyl.oudf"
 
-void meshVelocityDirichletConditions(bcData *bc)
+void codedFixedValueMesh(bcData *bc)
 {
   const dfloat vPiston = p_AMP*sin(p_OMEGA*bc->time);
 
@@ -144,7 +144,7 @@ void UDF_ExecuteStep(double time, int tstep)
   }
 
   if (nrs->isCheckpointStep) {
-    nek::ocopyToNek(time, tstep);
+    nrs->ocopyToNek(time, tstep);
     nek::userchk();
   }
   if (ciMode) {

@@ -5,8 +5,6 @@
 
 static int ciMode = 0;
 
-#define EPS 1e-1
-
 void ciSetup(MPI_Comm comm, setupAide &options)
 {
   options.setArgs("POLYNOMIAL DEGREE", std::string("7"));
@@ -155,8 +153,6 @@ void vizNekNekField(nrs_t *nrs)
   o_U.push_back(o_Uviz.slice(0 * nrs->fieldOffset, nrs->fieldOffset));
   o_U.push_back(o_Uviz.slice(1 * nrs->fieldOffset, nrs->fieldOffset));
   o_U.push_back(o_Uviz.slice(2 * nrs->fieldOffset, nrs->fieldOffset));
-
-  fld::write("neknek", 0.0, 0, o_U);
 }
 
 void ciTestInitialStep(nrs_t *nrs, double time, int tstep)
@@ -248,22 +244,22 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
 
   switch(ciMode) {
     case 1:
-      CiEvalTest("velocity (LinfErr: " + to_string_f(uErr) + ")", uErr < 2e-5);
-      CiEvalTest("scalar00 (LinfErr: " + to_string_f(uErr) + ")", s00Err < 8e-8);
+      CiEvalTest("velocity (relLinfErr: " + to_string_f(uErr) + ")", uErr < 1e-4);
+      CiEvalTest("scalar00 (relLinfErr: " + to_string_f(s00Err) + ")", s00Err < 2e-7);
       break;
 
     case 2:
-      CiEvalTest("velocity (LinfErr: " + to_string_f(uErr) + ")", uErr < 2e-2);
-      CiEvalTest("scalar00 (LinfErr: " + to_string_f(uErr) + ")", s00Err < 5e-6);
+      CiEvalTest("velocity (relLinfErr: " + to_string_f(uErr) + ")", uErr < 3e0);
+      CiEvalTest("scalar00 (relLinfErr: " + to_string_f(s00Err) + ")", s00Err < 6e-4);
       break;
 
     case 3:
-      CiEvalTest("scalar00 (LinfErr: " + to_string_f(uErr) + ")", s00Err < 4e-4);
+      CiEvalTest("scalar00 (relLinfErr: " + to_string_f(s00Err) + ")", s00Err < 7e-4);
       break;
 
     case 4:
-      CiEvalTest("velocity (LinfErr: " + to_string_f(uErr) + ")", uErr < 2e-5);
-      CiEvalTest("scalar00 (LinfErr: " + to_string_f(uErr) + ")", s00Err < 8e-8);
+      CiEvalTest("velocity (relLinfErr: " + to_string_f(uErr) + ")", uErr < 3e-3);
+      CiEvalTest("scalar00 (relLinfErr: " + to_string_f(s00Err) + ")", s00Err < 2e-7);
       break;
   }
 }

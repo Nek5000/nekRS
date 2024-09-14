@@ -111,10 +111,7 @@ void UDF_Setup()
   nrs->userScalarSource = &userq;
 
   const int scalarFieldStart = 1;
-  platform->options.getArgs("VISCOSITY", mueLam);
-  platform->options.getArgs("DENSITY", rho);
-
-  RANSktau::setup(mueLam, rho, scalarFieldStart);
+  RANSktau::setup(scalarFieldStart);
 }
 
 void UDF_ExecuteStep(double time, int tstep)

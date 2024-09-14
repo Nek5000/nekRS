@@ -1,0 +1,60 @@
+{
+  "VTK-Cartesian-grid": {
+    "data_sources": [
+      {
+      "name": "source",
+      "filename_mode": "input"
+      }
+    ],
+    "step_information": {
+      "data_source": "source",
+      "variable": "step"
+    },
+    "coordinate_system" : {
+      "array" : {
+        "array_type" : "uniform_point_coordinates",
+        "dimensions" : {
+          "source" : "variable_dimensions",
+          "data_source": "source",
+          "variable" : "U"
+          },
+        "origin" : {
+          "source" : "array",
+          "values" : [0.0, 0.0, 0.0]
+        },
+        "spacing" : {
+          "source" : "array",
+          "values" : [0.1, 0.1, 0.1]
+        }
+      }
+    },
+    "cell_set": {
+      "cell_set_type" : "structured",
+        "dimensions" : {
+          "source" : "variable_dimensions",
+          "data_source": "source",
+          "variable" : "U"
+          }
+    },
+    "fields": [
+      {
+        "name": "U",
+        "association": "points",
+        "array" : {
+          "array_type" : "basic",
+          "data_source": "source",
+          "variable" : "U"
+        }
+      },
+      {
+        "name": "V",
+        "association": "points",
+        "array" : {
+          "array_type" : "basic",
+          "data_source": "source",
+          "variable" : "V"
+        }
+      }
+    ]
+  }
+}

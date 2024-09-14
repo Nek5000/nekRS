@@ -4,9 +4,9 @@ if (t < bs) {                                                                   
 s_sumX[t] += s_sumX[t + bs];                                                                                 \
 s_sumY[t] += s_sumY[t + bs];                                                                                 \
 s_sumZ[t] += s_sumZ[t + bs];                                                                                 \
-s_sumXp[t] += s_sumX[t + bs];                                                                                \
-s_sumYp[t] += s_sumY[t + bs];                                                                                \
-s_sumZp[t] += s_sumZ[t + bs];                                                                                \
+s_sumXp[t] += s_sumXp[t + bs];                                                                               \
+s_sumYp[t] += s_sumYp[t + bs];                                                                               \
+s_sumZp[t] += s_sumZp[t + bs];                                                                               \
 }
 
 @kernel void aeroForces(const dlong Nelements,

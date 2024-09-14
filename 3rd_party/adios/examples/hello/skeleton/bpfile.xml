@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!-- Config XML file for the
+        skeleton*
+     executables in build/bin -->
+
+<adios-config>
+
+    <!--====================================
+           Configuration for the Writer 
+        ====================================-->
+
+    <io name="writer">
+        <engine type="BPFile">
+        </engine>
+        <transport type="File">
+            <!-- POSIX, stdio (C FILE*), fstream (C++) -->
+            <parameter key="Library" value="stdio"/>
+        </transport>
+    </io>
+
+
+    <!--====================================
+           Configuration for the Reader 
+        ====================================-->
+
+    <io name="reader">
+        <engine type="BPFile">
+        </engine>
+        <transport type="File">
+            <!-- POSIX, stdio (C FILE*), fstream (C++) -->
+            <parameter key="Library" value="stdio"/>
+        </transport>
+    </io>
+</adios-config>

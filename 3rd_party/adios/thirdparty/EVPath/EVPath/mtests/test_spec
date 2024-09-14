@@ -1,0 +1,48 @@
+%macro = (
+        large_size_list  => [ "size:20 vectors:1 msg_count:2",
+			      "size:20 vectors:1 msg_count:2000",
+			      "size:1024 vectors:1 msg_count:20",
+			      "size:1024 vectors:5 msg_count:20",
+			      "size:102400 vectors:10 msg_count:20",
+			      "size:1024000 vectors:10 msg_count:3",
+ 			      "size:5120000 vectors:1 msg_count:3",
+			      "size:10240000 vectors:1 msg_count:3",
+			      "size:51200000 vectors:1 msg_count:3",
+			      "size:102400000 vectors:1 msg_count:3" ],
+        perf_list  => [ "size:100 vectors:1 msg_count:20",
+		      	      "size:100 vectors:1 msg_count:2000",
+		      	      "size:100 vectors:1 msg_count:200000",
+			      "size:1024 vectors:1 msg_count:20",
+			      "size:1024 vectors:1 msg_count:2000",
+			      "size:1024 vectors:1 msg_count:200000",
+			      "size:10240 vectors:1 msg_count:20",
+			      "size:10240 vectors:1 msg_count:2000",
+			      "size:10240 vectors:1 msg_count:200000",
+			      "size:102400 vectors:1 msg_count:20",
+			      "size:102400 vectors:1 msg_count:2000",
+			      "size:102400 vectors:1 msg_count:200000",
+			      "size:1024000 vectors:1 msg_count:20",
+			      "size:1024000 vectors:1 msg_count:200",
+			      "size:5120000 vectors:1 msg_count:3",
+			      "size:5120000 vectors:1 msg_count:20",
+			      "size:10240000 vectors:1 msg_count:3",
+			      "size:10240000 vectors:1 msg_count:20",
+			      "size:51200000 vectors:1 msg_count:3",
+			      "size:51200000 vectors:1 msg_count:20",
+			      "size:102400000 vectors:1 msg_count:3",
+			      "size:102400000 vectors:1 msg_count:20" ],
+        small_size_list   => [ "size:20 vectors:1 msg_count:5000", "size:100 vectors:1 msg_count:5000", "size:1024 vectors:1 msg_count:5000"],
+	all_read_buffer_styles  => [ "take_receive_buffer:0", "take_receive_buffer:1" ],
+	all_write_buffer_styles  => [ "reuse_write_buffers:0 ssh:sith5",    "reuse_write_buffers:1 ssh:sith5" ],
+      );
+
+#$test_set{"sockets"} = "perf_list ssh:sith5";
+#$test_set{"nnti"} = "perf_list ssh:sith5" ;
+$test_set{"nnti:NNTI_ENET_CONTROL=1"} = "perf_list ssh:sith5";
+#$test_set{"enet"} = "perf_list ssh:sith5";
+#$test_set{"sockets"} = "large_size_list take_receive_buffer:0 reuse_write_buffers:1 ssh:sith5";
+#$test_set{"enet"} = "large_size_list take_receive_buffer:0 reuse_write_buffers:1 ssh:sith5";
+#$test_set{"nnti"} = "large_size_list take_receive_buffer:0 reuse_write_buffers:1 ssh:sith5";
+#$test_set{"nnti:NNTI_ENET_CONTROL=1"} = "large_size_list take_receive_buffer:0 reuse_write_buffers:1 ssh:sith5";
+
+

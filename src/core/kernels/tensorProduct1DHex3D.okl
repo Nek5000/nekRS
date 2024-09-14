@@ -1,0 +1,128 @@
+/*
+
+   The MIT License (MIT)
+
+   Copyright (c) 2017 Tim Warburton, Noel Chalmers, Jesse Chan, Ali Karakus
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+ */
+
+@kernel void tensorProduct1DHex3D(const dlong Nelements,
+                                  @ restrict const dfloat *fMT,
+                                  @ restrict const dfloat *U,
+                                  @ restrict dfloat *NU)
+{
+  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+    @shared dfloat s_U[p_Nq][p_Nq];
+    @shared dfloat s_FT[p_Nq][p_Nq];
+
+    @exclusive dfloat r_Un[p_Nq];
+
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+        const int id = i + j * p_Nq;
+        s_FT[j][i] = fMT[id];
+
+#pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Un[k] = 0;
+        }
+      }
+    }
+
+    @barrier();
+
+    // read and multiply in k
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          const dfloat uc = U[id];
+
+#pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; ++n) {
+            const dfloat Ik = s_FT[k][n];
+            r_Un[n] += Ik * uc;
+          }
+        }
+      }
+    }
+
+    @barrier();
+
+// loop around slices
+#pragma unroll p_Nq
+    for (int k = 0; k < p_Nq; ++k) {
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          s_U[j][i] = r_Un[k];
+        }
+      }
+
+      @barrier();
+
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          r_Un[k] = 0.f;
+#pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; n++) {
+            const dfloat Ii = s_FT[n][i];
+            r_Un[k] += Ii * s_U[j][n];
+          }
+        }
+      }
+
+      @barrier();
+
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          s_U[j][i] = r_Un[k];
+        }
+      }
+
+      @barrier();
+
+      for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+        for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+          r_Un[k] = 0.f;
+
+#pragma unroll p_Nq
+          for (int n = 0; n < p_Nq; n++) {
+            const dfloat Ij = s_FT[n][j];
+            r_Un[k] += Ij * s_U[n][i];
+          }
+        }
+      }
+
+      @barrier();
+    }
+
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
+      for (int i = 0; i < p_Nq; ++i; @inner(0)) {
+#pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          const dlong id = e * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
+          NU[id] = r_Un[k];
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages:
+  all:
+    target: [haswell]
+  adios2:
+    require: '+blosc+bzip2+zfp+sz+png+sst+dataman+ssc+hdf5+python+fortran'
+  mpich:
+    require: 'device=ch3:sock'
+  openmpi:
+    require: '@4.1'
+  mgard:
+    require: '@2023-01-10'

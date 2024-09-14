@@ -52,8 +52,8 @@ bool nrs_t::runOuterStep(std::function<bool(int)> convergenceCheck, int stage)
 
     finishInnerStep();
 
-    if (!(last && outerConverged)) {
-      printInfo(time, tstep, true, true);
+    if (!last) {
+      printStepInfo(time, tStepOuterStart, true, true);
     }
 
     tstep++;

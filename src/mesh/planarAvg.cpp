@@ -31,7 +31,7 @@ oogs_t *gtpp_gs_setup(mesh_t *mesh, int nelgx, int nelgy, int nelgz, std::string
   auto *ids = (hlong *)calloc(mesh->Nlocal, sizeof(hlong));
 
   for (int iel = 0; iel < mesh->Nelements; iel++) {
-    const auto eg = nek::lglel(iel) + 1;
+    const auto eg = nek::localElementIdToGlobal(iel) + 1;
     int ex, ey, ez;
     const auto nx1 = mesh->Nq;
     const auto ny1 = mesh->Nq;
@@ -131,7 +131,7 @@ void fusedPlanarAvg(mesh_t *mesh,
   if (o_locToGlobE.byte_size() == 0) {
     std::vector<dlong> globalElement(mesh->Nelements, 0);
     for (int element = 0; element < mesh->Nelements; ++element) {
-      const auto ge = nek::lglel(element);
+      const auto ge = nek::localElementIdToGlobal(element);
       globalElement[element] = ge;
     }
 

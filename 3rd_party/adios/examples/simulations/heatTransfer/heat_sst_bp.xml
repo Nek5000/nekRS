@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!-- Config XML file fo the  
+     - adios2_simulations_heatTransferWrite
+     - adios2_simulations_heatTransferRead
+     executables in build/bin -->
+
+<adios-config>
+
+    <!--====================================
+           Configuration for the Writer 
+        ====================================-->
+
+    <io name="writer">
+        <engine type="SST">
+            <parameter key="MarshalMethod" value="BP"/>
+        </engine>
+    </io>
+
+
+    <!--======================================
+           Configuration for the Reader Input
+        ======================================-->
+
+    <io name="readerInput">
+        <engine type="SST">
+            <parameter key="MarshalMethod" value="BP"/>
+        </engine>
+    </io>
+    
+    
+    <!--=======================================
+           Configuration for the Reader output
+        =======================================-->
+    
+    <io name="readerOutput">
+        <engine type="BPFile">
+        </engine>
+    </io>
+
+</adios-config>

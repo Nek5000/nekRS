@@ -1,0 +1,39 @@
+#!/bin/bash
+
+if [ $# -ne 2 ]
+then
+  echo "Usage: $0 /path/to/input /path/to/output"
+  exit 1
+fi
+
+input="$1"
+output="$2"
+base_dir="$(dirname $(readlink -f "${BASH_SOURCE}"))"
+wrapper=$(basename "$0")
+case ${wrapper} in
+  bp2h5*@ADIOS2_EXECUTABLE_SUFFIX@)
+    in_engine=BPFile
+    in_params="StreamReader=ON"
+    out_engine=HDF5
+    out_params=""
+    ;;
+  *)
+    echo "Error: Unrecognized wrapper: ${wrapper}"
+    exit 2
+    ;;
+esac
+case ${wrapper} in
+  *_mpi@ADIOS2_EXECUTABLE_SUFFIX@)
+    reorg_tool="${base_dir}/adios2_reorganize_mpi@ADIOS2_EXECUTABLE_SUFFIX@"
+    ;;
+  *@ADIOS2_EXECUTABLE_SUFFIX@)
+    reorg_tool="${base_dir}/adios2_reorganize@ADIOS2_EXECUTABLE_SUFFIX@"
+    ;;
+  *)
+    echo "Error: Unrecognized wrapper: ${wrapper}"
+    exit 2
+    ;;
+esac
+
+set -x
+exec "${reorg_tool}" "${input}" "${output}" ${in_engine} "${in_params}" ${out_engine} "${out_params}"

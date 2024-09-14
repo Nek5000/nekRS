@@ -1,0 +1,115 @@
+name: Build and Test
+
+on: 
+  push: 
+    branches: 
+    - master 
+  pull_request: 
+    branches: 
+    - master 
+
+jobs:
+  linux:
+    # The jobs should run pretty quick; anything over 30m essentially means
+    # someting is stuck somewhere
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    env:
+      GH_YML_JOBNAME: ${{ matrix.os }}-${{ matrix.compiler }}
+      GH_YML_BUILDTYPE: ${{ matrix.buildtype }}
+      GH_YML_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        buildtype: [ release, debug ]
+        os: [ centos7, centos8, ubuntu1604, ubuntu1804, ubuntu2004 ]
+        compiler: [ clang, gcc, nvhpc ]
+        exclude:
+          - { os: centos8, compiler: nvhpc }
+          - { os: ubuntu1604, compiler: nvhpc }
+          - { os: ubuntu1804, compiler: nvhpc }
+        include:
+        - os: centos7
+          container: centos:7
+        - os: centos8
+          container: centos:8
+        - os: ubuntu1604
+          container: ubuntu:16.04
+        - os: ubuntu1804
+          container: ubuntu:18.04
+        - os: ubuntu2004
+          container: ubuntu:20.04
+        - os: centos7
+          compiler: nvhpc
+          container: nvcr.io/nvidia/nvhpc:21.2-devel-cuda11.2-centos7
+        - os: ubuntu2004
+          compiler: nvhpc
+          container: nvcr.io/nvidia/nvhpc:21.2-devel-cuda11.2-ubuntu20.04
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: source
+    - name: Setup
+      run: source/scripts/ci/setup/linux.sh
+    - name: Update
+      run: source/scripts/ci/gh-actions/run.sh update
+    - name: Configure
+      run: source/scripts/ci/gh-actions/run.sh configure
+    - name: Build
+      run: source/scripts/ci/gh-actions/run.sh build
+    - name: Test
+      run: source/scripts/ci/gh-actions/run.sh test
+
+  mac_and_windows:
+    # The jobs should run pretty quick; anything over 30m essentially means
+    # someting is stuck somewhere
+    timeout-minutes: 30
+    runs-on: ${{ matrix.vm }}
+    env:
+      GH_YML_JOBNAME: ${{ matrix.jobname }}
+      GH_YML_BUILDTYPE: ${{ matrix.buildtype }}
+      GH_YML_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        buildtype: [ release, debug ]
+        jobname: [
+          windows-vs2019-msvc,
+          windows-vs2019-clang,
+          macos-clang ]
+        include:
+        - jobname: windows-vs2019-msvc
+          vm: windows-latest
+        - jobname: windows-vs2019-clang
+          vm: windows-latest
+        - jobname: macos-clang
+          vm: macos-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: source
+    - name: Setup
+      if: ${{ runner.os == 'Windows' }}
+      run: source/scripts/ci/setup/windows.sh
+    - name: Setup
+      if: ${{ runner.os == 'macOS' }}
+      run: source/scripts/ci/setup/macos.sh
+    - name: Update
+      run: source/scripts/ci/gh-actions/run.sh update
+    - name: Configure
+      run: source/scripts/ci/gh-actions/run.sh configure
+    - name: Build
+      run: source/scripts/ci/gh-actions/run.sh build
+    - name: Test
+      run: source/scripts/ci/gh-actions/run.sh test

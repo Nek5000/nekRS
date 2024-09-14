@@ -1,0 +1,770 @@
+#!perl
+
+
+$MSVC_LONG = 0;
+
+while ($_ = $ARGV[0]) {
+	shift;
+	last if /^--$/;
+	if (/-msvc_long/) {$MSVC_LONG = 1;}
+	if (/-build_shared/) {$BUILD_SHARED = 1;}
+}
+
+print "BUILD_SHARED is $BUILD_SHARED\n";
+
+sub upperc {
+    local($_) = pop(@_);
+    tr/[a-z]/[A-Z]/;
+    return $_;
+}
+
+&init_output;
+
+print HOUT<<EOF;
+/** \@defgroup insns DILL instruction issue functions
+ *
+ * This group of functions is used to manage CM-returned memory.
+ * They are provided to handle the eventuality when CM uses its own memory
+ * manager.  That hasn't happened yet, so these are identical to realloc,
+ * malloc and free.
+ */
+EOF
+    $arith3 = 0;
+&arith3( "add sub mul div mod xor and or lsh rsh", "i u ul l");
+&arith3( "add sub", "p");
+&arith3( "add sub mul div", "f d");
+    $arith2 = 0;
+&arith2( "not com neg", "i u ul l");
+&arith2( "bswap", "s us i u ul l f d");
+&arith2( "neg", "f d");
+    $branch = 0;
+&branch( "eq ge gt le lt ne", "c uc s us i u l ul p f d");
+    $compare = 0;
+&compare( "eq ge gt le lt ne", "c uc s us i u l ul p f d");
+    $convert = 0;
+&convert( "c d f i l s u ul us uc", "c uc s us i u ul l");
+&convert( "c uc s us d f i l u ul", "f d");
+&convert( "p ul", "ul p");
+&loadstore("c d f i l p s u uc u ul us");
+&ret("c uc s us i u l ul p d f");
+&mov("c uc s us i u l ul p d f");
+&set("c uc s us i u l ul p d f");
+&push("i u l ul p f d");
+&call("i u l ul p f d v");
+&save_restore("i u l ul p d f");
+
+print HOUT "#ifndef DOXYGEN_SHOULD_SKIP_THIS\n";
+print HOUT "#define dill_jmp_a3_size $arith3\n";
+print HOUT "#define dill_jmp_a2_size $arith2\n";
+print HOUT "#define dill_jmp_branch_size $branch\n";
+print HOUT "#define dill_jmp_compare_size $compare\n";
+print HOUT "#define dill_jmp_convert_size $convert\n";
+print HOUT "#endif\n";
+
+print HOUT "#define dill_jv(s, label) (s->j->jv)(s, (unsigned long) label)\n";
+print HOUT "#define dill_jp(s, dest_reg) (s->j->jp)(s, (unsigned long) dest_reg)\n";
+print HOUT "#define dill_jpi(s, dest_imm) (s->j->jpi)(s, dest_imm)\n";
+print HOUT "#define dill_jalp(s, return_addr_reg, target) (s->j->jal)(s, return_addr_reg, target)\n";
+
+print HOUT "#define dill_special(s, type, param) if (s->j->special) (s->j->special)(s, type, param)\n";
+print HOUT "#if defined(_MSC_VER) && !defined(DILL_SRC)\n";
+if ($BUILD_SHARED) {
+    print HOUT "#define DILL_DECLSPEC    __declspec(dllimport)\n";
+} else {
+    print HOUT "#define DILL_DECLSPEC\n";
+}
+print HOUT "#else\n";
+print HOUT "#define DILL_DECLSPEC\n";
+print HOUT "#endif\n";
+print COUT "\n/* This file is generated from base.ops.  Do not edit directly. */\n\n";
+print COUT "#include \"dill.h\"\n";
+print COUT "\nchar *arith3_name[] = \{".substr($enum_a3,2). "\};\n";
+print COUT "\nchar *arith2_name[] = \{".substr($enum_a2,2). "\};\n";
+foreach $key (sort keys %poly_array) {
+   $poly_array{$key} .= " ";
+   print COUT "int dill_${key}_poly_map[] = {\n";
+   print HOUT "extern DILL_DECLSPEC int dill_${key}_poly_map[];\n";
+   print HOUT "#define dill_P$key(s, typ, dest, src1, src2) (s->j->jmp_a3)[dill_${key}_poly_map[typ]](s, s->j->a3_data[dill_${key}_poly_map[typ]].data1, s->j->a3_data[dill_${key}_poly_map[typ]].data2, dest, src1, src2)\n";
+   foreach (split(' ', "c uc s us i u l ul p f d v b")) {
+       $typ = $_;
+       if ($poly_array{$key} =~ m/\W$typ\W/) {
+	   print COUT ("dill_jmp_$key$typ, ");
+       } else {
+	   if (substr ($typ, 0, 1) eq "u") {
+	       print COUT ("dill_jmp_${key}ul, ");
+	   } else {
+	       print COUT ("dill_jmp_${key}l, ");
+	   }
+       }
+   }
+   print COUT "0};\n";
+}
+
+print HOUT<<EOF;
+
+typedef enum {iclass_arith3, iclass_arith3i, iclass_arith2, iclass_ret, iclass_convert, iclass_loadstore, iclass_loadstorei, iclass_set, iclass_setf, iclass_mov, iclass_reti, iclass_branch, iclass_branchi, iclass_jump_to_label, iclass_special, iclass_jump_to_reg, iclass_jump_to_imm, iclass_push, iclass_pushi, iclass_pushf, iclass_call, iclass_lea, iclass_compare, iclass_mark_label, iclass_nop} insn_class;
+
+struct arith3 {
+    int dest;
+    int src1;
+    int src2;
+};
+
+struct arith3i {
+    int dest;
+    int src;
+    union {
+	IMM_TYPE imm;
+	void *imm_a;
+    }u;
+};
+
+struct arith2 {
+    int dest;
+    int src;
+};
+
+struct arith1 {
+    int src;
+};
+
+struct setf {
+    int dest;
+    double imm;
+};
+
+struct branch {
+    int src1;
+    int src2;
+    int label;
+};
+
+struct branchi {
+    int src;
+    int label;
+    void *imm_a;
+    IMM_TYPE imm_l;
+};
+
+struct calli {
+    int src;
+    void *imm_a;
+    IMM_TYPE imm_l;
+    const char *xfer_name;
+};
+
+struct label {
+    int label;
+    char *label_name;
+};
+
+struct special {
+    special_operations type;
+    IMM_TYPE param;
+};
+
+union operands {
+    struct arith3 a3;
+    struct arith3i a3i;
+    struct arith2 a2;
+    struct arith1 a1;
+    struct setf sf;
+    struct branch br;
+    struct branchi bri;
+    struct calli calli;
+    struct label label;
+    struct special spec;
+};
+
+typedef struct {
+    char class_code;
+    char insn_code;
+    union operands opnds;
+} virtual_insn;
+
+typedef void (*dill_foreign_cg_func)(dill_stream s, virtual_insn *start, virtual_insn *end);
+
+extern void
+dill_set_foreign_cg(dill_foreign_cg_func foreign);
+
+#if defined(__cplusplus) || defined(c_plusplus)
+}
+#endif
+#endif /* __DILL_H__ */
+
+EOF
+
+print COUT <<EOF;
+char *dill_type_names[] = {
+    "c",    /* char */
+    "uc",   /* unsigned char */
+    "s",    /* short */
+    "us",   /* unsigned short */
+    "i",    /* int */
+    "u",    /* unsigned */
+    "l",    /* long (full register size) */
+    "ul",   /* unsigned long (full register size) */
+    "p",    /* pointer */
+    "f",    /* floating */
+    "d",    /* double */
+    "v",    /* void */
+    "b",    /* block structure */
+};
+EOF
+
+sub loadstore {
+    local ($types) = @_;
+    print HOUT "#define dill_Pload(s, typ, dest, src1, src2) (s->j->load)(s, typ, 0, dest, src1, src2)\n";
+    print HOUT "#define dill_Ploadi(s, typ, dest, src, imm) (s->j->loadi)(s, typ, 0, dest, src, imm)\n";
+    print HOUT "#define dill_Pstore(s, typ, dest, src1, src2) (s->j->store)(s, typ, 0, dest, src1, src2)\n";
+    print HOUT "#define dill_Pstorei(s, typ, dest, src, imm) (s->j->storei)(s, typ, 0, dest, src, imm)\n";
+    print HOUT "#define dill_Pbne(s, type, src1, src2, label) (s->j->jmp_b)[dill_jmp_bnec+type](s, s->j->b_data[dill_jmp_bnec+type].data1, s->j->b_data[dill_jmp_bnec+type].data2, src1, src2, label)\n";
+    print HOUT "#define dill_Pbgt(s, type, src1, src2, label) (s->j->jmp_b)[dill_jmp_bgtc+type](s, s->j->b_data[dill_jmp_bgtc+type].data1, s->j->b_data[dill_jmp_bgtc+type].data2, src1, src2, label)\n";
+    print HOUT "#define dill_Pbeq(s, type, src1, src2, label) (s->j->jmp_b)[dill_jmp_beqc+type](s, s->j->b_data[dill_jmp_beqc+type].data1, s->j->b_data[dill_jmp_beqc+type].data2, src1, src2, label)\n";
+
+    foreach (split(' ', $types)) {
+	print HOUT "#define dill_ld${_}(s, dest, src1, src2) (s->j->load)(s, DILL_" . &upperc($_) . ", 0, dest, src1, src2)\n";
+	print HOUT "#define dill_ld${_}i(s, dest, src, imm) (s->j->loadi)(s, DILL_" . &upperc($_) . ", 0, dest, src, imm)\n";
+	print HOUT "#define dill_st${_}(s, dest, src1, src2) (s->j->store)(s, DILL_" . &upperc($_) . ", 0, dest, src1, src2)\n";
+	print HOUT "#define dill_st${_}i(s, dest, src, imm) (s->j->storei)(s, DILL_" . &upperc($_) . ", 0, dest, src, imm)\n";
+	print HOUT "#define dill_has_ldbs(s) (s->j->bsload != 0)\n";
+	print HOUT "#define dill_ldbs${_}(s, dest, src1, src2) (s->j->bsload)(s, DILL_" . &upperc($_) . ", 0, dest, src1, src2)\n";
+	print HOUT "#define dill_ldbs${_}i(s, dest, src, imm) (s->j->bsloadi)(s, DILL_" . &upperc($_) . ", 0, dest, src, imm)\n";
+	print HOUT "#define dill_lea(s, dest, src, imm) (s->j->lea)(s, 0, 0, dest, src, imm)\n";
+    }
+}
+
+sub arith3 {
+    local($ops, $types) = @_;
+    print HOUT "#ifndef DOXYGEN_SHOULD_SKIP_THIS\n";
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    print HOUT "#define dill_jmp_${op}${_} $arith3\n";
+	    $enum_a3 = $enum_a3 . ", \"${op}${_}\"";
+	    $poly_array{$op} = $poly_array{$op} . " ${_}";
+	    $arith3 = $arith3 + 1;
+	}
+    }
+    print HOUT "#endif\n";
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    print HOUT "#define dill_$op${_}(s, dest, src1, src2) (s->j->jmp_a3)[dill_jmp_${op}${_}](s, s->j->a3_data[dill_jmp_${op}${_}].data1, s->j->a3_data[dill_jmp_${op}${_}].data2, dest, src1, src2)\n";
+	    if (($_ eq 'f') || ($_ eq 'd')) {
+		print HOUT "#define dill_$op${_}i(s, dest, src1, imm) (s->j->jmp_f3i)[dill_jmp_${op}${_}](s, s->j->a3f_data[dill_jmp_${op}${_}].data1, s->j->a3f_data[dill_jmp_${op}${_}].data2, dest, src1, imm)\n";
+	    } else {
+		print HOUT "#define dill_$op${_}i(s, dest, src1, imm) (s->j->jmp_a3i)[dill_jmp_${op}${_}](s, s->j->a3i_data[dill_jmp_${op}${_}].data1, s->j->a3i_data[dill_jmp_${op}${_}].data2, dest, src1, imm)\n";
+	    }
+	}
+    }
+}
+
+sub arith2 {
+    local($ops, $types) = @_;
+    print HOUT "#ifndef DOXYGEN_SHOULD_SKIP_THIS\n";
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    print HOUT "#define dill_jmp_${op}${_} $arith2\n";
+	    $enum_a2 = $enum_a2 . ", \"${op}${_}\"";
+	    $arith2 = $arith2 + 1;
+	}
+    }
+    print HOUT "#endif\n";
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    print HOUT "/*! DILL $op ${_} operator */\n";
+	    print HOUT "#define dill_$op${_}(s, dest, src) (s->j->jmp_a2)[dill_jmp_${op}${_}](s, s->j->a2_data[dill_jmp_${op}${_}].data1, s->j->a2_data[dill_jmp_${op}${_}].data2, dest, src)\n";
+	    if (($_ eq 'f') || ($_ eq 'd')) {
+		print HOUT "/*! DILL $op ${_} immediate operator */\n";
+		print HOUT "#define dill_$op${_}i(s, dest, imm) (s->j->jmp_f2i)[dill_jmp_${op}${_}](s, s->j->a2f_data[dill_jmp_${op}${_}].data1, s->j->a2f_data[dill_jmp_${op}${_}].data2, dest, imm)\n";
+	    } else {
+		print HOUT "/*! DILL $op ${_} immediate operator */\n";
+		print HOUT "#define dill_$op${_}i(s, dest, imm) (s->j->jmp_a2i)[dill_jmp_${op}${_}](s, s->j->a2_data[dill_jmp_${op}${_}].data1, s->j->a2_data[dill_jmp_${op}${_}].data2, dest, imm)\n";
+	    }
+	}
+    }
+}
+
+sub branch {
+    local($ops, $types) = @_;
+    $brcode = 0;
+    foreach (split(' ', $ops)) {
+	print HOUT "#define dill_${_}_code " . $brcode++ . "\n";
+    }
+    print COUT "char *branch_op_names[] = {";
+    print HOUT "#ifndef DOXYGEN_SHOULD_SKIP_THIS\n";
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    print HOUT "#define dill_jmp_b${op}${_} $branch\n";
+	    print COUT "\"${op}${_}\", ";
+	    $branch = $branch + 1;
+	}
+    }
+    print HOUT "#endif\n";
+    print COUT "0};\n";
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    print HOUT "#define dill_b$op${_}(s, src1, src2, label) (s->j->jmp_b)[dill_jmp_b${op}${_}](s, s->j->b_data[dill_jmp_b${op}${_}].data1, s->j->b_data[dill_jmp_b${op}${_}].data2, src1, src2, label)\n";
+	    if (($_ eq 'f') || ($_ eq 'd')) {
+		#% no immediate form 
+	    } else {
+		print HOUT "#define dill_b$op${_}i(s, src, imm, label) (s->j->jmp_bi)[dill_jmp_b${op}${_}](s, s->j->b_data[dill_jmp_b${op}${_}].data1, s->j->b_data[dill_jmp_b${op}${_}].data2, src, imm, label)\n";
+	    }
+	}
+    }
+}
+
+sub compare {
+    local($ops, $types) = @_;
+    print COUT "char *compare_op_names[] = {";
+    print HOUT "#ifndef DOXYGEN_SHOULD_SKIP_THIS\n";
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    print HOUT "#define dill_jmp_c${op}${_} $compare\n";
+	    print COUT "\"${op}${_}\", ";
+	    $compare = $compare + 1;
+	}
+    }
+    print HOUT "#endif\n";
+    print COUT "0};\n";
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    print HOUT "#define dill_$op${_}(s, dest, src1, src2) (s->j->jmp_c)[dill_jmp_c${op}${_}](s, s->j->c_data[dill_jmp_c${op}${_}].data1, s->j->c_data[dill_jmp_c${op}${_}].data2, dest, src1, src2)\n";
+	    if (($_ eq 'f') || ($_ eq 'd')) {
+		#% no immediate form 
+	    } else {
+		print HOUT "#define dill_$op${_}i(s, dest, src, imm) (s->j->jmp_ci)[dill_jmp_c${op}${_}](s, s->j->c_data[dill_jmp_c${op}${_}].data1, s->j->c_data[dill_jmp_c${op}${_}].data2, dest, src, imm)\n";
+	    }
+	}
+    }
+}
+
+sub convert {
+    local($from_types, $to_types) = @_;
+    foreach (split(' ', $from_types)) {
+	$from = $_;
+	foreach (split(' ', $to_types)) {
+	    if (${from} eq ${_}) { 
+	        next;
+	    } 
+	    print HOUT "#define dill_cv${from}2${_}(s, dest, src) (s->j->convert)(s, DILL_" . &upperc(${from}) . ", DILL_" . &upperc($_) . ", dest, src)\n";
+	}
+    }
+    print HOUT "#define dill_pconvert(s, from_type, to_type, dest, src) (s->j->convert)(s, from_type, to_type, dest, src)\n";
+}
+
+sub ret {
+    local($types) = @_;
+    foreach (split(' ', $types)) {
+	$type = $_;
+	$dill_type = $_;
+	if (($type eq 'c') || ($type eq 'uc') || ($type eq 's') || 
+	    ($type eq 'us')) { $dill_type = "i";}
+	print HOUT "#define dill_ret${type}(s, src) (s->j->ret)(s, DILL_" . &upperc($dill_type) . ", 0, src)\n";
+	if ($_ eq 'p') {
+	    print HOUT "#define dill_ret${type}i(s, imm) (s->j->reti)(s, DILL_" . &upperc($type) . ", 0, (IMM_TYPE) imm)\n";
+	} elsif (($_ eq 'f') || ($_ eq 'd')) {
+	    print HOUT "#define dill_ret${type}i(s, imm) (s->j->retf)(s, DILL_" . &upperc($type) . ", 0, imm)\n";
+	} else {
+	    print HOUT "#define dill_ret${type}i(s, imm) (s->j->reti)(s, DILL_" . &upperc($type) . ", 0, imm)\n";
+	}
+
+    }
+    print HOUT "#define dill_pret(s, type, src) (s->j->ret)(s, type, 0, src)\n";
+}
+
+sub mov {
+    local($types) = @_;
+    foreach (split(' ', $types)) {
+	$type = $_;
+	print HOUT "#define dill_mov${type}(s, dest, src) (s->j->mov)(s, DILL_" . &upperc($type) . ", 0, dest, src)\n";
+    }
+    print HOUT "#define dill_pmov(s, type, dest, src) (s->j->mov)(s, type, 0, dest, src)\n";
+}
+
+sub set {
+    local($types) = @_;
+    foreach (split(' ', $types)) {
+	$type = $_;
+	if (($_ eq 'f') || ($_ eq 'd')) {
+	    print HOUT "#define dill_set${type}(s, dest, imm) (s->j->setf)(s, DILL_" . &upperc($type) . ", 0, dest, imm)\n";
+	} elsif ($_ eq 'p') {
+	    print HOUT "#define dill_set${type}(s, dest, imm) (s->j->setp)(s, DILL_" . &upperc($type) . ", 0, dest, imm)\n";
+	} else {
+	    print HOUT "#define dill_set${type}(s, dest, imm) (s->j->set)(s, DILL_" . &upperc($type) . ", 0, dest, imm)\n";
+	}
+    }
+    print HOUT "#define dill_piset(s, type, dest, imm) (s->j->set)(s, type, 0, dest, imm)\n";
+}
+
+sub push {
+    local($types) = @_;
+    print HOUT "#define dill_push_arg(s, type, reg) (s->j->push)(s, type, reg)\n";
+    print HOUT "#define dill_push_init(s) (s->j->push)(s, DILL_V, -1)\n";
+    print HOUT "#define dill_push_varidiac_init(s, non_var_arg_count) (s->j->push)(s, DILL_V, -2-(non_var_arg_count))\n";
+    foreach (split(' ', $types)) {
+	$type = $_;
+	print HOUT "#define dill_push_arg${type}(s, reg) (s->j->push)(s, DILL_" . &upperc($type) . ", reg)\n";
+	if (($_ eq 'f') || ($_ eq 'd')) {
+	    print HOUT "#define dill_push_arg${type}i(s, imm) (s->j->pushfi)(s, DILL_" . &upperc($type) . ", imm)\n";
+	} elsif ($_ eq 'p') {
+	    print HOUT "#define dill_push_arg${type}i(s, imm) (s->j->pushpi)(s, DILL_" . &upperc($type) . ", imm)\n";
+	} else {
+	    print HOUT "#define dill_push_arg${type}i(s, imm) (s->j->pushi)(s, DILL_" . &upperc($type) . ", imm)\n";
+	}
+    }
+}
+
+sub call {
+    local($types) = @_;
+    foreach (split(' ', $types)) {
+	$type = $_;
+	if ($type eq 'v') {
+	    print HOUT "extern void dill_scall${type}(dill_stream s, void *ptr, const char *name, const char *arg_str, ...);\n";
+	} else {
+	    print HOUT "extern int dill_scall${type}(dill_stream s, void *ptr, const char *name, const char *arg_str, ...);\n";
+	}
+	print HOUT "#define dill_call${type}(s, ptr, name) s->j->calli(s, DILL_" . &upperc($type) . " , ptr, name)\n";
+	print HOUT "#define dill_callr${type}(s, src) s->j->callr(s, DILL_" . &upperc($type) . " , src)\n";
+    }
+    print HOUT "#define dill_pcall(s, type, ptr, name) s->j->calli(s, type, ptr, name)\n";
+    print HOUT "#define dill_pcallr(s, type, src) s->j->callr(s, type, src)\n";
+}
+
+sub save_restore {
+    local($types) = @_;
+    foreach (split(' ', $types)) {
+	$type = $_;
+	print HOUT "#define dill_save${type}(s, reg) s->j->save_restore(s, 0, DILL_" . &upperc($_) . ", reg)\n";
+	print HOUT "#define dill_restore${type}(s, reg) s->j->save_restore(s, 1, DILL_" . &upperc($_) . ", reg)\n";
+	
+    }
+}
+
+sub init_output {
+    open(HOUT, '>dill.h') || die "Can't open header output";
+    open(COUT, '>dill.c') || die "Can't open C output";
+
+print HOUT<<EOF;
+#ifndef __DILL_H__
+#define __DILL_H__
+/*! \\file */
+
+/* This file is generated from base.ops.  Do not edit directly. */
+#if defined(__cplusplus) || defined(c_plusplus)
+extern "C" {
+#endif
+
+
+EOF
+if ($MSVC_LONG) {
+print HOUT "#include <stdint.h>\n";
+print HOUT "#define IMM_TYPE intptr_t\n";
+print HOUT "#define UIMM_TYPE uintptr_t\n";
+} else {
+print HOUT "#define IMM_TYPE long\n";
+print HOUT "#define UIMM_TYPE unsigned long\n";
+}
+print HOUT<<EOF;
+
+struct dill_private_ctx;
+
+typedef struct dill_private_ctx *private_ctx;
+
+struct jmp_table_s;
+
+typedef struct jmp_table_s *jmp_table;
+
+/*!
+ * dill_stream is the basic handle for a dynamic instruction stream.
+ * It is used in nearly all calls to setup parameter profiles generate
+ * instructions.  Using a separate handle rather than static variables to
+ * store this information over the multiple calls needed for code generation
+ * ensures thread safety. 
+ */
+typedef struct dill_stream_s *dill_stream;
+
+typedef struct dill_exec_s *dill_exec_handle;
+
+typedef struct dec *dill_exec_ctx;
+
+typedef int dill_reg;
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+struct dill_stream_s {
+    jmp_table j;
+    private_ctx p;
+    int dill_local_pointer;
+    int dill_param_reg_pointer;
+    int dill_debug;
+};
+
+struct dec;
+
+typedef enum {DILL_NOP = 0, DILL_SEGMENTED_FOLLOWS} special_operations;
+typedef enum {DILL_X86_CS_PREFIX = 0, DILL_X86_SS_PREFIX,
+              DILL_X86_DS_PREFIX, DILL_X86_ES_PREFIX,
+              DILL_X86_FS_PREFIX, DILL_X86_GS_PREFIX} segment_prefix;
+
+typedef void (*dill_mach_init_routine)(dill_stream s);
+typedef void (*dill_mach_proc_start)(dill_stream s, char *name, int param_count, void *params, dill_reg *arg_reg_list);
+typedef void (*dill_mach_end)(dill_stream s);
+typedef void (*dill_mach_package_end)(dill_stream s);
+typedef void (*dill_mach_package_stitch)(void *package, void *externs);
+typedef void *(*dill_mach_clone_code)(dill_stream s, void *new_base, int size);
+typedef void (*arith_op3)(dill_stream s, int data1, int data2, int dest, int src1, int src2);
+typedef void (*arith_op3i)(dill_stream s, int data1, int data2, int dest, int src1, IMM_TYPE imm);
+typedef void (*arith_op3fi)(dill_stream s, int data1, int data2, int dest, int src1, double imm);
+typedef void (*arith_op2)(dill_stream s, int data1, int data2, int dest, int src);
+typedef void (*arith_op2i)(dill_stream s, int data1, int data2, int dest, IMM_TYPE imm);
+typedef void (*branch_op)(dill_stream s, int data1, int data2, int src1, int src2, int label);
+typedef void (*branch_opi)(dill_stream s, int data1, int data2, int src, IMM_TYPE imm, int label);
+typedef void (*compare_op)(dill_stream s, int data1, int data2, int dest, int src1, int src2);
+typedef void (*compare_opi)(dill_stream s, int data1, int data2, int dest, int src, IMM_TYPE imm);
+typedef void (*cvt_op)(dill_stream s, int data1, int data2, int dest, int src);
+typedef void (*cvt_opi)(dill_stream s, int data1, int data2, int dest, IMM_TYPE imm);
+typedef void (*ldst_op)(dill_stream s, int data1, int data2, int dest, int src1, int src2);
+typedef void (*ldst_opi)(dill_stream s, int data1, int data2, int dest, int src1, IMM_TYPE imm);
+typedef void (*ret_op)(dill_stream s, int data1, int data2, int src);
+typedef void (*ret_opi)(dill_stream s, int data1, int data2, IMM_TYPE imm);
+typedef void (*ret_opf)(dill_stream s, int data1, int data2, double imm);
+typedef void (*jmp_op)(dill_stream s, unsigned long arg);
+typedef void (*jmp_opa)(dill_stream s, void *arg);
+typedef void (*jal_op)(dill_stream s, int dest, int target);
+typedef void (*special_op)(dill_stream s, special_operations type, IMM_TYPE param);
+typedef int (*call_opi)(dill_stream s, int type, void *xfer_address, const char *name);
+typedef int (*call_opr)(dill_stream s, int type, int src);
+typedef void (*setf_opi)(dill_stream s, int data1, int data2, int dest, double imm);
+typedef void (*setp_opi)(dill_stream s, int data1, int data2, int dest, void *imm);
+typedef void (*push_op)(dill_stream s, int type, int reg);
+typedef void (*push_opi)(dill_stream s, int type, IMM_TYPE value);
+typedef void (*push_oppi)(dill_stream s, int type, void *value);
+typedef void (*push_opfi)(dill_stream s, int type, double value);
+typedef int (*local_op)(dill_stream s, int flag, int val);
+typedef void (*save_restore_op)(dill_stream s, int save_restore_flag, int type, int reg);
+typedef void (*lea_op)(dill_stream s, int data1, int data2, int dest, int src, IMM_TYPE offset);
+typedef int (*init_disassembly_op)(dill_stream s, void *dis_info);
+typedef int (*print_insn_op)(dill_stream s, void *dis_info, void *insn);
+typedef void (*print_reg_op)(dill_stream s, int typ, int reg);
+typedef int (*count_insn_op)(dill_stream s, int start, int end);
+
+typedef struct jmp_data_s {
+    short data1;
+    short data2;
+} jmp_data;
+
+struct jmp_table_s {
+    dill_mach_init_routine init;
+    dill_mach_proc_start proc_start;
+    dill_mach_end end;
+    dill_mach_package_end package_end;
+    dill_mach_clone_code clone_code;
+    int *type_align;
+    arith_op3 *jmp_a3;
+    jmp_data *a3_data;
+    arith_op3i *jmp_a3i;
+    jmp_data *a3i_data;
+    arith_op3fi *jmp_f3i;
+    jmp_data *f3i_data;
+    arith_op2 *jmp_a2;
+    arith_op2i *jmp_a2i;
+    jmp_data *a2_data;
+    branch_op *jmp_b;
+    branch_opi *jmp_bi;
+    jmp_data *b_data;
+    compare_op *jmp_c;
+    compare_opi *jmp_ci;
+    jmp_data *c_data;
+    cvt_op convert;
+    ldst_op load;
+    ldst_op bsload;
+    ldst_opi loadi;
+    ldst_opi bsloadi;
+    ldst_op store;
+    ldst_opi storei;
+    ret_op ret;
+    ret_opi reti;
+    ret_opf retf;
+    arith_op2 mov;
+    arith_op2i set;
+    setf_opi setf;
+    setp_opi setp;
+    jmp_op jv;
+    jmp_op jp;
+    jmp_opa jpi;
+    jal_op jal;
+    special_op special;
+    call_opi calli;
+    call_opr callr;
+    push_op push;
+    push_opi pushi;
+    push_opfi pushfi;
+    push_oppi pushpi;
+    local_op local;
+    save_restore_op save_restore;
+    branch_op mark_label;
+    
+    init_disassembly_op init_disassembly;
+    print_insn_op print_insn;
+    print_reg_op print_reg;
+    count_insn_op count_insn;
+    int do_reverse_push;
+    int *type_size;
+    lea_op lea;
+    int target_byte_order;
+    int target_float_format;
+};
+
+typedef struct { 
+    int is_register;		/* true if parameter is in register */
+    unsigned reg;		/* register it's in */
+    int offset;			/* otherwise at this offset from stack */
+} dill_parameter_type;
+
+#endif
+
+/*! Start a DCG native instruction stream
+ *
+ * This, or dill_create_stream(), is usually the first call in dynamically
+ * generating a subroutine or function.  The dill_stream created here is
+ * used in all future calls, setting up the parameter profile and generating
+ * the instructions into the stream.  If dill_create_raw_stream() is used,
+ * DILL will start generating native instructions directly and all
+ * register parameters passed to subsequent calls are assumed to be the IDs
+ * of physical registers.
+ * \\return Will return a new initialized dill_stream unless there is
+ * no available memory.
+ */
+extern dill_stream dill_create_raw_stream(void);
+
+/*! Start a DCG virtual instruction stream
+ *
+ * This, or dill_create_raw_stream(), is usually the first call in
+ * dynamically generating a subroutine or function.  The dill_stream created
+ * here is used in all future calls, setting up the parameter profile and
+ * generating the instructions into the stream.  If dill_create_stream()
+ * is used, DILL will operate in virtual mode.  Register parameters passed
+ * to subsequent calls are assumed to be the IDs out of a set of infinite
+ * virtual registers.  DILL will assign those virtual registers to physical
+ * registers and generate native instructions only at dr_end().
+ * \\return Will return a new initialized dill_stream unless there is
+ * no available memory.
+ */
+extern dill_stream dill_create_stream(void);
+extern dill_stream dill_dup_stream(dill_stream s);
+
+extern dill_exec_ctx dill_get_exec_context(dill_stream x);
+extern void dill_free_stream(dill_stream s);
+extern void dill_free_exec_context(dill_exec_ctx c);
+extern void dill_assoc_client_data(dill_exec_ctx ec, int key, IMM_TYPE value);
+extern IMM_TYPE dill_get_client_data(dill_exec_ctx ec, int key);
+extern void* dill_take_code(dill_stream s);
+extern int dill_alloc_label(dill_stream s, char *name);
+extern void dill_mark_label(dill_stream s, int label);
+extern int dill_is_label_mark(dill_stream s);
+extern int dill_raw_getreg(dill_stream s, dill_reg *reg_p, int type, int reg_class);
+extern int dill_getreg(dill_stream s, int typ);
+extern void dill_raw_putreg(dill_stream s, dill_reg reg_p, int type);
+extern void dill_raw_unavailreg(dill_stream s, int type, dill_reg reg);
+extern void dill_raw_availreg(dill_stream s, int type, dill_reg reg);
+extern void dill_alloc_specific(dill_stream s, dill_reg reg_p, int type, int reg_class);
+extern void dill_dealloc_specific(dill_stream s, dill_reg reg_p, int type, int reg_class);
+extern void dill_start_simple_proc(dill_stream s, const char *name, int ret_type);
+extern void dill_param_alloc(dill_stream s, int argno, int type, 
+			  dill_reg *regp);
+extern void dill_param_struct_alloc(dill_stream s, int argno, int type, 
+				 dill_parameter_type *paramp);
+extern dill_reg dill_param_reg(dill_stream s, int argno);
+extern dill_reg dill_vparam(dill_stream s, int argno);
+extern void dill_start_proc(dill_stream s, char *name, int ret_type, char *arg_str);
+extern void dill_dump(dill_stream s);
+extern dill_exec_handle dill_finalize(dill_stream s);
+extern void dill_begin_prefix_code(dill_stream s);
+extern dill_exec_handle dill_get_handle(dill_stream s);
+extern char *dill_finalize_package(dill_stream s, int *pkg_len);
+typedef struct _dill_extern_entry {
+    /*! the textual name of the external entry */
+    char *extern_name;
+    /*! the address of the external entry */
+    void *extern_value;
+} dill_extern_entry;
+
+extern dill_exec_handle dill_package_stitch(char *package, dill_extern_entry* externs);
+extern void *dill_package_entry(char* package);
+extern void dill_free_handle(dill_exec_handle h);
+extern void dill_ref_handle(dill_exec_handle h);
+extern void *dill_get_fp(dill_exec_handle h);
+extern void *dill_clone_code(dill_stream s, void *new_base, int size);
+extern int dill_code_size(dill_stream s);
+extern int dill_do_reverse_vararg_push(dill_stream s);
+extern int dill_getvblock(dill_stream s, int size);
+extern void dill_virtual_lea(dill_stream s, int dest, int src);
+extern void dill_pbr(dill_stream s, int op_type, int data_type, dill_reg src1, 
+		   dill_reg src2, int label);
+extern void dill_markused(dill_stream s, int type, int reg);
+extern void dill_pcompare(dill_stream s, int op_type, int data_type, 
+			  dill_reg dest, dill_reg src1, 
+			  dill_reg src2);
+
+/*! Return the 'this' pointer to be used in a DCG method call
+ *
+ * Given a method pointer and an object pointer, return the 'this'
+ * pointer that must be provided during call to that method.  This may be
+ * the same as the object address, or in the case of multiple inheritance it
+ * may be different.  This routine is used in conjunction with
+ * get_xfer_ptr() to support DCG of C++ method calls.
+ * \\return the address (as a void*) of the method's code
+ */
+extern void *get_this_ptr(void *method_ptr, void *object_ptr);
+
+/*!  Return the transfer address to be used in a DCG method call
+ *
+ * Given a method pointer and an object pointer, return the transfer address
+ * that should be used to call the method.  I.E. the base address of the
+ * subroutine that implements it.  This routine is used in conjunction with
+ * get_this_ptr() to support DCG of C++ method calls.  
+ * \\return the address (as a void*) of the method's code
+ */
+extern void *get_xfer_ptr(void *method_ptr, void *object_ptr);
+
+#define dill_type_align(s, t) s->j->type_align[t]
+#define dill_type_size(s, t) s->j->type_size[t]
+#define dill_target_byte_order(s) s->j->target_byte_order
+#define dill_target_float_format(s) s->j->target_float_format
+#define dill_lp(s) s->dill_local_pointer
+#define dill_pp(s) s->dill_param_reg_pointer
+#define dill_local(s, type) s->j->local(s, 0, type)
+#define dill_localb(s, bytes) s->j->local(s, 1, bytes)
+
+
+/* atomic types */
+enum {
+    DILL_C,    /* char */
+    DILL_UC,   /* unsigned char */
+    DILL_S,    /* short */
+    DILL_US,   /* unsigned short */
+    DILL_I,    /* int */
+    DILL_U,    /* unsigned */
+    DILL_L,    /* long (full register size */
+    DILL_UL,   /* unsigned long (full register size) */
+    DILL_P,    /* pointer */
+    DILL_F,    /* floating */
+    DILL_D,    /* double */
+    DILL_V,    /* void */
+    DILL_B,    /* block structure */
+    DILL_EC,   /* execution context */
+    DILL_ERR   /* no type */
+};
+
+enum {DILL_VAR, DILL_TEMP};
+
+EOF
+
+}

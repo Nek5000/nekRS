@@ -1,0 +1,10 @@
+group  io_T1
+  # item  type    varname     N   [dim1 dim2 ... dimN  decomp1 decomp2 ... decompN]
+  array   float   a           3    1   64   128           X       Y      Z
+
+# Task 1 actions
+app 1
+  steps   4
+  sleep   0.2  
+  write   burstbuffer-32KB.bp    io_T1
+

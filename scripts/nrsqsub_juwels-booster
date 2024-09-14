@@ -70,7 +70,7 @@ echo "export OMP_NUM_THREADS=\${SLURM_CPUS_PER_TASK}" >>$SFILE
 
 if [ $RUN_ONLY -eq 0 ]; then
   echo -e "\n# precompilation" >>$SFILE
-  CMD_build="srun -N 1 --cpus-per-task=\${SLURM_CPUS_PER_TASK} --cpu-bind=cores $bin --backend $backend --device-id 0 --setup \$case_tmp $extra_args --build-only \$ntasks_tmp"
+  CMD_build="srun --cpus-per-task=\${SLURM_CPUS_PER_TASK} --cpu-bind=cores $bin --backend $backend --device-id 0 --setup \$case_tmp $extra_args --build-only \$ntasks_tmp"
   add_build_CMD "$SFILE" "$CMD_build" "$ntasks"
 fi
 

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<adios-config>
+
+    <io name="PluginTest">
+        <engine type="plugin">
+            <!-- general plugin engine parameters -->
+            <parameter key="PluginName" value="fides"/>
+            <parameter key="PluginLibrary" value="ParaViewADIOSInSituEngine"/>
+            <!-- ParaViewFides engine parameters -->
+            <parameter key="DataModel" value="cartesian.json"/>
+            <parameter key="Script" value="pipeline.py"/>
+        </engine>
+    </io>
+
+</adios-config>

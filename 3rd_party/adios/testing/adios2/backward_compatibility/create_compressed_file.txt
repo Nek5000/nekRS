@@ -1,0 +1,21 @@
+# Build a pre-2.8 version of ADIOS2, e.g. 2.7.1.431
+# Add a compressor operator to create_compressed_file.xml and use it for variable 'a' in io_T1
+# Run
+# $ ./bin/adios2_iotest -a 1 -c create_compressed_file.txt -x create_compressed_file.xml -w -t -d 1
+#
+# Test read
+# $ ./bin/bpls -la blosc.bp/ -d -n 20
+#
+# Rename compressed.bp to  compressed_<compressor>2_271.bp
+#
+
+group  io_T1
+  # item  type    varname     N   [dim1 dim2 ... dimN  decomp1 decomp2 ... decompN]
+  array   double  a           2    100   200              X       YZ
+
+# Task 1 actions
+app 1
+  steps   1
+  write   compressed.bp    io_T1
+
+  
