@@ -1,7 +1,6 @@
 #ifndef platform_hpp_
 #define platform_hpp_
 #include <set>
-#include <memory>
 #include "nekrsSys.hpp"
 #include "QQt.hpp"
 #include "flopCounter.hpp"

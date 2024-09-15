@@ -28,7 +28,6 @@ static int rank, size;
 static MPI_Comm commg, comm;
 
 static double currDt;
-static double lastCheckpointTime = 0;
 static int enforceLastStep = 0;
 static int enforceCheckpointStep = 0;
 static bool initialized = false;
@@ -104,7 +103,6 @@ namespace nekrs
 
 void reset()
 {
-  lastCheckpointTime = 0;
   enforceLastStep = 0;
   enforceCheckpointStep = 0;
 }
@@ -456,13 +454,12 @@ int checkpointStep(double time, int tStep)
 {
   int outputStep = 0;
   if (writeControlRunTime()) {
+    static auto cnt = 1;
+
     double val;
     platform->options.getArgs("START TIME", val);
-    if (lastCheckpointTime == 0 && val > 0) {
-      lastCheckpointTime = val;
-    }
+    if (cnt == 1 && val > 0) cnt = val/nekrs::writeInterval() + 1; 
 
-    static auto cnt = 1;
     outputStep = time > cnt*nekrs::writeInterval();
     if (outputStep) cnt++;
   } else {
@@ -486,7 +483,6 @@ void checkpointStep(int val)
 void writeCheckpoint(double time, int step)
 {
   nrs->writeCheckpoint(time, step);
-  lastCheckpointTime = time;
 }
 
 double endTime(void)

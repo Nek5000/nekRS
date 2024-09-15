@@ -73,6 +73,7 @@ using dlong = long long int;
 #include <map>
 #include <algorithm>
 #include <numeric>
+#include <memory>
 #include <functional>
 #include <cstdio>
 #include <cstdlib>

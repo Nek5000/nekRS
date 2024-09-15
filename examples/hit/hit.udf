@@ -24,7 +24,7 @@ static dfloat A;
 
 #endif
 
-occa::memory implicitForcing(dfloat time)
+deviceMemory<dfloat> implicitForcing(dfloat time)
 {
   auto mesh = nrs->meshV;
 
@@ -43,7 +43,7 @@ void linearForcing(dfloat time)
 
   auto mesh = nrs->meshV;
 
-  auto avg = [&](const occa::memory& o_u)
+  auto avg = [&](auto o_u)
   { 
     return platform->linAlg->innerProd(mesh->Nlocal, mesh->o_Jw, o_u, platform->comm.mpiComm) / mesh->volume;
   };
@@ -129,6 +129,8 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup()
 {
+  auto mesh = nrs->meshV;
+
   nrs->userVelocitySource = &linearForcing;
   nrs->userVelocityImplicitLinearTerm = &implicitForcing;
 
@@ -159,7 +161,6 @@ void UDF_Setup()
 
   // set IC
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
-    auto mesh = nrs->meshV;
  
     const auto eps = 0.1;
     const auto kx = 23.0;

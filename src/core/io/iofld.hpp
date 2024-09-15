@@ -143,7 +143,16 @@ public:
     addVariable(name, std::vector<occa::memory>{u});
   };
 
+
   virtual void validateUserFields(const std::string& name) = 0;
+
+  template<typename T>
+  void addVariable(const std::string& name, std::vector<deviceMemory<T>> u)
+  {
+    std::vector<occa::memory> u_;
+    for(const auto& entry : u) u_.push_back(entry);
+    addVariable(name, std::vector<occa::memory>{u_});
+  };
 
   void addVariable(const std::string& name, std::vector<occa::memory> u)
   {

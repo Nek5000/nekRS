@@ -98,7 +98,7 @@ void UDF_Setup()
   iofld->writeElementFilter(elementFilter);
 #endif
 
-  iofld->addVariable("scalar00", std::vector<occa::memory>{mesh->o_x});
+  iofld->addVariable("scalar00", std::vector<deviceMemory<dfloat>>{o_qcriterion});
 #endif
 
   // set IC

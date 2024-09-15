@@ -4,18 +4,8 @@
 
 #endif
 
-static occa::memory o_hist;
+static deviceMemory<float> o_hist;
 
-void weightedHistogram(dfloat uMin, dfloat uMax, dlong Nlocal, 
-                       const occa::memory& o_wght, const occa::memory& o_u, occa::memory& o_out)
-{
-  const int N = o_out.size();
-  nekrsCheck(N > 2048, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "N > 2048");
-
-  const dfloat du = N / std::abs(uMax - uMin);
-
-  hist(Nlocal, N, uMin, du, o_wght, o_u, o_out);
-}
 
 void userf(double time)
 {
@@ -29,18 +19,28 @@ void UDF_Setup()
   nrs->userVelocitySource = &userf;
 
   const auto nBin = 256;
-  o_hist = platform->device.malloc<float>(nBin);
+  o_hist.resize(nBin);
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
   auto mesh = nrs->_mesh;
 
+  auto weightedHistogram = [&](auto uMin, auto uMax, auto Nlocal, const auto& o_wght, const auto& o_u, auto& o_out) 
+  {
+    const int N = o_out.size();
+    nekrsCheck(N > 2048, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "N > 2048");
+ 
+    const dfloat du = N / std::abs(uMax - uMin);
+ 
+    hist(Nlocal, N, uMin, du, o_wght, o_u, o_out);
+  };
+
   weightedHistogram(0.0, 1.0, mesh->Nlocal, mesh->o_Jw, nrs->cds->o_S, o_hist); 
 
   if (nrs->isCheckpointStep) {
     std::vector<float> hist(o_hist.size());
-    o_hist.copyTo(hist.data());
+    o_hist.copyTo(hist);
     MPI_Allreduce(MPI_IN_PLACE, hist.data(), hist.size(), MPI_FLOAT, MPI_SUM, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0) {
       std::ofstream outputFile("pdf_scalar00.dat");
