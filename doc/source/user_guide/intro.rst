@@ -103,32 +103,79 @@ properties, except that the properties must be specified in the ``.oudf`` kernel
 It is best practice to simply omit the ``rho``, ``viscosity``, ``rhoCp``, and
 ``conductivity`` fields from the ``.par`` file entirely. Then, in the ``.oudf`` kernels,
 you must include kernels that apply the variable properties in the same manner as in
-:ref:`Constant Properties <constant_p>`. See
-:ref:`Setting Custom Properties <custom_properties>` for more
+:ref:`constant_p`. See
+:ref:`custom_properties` for more
 information on the kernel setup.
 
-.. _data_model:
+.. _compute_backend_abstraction:
 
 Compute Backend Abstraction (OCCA)
 ----------------------------------
 
-One other overarching concept that needs to be understood is the data 
-model utilised by OCCA to adapt execution to a variety of execution targets 
-(E.G CPU, GPU's and Intel XPU's). This means there are two memory locations,
-the standard stack and heap memory managed by C++ (The host memory) and managed
-by OCCA on the execution device (The device memory).
+One important overarching feature of nekRS is the use of :term:`OCCA` to provide a layer
+of abstraction of the potential compute backends (E.G CPU, GPU's and Intel XPU's)
+so a universal language can be used to program the compute intensive areas of a case.
+The two main elements of this abstraction is to provide mechanisms to transfer 
+relevant data into the memory of the compute target, and a way to write functions 
+that can be executed on the compute target.
 
-N.B. The OCCA device memory should be considered as a separate location if the
-final target will be the CPU.
+Here we introduce these elements in the most relevant way to nekRS, but further
+information can be found in the `OCCA documentation <https://libocca.org/>`_. The
+sections below all refer to code that will be present within the `.udf` file (
+see :ref:`udf_functions` for more details)
+
+.. _occa_memory:
 
 Memory
 """"""
 
+Memory management is done through the C++ API which allows the user to make data
+available on the compute backend device (sometimes referred to as the device) and
+copy data into this for future use. 
+
+TODO - explanation of any automatic copying??
+
+Typically, relevant fields should be created and initialised in the 
+`UDF_loadKernels` function:
+
+.. code-block::
+
+  void UDF_LoadKernels(deviceKernelProperties& kernelInfo)
+  { 
+    kernelInfo.define("<p_VARIABLE>") = <VALUE>;
+  }
+
+.. tip::
+  p_ and o_ prefixing
+
+.. _occa_functions:
+
 Functions
 """""""""
 
-OKL - C with keywords but allows unified across different backends which is then
-translated to device specific code (E.G. CUDA).
+The :term:`OKL` language extends C with keywords to allows functions to be written 
+in a consistent language which are then translated to device specific code (E.G. CUDA).
+These functions should typically be in the ``.udf`` file within a ``#ifdef __okl__``
+block, and are preceded with a ``@kernel`` keyword. This block would also have
+any standard functions that would be required for relevant boundary conditions
+(see :ref:`boundary_conditions`).
+
+.. code-block::
+
+  #ifdef __okl__
+  @kernel void sample_function()
+  {
+    // some code
+  }
+
+  void velocityDirichletConditions(bcData *bc)
+  {
+    // some code
+    bc->u = u;
+    bc->v = v;
+    bc->w = w;
+  }
+  #endif // __okl__
 
 .. _data_structures:
 
@@ -187,7 +234,7 @@ transfer applications, i.e. problems with separate fluid and solid domains. For 
 without conjugate heat transfer, all mesh information is stored on the ``nrs->mesh`` object,
 while for problems with conjugate heat transfer, all mesh information is stored on the
 ``nrs->cds->mesh`` object. More information is available in the
-:ref:`Creating a Mesh for Conjugate Heat Transfer <cht_mesh>` section. To keep the following
+:ref:`cht_mesh` section. To keep the following
 summary table general, the variable names are referred to simply as living on the ``mesh``
 object, without any differentiation between whether that ``mesh`` object is the object on
 ``nrs`` or ``nrs->cds``.
@@ -278,7 +325,7 @@ Passive Scalar Solution Fields and Simulation Settings
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
 
 This section describes the members on the ``cds`` object, which consist of user settings as well as the
-passive scalar solution. Note that, from :ref:`Flow Solution Fields and Simulation Settings <flow_vars>`,
+passive scalar solution. Note that, from :ref:`flow_vars`,
 the ``cds`` object is itself stored on the ``nrs`` flow solution object. Many of these members are
 copied from the analogous variable on the ``nrs`` object. For instance, ``cds->fieldOffset`` is simply
 set equal to ``nrs->fieldOffset``. In a few cases, however, the names on the ``cds`` object differ

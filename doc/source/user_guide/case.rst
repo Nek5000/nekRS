@@ -1,7 +1,7 @@
 .. _case:
 
 Case files
-=====================
+==========
 
 A nekRS simulation is referred to as a "case," which utilises a number of files
 which are described in this page. An overview of these are presented in the the 
@@ -16,13 +16,17 @@ image below .
 
 There are a minimum of three files required to run a case:
 
-* Parameter file, with ``.par`` extension
-* Mesh file, with ``.re2`` extension
-* User-defined functions for the host, with ``.udf`` extension
+* Parameter file, with ``.par`` extension. This sets parameters used by the case
+  and can be modified between runs.
+* Mesh file, with ``.re2`` extension. This file defines the geometry of the case.
+* User-defined host file, with ``.udf`` extension. This is used to set specific
+  equations of the case, initial/boundary conditions, data outputs and other user 
+  definable behaviour.
 
 With one optional file
 
-* Trigger file  with ``.upd`` extension
+* Trigger file, with ``.upd`` extension. This file allows modifications to the 
+  simulation during execution.
 
 The "case name" is then the common prefix applied to these files - for instance,
 a complete input description with a case name of "eddy" would be given by the files
@@ -32,7 +36,7 @@ The only restrictions on the case name are:
 * It must be used as the prefix on all simulation files, and
 * Typical restrictions for naming files for your operating system
 
-The next four sections describe the structure and syntax for each of these files
+The following sections describe the structure and syntax for each of these files
 for a general case. Because the :term:`Nek5000` code is a predecessor to
 nekRS, some aspects of the current nekRS input file design are selected to enable faster translation of
 Nek5000 input files into nekRS input files. Because these
@@ -41,14 +45,10 @@ files, and in some cases, careful usage of fixed-format text inputs, all
 Nek5000-based methods for case setup are referred to here as "legacy" approaches.
 All new users are encouraged to adopt the nekRS-based problem setup.
 
-The scope of this page is merely to introduce the format and purpose of the four
-files needed to set up a nekRS simulation. Much more detailed instructions are provided
-on the :ref:`FAQs <detailed>` page.
-
 .. _parameter_file:
 
 Parameter File (.par)
-_____________________
+---------------------
 
 Most information about the problem setup is defined in the parameter file. This file is organized
 in a number of sections, each with a number of keys. Values are assigned to these keys in order to
@@ -138,7 +138,7 @@ pairs here does not necessarily imply that these parameters reflect the full cap
 of nekRS.
 
 ``BOOMERAMG`` section
-^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""
 
 This section is used to describe settings for the (optional) :term:`AMG` solver.
 
@@ -155,7 +155,7 @@ This section is used to describe settings for the (optional) :term:`AMG` solver.
  * **strongThreshold** *<double>* [``BOOMERAMG NONGALERKIN TOLERANCE``]
 
 ``GENERAL`` section
-^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""
 
 This section is used to describe generic settings for the simulation such as time steppers,
 solution order, and file writing control.
@@ -303,7 +303,7 @@ solution order, and file writing control.
   an output file on the timestep that most closely matches the desired write interval.
 
 Common keys
-^^^^^^^^^^^
+"""""""""""
 
 These parameters may be specified in any of the ``GENERAL``, ``VELOCITY``, ``TEMPERATURE`` and 
 ``SCALARXX``  sections. If the parameter is not specified in any given ``VELOCITY``, 
@@ -382,7 +382,7 @@ the key is prefixed with the section name.
 
 
 ``MESH`` section
-^^^^^^^^^^^^^^^^
+""""""""""""""""
 
 This section is used to describe mesh settings and set up various mesh solvers
 for mesh motion.
@@ -397,7 +397,7 @@ mesh moves according to a user-specified velocity. Alternatively, if
 ``solver = elasticity``, then the mesh motion is solved with an :term:`ALE` formulation.
 
 ``OCCA`` section
-^^^^^^^^^^^^^^^^
+""""""""""""""""
 
 This section is used to specify the :term:`OCCA` backend for parallelization.
 
@@ -409,7 +409,7 @@ OCCA backend; ``CPU`` is the same as ``SERIAL``, and means that parallelism is a
 **deviceNumber** *(LOCAL-RANK), <int>* [``DEVICE NUMBER``]
 
 ``PRESSURE`` section
-^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""
 
 The ``PRESSURE`` section describes solve settings for the pressure equation. Note that
 this block is only read if the ``VELOCITY`` block is also present.
@@ -446,7 +446,7 @@ Absolute residual tolerance for the pressure solution
 **upwardSmoother** *ASM, JACOBI, RAS* [``PRESSURE MULTIGRID UPWARD SMOOTHER``]
 
 ``PROBLEMTYPE`` section
-^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""
 
 This section is used to control the form of the governing equations used in nekRS.
 While individual equations can be turned on/off in the ``VELOCITY``, ``TEMPERATURE``,
@@ -469,7 +469,7 @@ when using a :term:`RANS` model because the turbulent viscosity portion of the o
 viscosity is not constant.
 
 ``SCALARXX`` section
-^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""
 
 This section is used to define the transport parameters and solver settings for each
 passive scalar. For instance, in a simulation with two passive scalars, you would have
@@ -508,7 +508,7 @@ total derivative of the passive scalar. In other words, the analogue from the
 ``rhoCp`` parameter. If not specified, this defaults to :math:`1.0`.
 
 ``TEMPERATURE`` section
-^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""
 
 This section is used to define the transport parameters and solver settings for the
 temperature passive scalar.
@@ -542,7 +542,7 @@ Constant volumetric isobaric specific heat. If not specified, this defaults to :
 You can turn off the solution of temperature by setting the solver to ``none``.
 
 ``VELOCITY`` section
-^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""
 
 This section is used to define the transport properties and solver settings for the
 velocity.
@@ -586,7 +586,7 @@ internally set to :math:`1/|\mu|`, where :math:`\mu` is the value of the ``visco
 If not specified, this defaults to :math:`1.0`.
 
 ``CASEDATA`` section
-^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""
 
 This section may be used to provide custom parameters in the ``.par`` file that are to be read
 in the ``.udf`` file. For example, you may specify 
@@ -608,10 +608,10 @@ NekRS does not check the contents of the ``CASEDATA`` section; such checks may b
 ``UDF_Setup0`` function as well.
 
 Deprecated parameters
-^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""
 
 ``GENERAL`` section
-"""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^
 
 * **filterCutoffRatio** *<double>* [deprecated, see **regularization**]
 
@@ -638,7 +638,7 @@ Deprecated parameters
   .. TODO: need better description of what filter weight is
 
 Legacy Option (.rea)
-^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""
 
 An alternative to the use of the ``.par`` file is to use the legacy Nek5000-based ``.rea`` file
 to set up the case parameters.
@@ -653,7 +653,7 @@ here only describes the legacy approach to setting simulation parameters via the
 .. TODO: describe the .rea file approach
 
 Mesh File (.re2)
-________________
+----------------
 
 The nekRS mesh file is provided in a binary format with a nekRS-specific
 ``.re2`` extension. This format can be produced by either:
@@ -707,30 +707,8 @@ transfer problems requires additional pre-processing steps that are described in
 of this section describes how to generate a mesh in ``.re2`` format, assuming
 any pre-processing steps have been done for the special cases of conjugate heat transfer.
 
-Converting an Existing Commercial Mesh
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The most general and flexible approach for creating a mesh is to use commercial meshing software
-such as Cubit or Gmsh. After creating the mesh, it must be converted to the ``.re2`` binary format. Depending
-on the mesh format (such as Exodus II format or Gmsh format), a conversion script is used to
-convert the mesh to ``.re2`` format. See the
-:ref:`Converting a Mesh to .re2 Format <converting_mesh>` section for examples demonstrating
-conversion of Exodus and Gmsh meshes into ``.re2`` format.
-
-.. _nek5000_mesh:
-
-Nek5000 Script-Based Meshing
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-A number of meshing scripts ship with the :term:`Nek5000` dependency, which allow
-you to directly create ``.re2`` format meshes without the need of commercial meshing
-tools. These scripts, such as ``genbox``, take user input related to the desired
-grid spacing to generate meshes for fairly simple geometries. Please consult the
-`Nek5000 documentation <http://nek5000.github.io/NekDoc/index.html>`__
-for more information on the use of these scripts.
-
 Legacy Option (.rea)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""
 
 An alternative to the use of the ``.re2`` mesh file is to use the legacy Nek5000-based ``.rea`` file
 to set up the mesh.
@@ -754,34 +732,73 @@ ships with the :term:`Nek5000` dependency.
 .. _udf_functions:
 
 User-Defined Host File (.udf)
-__________________________________
+-----------------------------
 
-OKL and C++ mixed language source file
+The ``.udf`` file is a :term:`OKL` and C++ mixed language source file where user code 
+used to formulate the case is placed. This code is placed in various functions
+and these can be used to perform virtually any action that can be programmed in
+C++. Some of the more common examples are setting initial conditions, querying
+the solution at regular intervals, and defining custom material properties and
+source terms. The available functions that you may define in the ``.udf`` file
+are as follows.
 
-User-defined functions for the host are specified in the ``.udf`` file. These
-functions can be used to perform virtually any action that can be programmed in C++.
-Some of the more common examples are setting initial conditions, querying the solution
-at regular intervals, and defining custom material properties and source terms. The
-available functions that you may define in the ``.udf`` file are as follows. From the
-examples shown on the :ref:`Detailed Usage <detailed>` page, you will see that usage
-of these functions requires some proficiency in the C++
-language as well as some knowledge of the nekRS source code internals.
+OKL block
+"""""""""
 
-OKL
-^^^
+The ``.udf`` typically has a ``#ifdef __okl__`` block near the start which is 
+where all OKL code will be placed that run on the compute backed specified to
+:term:`OCCA`. The most frequent use of this block is to providr the functions 
+for boundary conditions that require additional information, such as a value to
+impose for a Dirichlet velocity condition, or a flux to impose for a Neumann
+temperature condition. 
 
-Ifdef OKL
+Additional user functions may be placed in this block to allow exact values to
+be calulcated that are called at specific time intervals.
 
-tip can be an include
+.. tip::
 
-Give example Kernel
+  If the user generated functions are sufficiently large, or in older nekRS examples 
+  you may see a ``.oudf`` file which is included within the ``ifdef`` block 
+  instead of the functions being in the ``.udf`` file.
 
-functions of boundary conditions
+.. code-block::
+  
+  #ifdef __okl__
+
+  @kernel void computeexact(const dlong Ntotal)
+  {
+    for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+      if (n < Ntotal) {
+        // some code
+      }
+    }
+  }
+
+  void velocityDirichletConditions(bcData *bc)
+  {
+    // some code
+    bc->u = u;
+    bc->v = v;
+    bc->w = w;
+  }
+
+  void scalarDirichletConditions(bcData *bc)
+  {
+    // some code
+    bc->s = s
+  }
+
+  void scalarNeumannConditions(bcData *bc)
+  {
+    bc->flux = tflux;
+  }
+
+TODO Put in reverse lookup table of boundary conditions functions
 
 .. _udf_setup0:
 
-``UDF_Setup0(MPI_Comm comm, setupAide & options)``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UDF_Setup0
+""""""""""
 
 This user-defined function is passed the nekRS :term:`MPI` communicator ``comm`` and a data
 structure containing all of the user-specified simulation options, ``options``. This function is
@@ -798,8 +815,8 @@ settings that may not be exposed to the ``.par`` file. For instance, setting
 settings in nekRS that do not need to be exposed to the typical user, but that perhaps
 a developer may want to modify for testing purposes.
 
-``UDF_Setup(nrs_t* nrs)``
-^^^^^^^^^^^^^^^^^^^^^^^^^
+UDF_Setup
+"""""""""
 
 This user-defined function is passed the nekRS simulation object ``nrs``. This function
 is called once at the beginning of the simulation *after* initializing the mesh, solution
@@ -813,14 +830,14 @@ Any other additional setup actions that depend on initialization of the solution
 and mesh can of course also be placed in this function.
 
 UDF_ExecuteStep
-^^^^^^^^^^^^^^^
+"""""""""""""""
 
 This user-defined function is probably the most flexible of the nekRS user-defined
 functions. This function is called once at the start of the simulation just before
 beginning the time stepping, and then once per time step after running each step.
 
 Other Functions for Custom Sources on the ``udf`` Structure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 In addition to the ``UDF_Setup0``, ``UDF_Setup``, ``UDF_ExecuteStep``, and ``UDF_LoadKernels``,
 there are other user-defined functions. These functions
@@ -874,7 +891,7 @@ allows specification of the thermal divergence term needed for the low Mach form
 
 
 Legacy Option (.usr)
-^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""
 
 The legacy alternative to user-defined functions in the ``.udf`` file is to write
 Fortran routines in a ``.usr`` file based on Nek5000 code internals.
@@ -884,7 +901,7 @@ Fortran routines in a ``.usr`` file based on Nek5000 code internals.
 .. _trigger_file:
 
 Trigger Files (.upd)
-____________________
+--------------------
 
 TODO Full description
 
