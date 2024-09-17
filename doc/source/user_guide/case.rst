@@ -707,28 +707,6 @@ transfer problems requires additional pre-processing steps that are described in
 of this section describes how to generate a mesh in ``.re2`` format, assuming
 any pre-processing steps have been done for the special cases of conjugate heat transfer.
 
-Legacy Option (.rea)
-""""""""""""""""""""
-
-An alternative to the use of the ``.re2`` mesh file is to use the legacy Nek5000-based ``.rea`` file
-to set up the mesh.
-See the ``Mesh File (.re2)`` section of the :term:`Nek5000`
-`documentation <http://nek5000.github.io/NekDoc/problem_setup/case_files.html>`__ [#f1]_
-for further details on the format for the ``.rea`` file.
-
-The ``.rea`` file contains both simulation parameters (now covered by the ``.par`` file) as well as
-mesh information (now covered by the ``.re2`` file). This section
-here only describes the legacy approach to setting mesh information via the ``.rea`` file.
-
-The mesh section of the ``.rea`` file can be generated in two different manners -
-either by specifying all the element nodes by hand, or with the :term:`Nek5000` mesh
-generation scripts introduced in Section :ref:`Nek5000 Script-Based Meshing <nek5000_mesh>`.
-Because the binary ``.re2`` format is preferred for very large meshes where memory may be
-a concern, the ``.rea`` file approach is considered to be a legacy option.
-The mesh portion of the legacy ``.rea``
-file can be converted to the ``.re2`` format with the ``reatore2`` script, which also
-ships with the :term:`Nek5000` dependency.
-
 .. _udf_functions:
 
 User-Defined Host File (.udf)
@@ -792,21 +770,6 @@ exact values at a specified time point.
     bc->flux = tflux;
   }
 
-.. table:: Boundary Condition Functions
-
-  =========================================== =================================================== =============================
-  Function                                    Character Map                                       Purpose
-  =========================================== =================================================== =============================
-  ``pressureDirichletConditions(bcData* bc)`` ``onx``, ``ony``, ``onz``,                          Dirichlet pressure condition
-                                              ``outlet``, ``outflow``, ``o``
-  ``velocityDirichletConditions(bcData* bc)`` ``v``, ``inlet``, ``mv``,                           Dirichlet velocity condition
-                                              ``codedfixedvalue+moving``, ``int``
-  ``velocityNeumannConditions(bcData* bc)``   ``tractionx``, ``shlx``, ``tractiony``, ``shly``,   Neumann velocity condition
-                                              ``tractionz``, ``shlz``, ``traction``, ``shl``
-  ``scalarDirichletConditions(bcData* bc)``   ``t``, ``inlet``, ``int``                           Dirichlet condition
-  ``scalarNeumannConditions(bcData* bc)``     ``f``, ``flux``                                     Neumann condition
-  =========================================== =================================================== =============================
-
 .. _udf_setup0:
 
 UDF_Setup0
@@ -847,68 +810,6 @@ UDF_ExecuteStep
 This user-defined function is probably the most flexible of the nekRS user-defined
 functions. This function is called once at the start of the simulation just before
 beginning the time stepping, and then once per time step after running each step.
-
-Other Functions for Custom Sources on the ``udf`` Structure
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-In addition to the ``UDF_Setup0``, ``UDF_Setup``, ``UDF_ExecuteStep``, and ``UDF_LoadKernels``,
-there are other user-defined functions. These functions
-are handled in a slightly different manner - rather than be tied to a specific function name
-like ``UDF_Setup0``, these functions are provided in terms of generic function pointers to
-*any* function (provided the function parameters match those of the pointer). The four
-function pointers are named as follows in nekRS:
-
-================== ======================================================== ===================
-Function pointer   Function signature                                       Purpose
-================== ======================================================== ===================
-``udf.converged``  ``f(nrs_t* nrs, int stage)``
-``udf.uEqnSource`` ``f(nrs_t* nrs, float t, m o_U, m o_FU)``                momentum source
-``udf.sEqnSource`` ``f(nrs_t* nrs, float t, m o_S, m o_SU)``                scalar source
-``udf.properties`` ``f(nrs_t* nrs, float t, m o_U, m o_S, m o_Up, m o_Sp)`` material properties
-``udf.div``        ``f(nrs_t* nrs, float t, m o_div)``                      thermal divergence
-================== ======================================================== ===================
-
-To shorten the syntax above, the type ``m`` is shorthand for ``occa::memory``, and ``f`` is the
-name of the function, which can be *any* user-defined name. Other parameters that appear in the
-function signatures are as follows:
-
-* ``nrs`` is a pointer to the nekRS simulation object
-* ``stage``
-* ``t`` is the current simulation time
-* ``o_U`` is the velocity solution on the device
-* ``o_S`` is the scalar solution on the device
-* ``o_FU`` is the forcing term in the momentum equation
-* ``o_SU`` is the forcing term in the scalar equation(s)
-* ``o_Up`` is the material properties (:math:`\mu` and :math:`\rho`) for the momentum equation
-* ``o_Sp`` is the material properties (:math:`k` and :math:`\rho C_p`) for the scalar equation(s)
-* ``o_div``
-
-The ``udf.uEqnSource`` allows specification of a momentum source, such as a gravitational force, or
-a friction form loss. The ``udf.sEqnSource`` allows specification of a source term for the passive
-scalars. For a temperature passive scalar, this source term might represent a volumetric heat source,
-while for a chemical concentration passive scalar, this source term could represent a mass
-source. See the :ref:`Setting Custom Source Terms <custom_sources>` section for an example
-of setting custom source terms.
-
-The ``udf.properties`` allows specification of custom material properties for the flow
-and passive scalar equations,
-which can be a function of the solution as well as position and time. See the
-:ref:`Setting Custom Properties <custom_properties>` section for an example of setting custom
-properties.
-
-.. TODO: describe what ``udf.converged`` is
-
-Finally, ``udf.div``
-allows specification of the thermal divergence term needed for the low Mach formulation.
-
-
-Legacy Option (.usr)
-""""""""""""""""""""
-
-The legacy alternative to user-defined functions in the ``.udf`` file is to write
-Fortran routines in a ``.usr`` file based on Nek5000 code internals.
-
-.. TODO: describe how to use the ``.usr`` file
 
 .. _trigger_file:
 

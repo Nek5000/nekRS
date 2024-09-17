@@ -21,15 +21,15 @@ if using them, with further information also available in the
 
 .. _cubit_mesh:
 
-Creating a mesh with Cubit - Exodus
-------------------------------------
+Mesh with Cubit
+---------------
 
 TODO Example of creating Exodus Mesh
 
 .. _gmsh_mesh:
 
-Creating a mesh with Gmsh
--------------------------
+Meshing with Gmsh
+-----------------
 
 TODO Example of creating a Gmsh mesh
 
@@ -47,14 +47,6 @@ TODO Example of creating a cgns mesh
 
 .. _cht_mesh:
 
-Creating a Mesh for Conjugate Heat Transfer
--------------------------------------------
+Conjugate Heat Transfer
+-----------------------
 
-Mesh generation for conjugate heat transfer requires an additional pre-processing
-step before performing other steps of the mesh generation process such as those
-described in the :ref:`Converting a Mesh to .re2 Format <converting_mesh>` section.
-The nekRS approach for conjugate heat transfer is still dependent on legacy limitations
-from Nek5000. Unfortunately, you cannot
-simply use a standard commercial meshing tool and define fluid and solid
-regions according to block IDs - you must individually create the mesh for the fluid and
-the solid, and then merge them with the ``pretex`` script.

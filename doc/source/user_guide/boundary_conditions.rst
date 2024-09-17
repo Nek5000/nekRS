@@ -8,12 +8,32 @@ Boundary conditions for each mesh boundary should normally be set in the
 within the ``VELOCITY``, ``TEMPERATURE`` or ``SCALARXX`` sections to set the 
 boundary conditions of the respective components of the case.
 
+Available Types
+---------------
+
 The potential values are summarised in the command line help function for 
 nekRS, ``parHelp.txt`` and below.
 
 .. literalinclude:: ../../parHelp.txt
    :language: none
    :lines: 1-3, 144-166
+
+
+User Defined Value/Gradient
+"""""""""""""""""""""""""""
+
+boundary codedfixedvalue codedfixedgradient
+
+name gets suffixed mesh, velocity, fixed or scalar
+
+interface is bcData struct
+
+bcData struct mention or table
+nx - normal
+
+t1x
+
+u - velocity
 
 
 For each of the values that have a function name present, this must be created
@@ -26,54 +46,14 @@ require the ``velocityDirichletConditions`` to be present in the OKL section).
    ``boundaryIDMap`` parameter of the ``MESH`` section to apply the ``boundaryTypeMap``
    options to the correct boundary IDs (NekRS assumed that the boundaryIDs start at 1).
 
-Zero
-----
+Internal / Periodic
+"""""""""""""""""""
 
-codedFixedValue
----------------
+None is used when a internal boundary condition is required or a periodic 
+boundary condition has been set as part of the mesh and it does not need to be
+considered as part of the standard processing of boundary conditions.
 
-Interpolation
--------------
-
-zero<X/Y/Z/N>Value / zeroGradient
----------------------------------
-
-zero<X/Y/Z/N>Value VELOCITY only.
-
-zero<X/Y/Z/N>Value / codedFixedGradient
----------------------------------------
-
-VELOCITY only
-
-zero<X/Y/Z/N>Value / fixedGradient
-----------------------------------
-
-codedFixedGradient
-------------------
-
-SCALAR only
-
-None / Periodic
----------------
-
-None is typically used when a periodic boundary condition has been set as part
-of the mesh and it does not need to be considered as part of the standard processing
-of boundary conditions.
-
-.. tip:: 
-
-   Each of the different meshing methods from :ref:`meshing` have a different
-   way in which the periodic boundary will be defined.
-
-   .. tabs::
-
-      .. tab:: Scripting
-
-      .. tab:: Cubit
-
-      .. tab:: Gmsh
-      
-      .. tab:: CGNS
+Perodicity is linked to the mesh connectivity and is handled by the meshing tool.
 
 .. NekRS supports periodic boundary conditions. To set up a periodic case, first
 .. you need to run ``exo2nek`` to establish the pairings between the periodic sidesets.

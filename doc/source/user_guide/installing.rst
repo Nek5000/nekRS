@@ -110,17 +110,17 @@ be using a common package manager.
 
             .. code-block:: bash
 
-                export OMPI_CXX=/path/to/compiler/c_++_executable
-                export OMPI_CC=/path/to/compiler/c_executable
-                export OMPI_FC=/path/to/compiler/fortran_executable
+                export OMPI_CXX=/path/to/compiler/c_++_compiler
+                export OMPI_CC=/path/to/compiler/c_compiler
+                export OMPI_FC=/path/to/compiler/fortran_compiler
         
         .. tab:: MPICH
 
             .. code-block:: bash
                 
-                export MPICH_CXX=/path/to/compiler/c_++_executable
-                export MPICH_CC=/path/to/compiler/c_executable
-                export MPICH_FC=/path/to/compiler/fortran_executable
+                export MPICH_CXX=/path/to/compiler/c_++_compiler
+                export MPICH_CC=/path/to/compiler/c_compiler
+                export MPICH_FC=/path/to/compiler/fortran_compiler
 
 It is also suggested that you have a GPU and the corresponding drivers/API 
 installed to increase performance. This will likely be a NVidia (:term:`CUDA`), 

@@ -1,7 +1,7 @@
 .. _models_properties:
 
-Models
-======
+Models and Source Terms
+=======================
 
 .. nekRS contains several "plugins" that provide both physics models and postprocessing
 .. capabilities. nekRS's :term:`RANS` and low-Mach models, for instance, are provided as
