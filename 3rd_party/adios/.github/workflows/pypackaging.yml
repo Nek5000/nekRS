@@ -1,0 +1,105 @@
+name: Python Packaging
+
+on:
+  workflow_dispatch:
+    inputs:
+      overrideVersion:
+        description: Manually force a version
+  pull_request:
+  push:
+    branches:
+      - master
+      - release_[0-9]+
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+*
+  release:
+    types:
+      - published
+
+env:
+  ADIOS2_CUSTOM_VERSION_OVERRIDE: ${{ github.event.inputs.overrideVersion }}
+
+jobs:
+  make_sdist:
+    name: Make SDist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate common version file
+        run: cmake -P scripts/ci/gh-actions/config/adios-version.cmake && echo VERSION.TXT
+
+      - name: Build SDist
+        run: pipx run build --sdist
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: dist/*.tar.gz
+
+  build_wheels:
+    name: Wheel on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate common version file
+        run: cmake -P scripts/ci/gh-actions/config/adios-version.cmake && echo VERSION.TXT
+
+      - uses: pypa/cibuildwheel@v2.16
+        env:
+          CIBW_BUILD: cp*-manylinux_x86_64
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          path: wheelhouse/*.whl
+
+  upload_pypi:
+    needs: [build_wheels, make_sdist]
+    environment: pypi
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'release' &&
+        github.event.action == 'published'
+      )
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact
+          path: dist
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  upload_test_pypi:
+    needs: [build_wheels, make_sdist]
+    environment: testpypi
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    # Upload to Test PyPI for every commit on main branch
+    if: github.event_name == 'push' && github.event.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact
+          path: dist
+
+      - name: Publish package distributions to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/

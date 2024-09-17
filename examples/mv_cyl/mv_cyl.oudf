@@ -1,4 +1,4 @@
-void velocityDirichletConditions(bcData *bc)
+void codedFixedValueVelocity(bcData *bc)
 {
   const dfloat vPiston = p_AMP * sin(p_OMEGA * bc->time);
 

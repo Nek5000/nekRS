@@ -8,7 +8,7 @@ timeStepper = tombo3
 checkpointInterval = 50
 
 [MESH]
-boundaryTypeMap = codedFixedValue, zeroValue, sym
+boundaryTypeMap = codedFixedValue, zeroValue, zeroNValue/zeroGradient  
 residualTol = 1e-6
 solver = pcg+block #user
 initialGuess = projection+nVector=1 
@@ -18,11 +18,11 @@ residualTol = 1e-8
 initialGuess = previous
 
 [VELOCITY]
-boundaryTypeMap = codedFixedValue, zeroValue, sym
+boundaryTypeMap = codedFixedValue, zeroValue, zeroNValue/zeroGradient  
 residualTol = 1e-12
 
 [TEMPERATURE]
-boundaryTypeMap = zeroGradient,zeroGradient,zeroGradient
+boundaryTypeMap = zeroGradient, zeroGradient, zeroGradient
 residualTol = 1e-12
 
 [CASEDATA]

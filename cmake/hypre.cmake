@@ -1,3 +1,5 @@
+function(add_hypre)
+
 set(HYPRE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/hypre)
 
 set(HYPRE_FLAGS_EXTRA "-fPIC")
@@ -17,7 +19,7 @@ set(HYPRE_BUILD_DIR ${HYPRE_INSTALL_DIR}/src/HYPRE_BUILD)
 ExternalProject_Add(
    HYPRE_BUILD
    URL "${HYPRE_SOURCE_DIR}" 
-   CONFIGURE_COMMAND cd ${HYPRE_BUILD_DIR}/src && ./configure 
+   CONFIGURE_COMMAND cd ${HYPRE_BUILD_DIR}/src && ./configure
      --prefix=${HYPRE_INSTALL_DIR}
      --with-extra-CFLAGS=${HYPRE_FLAGS_EXTRA}
      --with-extra-CXXFLAGS=${HYPRE_FLAGS_EXTRA}
@@ -55,7 +57,7 @@ if(OCCA_CUDA_ENABLED)
   set(HYPRE_BACKEND "--with-cuda" "--with-cuda-home=${CUDAToolkit_LIBRARY_ROOT}")
 
   if(CUDAToolkit_VERSION VERSION_GREATER_EQUAL "12.0.0")
-    set(HYPRE_DEVICE_ARCH "HYPRE_CUDA_SM=80 90")
+    set(HYPRE_DEVICE_ARCH "HYPRE_CUDA_SM=70 80 90")
     #disable for now as it might not play well with all MPI implementations
     #set(HYPRE_CONFIGURE_FLAGS "--enable-device-malloc-async")
   else()
@@ -122,13 +124,4 @@ else()
   target_link_libraries(nekrs-hypre-device PUBLIC libocca MPI::MPI_C) 
 endif()
 
-unset(HYPRE_DEVICE_COMPILER)
-unset(HYPRE_BUILD_DIR)
-unset(HYPRE_SOURCE_DIR)
-unset(HYPRE_CONFIGURE_FLAGS) 
-unset(HYPRE_INSTALL_DIR)
-unset(HYPRE_FLAGS_EXTRA)
-unset(HYPRE_COMPILER_C_FLAGS)
-unset(HYPRE_COMPILER_CXX_FLAGS)
-unset(HYPRE_DEVICE_COMPILER_FLAGS)
-unset(HYPRE_DEP)
+endfunction()

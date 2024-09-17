@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(NekRS LANGUAGES C CXX Fortran VERSION 24.0.1)
+project(NekRS LANGUAGES C CXX Fortran VERSION 24.0.2)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
@@ -151,7 +151,8 @@ set(ENABLE_AMGX OFF CACHE BOOL "Enable NVIDIA AMGX support")
 set(ENABLE_HYPRE_GPU ON CACHE BOOL "Enable HYPRE GPU support")
 set(NEKRS_GPU_MPI ON CACHE BOOL "Enable GPU aware MPI")
 set(ENABLE_CVODE OFF CACHE BOOL "Enable CVODE support")
-
+set(ENABLE_ADIOS OFF CACHE BOOL "Enable ADIOS support")
+set(ADIOS2_INSTALL_DIR "" CACHE STRING "ADIOS install directory")
 set(NEKRS_BUILD_FLOAT ON CACHE BOOL "Build dfloat = float version")
 
 set(ENABLE_CPPTRACE OFF CACHE BOOL "Enable cpptrace for stack tracing")
@@ -215,100 +216,41 @@ message("-- BSYMBOLIC_FLAG: ${BSYMBOLIC_FLAG}")
 
 # occa
 include(cmake/occa.cmake)
-message("-- OCCA_CUDA_ENABLED: ${OCCA_CUDA_ENABLED}")
-message("-- OCCA_HIP_ENABLED: ${OCCA_HIP_ENABLED}")
-message("-- OCCA_DPCPP_ENABLED: ${OCCA_DPCPP_ENABLED}")
-message("-- OCCA_OPENCL_ENABLED: ${OCCA_OPENCL_ENABLED}")
-set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+add_occa()
 
-# amgx
 if(ENABLE_AMGX)
   message(FATAL_ERROR "AMGX support was removed, use HYPRE (enabled by default)!")
-  if(OCCA_CUDA_ENABLED)
-    add_subdirectory(3rd_party/AMGX)
-  else()
-    message(FATAL_ERROR "ENABLE_AMGX required OCCA_CUDA_ENABLED!")
-  endif()
 endif()
 
 if(ENABLE_CPPTRACE)
   add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/cpptrace")
 endif()
 
-# hypre
 include(cmake/hypre.cmake)
+add_hypre()
 
-# external plugins
-file(GLOB plugins LIST_DIRECTORIES true ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/plugins/*)
-set(FOUND_PLUGINS "")
-set(UDF_RPATH "")
-set(UDF_LIBS "")
-set(UDF_INCLUDES "")
-foreach(DIR ${plugins})
-  get_filename_component(PLUGIN_NAME ${DIR} NAME)
-  IF(IS_DIRECTORY ${DIR})
-      message(NOTICE "-- Found plugin: ${PLUGIN_NAME}")
-      list(APPEND FOUND_PLUGINS ${PLUGIN_NAME})
-      add_subdirectory(${DIR})
-  ELSE()
-      CONTINUE()
-  ENDIF()
+include(cmake/external_plugins.cmake)
+add_external_plugins()
 
-  list(APPEND UDF_RPATH "${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/lib")
-  list(APPEND UDF_LIBS "${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${PLUGIN_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-  list(APPEND UDF_INCLUDES "${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/include")
-endforeach()
-
-# cvode
+include(cmake/cvode.cmake)
 if (ENABLE_CVODE)
-  message(FATAL_ERROR "CVODE is not currently supported!")
-
-  # workaround to resolve name conflict (used be OCCA and CVODE)
-  set(ENABLE_CUDA ${OCCA_CUDA_ENABLED})
-  set(ENABLE_HIP ${OCCA_HIP_ENABLED})
-  set(ENABLE_OPENCL ${OCCA_OPENCL_ENABLED})
-
-  if(OCCA_OPENCL_ENABLED)
-    message(FATAL_ERROR "CVODE + OPENCL is not currently supported!")
-  endif()
-  if(OCCA_DPCPP_ENABLED)
-    message(FATAL_ERROR "CVODE + DPCPP is not currently supported!")
-  endif()
-  if(OCCA_HIP_ENABLED)
-    message(FATAL_ERROR "CVODE + HIP is not currently supported!")
-  endif()
-
-  set(ENABLE_MPI ON)
-  set(BUILD_CVODE ON)
-  set(BUILD_ARKODE OFF)
-  set(BUILD_CVODES OFF)
-  set(BUILD_IDA OFF)
-  set(BUILD_IDAS OFF)
-  set(BUILD_KINSOL OFF)
-  set(EXAMPLES_ENABLE_C OFF)
-  set(EXAMPLES_ENABLE_CXX OFF)
-  if(OCCA_CUDA_ENABLED)
-    set(EXAMPLES_ENABLE_CUDA OFF)
-  endif()
-  set(EXAMPLES_ENABLE_F2003 OFF)
-  set(BUILD_TESTING OFF)
-  set(BUILD_SHARED_LIBS ON)
-
-  add_subdirectory(3rd_party/cvode)
-
-  # restore default
-  set(BUILD_SHARED_LIBS OFF)
+  add_cvode()
 endif()
 
-# blas + lapack
+include(cmake/adios.cmake)
+if (ENABLE_ADIOS)
+  add_adios()
+endif()
+
 add_subdirectory(3rd_party/lapack)
 
-# nek5000 dependencies
 include(cmake/nek5000.cmake)
+add_nek5000()
 
 include(cmake/nekrs.cmake)
 
-# Link dependencies
+###### Link dependencies ######
+
 target_link_libraries(nekrs-lib PUBLIC libocca PRIVATE nekrs-hypre nekrs-hypre-device gs blas lapack std::filesystem ${CMAKE_DL_LIBS})
 target_include_directories(nekrs-lib PRIVATE ${CMAKE_BINARY_DIR})
 if (NEKRS_BUILD_FLOAT)
@@ -343,6 +285,15 @@ if (ENABLE_CVODE)
     target_include_directories(nekrs-lib PRIVATE ${CUDA_INCLUDE_DIRS})
     target_link_libraries (nekrs-lib PUBLIC SUNDIALS::nveccuda_shared)
     target_compile_definitions(nekrs-lib PUBLIC -DENABLE_CUDA)
+  endif()
+endif()
+
+if (ENABLE_ADIOS)
+  target_link_libraries(nekrs-lib PRIVATE adios2::cxx11_mpi)
+  target_compile_definitions(nekrs-lib PUBLIC NEKRS_ENABLE_ADIOS)
+  if (NEKRS_BUILD_FLOAT)
+      target_link_libraries(nekrs-lib-fp32 PRIVATE adios2::cxx11_mpi)
+      target_compile_definitions(nekrs-lib-fp32 PUBLIC NEKRS_ENABLE_ADIOS)
   endif()
 endif()
 
@@ -415,7 +366,7 @@ install(FILES LICENSE RELEASE.md README.md DESTINATION .)
 install(FILES ${CMAKE_BINARY_DIR}/nekrsSys.hpp DESTINATION include/core)
 install(DIRECTORY src/ DESTINATION include FILES_MATCHING REGEX "\.hpp$|\.h$|\.tpp$")
 install(FILES src/udf/CMakeLists.txt DESTINATION udf)
-install(DIRECTORY src/nrs/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
+install(DIRECTORY src/nekInterface/ DESTINATION nekInterface REGEX "\.hpp$|\.cpp$" EXCLUDE)
 install(DIRECTORY doc/ DESTINATION doc)
 
 install(DIRECTORY scripts/ DESTINATION bin

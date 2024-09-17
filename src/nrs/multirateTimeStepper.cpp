@@ -21,13 +21,13 @@ void nrs_t::finishOuterStep() {}
 bool nrs_t::runOuterStep(std::function<bool(int)> convergenceCheck, int stage)
 {
   int innerSteps = 1;
-  platform->options.getArgs("MULTIRATE STEPS", innerSteps);
+  platform->options.getArgs("NEKNEK MULTIRATE STEPS", innerSteps);
 
   auto tstep = tStepOuterStart;
   auto time = timeOuterStart;
 
   int requiredCorrectorSteps = 0;
-  platform->options.getArgs("MULTIRATE CORRECTOR STEPS", requiredCorrectorSteps);
+  platform->options.getArgs("NEKNEK MULTIRATE CORRECTOR STEPS", requiredCorrectorSteps);
 
   const auto correctorStep = stage - 1;
   const bool predictorStep = correctorStep == 0;
@@ -39,8 +39,8 @@ bool nrs_t::runOuterStep(std::function<bool(int)> convergenceCheck, int stage)
     restoreSolutionState();
   }
 
-  for (int step = 0; step < innerSteps; ++step) {
-    bool last = step == innerSteps - 1;
+  for (int step = 1; step <= innerSteps; ++step) {
+    const auto last = (step == innerSteps);
     initInnerStep(time, dt[0], tstep);
     time += setPrecision(dt[0], 5);
 
@@ -52,8 +52,8 @@ bool nrs_t::runOuterStep(std::function<bool(int)> convergenceCheck, int stage)
 
     finishInnerStep();
 
-    if (!(last && outerConverged)) {
-      printInfo(time, tstep, true, true);
+    if (!last) {
+      printStepInfo(time, tStepOuterStart, true, true);
     }
 
     tstep++;

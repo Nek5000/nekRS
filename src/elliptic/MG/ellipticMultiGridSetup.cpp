@@ -246,6 +246,11 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
         Rows[i] = coarseA[i].row;
         Cols[i] = coarseA[i].col;
         Vals[i] = coarseA[i].val;
+
+        nekrsCheck(Rows[i] < 0 || Cols[i] < 0 || std::isnan(Vals[i]),
+                   MPI_COMM_SELF, EXIT_FAILURE,
+                   "invalid {row %d, col %d , val %g}\n",
+                   Rows[i], Cols[i], Vals[i]);
       }
       free(coarseA);
 

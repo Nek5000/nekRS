@@ -45,7 +45,7 @@ fi
 echo " Found $nfld field file(s)"
 echo " Generating metadata file $mfile ..."
 
-echo 'firsttimestep: 1'    >> $mfile 
+echo 'firsttimestep: 0'    >> $mfile 
 echo "numtimesteps: $nfld" >> $mfile 
 
 echo

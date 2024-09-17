@@ -164,7 +164,7 @@ occa::properties meshKernelProperties(int N)
   return meshProperties;
 }
 
-static void loadKernels(mesh_t *mesh)
+void meshLoadKernels(mesh_t *mesh)
 {
   const std::string meshPrefix = "mesh-";
   const std::string orderSuffix = "_" + std::to_string(mesh->N);
@@ -242,7 +242,7 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
     std::cout << std::endl << "    WARNING: N < 5 may degrade performance!\n" << std::endl;
   }
 
-  loadKernels(mesh);
+  meshLoadKernels(mesh);
 
   // set up halo exchange info for MPI (do before connect face nodes)
   meshHaloSetup(mesh);
@@ -350,12 +350,16 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
   const int cubN = 0;
   meshLoadReferenceNodesHex3D(mesh, Nc, cubN);
 
-  const std::string meshPrefix = "pMGmesh-";
   const std::string orderSuffix = "_" + std::to_string(mesh->N);
 
-  mesh->velocityDirichletKernel = nullptr;
+  int p;
+  platform->options.getArgs("POLYNOMIAL DEGREE", p);
+  const std::string prefix = (mesh->N != p) ? "pMGmesh-" : "mesh-";
+
   mesh->geometricFactorsKernel =
-      platform->kernelRequests.load(meshPrefix + "geometricFactorsHex3D" + orderSuffix);
+      platform->kernelRequests.load(prefix + "geometricFactorsHex3D" + orderSuffix);
+
+  mesh->velocityDirichletKernel = nullptr;
   mesh->surfaceGeometricFactorsKernel = nullptr;
   mesh->cubatureGeometricFactorsKernel = nullptr;
   mesh->nStagesSumVectorKernel = nullptr;

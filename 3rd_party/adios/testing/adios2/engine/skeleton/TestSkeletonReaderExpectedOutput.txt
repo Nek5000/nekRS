@@ -1,0 +1,16 @@
+Skeleton Reader 0 Open(skeleton_stream) in constructor.
+Skeleton Reader 0   BeginStep() new step 0
+Missing 'myArray' variable. The Skeleton reader engine must retrieve variables from the writer and create Variable objects before they can be inquired
+Skeleton Reader 0     GetSync(mySyncString)
+Skeleton Reader 0     GetDeferred(myArray)
+Skeleton Reader 0     PerformGets()
+Skeleton Reader 0   EndStep()
+Skeleton Reader 0   BeginStep() new step 1
+Skeleton Reader 0     GetSync(mySyncString)
+Skeleton Reader 0     GetDeferred(myArray)
+Skeleton Reader 0     PerformGets()
+Skeleton Reader 0   EndStep()
+Skeleton Reader 0   BeginStep() new step 2
+Skeleton Reader 0   forcefully returns End of Stream at this step
+Skeleton Reader 0 Close(skeleton_stream)
+Skeleton Reader 0 deconstructor on skeleton_stream

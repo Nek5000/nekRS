@@ -158,7 +158,6 @@ namespace occa
 
     void device::setArchCompilerFlags(std::string& compilerFlags)
     {
-      setDeviceArchCompilerFlags(dpcppDevice, compilerFlags);
     }
 
     void device::compileKernel(const std::string &hashDir,

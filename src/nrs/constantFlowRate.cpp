@@ -102,15 +102,15 @@ void compute(nrs_t *nrs, double time)
 
     platform->linAlg->scaleMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, -1.0, o_RhsVel);
 
-    occa::memory o_BF = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
-    o_BF.copyFrom(mesh->o_LMM, mesh->Nlocal, 0 * nrs->fieldOffset, 0);
-    o_BF.copyFrom(mesh->o_LMM, mesh->Nlocal, 1 * nrs->fieldOffset, 0);
-    o_BF.copyFrom(mesh->o_LMM, mesh->Nlocal, 2 * nrs->fieldOffset, 0);
+    occa::memory o_JwF = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+    o_JwF.copyFrom(mesh->o_LMM, mesh->Nlocal, 0 * nrs->fieldOffset, 0);
+    o_JwF.copyFrom(mesh->o_LMM, mesh->Nlocal, 1 * nrs->fieldOffset, 0);
+    o_JwF.copyFrom(mesh->o_LMM, mesh->Nlocal, 2 * nrs->fieldOffset, 0);
 
     for (int dim = 0; dim < nrs->NVfields; ++dim) {
       const dlong offset = dim * nrs->fieldOffset;
       const dfloat n_dim = flowDirection[dim];
-      platform->linAlg->axpby(mesh->Nlocal, n_dim, o_BF, 1.0, o_RhsVel, offset, offset);
+      platform->linAlg->axpby(mesh->Nlocal, n_dim, o_JwF, 1.0, o_RhsVel, offset, offset);
     }
   }
   platform->timer.toc("velocity rhs");

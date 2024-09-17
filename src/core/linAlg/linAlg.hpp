@@ -210,9 +210,9 @@ public:
                 occa::memory &o_y);
 
   // \sum o_a
-  dfloat sum(const dlong N, occa::memory &o_a, MPI_Comm _comm, const dlong offset = 0);
+  dfloat sum(const dlong N, const occa::memory &o_a, MPI_Comm _comm, const dlong offset = 0);
   dfloat
-  sumMany(const dlong N, const dlong Nfields, const dlong fieldOffset, occa::memory &o_a, MPI_Comm _comm);
+  sumMany(const dlong N, const dlong Nfields, const dlong fieldOffset, const occa::memory &o_a, MPI_Comm _comm);
 
   // \min o_a
   dfloat min(const dlong N, const occa::memory &o_a, MPI_Comm _comm);
@@ -359,6 +359,19 @@ public:
                           const occa::memory &o_uRef,
                           MPI_Comm comm);
 
+  dfloat maxAbsoluteError(const dlong N,
+                          const dlong Nfields,
+                          const dlong fieldOffset,
+                          const dfloat absTol,
+                          const occa::memory &o_u,
+                          const occa::memory &o_uRef,
+                          MPI_Comm comm);
+
+  // matrix is in row major ordering
+  std::vector<dfloat> matrixInverse(const int N, const std::vector<dfloat>& A);
+  std::vector<dfloat> matrixPseudoInverse(const int N, const std::vector<dfloat>& A);
+  std::vector<dfloat> matrixTranspose(const int N, const std::vector<dfloat>& A);
+
   occa::kernel fillKernel;
   occa::kernel pfillKernel;
   occa::kernel absKernel;
@@ -414,6 +427,7 @@ public:
   occa::kernel entrywiseMagKernel;
   occa::kernel linearCombinationKernel;
   occa::kernel relativeErrorKernel;
+  occa::kernel absoluteErrorKernel;
   occa::kernel magSqrVectorKernel;
   occa::kernel magSqrSymTensorKernel;
   occa::kernel magSqrSymTensorDiagKernel;

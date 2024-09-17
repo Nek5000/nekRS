@@ -1,0 +1,7 @@
+FROM ghcr.io/ornladios/adios2:ci-spack-ubuntu20.04-base
+ARG CLANG_VERSION=10
+
+RUN apt-get update && apt-get install -y \
+    clang-${CLANG_VERSION} \
+    libomp-dev && \
+    rm -rf /var/lib/apt/lists/*

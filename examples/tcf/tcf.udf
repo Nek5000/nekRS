@@ -1,6 +1,8 @@
+deviceMemory<dfloat> o_qcriterion;
+
 #ifdef __okl__
 
-void velocityDirichletConditions(bcData *bc)
+void codedFixedValueVelocity(bcData *bc)
 {
   // U = omega x r
   bc->u = -bc->y;
@@ -30,13 +32,13 @@ void UDF_Setup()
   dfloat eta;
   dfloat Ri;
 
-  auto rMin = 1000.0;
-  auto rMax = -1.0;
+  dfloat rMin = 1000.0;
+  dfloat rMax = -1.0;
 
   for (int n = 0; n < mesh->Nlocal; n++) {
-    dfloat x = mesh->x[n];
-    dfloat y = mesh->y[n];
-    dfloat z = mesh->z[n];
+    auto x = mesh->x[n];
+    auto y = mesh->y[n];
+    auto z = mesh->z[n];
 
     const auto r = sqrt(x * x + y * y);
 
@@ -81,11 +83,14 @@ void UDF_Setup()
       nrs->U[n + 2 * nrs->fieldOffset] = 0.0;
     }
   }
+
+  o_qcriterion.resize(mesh->Nlocal);
+  nrs->addUserCheckpointField("scalar00", std::vector<deviceMemory<dfloat>>{o_qcriterion});
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
   if (nrs->isCheckpointStep) {
-    nrs->Qcriterion(nrs->o_U, nrs->cds->o_S);
+    nrs->Qcriterion(o_qcriterion);
   }
 }

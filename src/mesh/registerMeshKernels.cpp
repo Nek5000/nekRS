@@ -12,9 +12,7 @@ void registerMeshKernels(occa::properties kernelInfoBC)
 
   for (auto &N : Nlist) {
     const int Nq = N + 1;
-    const int cubNq = (N == p) ? pCub + 1 : 1;
     const int Np = Nq * Nq * Nq;
-    const int cubNp = cubNq * cubNq * cubNq;
 
     const std::string meshPrefix = "mesh-";
     const std::string orderSuffix = "_" + std::to_string(N);
@@ -26,14 +24,8 @@ void registerMeshKernels(occa::properties kernelInfoBC)
     std::string kernelName;
 
     occa::properties meshKernelInfo = kernelInfo;
-    meshKernelInfo["defines/p_cubNq"] = cubNq;
-    meshKernelInfo["defines/p_cubNp"] = cubNp;
-
+    
     kernelName = "geometricFactorsHex3D";
-    fileName = oklpath + "/mesh/" + kernelName + ".okl";
-    platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, meshKernelInfo);
-
-    kernelName = "cubatureGeometricFactorsHex3D";
     fileName = oklpath + "/mesh/" + kernelName + ".okl";
     platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, meshKernelInfo);
 
@@ -41,11 +33,23 @@ void registerMeshKernels(occa::properties kernelInfoBC)
     fileName = oklpath + "/mesh/" + kernelName + ".okl";
     platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, meshKernelInfo);
 
+    const int cubNq = (N == p) ? pCub + 1 : 1;
+    const int cubNp = cubNq * cubNq * cubNq;
+
+    auto meshCubKernelInfo = meshKernelInfo;
+    meshCubKernelInfo["defines/p_cubNq"] = cubNq;
+    meshCubKernelInfo["defines/p_cubNp"] = cubNp;
+
+    kernelName = "cubatureGeometricFactorsHex3D";
+    fileName = oklpath + "/mesh/" + kernelName + ".okl";
+    platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, meshCubKernelInfo);
+
     if (N == p) {
       kernelName = "velocityDirichletBCHex3D";
       fileName = oklpath + "/mesh/" + kernelName + ".okl";
       platform->kernelRequests.add(meshPrefix + kernelName, fileName, kernelInfoBC);
 
+      // N to M
       for (int Nc = 1; Nc < N; Nc++) { 
         auto props = kernelInfo;
         props["defines/p_NqFine"] = N + 1;
@@ -82,6 +86,72 @@ void registerMeshKernels(occa::properties kernelInfoBC)
         platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, props);
       }
 
+      auto addIntpKernels = [&](bool transpose = false)
+      {
+        for (int M = 1; M < mesh_t::maxNqIntp; M++) {
+          if (M == N) continue;
+ 
+          bool condition = transpose ? (M > N) : (M <= N);
+
+          const auto Nf = condition ? N : M;
+          const auto Nc = condition ? M : N;
+          kernelName = condition ? "prolongateHex3D" : "coarsenHex3D";
+
+          auto props = kernelInfo;
+          props["defines/p_NqFine"] = Nf + 1;
+          props["defines/p_NqCoarse"] = Nc + 1;
+          props["defines/pfloat"] = dfloatString;
+ 
+          props["defines/p_NpFine"] = (Nf + 1) * (Nf + 1) * (Nf + 1); 
+          props["defines/p_NpCoarse"] = (Nc + 1) * (Nc + 1) * (Nc + 1);;
+ 
+          const std::string ext = platform->serial ? ".c" : ".okl";
+          const std::string orderSuffix =
+            std::string("_Nf_") + std::to_string(Nf) + std::string("_Nc_") + std::to_string(Nc);
+ 
+          fileName = oklpath + "/mesh/" + kernelName + ext;
+          platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, props);
+        }
+      };
+
+      // N to M
+      addIntpKernels();
+      // M to N
+      addIntpKernels(true);
+
+      // M to N
+      for (int M = 1; M < mesh_t::maxNqIntp; M++) {
+        if (M == N) continue;
+
+        int Nf;
+        int Nc;
+
+        if (M > N) {
+          Nf = M;
+          Nc = N;
+          kernelName = "coarsenHex3D";
+        } else {
+          Nf = N;
+          Nc = M;
+          kernelName = "prolongateHex3D";
+        }
+ 
+        auto props = kernelInfo;
+        props["defines/p_NqFine"] = Nf + 1;
+        props["defines/p_NqCoarse"] = Nc + 1;
+        props["defines/pfloat"] = dfloatString;
+
+        props["defines/p_NpFine"] = (Nf + 1) * (Nf + 1) * (Nf + 1); 
+        props["defines/p_NpCoarse"] = (Nc + 1) * (Nc + 1) * (Nc + 1);;
+
+        const std::string ext = platform->serial ? ".c" : ".okl";
+        const std::string orderSuffix =
+          std::string("_Nf_") + std::to_string(Nf) + std::string("_Nc_") + std::to_string(Nc);
+
+        fileName = oklpath + "/mesh/" + kernelName + ext;
+        platform->kernelRequests.add(meshPrefix + kernelName + orderSuffix, fileName, props);
+      }
+     
       meshKernelInfo = kernelInfo;
       int nAB = 3;
       platform->options.getArgs("MESH INTEGRATION ORDER", nAB);
@@ -99,6 +169,10 @@ void registerMeshKernels(occa::properties kernelInfoBC)
       prop["defines/p_ndot"] = 1;
       kernelName = "surfaceAreaNormalMultiplyIntegrateHex3D-ndot";
       platform->kernelRequests.add(meshPrefix + kernelName, fileName, prop);
+
+      kernelName = "surfaceAreaMultiplyHex3D";
+      fileName = oklpath + "/mesh/" + kernelName + ".okl";
+      platform->kernelRequests.add(meshPrefix + kernelName, fileName, kernelInfo);
 
       kernelName = "setBIDHex3D";
       fileName = oklpath + "/mesh/" + kernelName + ".okl";

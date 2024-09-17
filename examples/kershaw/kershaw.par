@@ -33,7 +33,7 @@ initialGuess = previous
 
 [VELOCITY]
 boundaryTypeMap = zeroGradient #zeroValue 
-density = 1.0
+rho = 1.0
 viscosity = 1.0
 
 #[BOOMERAMG]

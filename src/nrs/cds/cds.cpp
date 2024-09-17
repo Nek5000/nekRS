@@ -1,4 +1,6 @@
 #include "advectionSubCycling.hpp"
+#include "nrs.hpp"
+
 #include "cds.hpp"
 #include "lowPassFilter.hpp"
 #include "avm.hpp"
@@ -42,7 +44,6 @@ occa::memory cds_t::advectionSubcyling(int nEXT, double time, int scalarIdx)
 
   auto o_U = this->o_S.slice(this->fieldOffsetScan[scalarIdx], fieldOffset);
 
-  auto o_Urst = (movingMesh) ? this->o_relUrst : this->o_Urst;
   auto kernel = (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE"))
                       ? this->subCycleStrongCubatureVolumeKernel
                       : this->subCycleStrongVolumeKernel;
@@ -61,7 +62,7 @@ occa::memory cds_t::advectionSubcyling(int nEXT, double time, int scalarIdx)
                                fieldOffset,
                                this->vCubatureOffset,
                                fieldOffsetSum,
-                               o_Urst,
+                               (movingMesh) ? this->o_relUrst : this->o_Urst,
                                o_U);
 }
 
@@ -199,7 +200,7 @@ cds_t::cds_t(cdsConfig_t &cfg)
 
   if (this->anyEllipticSolver) {
     this->o_Se = platform->device.malloc<dfloat>(this->fieldOffsetSum);
-    this->o_BF = platform->device.malloc<dfloat>(this->fieldOffsetSum);
+    this->o_JwF = platform->device.malloc<dfloat>(this->fieldOffsetSum);
   }
 
   bool scalarFilteringEnabled = false;
@@ -212,10 +213,7 @@ cds_t::cds_t(cdsConfig_t &cfg)
         scalarFilteringEnabled = true;
       }
 
-      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_RESIDUAL")) {
-        avmEnabled = true;
-      }
-      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_HIGHEST_MODAL_DECAY")) {
+      if (options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_AVERAGED_MODAL_DECAY")) {
         avmEnabled = true;
       }
     }
@@ -261,7 +259,7 @@ cds_t::cds_t(cdsConfig_t &cfg)
     this->o_applyFilterRT.copyFrom(applyFilterRT.data(), this->NSfields);
 
     if (avmEnabled) {
-      avm::setup(this);
+      avm::setup(meshV, gsh);
     }
   }
 
@@ -308,19 +306,8 @@ cds_t::cds_t(cdsConfig_t &cfg)
   }
 }
 
-void cds_t::makeNLT(double time, int tstep, occa::memory &o_Usubcycling)
+void cds_t::makeNLT(int is, double time, int tstep, occa::memory &o_Usubcycling)
 {
-  if (this->userSource) {
-    platform->timer.tic("udfSEqnSource", 1);
-    this->userSource(time);
-    platform->timer.toc("udfSEqnSource");
-  }
-
-  for (int is = 0; is < this->NSfields; is++) {
-    if (!this->compute[is] || this->cvodeSolve[is]) {
-      continue;
-    }
-
     const std::string sid = scalarDigitStr(is);
 
     auto mesh = (is) ? this->meshV : this->mesh[0];
@@ -331,7 +318,7 @@ void cds_t::makeNLT(double time, int tstep, occa::memory &o_Usubcycling)
       this->filterRTKernel(this->meshV->Nelements,
                            is,
                            1,
-                           fieldOffset,
+                           this->o_fieldOffsetScan,
                            this->o_applyFilterRT,
                            this->o_filterRT,
                            this->o_filterS,
@@ -398,7 +385,6 @@ void cds_t::makeNLT(double time, int tstep, occa::memory &o_Usubcycling)
         advectionFlops(this->mesh[0], 1);
       }
     }
-  }
 }
 
 void cds_t::saveSolutionState()
@@ -419,4 +405,89 @@ void cds_t::restoreSolutionState()
   o_Ssave.copyTo(o_S, o_S.length());
   o_NLTsave.copyTo(o_NLT, o_NLT.length());
   o_Spropsave.copyTo(o_prop, o_prop.length());
+}
+
+void cds_t::applyAVM()
+{
+  auto verbose = platform->options.compareArgs("VERBOSE", "TRUE");
+  auto mesh = this->meshV; // assumes mesh is the same for all scalars
+  static std::vector<occa::memory> o_diff0(NSfields);
+
+  static std::vector<occa::memory> o_nuAVM;
+  static auto initialized = false;
+  if (!initialized) {
+    for (int is = 0; is < NSfields; is++) {
+      const auto sid = scalarDigitStr(is);
+
+      if (platform->options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_AVERAGED_MODAL_DECAY")) {
+        nekrsCheck(mesh->N < 5,
+                   platform->comm.mpiComm,
+                   EXIT_FAILURE,
+                   "%s\n",
+                   "AVM requires polynomialOrder >= 5!");
+
+        o_diff0[is] = platform->device.malloc<dfloat>(fieldOffset[is]);
+        o_diff0[is].copyFrom(o_diff, fieldOffset[is], 0, fieldOffsetScan[is]);
+      }
+    }
+    initialized = true;
+  }
+
+  for (int scalarIndex = 0; scalarIndex < NSfields; scalarIndex++) {
+    const auto sid = scalarDigitStr(scalarIndex);
+ 
+    if (!platform->options.compareArgs("SCALAR" + sid + " REGULARIZATION METHOD", "AVM_AVERAGED_MODAL_DECAY"))
+      continue; 
+
+    // restore inital viscosity
+    o_diff.copyFrom(o_diff0.at(scalarIndex),
+                    fieldOffset[scalarIndex],
+                    fieldOffsetScan[scalarIndex]);
+ 
+    dfloat kappa = 1.0;
+    platform->options.getArgs("SCALAR" + sid + " REGULARIZATION AVM ACTIVATION WIDTH", kappa);
+ 
+    dfloat logS0 = 2.0; // threshold smoothness exponent (activate for logSk > logS0 - kappa) 
+    platform->options.getArgs("SCALAR" + sid + " REGULARIZATION AVM DECAY THRESHOLD", logS0);
+ 
+    dfloat scalingCoeff = 1.0;
+    platform->options.getArgs("SCALAR" + sid + " REGULARIZATION AVM SCALING COEFF", scalingCoeff);
+
+    dfloat absTol = 0;
+    platform->options.getArgs("SCALAR" + sid + " REGULARIZATION AVM ABSOLUTE TOL", absTol);
+
+    const bool makeCont = platform->options.compareArgs("SCALAR" + sid + " REGULARIZATION AVM C0", "TRUE");
+ 
+    auto o_Si = o_S.slice(fieldOffsetScan[scalarIndex], mesh->Nlocal);
+    auto o_eps = avm::viscosity(vFieldOffset, o_U, o_Si, absTol, scalingCoeff, logS0, kappa, makeCont);
+ 
+    if (verbose) {
+      const dfloat maxEps = platform->linAlg->max(mesh->Nlocal, o_eps, platform->comm.mpiComm);
+      const dfloat minEps = platform->linAlg->min(mesh->Nlocal, o_eps, platform->comm.mpiComm);
+      occa::memory o_S_slice = o_diff + fieldOffsetScan[scalarIndex];
+      const dfloat maxDiff = platform->linAlg->max(mesh->Nlocal, o_S_slice, platform->comm.mpiComm);
+      const dfloat minDiff = platform->linAlg->min(mesh->Nlocal, o_S_slice, platform->comm.mpiComm);
+ 
+      if (platform->comm.mpiRank == 0) {
+        printf("applying a min/max artificial viscosity of (%f,%f) to scalar%s with min/max visc (%f,%f)\n",
+               minEps,
+               maxEps,
+               sid.c_str(),
+               minDiff,
+               maxDiff);
+      }
+    }
+ 
+    platform->linAlg->axpby(mesh->Nlocal, 1.0, o_eps, 1.0, o_diff, 0, fieldOffsetScan[scalarIndex]);
+ 
+    if (verbose) {
+      occa::memory o_S_slice = o_diff + fieldOffsetScan[scalarIndex];
+      const dfloat maxDiff = platform->linAlg->max(mesh->Nlocal, o_S_slice, platform->comm.mpiComm);
+      const dfloat minDiff = platform->linAlg->min(mesh->Nlocal, o_S_slice, platform->comm.mpiComm);
+ 
+      if (platform->comm.mpiRank == 0) {
+        printf("scalar%s now has a min/max visc: (%f,%f)\n", sid.c_str(), minDiff, maxDiff);
+      }
+    }
+  }
 }

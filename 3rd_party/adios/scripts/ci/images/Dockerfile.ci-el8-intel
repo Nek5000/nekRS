@@ -1,0 +1,81 @@
+FROM almalinux:8
+
+RUN dnf upgrade -y && \
+    dnf install -y glibc-langpack-en
+
+RUN dnf install -y dnf-plugins-core && \
+    dnf config-manager --set-enabled powertools && \
+    dnf install -y epel-release
+
+RUN dnf install -y \
+        bzip2-devel \
+        ccache \
+        curl \
+        diffutils \
+        file \
+        findutils \
+        git \
+        gcc-c++ \
+        gcc \
+        gnupg2 \
+        gzip \
+        hdf5-devel \
+        libpng-devel \
+        Lmod \
+        make \
+        mpich-devel \
+        patch \
+        patchelf \
+        python39-devel \
+        python39-pip \
+        tar \
+        tcl \
+        unzip \
+        which \
+        xz \
+        zeromq-devel \
+        zfp-devel \
+        zlib-devel
+
+# Install the compilers from an external repo
+COPY oneAPI.repo /etc/yum.repos.d/
+RUN pip3 install numpy && \
+    pip3 install mpi4py-mpich && \
+    dnf install -y \
+        intel-oneapi-compiler-dpcpp-cpp-2023.2.1 \
+        intel-oneapi-compiler-fortran-2023.2.1 \
+        intel-oneapi-compiler-dpcpp-cpp-and-cpp-classic-2023.2.1
+RUN dnf clean all
+
+# Setup module files for the compilers
+RUN /opt/intel/oneapi/modulefiles-setup.sh \
+    --force \
+    --output-dir=/usr/share/modulefiles
+
+# Install the latest CMake release binary
+WORKDIR /opt/cmake
+RUN curl -L https://cmake.org/files/LatestRelease/$(curl https://cmake.org/files/LatestRelease/ | sed -n '/linux-x86_64.tar.gz/s/.*>\(cmake[^<]*\)<.*/\1/p' | sort | tail -1) | tar --strip-components=1 -xzv
+
+# Install SZ
+WORKDIR /opt/sz
+RUN curl -L https://github.com/szcompressor/SZ/releases/download/v2.1.12.5/SZ-2.1.12.5.tar.gz | tar -xvz && \
+    mkdir build && \
+    cd build && \
+    /opt/cmake/bin/cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/sz/2.1.12.5 ../SZ-2.1.12.5 && \
+    make -j$(grep -c '^processor' /proc/cpuinfo) install && \
+    cd .. && \
+    rm -rf SZ-2.1.12.5 build
+
+ENV PATH /opt/cmake/bin:/opt/sz/2.1.12.5/bin:/usr/lib64/mpich/bin:${PATH}
+ENV LD_LIBRARY_PATH /opt/sz/2.1.12.5/lib64:${LD_LIBRARY_PATH}
+ENV CMAKE_PREFIX_PATH /opt/sz/2.1.12.5:${CMAKE_PREFIX_PATH}
+
+# Install mpi4py
+RUN mkdir /opt/mpi4py && pushd /opt/mpi4py && \
+    curl -L https://github.com/mpi4py/mpi4py/releases/download/3.1.4/mpi4py-3.1.4.tar.gz | tar -xzv && \
+    cd mpi4py-3.1.4/ && \
+    python3 setup.py build && \
+    python3 setup.py install && \
+    popd && rm -rf /opt/mpi4py
+
+WORKDIR /

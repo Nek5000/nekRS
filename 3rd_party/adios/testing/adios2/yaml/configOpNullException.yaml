@@ -1,0 +1,10 @@
+---
+# adios2 config file in yaml format
+- IO: "TestIO"
+    
+  Variables:
+    
+  - Variable: "r32"
+    Operations:
+    # throw an exception since null is not a valid operation
+    - { Type: null, rate: 8 }

@@ -55,7 +55,7 @@ bc.usrwrk = W;                                                                  
 const dfloat WsJ = sgeo[sk * p_Nsgeo + p_WSJID];                                                             \
 bc.scalarId = scalarId;                                                                                      \
 bc.flux = 0;                                                                                                 \
-scalarNeumannConditions(&bc);                                                                                \
+codedFixedGradientScalar(&bc);                                                                               \
 s_ndU[j][i] = -WsJ * (bc.flux);                                                                              \
 }                                                                                                            \
 else {                                                                                                       \

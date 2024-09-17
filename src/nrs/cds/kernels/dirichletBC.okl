@@ -42,6 +42,7 @@
                          @ restrict const dfloat *rho,
                          const dlong neknekOffset,
                          @ restrict const dlong*  neknekPoints,
+                         const int neknekUInitialized,
                          @ restrict const dfloat* neknekU,
                          @ restrict const dfloat* neknekS,
                          @ restrict const dlong* neknekScalarIndex,
@@ -97,11 +98,13 @@
             const int neknekId = neknekPoints[idM];
             const int neknekScalarId = neknekScalarIndex[scalarId];
             bc.sinterp = neknekS[neknekId + neknekScalarId * neknekOffset];
-            bc.uinterp = neknekU[neknekId + 0 * neknekOffset];
-            bc.vinterp = neknekU[neknekId + 1 * neknekOffset];
-            bc.winterp = neknekU[neknekId + 2 * neknekOffset];
+            if(neknekUInitialized) {
+              bc.uinterp = neknekU[neknekId + 0 * neknekOffset];
+              bc.vinterp = neknekU[neknekId + 1 * neknekOffset];
+              bc.winterp = neknekU[neknekId + 2 * neknekOffset];
+            }
           }
-          scalarDirichletConditions(&bc);
+          codedFixedValueScalar(&bc);
           S[idM] = bc.s;
         }
       }

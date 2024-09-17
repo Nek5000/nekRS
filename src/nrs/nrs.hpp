@@ -8,6 +8,7 @@
 #include "neknek.hpp"
 #include "randomVector.hpp"
 #include "aeroForce.hpp"
+#include "iofldFactory.hpp"
 
 class nrs_t : public solver_t
 {
@@ -32,6 +33,14 @@ public:
   userConvergenceCheck_t userConvergenceCheck = nullptr;
   userVelocityImplicitLinearTerm_t userVelocityImplicitLinearTerm = nullptr;
   userScalarImplicitLinearTerm_t userScalarImplicitLinearTerm = nullptr;
+
+  void addUserCheckpointField(const std::string& name, const std::vector<deviceMemory<dfloat>>& o_fld)
+  {
+    std::vector<occa::memory> o_fld_;
+    for (const auto& entry : o_fld) o_fld_.push_back(entry);
+
+    userCheckpointFields.push_back( {name, o_fld_} );
+  };
 
   bool multiSession = false;
 
@@ -65,6 +74,8 @@ public:
 
   dlong fieldOffset;
   dlong cubatureOffset;
+
+  std::unique_ptr<iofld> checkpointWriter;
 
   int timeStepConverged = 1;
 
@@ -105,7 +116,7 @@ public:
 
   occa::memory o_idH;
 
-  occa::memory o_BF;
+  occa::memory o_JwF;
   occa::memory o_NLT;
 
   dfloat *coeffEXT, *coeffBDF;
@@ -204,7 +215,7 @@ public:
 
   void printMinMax();
   void printRunStat(int step);
-  void printInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo);
+  void printStepInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo);
 
   void makeNLT(double time, int tstep, occa::memory &o_Usubcycling);
   dfloat computeCFL();
@@ -229,6 +240,7 @@ public:
   occa::memory strainRate(const occa::memory &o_U, bool smooth = true);
   occa::memory strainRate(bool smooth = true);
 
+  void Qcriterion(occa::memory &o_Q);
   void Qcriterion(const occa::memory &o_U, occa::memory &o_Q);
   occa::memory Qcriterion(const occa::memory &o_U);
   occa::memory Qcriterion();
@@ -238,6 +250,13 @@ public:
   void finalize();
   int setLastStep(double timeNew, int tstep, double elapsedTime);
   int lastStepLocalSession(double timeNew, int tstep, double elapsedTime);
+
+  void copyToNek(double time, int tstep);
+  void ocopyToNek();
+  void ocopyToNek(double time, int tstep);
+  void copyToNek(double time);
+  void copyFromNek(double &time);
+  void ocopyFromNek(double &time);
 
 private:
   void initInnerStep(double time, dfloat dt, int tstep);
@@ -264,6 +283,8 @@ private:
   occa::memory o_zsave;
 
   void setIC();
+
+  std::vector<std::pair<std::string, std::vector<occa::memory>>> userCheckpointFields;
 
 };
 

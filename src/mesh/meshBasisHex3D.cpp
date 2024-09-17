@@ -92,6 +92,26 @@ void FaceNodesHex3D(int _N, dfloat *_r, dfloat *_s, dfloat *_t, int *_faceNodes)
   }
 }
 
+void OrthonormalBasisHex3D(dfloat a, dfloat b, dfloat c, int i, int j, int k, dfloat* P)
+{
+  *P = JacobiP(a,0,0,i) * JacobiP(b,0,0,j) * JacobiP(c,0,0,k);
+}
+
+void VandermondeHex3D(int _N, int Npoints, dfloat* _r, dfloat* _s, dfloat* _t, dfloat* V)
+{
+  int _Nq = _N + 1;
+  int _Np = _Nq * _Nq * _Nq;
+
+  for(int n = 0; n < Npoints; n++)
+    for(int k = 0; k < _Nq; k++)
+      for(int j = 0; j < _Nq; j++)
+        for(int i = 0; i < _Nq; i++) {
+          int id = n * _Np + i + j * _Nq + k * _Nq * _Nq;
+          OrthonormalBasisHex3D(_r[n], _s[n], _t[n], i, j, k, V + id);
+        }
+}
+
+
 #if 0
 
 void mesh_t::VertexNodesHex3D(int _N, dfloat* _r, dfloat* _s, dfloat* _t, int* _vertexNodes)
@@ -225,11 +245,6 @@ void mesh_t::SEMFEMEToVHex3D(int _N, int* _EToV)
 // ------------------------------------------------------------------------
 // ORTHONORMAL BASIS POLYNOMIALS
 // ------------------------------------------------------------------------
-void mesh_t::OrthonormalBasisHex3D(dfloat a, dfloat b, dfloat c, int i, int j, int k, dfloat* P)
-{
-  *P = JacobiP(a,0,0,i) * JacobiP(b,0,0,j) * JacobiP(c,0,0,k);
-}
-
 void mesh_t::GradOrthonormalBasisHex3D(dfloat a,
                                        dfloat b,
                                        dfloat c,
@@ -249,19 +264,6 @@ void mesh_t::GradOrthonormalBasisHex3D(dfloat a,
 // 2D VANDERMONDE MATRICES
 // ------------------------------------------------------------------------
 
-void mesh_t::VandermondeHex3D(int _N, int Npoints, dfloat* _r, dfloat* _s, dfloat* _t, dfloat* V)
-{
-  int _Nq = _N + 1;
-  int _Np = _Nq * _Nq * _Nq;
-
-  for(int n = 0; n < Npoints; n++)
-    for(int k = 0; k < _Nq; k++)
-      for(int j = 0; j < _Nq; j++)
-        for(int i = 0; i < _Nq; i++) {
-          int id = n * _Np + i + j * _Nq + k * _Nq * _Nq;
-          OrthonormalBasisHex3D(_r[n], _s[n], _t[n], i, j, k, V + id);
-        }
-}
 
 void mesh_t::GradVandermondeHex3D(int _N,
                                   int Npoints,

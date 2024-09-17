@@ -5,6 +5,10 @@
 #include <functional> 
 #include <string>
 
+/*
+  Basic high-level API
+*/
+
 namespace nekrs
 {
 void setup(MPI_Comm commg_in,
@@ -23,16 +27,15 @@ void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isCheckpointStep);
 void writeCheckpoint(double time, int step);
 int checkpointStep(double time, int tStep);
-int checkpointStep(double time, double dt, int tStep);
 void checkpointStep(int val);
 int finalize();
 void nekUserchk(void);
 int runTimeStatFreq();
-int printInfoFreq();
+int printStepInfoFreq();
 int updateFileCheckFreq();
 void printRuntimeStatistics(int step);
 double writeInterval(void);
-double dt(int tStep);
+std::tuple<double, double> dt(int tStep);
 double startTime(void);
 double endTime(void);
 int numSteps(void);
@@ -42,18 +45,15 @@ int writeControlRunTime(void);
 int exitValue(void);
 bool stepConverged(void);
 void processUpdFile();
-void printInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo);
-void verboseInfo(bool enabled);
+void printStepInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo);
+void verboseStepInfo(bool enabled);
 void updateTimer(const std::string &key, double time);
 void resetTimer(const std::string &key);
-
-void* platformPtr(void);
-const auto& platform = platformPtr;
 
 void initStep(double time, double dt, int tstep);
 bool runStep(std::function<bool(int)> convergenceCheck, int corrector);
 bool runStep(int corrector);
-double finishStep();
+void finishStep();
 bool stepConverged();
 int timeStep();
 double finalTimeStepSize(double time);

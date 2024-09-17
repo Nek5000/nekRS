@@ -115,9 +115,7 @@ static bool enforceLowerCase = false;
 
 static std::vector<std::string> nothing = {};
 
-static std::vector<std::string> noSectionKeys = {
-    {"userSections"}
-};
+static std::vector<std::string> noSectionKeys = {{"userSections"}};
 
 static std::vector<std::string> generalKeys = {
     {"dt"},
@@ -132,8 +130,9 @@ static std::vector<std::string> generalKeys = {
     {"timestepper"},
     {"subCyclingSteps"},
     {"subCycling"},
-    {"redirectoutputto"},
+    {"redirectOutputTo"},
     {"writeControl"},
+    {"checkpointEngine"},
     {"checkpointControl"},
     {"writeInterval"},
     {"checkpointInterval"},
@@ -150,7 +149,7 @@ static std::vector<std::string> generalKeys = {
 
 static std::vector<std::string> neknekKeys = {
     {"boundaryextorder"},
-    {"multirate"},
+    {"multiratetimestepping"},
 };
 
 static std::vector<std::string> problemTypeKeys = {
@@ -172,6 +171,7 @@ static std::vector<std::string> commonKeys = {
     {"boundaryTypeMap"},
     {"maxIterations"},
     {"regularization"},
+    {"checkpointing"},
 
     // deprecated filter params
     {"filtering"},
@@ -225,7 +225,7 @@ static std::vector<std::string> cvodeKeys = {
     {"jtvrecycleproperties"},
     {"sharedrho"},
     {"dealiasing"},
-    {"jtvmixedprecision"},
+    {"regularization"},
     {"solver"},
 };
 
@@ -367,7 +367,7 @@ const std::vector<std::string> &getValidKeys(const std::string &section)
   }
 }
 
-void validate(const inipp::Ini::Sections &sections, const std::vector<std::string>& userSections)
+void validate(const inipp::Ini::Sections &sections, const std::vector<std::string> &userSections)
 {
   int err = 0;
   bool generalExists = false;
@@ -410,7 +410,8 @@ void validate(const inipp::Ini::Sections &sections, const std::vector<std::strin
     }
 
     // check that section exists
-    if (std::find(validSections.begin(), validSections.end(), sec.first) == validSections.end() && !isScalar) {
+    if (std::find(validSections.begin(), validSections.end(), sec.first) == validSections.end() &&
+        !isScalar) {
       std::ostringstream error;
       error << "Invalid section name: " << sec.first << std::endl;
       append_error(error.str());
@@ -418,7 +419,9 @@ void validate(const inipp::Ini::Sections &sections, const std::vector<std::strin
     } else {
       const auto &validKeys = getValidKeys(sec.first);
       for (auto const &val : sec.second) {
-        if (std::find(userSections.begin(), userSections.end(), sec.first) != userSections.end()) continue; 
+        if (std::find(userSections.begin(), userSections.end(), sec.first) != userSections.end()) {
+          continue;
+        }
 
         if (std::find(validKeys.begin(), validKeys.end(), val.first) == validKeys.end()) {
           if (std::find(commonKeys.begin(), commonKeys.end(), val.first) == commonKeys.end()) {
@@ -1429,6 +1432,24 @@ void parseInitialGuess(const int rank, setupAide &options, inipp::Ini *ini, std:
   }
 }
 
+void parseCheckpointing(const int rank, setupAide &options, inipp::Ini *ini, std::string parSection)
+{
+  std::string val = "true";
+  if (ini->extract(parSection, "checkpointing", val)) {
+     if (val == "true") {
+       val = "true"; 
+     } else {
+       val = "false";
+     }
+  }
+  upperCase(val);
+
+  std::string parPrefix = parPrefixFromParSection(parSection);
+  upperCase(parPrefix);
+
+  options.setArgs(parPrefix + "CHECKPOINTING", val);
+}
+
 void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, std::string parSection)
 {
   int N;
@@ -1449,14 +1470,13 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
           {"none"},
           {"avm"},
           {"c0"},
-          {"highestmodaldecay"},
-          {"hpfresidual"},
           {"nmodes"},
           {"cutoffratio"},
           {"scalingcoeff"},
-          {"vismaxcoeff"},
           {"activationwidth"},
-          {"threshold"},
+          {"decaythreshold"},
+          {"absolutetol"},
+
       };
       const std::vector<std::string> list = serializeString(regularization, '+');
       for (const std::string s : list) {
@@ -1487,44 +1507,30 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
       }
 
       if (usesAVM) {
-        options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_HIGHEST_MODAL_DECAY");
-        options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", "0.5");
-        options.setArgs(parPrefix + "REGULARIZATION MDH ACTIVATION WIDTH", to_string_f(1.0));
-        options.setArgs(parPrefix + "REGULARIZATION MDH THRESHOLD", to_string_f(-4.0));
+        options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_AVERAGED_MODAL_DECAY");
+        options.setArgs(parPrefix + "REGULARIZATION AVM ACTIVATION WIDTH", to_string_f(1.0));
+        options.setArgs(parPrefix + "REGULARIZATION AVM DECAY THRESHOLD", to_string_f(2.0));
         options.setArgs(parPrefix + "REGULARIZATION AVM C0", "FALSE");
-        options.setArgs(parPrefix + "REGULARIZATION HPF MODES", "1");
-
-        if (regularization.find("hpfresidual") != std::string::npos) {
-          options.setArgs(parPrefix + "REGULARIZATION METHOD", "AVM_RESIDUAL");
-          options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", "1.0");
-        }
 
         for (std::string s : list) {
 
           const auto nmodeStr = parseValueForKey(s, "nmodes");
           if (!nmodeStr.empty()) {
-            if (regularization.find("highestmodaldecay") != std::string::npos) {
-              append_error("nmodes qualifier is invalid for avm highestmodaldecay!\n");
-            }
-
-            double value = std::stod(nmodeStr);
-            value = round(value);
-            options.setArgs(parPrefix + "REGULARIZATION HPF MODES", to_string_f(value));
+            append_error("nModes qualifier is invalid for avm!\n");
+          }
+          const auto cutoffratioStr = parseValueForKey(s, "cutoffratio");
+          if (!cutoffratioStr.empty()) {
+            append_error("cutoffRatio qualifier is invalid for avm!\n");
           }
 
-          const auto vismaxcoeffStr = parseValueForKey(s, "vismaxcoeff");
-          if (!vismaxcoeffStr.empty()) {
-            options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", vismaxcoeffStr);
+          const auto absTolStr = parseValueForKey(s, "absolutetol");
+          if (!absTolStr.empty()) {
+            options.setArgs(parPrefix + "REGULARIZATION AVM ABSOLUTE TOL", absTolStr);
           }
 
           const auto scalingcoeffStr = parseValueForKey(s, "scalingcoeff");
           if (!scalingcoeffStr.empty()) {
-            if (regularization.find("highestmodaldecay") != std::string::npos) {
-              // in this context, the scaling coefficient can only be vismax
-              options.setArgs(parPrefix + "REGULARIZATION VISMAX COEFF", scalingcoeffStr);
-            } else {
-              options.setArgs(parPrefix + "REGULARIZATION SCALING COEFF", scalingcoeffStr);
-            }
+            options.setArgs(parPrefix + "REGULARIZATION AVM SCALING COEFF", scalingcoeffStr);
           }
 
           if (s.find("c0") != std::string::npos) {
@@ -1533,13 +1539,18 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
 
           const auto rampConstantStr = parseValueForKey(s, "activationwidth");
           if (!rampConstantStr.empty()) {
-            options.setArgs(parPrefix + "REGULARIZATION MDH ACTIVATION WIDTH", rampConstantStr);
+            options.setArgs(parPrefix + "REGULARIZATION AVM ACTIVATION WIDTH", rampConstantStr);
           }
-          const auto thresholdStr = parseValueForKey(s, "threshold");
+          const auto thresholdStr = parseValueForKey(s, "decaythreshold");
           if (!thresholdStr.empty()) {
-            options.setArgs(parPrefix + "REGULARIZATION MDH THRESHOLD", thresholdStr);
+            options.setArgs(parPrefix + "REGULARIZATION AVM DECAY THRESHOLD", thresholdStr);
           }
         }
+
+        if (options.getArgs(parPrefix + "REGULARIZATION AVM ABSOLUTE TOL").empty()) {
+          append_error("absoluteTol qualifier required for avm!\n");
+        }
+
       }
 
       if (usesHPFRT) {
@@ -2005,20 +2016,36 @@ void parseGeneralSection(const int rank, setupAide &options, inipp::Ini *ini)
     append_error(error.str());
   }
 
-  int checkpointPrecision  = 0;
-  if (ini->extract("general", "checkpointprecision", checkpointPrecision)) { 
-    if (checkpointPrecision == 64) 
+  options.setArgs("CHECKPOINT ENGINE", "NEK");
+  std::string checkpointEngine;
+  if (ini->extract("general", "checkpointengine", checkpointEngine)) {
+    if (checkpointEngine == "nek") {
+      options.setArgs("CHECKPOINT ENGINE", "NEK");
+    } else if (checkpointEngine == "adios") {
+      options.setArgs("CHECKPOINT ENGINE", "ADIOS");
+#ifndef NEKRS_ENABLE_ADIOS
+      append_error("ADIOS engine was requested but is not enabled!\n");
+#endif
+    } else {
+      append_error("invalid checkpointEngine");
+    }
+  }
+
+  int checkpointPrecision = 0;
+  if (ini->extract("general", "checkpointprecision", checkpointPrecision)) {
+    if (checkpointPrecision == 64) {
       options.setArgs("CHECKPOINT PRECISION", "FP64");
-    else if (checkpointPrecision == 32) 
+    } else if (checkpointPrecision == 32) {
       options.setArgs("CHECKPOINT PRECISION", "FP32");
-    else
+    } else {
       append_error("invalid checkpointPrecision");
+    }
   }
 
   double writeInterval = 0;
   if (!ini->extract("general", "writeinterval", writeInterval)) {
     ini->extract("general", "checkpointinterval", writeInterval);
-  } 
+  }
   options.setArgs("CHECKPOINT INTERVAL", std::to_string(writeInterval));
 
   std::string writeControl;
@@ -2131,6 +2158,8 @@ void parsePressureSection(const int rank, setupAide &options, inipp::Ini *ini)
 {
   options.setArgs("PRESSURE ELLIPTIC COEFF FIELD", "FALSE");
 
+  parseCheckpointing(rank, options, ini, "pressure");
+
   parseSolverTolerance(rank, options, ini, "pressure");
 
   parseInitialGuess(rank, options, ini, "pressure");
@@ -2161,6 +2190,8 @@ void parseVelocitySection(const int rank, setupAide &options, inipp::Ini *ini)
   if (options.getArgs("VELOCITY STRESSFORMULATION").empty()) {
     options.setArgs("VELOCITY STRESSFORMULATION", "FALSE");
   }
+
+  parseCheckpointing(rank, options, ini, "velocity");
 
   parseInitialGuess(rank, options, ini, "velocity");
 
@@ -2228,8 +2259,9 @@ void parseProblemTypeSection(const int rank, setupAide &options, inipp::Ini *ini
       }
 
       options.setArgs("ADVECTION", "TRUE");
-      if (eqn == "stokes") {
+      if (eqnType == "STOKES") {
         options.setArgs("ADVECTION", "FALSE");
+        options.removeArgs("ADVECTION TYPE");
       }
     }
   }
@@ -2243,7 +2275,7 @@ void parseNekNekSection(const int rank, setupAide &options, inipp::Ini *par)
   }
 
   std::string multirateStr;
-  if (par->extract("neknek", "multirate", multirateStr)) {
+  if (par->extract("neknek", "multiratetimestepping", multirateStr)) {
     const std::vector<std::string> validValues = {
         {"yes"},
         {"true"},
@@ -2259,18 +2291,18 @@ void parseNekNekSection(const int rank, setupAide &options, inipp::Ini *par)
       const auto correctorStepsStr = parseValueForKey(entry, "correctorsteps");
       if (!correctorStepsStr.empty()) {
         const int correctorSteps = std::stoi(correctorStepsStr);
-        options.setArgs("MULTIRATE CORRECTOR STEPS", std::to_string(correctorSteps));
+        options.setArgs("NEKNEK MULTIRATE CORRECTOR STEPS", std::to_string(correctorSteps));
       }
     }
     const bool multirate = checkForTrue(list[0]);
-    options.setArgs("MULTIRATE TIMESTEPPER", multirate ? "TRUE" : "FALSE");
+    options.setArgs("NEKNEK MULTIRATE TIMESTEPPER", multirate ? "TRUE" : "FALSE");
   }
 
-  const bool multirate = options.compareArgs("MULTIRATE TIMESTEPPER", "TRUE");
+  const bool multirate = options.compareArgs("NEKNEK MULTIRATE TIMESTEPPER", "TRUE");
 
   if (multirate) {
     int correctorSteps = 0;
-    options.getArgs("MULTIRATE CORRECTOR STEPS", correctorSteps);
+    options.getArgs("NEKNEK MULTIRATE CORRECTOR STEPS", correctorSteps);
     if (boundaryEXTOrder > 1 && correctorSteps == 0) {
       append_error("Multirate timestepper with boundaryEXTOrder > 1 and correctorSteps = 0 is unstable!\n");
     }
@@ -2304,9 +2336,8 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
     nscal++;
     isStart++;
 
-    {
-      parseRegularization(rank, options, ini, "temperature");
-    }
+    parseCheckpointing(rank, options, ini, "temperature");
+    parseRegularization(rank, options, ini, "temperature");
 
     options.setArgs("SCALAR" + sid + " IS TEMPERATURE", "TRUE");
 
@@ -2391,11 +2422,15 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
 
   if (!foundDefaultScalarSection && nNonTemperatureScalars) {
     if (ini->sections.count("temperature")) {
-      if (minScalarId != 1) append_error("scalar index needs to start from 1"); 
+      if (minScalarId != 1) {
+        append_error("scalar index needs to start from 1");
+      }
     } else {
-      if (minScalarId != 0) append_error("scalar index needs to start from 0"); 
+      if (minScalarId != 0) {
+        append_error("scalar index needs to start from 0");
+      }
     }
-  
+
     processError();
 
     int nScalarIds = maxScalarId - minScalarId + 1;
@@ -2404,7 +2439,6 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
       processError();
     }
   }
-
 
   if (foundDefaultScalarSection && !optionalNscalar && nNonTemperatureScalars == 0) {
     append_error("[scalar] section specified, but no [scalar0x] section were found and generic::nscalars is "
@@ -2442,9 +2476,8 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
       sidPar = "scalar";
     }
 
-    {
-      parseRegularization(rank, options, ini, parScope);
-    }
+    parseCheckpointing(rank, options, ini, parScope);
+    parseRegularization(rank, options, ini, parScope);
 
     std::string solver;
     ini->extract(parScope, "solver", solver);
@@ -2653,14 +2686,13 @@ void Par::parse(setupAide &options)
   int rank;
   MPI_Comm_rank(comm, &rank);
 
-  const auto userSections = [&]()
-  {
+  const auto userSections = [&]() {
     std::string value;
     ini->extract("", "usersections", value);
     return serializeString(value, ',');
   }();
 
-  for(auto& section : userSections) {
+  for (auto &section : userSections) {
     addValidSection(section);
   }
 

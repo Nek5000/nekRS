@@ -80,14 +80,14 @@ void exact(dfloat *uu, dfloat *vv, dfloat *ww, dfloat xx, dfloat yy, dfloat zz, 
 }
 
 // Boundary conditions
-void velocityDirichletConditions(bcData *bc)
+void codedFixedValueVelocity(bcData *bc)
 {
   bc->u = bc->uinterp;
   bc->v = bc->vinterp;
   bc->w = bc->winterp;
 }
 
-void scalarDirichletConditions(bcData *bc)
+void codedFixedValueScalar(bcData *bc)
 {
   if(bc->scalarId == 0){
     bc->s = bc->sinterp;
@@ -230,8 +230,7 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-
-  auto *mesh = nrs->meshV;
+  auto mesh = nrs->meshV;
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     userMeshVelocity(mesh->Nlocal, nrs->fieldOffset, mesh->o_x, mesh->o_y, mesh->o_z, mesh->o_U);
   }
@@ -241,46 +240,7 @@ void UDF_ExecuteStep(double time, int tstep)
     exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->o_U);
     nrs->cds->o_S.copyFrom(nrs->o_U, nrs->fieldOffset);
   }
-
-  poolDeviceMemory<dfloat> o_Uexact(nrs->NVfields * nrs->fieldOffset);
-  poolDeviceMemory<dfloat> o_Sexact(nrs->fieldOffset);
-  exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, o_Uexact);
-  o_Sexact.copyFrom(o_Uexact, nrs->fieldOffset);
-
-  platform->linAlg->axpbyMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, nrs->o_U, -1.0, o_Uexact);
-  platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->cds->o_S, -1.0, o_Sexact);
-
-  auto o_UerrX = o_Uexact + 0 * nrs->fieldOffset;
-  auto o_UerrY = o_Uexact + 1 * nrs->fieldOffset;
-  auto o_UerrZ = o_Uexact + 2 * nrs->fieldOffset;
-
-  platform->linAlg->abs(mesh->Nlocal, o_UerrX);
-  platform->linAlg->abs(mesh->Nlocal, o_UerrY);
-  platform->linAlg->abs(mesh->Nlocal, o_UerrZ);
-  platform->linAlg->abs(mesh->Nlocal, o_Sexact);
-
-  const auto LinfUx = platform->linAlg->max(mesh->Nlocal, o_UerrX, platform->comm.mpiComm);
-  const auto LinfUy = platform->linAlg->max(mesh->Nlocal, o_UerrY, platform->comm.mpiComm);
-  const auto LinfUz = platform->linAlg->max(mesh->Nlocal, o_UerrZ, platform->comm.mpiComm);
-  const auto LinfS = platform->linAlg->max(mesh->Nlocal, o_Sexact, platform->comm.mpiComm);
-  
-  if (platform->comm.mpiRank == 0) {
-    printf("LinfUx = %g, LinfUy = %g, LinfUz = %g, LinfS = %g\n", LinfUx, LinfUy, LinfUz, LinfS);
-  }
-
-  int innerSteps = 1;
-  platform->options.getArgs("MULTIRATE STEPS", innerSteps);
-  if(!nrs->neknek->multirate() || tstep % innerSteps == 0)
-  {
-    const auto LinfUxGlob = platform->linAlg->max(mesh->Nlocal, o_UerrX, platform->comm.mpiCommParent);
-    const auto LinfUyGlob = platform->linAlg->max(mesh->Nlocal, o_UerrY, platform->comm.mpiCommParent);
-    const auto LinfUzGlob = platform->linAlg->max(mesh->Nlocal, o_UerrZ, platform->comm.mpiCommParent);
-    const auto LinfSGlob = platform->linAlg->max(mesh->Nlocal, o_Sexact, platform->comm.mpiCommParent);
-    if (platform->comm.mpiRank == 0) {
-      printf("LinfUxGlob = %g, LinfUyGlob = %g, LinfUzGlob = %g, LinfSGlob = %g\n", LinfUxGlob, LinfUyGlob, LinfUzGlob, LinfSGlob);
-    }
-  }
-  
+ 
   if (ciMode) {
     ciTestErrors(nrs, time, tstep);
   }

@@ -18,6 +18,9 @@ void registerCoreKernels()
     kernelName = "core-copyDfloatToDouble";
     platform->copyDfloatToDoubleKernel = platform->kernelRequests.load(kernelName);
 
+    kernelName = "core-copyDoubleToDfloat";
+    platform->copyDoubleToDfloatKernel = platform->kernelRequests.load(kernelName);
+
     return;
   }
 
@@ -67,6 +70,26 @@ void registerCoreKernels()
   fileName = oklpath + "/core/" + kernelName + ".okl";
   platform->kernelRequests.add(section + kernelName, fileName, meshProps);
 
+  kernelName = "tensorProduct1D" + suffix;
+  fileName = oklpath + "/core/" + kernelName + ".okl";
+  platform->kernelRequests.add(section + kernelName, fileName, meshProps);
+
+  kernelName = "relativeMassHighestMode";
+  fileName = oklpath + "/core/" + kernelName + ".okl";
+  platform->kernelRequests.add(kernelName, fileName, meshProps);
+
+  kernelName = "relativeMassAveragedMode";
+  fileName = oklpath + "/core/" + kernelName + ".okl";
+  platform->kernelRequests.add(kernelName, fileName, meshProps);
+
+  kernelName = "computeMaxVisc";
+  fileName = oklpath + "/core/" + kernelName + ".okl";
+  platform->kernelRequests.add(kernelName, fileName, meshProps);
+
+  kernelName = "interpolateP1";
+  fileName = oklpath + "/core/" + kernelName + ".okl";
+  platform->kernelRequests.add(kernelName, fileName, meshProps);
+
   {
     auto prop = meshProps;
     prop["includes"].asArray();
@@ -80,13 +103,26 @@ void registerCoreKernels()
 
   // register platform kernels
   {
-    auto prop = platform->kernelInfo;
-    prop["defines/pfloat"] = "double";
-    kernelName = "copyDfloatToPfloat";
-    fileName = oklpath + "/core/" + kernelName + extension;
-    platform->kernelRequests.add(section + "copyDfloatToDouble", fileName, prop);
 
-    prop = platform->kernelInfo;
+    {
+      kernelName = "copyDfloatToPfloat";
+      fileName = oklpath + "/core/" + kernelName + extension;
+      auto prop = platform->kernelInfo;
+      prop["defines/pfloat"] = "double";
+      platform->kernelRequests.add(section + "copyDfloatToDouble", fileName, prop);
+    }
+ 
+    {
+      kernelName = "copyDfloatToPfloat";
+      fileName = oklpath + "/core/" + kernelName + extension;
+      auto prop = platform->kernelInfo;
+      prop["defines/dfloat"] = "double";
+      prop["defines/pfloat"] = dfloatString;
+      prop["defines/dummy"] = 1; // just to make it different from copyDfloatToDouble to avoid collison
+      platform->kernelRequests.add(section + "copyDoubleToDfloat", fileName, prop);
+    }
+
+    auto prop = platform->kernelInfo;
     kernelName = "copyDfloatToPfloat";
     fileName = oklpath + "/core/" + kernelName + extension;
     platform->kernelRequests.add(section + kernelName, fileName, prop);

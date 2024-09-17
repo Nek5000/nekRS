@@ -86,19 +86,19 @@ std::vector<dfloat> integral(mesh_t *mesh,
 
 } // namespace
 
+std::vector<dfloat> mesh_t::surfaceAreaMultiplyIntegrate(int Nfields,
+                                                         dlong fieldOffset,
+                                                         int nbID,
+                                                         const occa::memory &o_bID,
+                                                         const occa::memory &o_fld)
+{
+  return integral(this, Nfields, fieldOffset, false, nbID, o_bID, o_fld);
+}
+
 std::vector<dfloat>
 mesh_t::surfaceAreaMultiplyIntegrate(int nbID, const occa::memory &o_bID, const occa::memory &o_fld)
 {
-  return integral(this, 1, static_cast<dlong>(0), false, nbID, o_bID, o_fld);
-}
-
-std::vector<dfloat> mesh_t::surfaceAreaNormalMultiplyIntegrate(int Nfields,
-                                                               dlong fieldOffset,
-                                                               int nbID,
-                                                               const occa::memory &o_bID,
-                                                               const occa::memory &o_fld)
-{
-  return integral(this, Nfields, fieldOffset, false, nbID, o_bID, o_fld);
+  return surfaceAreaMultiplyIntegrate(1, 0, nbID, o_bID, o_fld);
 }
 
 std::vector<dfloat> mesh_t::surfaceAreaNormalMultiplyIntegrate(dlong fieldOffset,

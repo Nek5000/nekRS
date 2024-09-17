@@ -1,0 +1,19 @@
+name = "GrayScott"
+uuid = "089a57ea-382b-4fd7-9f05-24902db6ec52"
+authors = ["William F Godoy <williamfgc@yahoo.com>"]
+version = "0.1.0"
+
+[deps]
+ADIOS2 = "e0ce9d3b-0dbd-416f-8264-ccca772f60ec"
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
+MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
+PProf = "e4faabce-9ead-11e9-39d9-4379958e3056"
+Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+
+[compat]
+julia = "1.8"

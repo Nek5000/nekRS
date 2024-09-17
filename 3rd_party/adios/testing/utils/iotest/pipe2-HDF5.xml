@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<adios-config>
+
+    <!-- example engines
+        <engine type="BPFile"/>
+        <engine type="HDF5"/>
+        <engine type="SST"/>
+        <engine type="SSC"/>
+     -->
+
+    <!--===========================================
+           Configuration for io_T1 group
+        ==========================================-->
+
+    <io name="io_T1">
+        <engine type="HDF5">
+        </engine>
+    </io>
+
+    <!--=========================================
+           Configuration for io_T2_in group
+           It should match the io_T1 output group
+        =========================================-->
+
+    <io name="io_T2_in">
+        <engine type="HDF5">
+        </engine>
+    </io>
+
+    <!--=========================================
+           Configuration for io_T2_out group
+        =========================================-->
+
+    <io name="io_T2_out">
+        <engine type="HDF5">
+        </engine>
+    </io>
+
+
+</adios-config>

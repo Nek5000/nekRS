@@ -18,8 +18,8 @@ NEKRS_SIGNUM_BACKTRACE		int		Signal number to trigger stack trace
 NEKRS_SIGNUM_TERM               int             Signal number to exit gracefully 
 NEKRS_SIGNUM_UPD                int             Signal number to process update (trigger) file
 
-NEKRS_UDF_INCLUDES		string		Optional include flags ("file1;file2;file3")
-NEKRS_UDF_LIBS		        string		Optional libraries ("/path/to/lib/lib1.so;/path/to/lib/lib2.so")
+NEKRS_UDF_INCLUDES		string		Optional include directories ("/path1/foo1;/path2/foo2")
+NEKRS_UDF_LIBS		        string		Optional libraries ("/path1/lib1.so;/path2/lib2.so")
 
 NEKRS_ASCENT_INSTALL_DIR        string
 NEKRS_ADIOS2_INSTALL_DIR        string

@@ -1,0 +1,576 @@
+#######################################
+# Ideally this would be done in seperate workflows but placing them all
+# in one is currently necessary to enforce job dependencies
+#######################################
+
+#######################################
+# Note the use of multiple checkout actions in most jobs.  This has been
+# implemented to allow the use of CI scripts at a different ref or sha than
+# the source code they're evaluating.  For push events (when a pull_request is
+# merged) there is no difference.  However, for pull_request events this allows
+# us test code at the head of a pull_request using the CI scripts from the
+# prospectively merged pull_request, which will include any CI updates that
+# may have made it to the target branch after the pull_request was started.
+#######################################
+
+#######################################
+# Note regarding restore/save of cache for use by ccache:
+#
+# We only save cache on main branch runs. PR workflows only consume the
+# cache to avoid exceeding the 10 GB limit, which can cause cache thrashing.
+# Also, we only save the cache if there was *not* an exact match when cache
+# was restored. This avoids attempting to write to an existing cache key,
+# which results in failure to save the cache. While failure to save doesn't
+# cause job failures, it seems a waste and is easily avoidable.
+#######################################
+
+name: GitHub Actions
+
+on:
+  push:
+    branches:
+      - master
+      - release*
+  pull_request:
+    branches:
+      - master
+      - release*
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+
+#######################################
+# Git checks
+#######################################
+
+  git_checks:
+    runs-on: ubuntu-latest
+    outputs:
+      num_code_changes: ${{ steps.get_code_changes.outputs.num_code_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for appropriately named topic branch
+        run: |
+          scripts/ci/gh-actions/check-branch-name.sh
+      - name: Check for code changes
+        id: get_code_changes
+        run: |
+          scripts/ci/gh-actions/get-changed-files.sh
+          echo "::group::Test script output files"
+          ls -la *-changed-files.txt
+          NUM_CHANGES=$(wc -l < filtered-changed-files.txt)
+          echo "Number of files changed (filtered): ${NUM_CHANGES}"
+          echo "::set-output name=num_code_changes::${NUM_CHANGES}"
+
+#######################################
+# Formatting jobs
+#######################################
+
+  format:
+    needs: git_checks
+    if: needs.git_checks.outputs.num_code_changes > 0
+
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ornladios/adios2:ci-formatting
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: gha
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: source
+      - name: CXX
+        working-directory: source
+        run: ../gha/scripts/ci/scripts/run-clang-format.sh
+      - name: Python flake8
+        working-directory: source
+        run: ../gha/scripts/ci/scripts/run-flake8.sh
+      - name: Python pylint
+        working-directory: source
+        run: ../gha/scripts/ci/scripts/run-pylint.sh
+      - name: Python black
+        working-directory: source
+        run: ../gha/scripts/ci/scripts/run-black.sh
+      - name: Shell
+        working-directory: source
+        run: ../gha/scripts/ci/scripts/run-shellcheck.sh
+
+
+#######################################
+# Build and test jobs
+#######################################
+
+  linux_ubuntu:
+    needs: [format, git_checks]
+    if: needs.git_checks.outputs.num_code_changes > 0
+
+    runs-on: ubuntu-20.04
+    container:
+      image: ghcr.io/ornladios/adios2:ci-spack-ubuntu20.04-${{ matrix.compiler }}
+      options: --shm-size=1g
+      env:
+        GH_YML_JOBNAME: ${{ matrix.os }}-${{ matrix.compiler }}${{ matrix.shared == 'static' && '-static' || ''}}-${{ matrix.parallel }}
+        GH_YML_BASE_OS: Linux
+        GH_YML_MATRIX_OS: ${{ matrix.os }}
+        GH_YML_MATRIX_COMPILER: ${{ matrix.compiler }}
+        GH_YML_MATRIX_PARALLEL: ${{ matrix.parallel }}
+        CCACHE_BASEDIR: "${GITHUB_WORKSPACE}"
+        CCACHE_DIR: "${GITHUB_WORKSPACE}/.ccache"
+        CCACHE_COMPRESS: true
+        CCACHE_COMPRESSLEVEL: 6
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu20.04]
+        compiler: [gcc8, gcc9, gcc10, gcc11, clang6, clang10]
+        shared: [shared]
+        parallel: [mpich]
+        include:
+          - os: ubuntu20.04
+            compiler: gcc8
+            parallel: ompi
+          - os: ubuntu20.04
+            compiler: gcc8
+            parallel: serial
+          - os: ubuntu20.04
+            compiler: clang6
+            parallel: ompi
+          - os: ubuntu20.04
+            compiler: clang6
+            parallel: serial
+          - os: ubuntu20.04
+            compiler: gcc8
+            shared: static
+            parallel: ompi
+            constrains: build_only
+          - os: ubuntu20.04
+            compiler: clang6
+            shared: static
+            parallel: ompi
+            constrains: build_only
+          - os: ubuntu20.04
+            compiler: gcc8
+            shared: static
+            parallel: serial
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: gha
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: source
+      - name: Restore cache
+        uses: actions/cache/restore@v3
+        id: restore-cache
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.parallel }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.parallel }}
+      - name: Configure cache
+        run: ccache -z
+      - name: Setup
+        run: gha/scripts/ci/gh-actions/linux-setup.sh
+      - name: Update
+        run: gha/scripts/ci/gh-actions/run.sh update
+      - name: Configure
+        run: gha/scripts/ci/gh-actions/run.sh configure
+      - name: Build
+        run: gha/scripts/ci/gh-actions/run.sh build
+      - name: Print ccache statistics
+        run: ccache -s | tee $GITHUB_STEP_SUMMARY
+      - name: Save cache
+        uses: actions/cache/save@v3
+        if: ${{ github.ref_name == 'master' && steps.restore-cache.outputs.cache-hit != 'true' }}
+        id: save-cache
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.parallel }}-${{ github.sha }}
+      - name: Test
+        if: ${{ matrix.constrains != 'build_only' }}
+        run: gha/scripts/ci/gh-actions/run.sh test
+
+  linux_el8:
+    needs: [format, git_checks]
+    if: needs.git_checks.outputs.num_code_changes > 0
+
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ornladios/adios2:ci-el8-${{ matrix.compiler }}
+      options: --shm-size=1g
+      env:
+        GH_YML_JOBNAME: ${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.parallel }}
+        GH_YML_BASE_OS: Linux
+        GH_YML_MATRIX_OS: ${{ matrix.os }}
+        GH_YML_MATRIX_COMPILER: ${{ matrix.compiler }}
+        GH_YML_MATRIX_PARALLEL: ${{ matrix.parallel }}
+        CCACHE_BASEDIR: "${GITHUB_WORKSPACE}"
+        CCACHE_DIR: "${GITHUB_WORKSPACE}/.ccache"
+        CCACHE_COMPRESS: true
+        CCACHE_COMPRESSLEVEL: 6
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [el8]
+        compiler: [icc, oneapi]
+        parallel: [mpich]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: gha
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: source
+      - name: Restore cache
+        uses: actions/cache/restore@v3
+        id: restore-cache
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.parallel }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.parallel }}
+      - name: Configure cache
+        run: ccache -z
+      - name: Setup
+        run: gha/scripts/ci/gh-actions/linux-setup.sh
+      - name: Update
+        run: gha/scripts/ci/gh-actions/run.sh update
+      - name: Configure
+        run: gha/scripts/ci/gh-actions/run.sh configure
+      - name: Build
+        run: gha/scripts/ci/gh-actions/run.sh build
+      - name: Print ccache statistics
+        run: ccache -s
+      - name: Save cache
+        uses: actions/cache/save@v3
+        if: ${{ github.ref_name == 'master' && steps.restore-cache.outputs.cache-hit != 'true' }}
+        id: save-cache
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.parallel }}-${{ github.sha }}
+      - name: Test
+        run: gha/scripts/ci/gh-actions/run.sh test
+
+  macos:
+    needs: [format, git_checks]
+    if: needs.git_checks.outputs.num_code_changes > 0
+
+    runs-on: ${{ matrix.image }}
+    env:
+      GH_YML_JOBNAME: ${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.shared }}-${{ matrix.parallel }}
+      GH_YML_BASE_OS: macOS
+      GH_YML_MATRIX_OS: ${{ matrix.image }}
+      GH_YML_MATRIX_COMPILER: ${{ matrix.compiler }}
+      GH_YML_MATRIX_PARALLEL: ${{ matrix.parallel }}
+      CCACHE_BASEDIR: "${GITHUB_WORKSPACE}"
+      CCACHE_DIR: "${GITHUB_WORKSPACE}/.ccache"
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [macos-11, macos-12]
+        shared: [static, shared]
+        include:
+          - parallel: serial
+          - image: macos-11
+            compiler: xcode13_0
+          - image: macos-12
+            compiler: xcode13_4_1
+        exclude:
+          - image: macos-11
+            shared: static
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: gha
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: source
+      - name: Setup
+        run: gha/scripts/ci/gh-actions/macos-setup.sh
+      - name: Restore cache
+        uses: actions/cache/restore@v3
+        id: restore-cache
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.image}}-${{ matrix.compiler }}-${{ matrix.parallel }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.parallel }}
+      - name: Configure cache
+        run: ccache -z
+      - name: Update
+        run: gha/scripts/ci/gh-actions/run.sh update
+      - name: Configure
+        run: gha/scripts/ci/gh-actions/run.sh configure
+      - name: Build
+        run: gha/scripts/ci/gh-actions/run.sh build
+      - name: Print ccache statistics
+        run: ccache -s
+      - name: Save cache
+        uses: actions/cache/save@v3
+        if: ${{ github.ref_name == 'master' && steps.restore-cache.outputs.cache-hit != 'true' }}
+        id: save-cache
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.image }}-${{ matrix.compiler }}-${{ matrix.parallel }}-${{ github.sha }}
+      - name: Test
+        run: gha/scripts/ci/gh-actions/run.sh test
+
+  windows:
+    needs: [format, git_checks]
+    if: needs.git_checks.outputs.num_code_changes > 0
+
+    runs-on: ${{ matrix.image }}
+    env:
+      GH_YML_JOBNAME: ${{ matrix.os }}-${{ matrix.compiler }}${{ matrix.shared == 'static' && '-static' || ''}}-${{ matrix.parallel }}
+      GH_YML_BASE_OS: Windows
+      GH_YML_MATRIX_OS: ${{ matrix.os }}
+      GH_YML_MATRIX_COMPILER: ${{ matrix.compiler }}
+      GH_YML_MATRIX_PARALLEL: ${{ matrix.parallel }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [win2019, win2022]
+        shared: [shared]
+        parallel: [serial, ompi]
+        include:
+          - os: win2019
+            image: windows-2019
+            compiler: vs2019
+          - os: win2022
+            image: windows-2022
+            compiler: vs2022
+          - os: win2022
+            image: windows-2022
+            shared: static
+            compiler: vs2022
+            parallel: serial
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: gha
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: source
+      - name: Setup
+        shell: pwsh
+        run: gha/scripts/ci/gh-actions/windows-setup.ps1
+      - name: Update
+        run: gha/scripts/ci/gh-actions/run.sh update
+      - name: Configure
+        run: gha/scripts/ci/gh-actions/run.sh configure
+      - name: Build
+        run: gha/scripts/ci/gh-actions/run.sh build
+      - name: Test
+        run: gha/scripts/ci/gh-actions/run.sh test
+
+#######################################
+# Docker container jobs
+#######################################
+
+  docker:
+    needs: [format, git_checks]
+    if: needs.git_checks.outputs.num_code_changes > 0
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        baseos: [ubuntu-bionic]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: ci-source
+      - name: Re-configure docker daemon
+        run: |
+            sudo systemctl stop docker
+            echo $'{\n    "experimental": true\n}' | \
+                sudo tee /etc/docker/daemon.json
+            sudo systemctl start docker
+      - name: Build image
+        run: |
+            docker build \
+                --rm --squash \
+                -t ornladios/adios2:ci-tmp \
+                --build-arg baseos=${{ matrix.baseos }} \
+                --build-arg ci_source_dir=ci-source \
+                -f ci-source/scripts/ci/images/spack/Dockerfile \
+                .
+      - name: Save image as a tar file
+        run: |
+            docker save -o ci-docker.tar ornladios/adios2:ci-tmp
+            ls -lah ci-docker.tar
+      - name: Upload
+        uses: actions/upload-artifact@v2
+        with:
+          retention-days: 1
+          name: ci-docker ${{ matrix.baseos }} ${{ github.sha }}
+          path: ci-docker.tar
+      - name: Push image to Docker Hub
+        if: github.event_name == 'push'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: |
+            target_tag="${GITHUB_REF##refs/heads/}-${{ matrix.baseos }}"
+            docker tag \
+                ornladios/adios2:ci-tmp \
+                ornladios/adios2:${target_tag}
+            docker login \
+                --username="${DOCKERHUB_USERNAME}" \
+                --password="${DOCKERHUB_PASSWORD}"
+            docker push \
+                ornladios/adios2:${target_tag}
+
+#######################################
+# Contract testing jobs
+#######################################
+
+  # These contract testing jobs use the container built in the previous
+  # docker job and runs it in a way similar to how a typical GitHub
+  # Actions container job does.  Using the "messy" default shell for
+  # run steps lets the steps be written as though they too were using a
+  # standard container job.
+  contract:
+    needs: [format, git_checks, docker]
+    if: needs.git_checks.outputs.num_code_changes > 0
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        code: [examples, lammps, tau]
+        include:
+          - code: examples
+          - code: lammps
+            repo: pnorbert/lammps
+            ref: fix-deprecated-adios-init
+          - code: tau
+    defaults:
+      run:
+        shell: bash -c "docker exec adios2-ci bash --login -e $(echo {0} | sed 's|/home/runner/work|/__w|g')"
+
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ matrix.repo != '' }}
+        with:
+          repository: ${{ matrix.repo }}
+          ref: ${{ matrix.ref }}
+          path: source
+      - name: Download CI docker image
+        uses: actions/download-artifact@v2
+        with:
+          name: ci-docker ubuntu-bionic ${{ github.sha }}
+      - name: Initialize containers
+        shell: bash -e {0}
+        run: |
+            sudo chown 1000:1000 .
+            docker load -i ci-docker.tar
+            docker create \
+                --name adios2-ci --workdir /__w/ADIOS2/ADIOS2 \
+                -v "/home/runner/work":"/__w" \
+                --entrypoint "tail" ornladios/adios2:ci-tmp \
+                "-f" "/dev/null"
+            docker start adios2-ci
+      - name: Dependencies
+        run: /opt/adios2/source/testing/contract/${{ matrix.code }}/depends.sh
+      - name: Configure
+        run: /opt/adios2/source/testing/contract/${{ matrix.code }}/config.sh
+      - name: Build
+        run: /opt/adios2/source/testing/contract/${{ matrix.code }}/build.sh
+      - name: Install
+        run: /opt/adios2/source/testing/contract/${{ matrix.code }}/install.sh
+      - name: Test
+        run: /opt/adios2/source/testing/contract/${{ matrix.code }}/test.sh
+
+#######################################
+# Code analysis builds
+#######################################
+
+  analyze:
+    needs: [format, git_checks]
+    name: CodeQL
+    runs-on: ubuntu-latest
+    container:
+      image: 'ghcr.io/ornladios/adios2:ci-spack-ubuntu20.04-gcc8'
+      env:
+        GH_YML_JOBNAME: ubuntu20.04-gcc8-serial-codeql
+        GH_YML_BASE_OS: Linux
+        GH_YML_MATRIX_OS: ubuntu20.04
+        GH_YML_MATRIX_COMPILER: gcc8
+        GH_YML_MATRIX_PARALLEL: serial
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        path: gha
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        path: source
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        config: |
+          paths:
+            - source
+          paths-ignore:
+            - source/thirdparty
+    - name: Setup
+      run: gha/scripts/ci/gh-actions/linux-setup.sh
+    - name: Update
+      run: gha/scripts/ci/gh-actions/run.sh update
+    - name: Configure
+      run: gha/scripts/ci/gh-actions/run.sh configure
+    - name: Build
+      run: gha/scripts/ci/gh-actions/run.sh build
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{matrix.language}}"
+
+#######################################
+# Workaround for skipping matrix jobs
+#######################################
+
+  build_and_test:
+    needs: [linux_el8, linux_ubuntu, macos, docker, contract]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All required jobs complete"

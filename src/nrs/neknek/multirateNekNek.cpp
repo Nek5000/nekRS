@@ -36,7 +36,7 @@ void neknek_t::extrapolateBoundary(int tstep, double time, bool predictor)
   }
 
   int innerSteps = 1;
-  platform->options.getArgs("MULTIRATE STEPS", innerSteps);
+  platform->options.getArgs("NEKNEK MULTIRATE STEPS", innerSteps);
 
   if (!predictor && tstep < 3 * innerSteps) {
     return; // too early to provide corrected solution

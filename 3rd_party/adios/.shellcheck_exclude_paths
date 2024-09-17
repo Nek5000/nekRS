@@ -1,0 +1,11 @@
+scripts/ci/scripts/github-prs-to-gitlab.sh
+scripts/ci/scripts/run-clang-format.sh
+scripts/ci/scripts/run-flake8.sh
+scripts/developer/git/setup-aliases
+scripts/developer/git/setup-hooks
+scripts/developer/git/setup-remotes
+scripts/developer/merge-pr-from-release.sh
+scripts/developer/setup.sh
+scripts/docker/setup-user.sh
+scripts/runconf/runconf.sh
+scripts/runconf/runconf_olcf.sh

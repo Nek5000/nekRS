@@ -38,7 +38,7 @@ SOFTWARE.
 
     for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
       dlong id = t + b * p_blockSize;
-      s[t] = 0.0;
+      s[t] = -9e30;
       if (id < N) {
         for (int field = 0; field < Nfields; ++field) {
           const dfloat value = fabs(x[id + field * offset]);

@@ -1,0 +1,687 @@
+#!perl
+sub upperc {
+    local($_) = pop(@_);
+    tr/[a-z]/[A-Z]/;
+    return $_;
+}
+
+&output_header;
+
+%c_operations = ('add', '+', 'sub', '-', 'mul', '*', 'div', '/', 'mod', '%', 'and', '&', 'or', '|', 'xor', '^', 'lsh', '<<', 'rsh', '>>', 'com', '~', 'not', '!', 'neg', '-', 'eq', '==', 'ge', '>=', 'gt', '>', 'le', '<=', 'lt', '<', 'ne', '!=');
+
+&arith_insn("add sub", "i u ul l p", "dill_varith3");
+&arith_insn("mul div mod and or xor lsh rsh", "u ul i l", "dill_varith3");
+&arith_insn("add sub mul div", "f d", "dill_varith3");
+
+&arith2_insn("com not", "i u ul l", "dill_varith2");
+&arith2_insn("neg", "i u ul l f d", "dill_varith2");
+&arith2_insn("bswap", "s us i u ul l f d", "dill_varith2");
+
+&arithi_insn("add sub", "i u ul l p", "dill_varith3i");
+&arithi_insn("mul div mod", "u ul i l", "dill_varith3i");
+
+&arithi_insn("and or xor lsh rsh", "i u ul l", "dill_varith3i", "0x1", "2");
+
+&branch_insn( "eq ge gt le lt ne", "c uc s us i u ul l p d f", "virtual_branch");
+&branchi_insn( "eq ge gt le lt ne", "c uc s us i u ul l p", "virtual_branchi");
+&compare_insn( "eq ge gt le lt ne", "c uc s us i u ul l p d f", "virtual_compare");
+
+&convert( "c d f i l s u ul us uc", "c uc s us i u ul l");
+&convert( "c uc s us d f i l u ul", "f d");
+&convert( "p ul", "ul p");
+&load_store("c d f i l s u ul us uc p");
+
+print VMOUT "void emulate_arith3(int code, struct reg_type *dest, struct reg_type *src1, struct reg_type *src2)\n";
+print VMOUT "{\n    switch(code) {\n$vm_a3_code    }\n}\n";
+print VMOUT "void emulate_arith3i(int code, struct reg_type *dest, struct reg_type *src1, IMM_TYPE imm)\n";
+print VMOUT "{\n    switch(code) {\n$vm_a3i_code    }\n}\n";
+print VMOUT "void emulate_arith2(int code, struct reg_type *dest, struct reg_type *src)\n";
+print VMOUT "{\n    switch(code) {\n$vm_a2_code    }\n}\n";
+print VMOUT "int emulate_branch(int code, struct reg_type *src1, struct reg_type *src2)\n";
+print VMOUT "{\n    switch(code) {\n$vm_br_code    }return 0;\n}\n";
+print VMOUT "int emulate_compare(int code, struct reg_type *src1, struct reg_type *src2)\n";
+print VMOUT "{\n    switch(code) {\n$vm_c_code    }return 0;\n}\n";
+print VMOUT "int emulate_branchi(int code, struct reg_type *src1, IMM_TYPE imm)\n";
+print VMOUT "{\n    switch(code) {\n$vm_bri_code    }return 0;\n}\n";
+
+print VMOUT "#define CONV(x,y) ((x<<4)+y)\n";
+print VMOUT "void emulate_convert(int code, struct reg_type *dest, struct reg_type *src)\n";
+print VMOUT "{\n    switch(code) {\n$vm_cvt_code        default: printf(\"convert missed case %x \\n\", code); break;}\n}\n";
+print VMOUT "int emulate_loadi(int code, struct reg_type *dest, struct reg_type *src, IMM_TYPE imm)\n";
+print VMOUT "{\n    switch(code) {\n$vm_loadi_code    default: printf(\"loadi missed case %x \\n\", code); break;}return 0;\n}\n";
+
+print VMOUT "int emulate_storei(int code, struct reg_type *dest, struct reg_type *src, IMM_TYPE imm)\n";
+print VMOUT "{\n    switch(code) {\n$vm_storei_code    }return 0;\n}\n";
+
+print COUT "DECLARE_JUMP_TABLE(${mach});\n";
+print COUT "#ifdef __has_feature\n";
+print COUT "#if __has_feature(thread_sanitizer)\n";
+print COUT "#define NO_SANITIZE_THREAD __attribute__((no_sanitize(\"thread\")))\n";
+print COUT "#endif\n";
+print COUT "#endif\n";
+print COUT "#ifndef NO_SANITIZE_THREAD\n";
+print COUT "#define NO_SANITIZE_THREAD\n";
+print COUT "#endif\n";
+print COUT "extern void NO_SANITIZE_THREAD dill_virtual_init(dill_stream s)\n{\n";
+print COUT "\t  FILL_JUMP_STRUCTURE(virtual);\n";
+print COUT $jmp_a3_assigns;
+print COUT $jmp_a3i_assigns;
+print COUT $jmp_a2_assigns;
+print COUT $jmp_b_assigns;
+print COUT $jmp_c_assigns;
+print COUT "# line ". (__LINE__ + 2) . " \"virtual.ops\"\n";
+print COUT "\t  ${mach}_jump_table->proc_start = (dill_mach_proc_start) virtual_proc_start;\n";
+print COUT "\t  ${mach}_jump_table->end = (dill_mach_end)virtual_end;\n";
+print COUT "\t  ${mach}_jump_table->package_end = (dill_mach_end)virtual_package_end;\n";
+print COUT "\t  if (s->p->native.mach_jump != NULL) {\n";
+print COUT "\t    ${mach}_jump_table->type_align = s->p->native.mach_jump->type_align;\n";
+print COUT "\t    ${mach}_jump_table->type_size = s->p->native.mach_jump->type_size;\n";
+print COUT "\t  } else {\n";
+print COUT "\t    ${mach}_jump_table->type_align = virtual_type_align;\n";
+print COUT "\t    ${mach}_jump_table->type_size = virtual_type_size;\n";
+print COUT "\t  }\n";
+print COUT "\t  ${mach}_jump_table->ret = virtual_ret;\n";
+print COUT "\t  ${mach}_jump_table->reti = virtual_reti;\n";
+print COUT "\t  ${mach}_jump_table->retf = (ret_opf)virtual_reti;\n";
+print COUT "\t  ${mach}_jump_table->load = virtual_load;\n";
+print COUT "\t  ${mach}_jump_table->bsload = virtual_pbsload;\n";
+print COUT "\t  ${mach}_jump_table->loadi = virtual_loadi;\n";
+print COUT "\t  ${mach}_jump_table->bsloadi = virtual_pbsloadi;\n";
+print COUT "\t  ${mach}_jump_table->store = virtual_store;\n";
+print COUT "\t  ${mach}_jump_table->storei = virtual_storei;\n";
+print COUT "\t  ${mach}_jump_table->convert = virtual_convert;\n";
+print COUT "\t  ${mach}_jump_table->mov = virtual_mov;\n";
+print COUT "\t  ${mach}_jump_table->set = virtual_pset;\n";
+print COUT "\t  ${mach}_jump_table->setf = virtual_setf;\n";
+print COUT "\t  ${mach}_jump_table->setp = virtual_setp;\n";
+print COUT "\t  ${mach}_jump_table->jv = virtual_jump_to_label;\n";
+print COUT "\t  ${mach}_jump_table->jp = virtual_jump_to_reg;\n";
+print COUT "\t  ${mach}_jump_table->jpi = virtual_jump_to_imm;\n";
+print COUT "\t  ${mach}_jump_table->special = virtual_special;\n";
+print COUT "\t  ${mach}_jump_table->push = virtual_push;\n";
+print COUT "\t  ${mach}_jump_table->pushi = virtual_pushi;\n";
+print COUT "\t  ${mach}_jump_table->pushfi = virtual_pushfi;\n";
+print COUT "\t  ${mach}_jump_table->pushpi = virtual_pushpi;\n";
+print COUT "\t  ${mach}_jump_table->calli = virtual_calli;\n";
+print COUT "\t  ${mach}_jump_table->callr = virtual_callr;\n";
+print COUT "	${mach}_jump_table->lea = virtual_lea;\n";
+#  print COUT "\t  ${mach}_jump_table->local = sparc_local_op;\n";
+#  print COUT "\t  ${mach}_jump_table->save_restore = sparc_save_restore_op;\n";
+print COUT "\t  ${mach}_jump_table->mark_label = virtual_mark_label;\n";
+print COUT "\t  ${mach}_jump_table->init_disassembly = virtual_init_disassembly_info;\n";
+print COUT "\t  ${mach}_jump_table->print_insn = virtual_print_insn;\n";
+print COUT "\t  ${mach}_jump_table->print_reg = NULL;\n";
+print COUT "\t  ${mach}_jump_table->count_insn = NULL;\n";
+print COUT "\t  if (s->p->native.mach_jump != NULL) {\n";
+print COUT "\t    ${mach}_jump_table->do_reverse_push = s->p->native.mach_jump->do_reverse_push;\n";
+print COUT "\t    ${mach}_jump_table->target_byte_order = s->p->native.mach_jump->target_byte_order;\n";
+print COUT "\t    ${mach}_jump_table->target_float_format = s->p->native.mach_jump->target_float_format;\n";
+print COUT "\t  } else {\n";
+print COUT "\t    ${mach}_jump_table->do_reverse_push = 0;\n";
+print COUT "#ifdef WORDS_BIGENDIAN\n";
+print COUT "\t    ${mach}_jump_table->target_byte_order = 1;  /* Format_Integer_bigendian */\n";
+print COUT "\t    ${mach}_jump_table->target_float_format = 1;  /* Format_IEEE_754_bigendian */ \n";
+print COUT "#else\n";
+print COUT "\t    ${mach}_jump_table->target_byte_order = 2;  /* Format_Integer_littleendian */\n";
+print COUT "\t    ${mach}_jump_table->target_float_format = 2;  /* Format_IEEE_754_littleendian */ \n";
+print COUT "#endif\n";
+print COUT "\t  }\n";
+
+print COUT "# line ". (__LINE__ + 2) . " \"virtual.ops\"\n";
+print COUT<<EOF;
+	if (s->p->virtual.mach_info == NULL) {
+	    s->p->virtual.mach_info = malloc(sizeof(struct mach_info));
+	}
+	s->p->mach_info = s->p->virtual.mach_info;
+	s->p->mach_reset = s->p->virtual.mach_reset;
+	s->p->code_base = s->p->virtual.code_base;
+	s->p->cur_ip = s->p->code_base;
+	s->p->code_limit = s->p->virtual.code_limit;
+	s->p->vreg_count = 0;
+	s->dill_local_pointer = dill_getreg(s, DILL_P);
+	s->dill_param_reg_pointer = s->dill_local_pointer;
+	s->j = virtual_jump_table;
+	return;
+}
+EOF
+
+sub arith_insn {
+%src1_cast = ('p', '(char*)');
+%src2_cast = ('p', '(IMM_TYPE)');
+    local ($ops, $type_list, $subr) = @_;
+    foreach(split(' ', $ops)) {
+	$op = $_;
+	$c_op = $c_operations{$op};
+	foreach(split(' ', $type_list)) {
+	    $jmp_a3_assigns = $jmp_a3_assigns . "# line ".__LINE__." \"virtual.ops\"\n";
+	    $jmp_a3_assigns = $jmp_a3_assigns . "\t  ${mach}_jump_table->jmp_a3[dill_jmp_${op}${_}] = $subr;\n";
+	    $jmp_a3_assigns = $jmp_a3_assigns . "\t  ${mach}_jump_table->a3_data[dill_jmp_${op}${_}].data1 = dill_jmp_${op}${_};\n";
+	    $jmp_a3_assigns = $jmp_a3_assigns . "\t  ${mach}_jump_table->a3_data[dill_jmp_${op}${_}].data2 = 0;\n";
+	    $vm_a3_code .= "\t  case dill_jmp_${op}${_}:  dest->u.${_}.${_} = $src1_cast{$_} src1->u.${_}.${_} $c_op $src2_cast{$_} src2->u.${_}.${_}; break;\n";
+	}
+    }
+}
+
+sub arith2_insn {
+    local ($ops, $type_list, $subr) = @_;
+    %src1_cast = ('u', '(unsigned int)');
+    foreach(split(' ', $ops)) {
+	$op = $_;
+	$c_op = $c_operations{$op};
+	foreach(split(' ', $type_list)) {
+        if (($c_op eq '-') and ($_ eq "u")) {
+		    $actual_op = '(unsigned) - (int)';
+	    } elsif (($c_op eq '-') and ($_ eq "ul")) {
+		    $actual_op = '(uintptr_t) - (intptr_t)';
+	    } else {
+            $actual_op = $c_op;
+        }
+	    $jmp_a2_assigns = $jmp_a2_assigns . "\t  ${mach}_jump_table->jmp_a2[dill_jmp_${op}${_}] = $subr;\n";
+	    $jmp_a2_assigns = $jmp_a2_assigns . "\t  ${mach}_jump_table->a2_data[dill_jmp_${op}${_}].data1 = dill_jmp_${op}${_};\n";
+	    $jmp_a2_assigns = $jmp_a2_assigns . "\t  ${mach}_jump_table->a2_data[dill_jmp_${op}${_}].data2 = 0;\n";
+	    $vm_a2_code .= "\t  case dill_jmp_${op}${_}:  dest->u.${_}.${_} = $actual_op $src_cast{$_} src->u.${_}.${_}; break;\n";
+	}
+    }
+}
+
+sub arithi_insn {
+    local ($ops, $type_list, $subr, $code1, $code2) = @_;
+    %src1_cast = ('p', '(char*)');
+    %src2_cast = ('i', '(int)', 'u', '(unsigned int)');
+    foreach(split(' ', $ops)) {
+	$op = $_;
+	$c_op = $c_operations{$op};
+	foreach(split(' ', $type_list)) {
+	    $jmp_a3i_assigns = $jmp_a3i_assigns . "\t  ${mach}_jump_table->jmp_a3i[dill_jmp_${op}${_}] = $subr;\n";
+	    $jmp_a3i_assigns = $jmp_a3i_assigns . "\t  ${mach}_jump_table->a3i_data[dill_jmp_${op}${_}].data1 = dill_jmp_${op}${_};\n";
+	    $jmp_a3i_assigns = $jmp_a3i_assigns . "\t  ${mach}_jump_table->a3i_data[dill_jmp_${op}${_}].data2 = 0;\n";
+	    $vm_a3i_code .= "\t  case dill_jmp_${op}${_}:  dest->u.${_}.${_} = $src1_cast{$_} src1->u.${_}.${_} $c_op $src2_cast{$_} imm; break;\n";
+	}
+    }
+}
+
+sub branch_insn {
+    local($ops, $types, $subr) = @_;
+%src1_cast = ('p', '(char*)');
+%src2_cast = ('p', '(char*)');
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	$c_op = $c_operations{$op};
+	foreach (split(' ', $types)) {
+	    $jmp_b_assigns = $jmp_b_assigns . "\t  ${mach}_jump_table->jmp_b[dill_jmp_b${op}${_}] = $subr;\n";
+	    $jmp_b_assigns = $jmp_b_assigns . "\t  ${mach}_jump_table->b_data[dill_jmp_b${op}${_}].data1 = dill_jmp_b${op}${_};\n";
+	    $jmp_b_assigns = $jmp_b_assigns . "\t  ${mach}_jump_table->b_data[dill_jmp_b${op}${_}].data2 = DILL_". &upperc(${_}). ";\n";
+	    $vm_br_code .=  "\t  case dill_jmp_b${op}${_}:  return ($src1_cast{$_} src1->u.${_}.${_}) $c_op ($src2_cast{$_} src2->u.${_}.${_});\n";
+	}
+    }
+}
+
+sub branchi_insn {
+    local($ops, $types, $subr) = @_;
+    %src1_cast = ('u', '(unsigned int)', 'ul', '(uintptr_t)', 'p', '(IMM_TYPE)');
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	$c_op = $c_operations{$op};
+	foreach (split(' ', $types)) {
+	    $jmp_b_assigns = $jmp_b_assigns . "\t  ${mach}_jump_table->jmp_bi[dill_jmp_b${op}${_}] = $subr;\n";
+	    $vm_bri_code .=  "\t  case dill_jmp_b${op}${_}:  return ($src1_cast{$_} src1->u.${_}.${_}) $c_op $src1_cast{$_} imm;\n";
+	}
+    }
+}
+
+sub compare_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	$c_op = $c_operations{$op};
+	foreach (split(' ', $types)) {
+	    $jmp_c_assigns = $jmp_c_assigns . "\t  ${mach}_jump_table->jmp_c[dill_jmp_c${op}${_}] = $subr;\n";
+	    $jmp_c_assigns = $jmp_c_assigns . "\t  ${mach}_jump_table->c_data[dill_jmp_c${op}${_}].data1 = dill_jmp_c${op}${_};\n";
+	    $jmp_c_assigns = $jmp_c_assigns . "\t  ${mach}_jump_table->c_data[dill_jmp_c${op}${_}].data2 = DILL_". &upperc(${_}). ";\n";
+	    $vm_c_code .=  "\t  case dill_jmp_c${op}${_}:  return ($src2_cast{$_} src1->u.${_}.${_}) $c_op ($src2_cast{$_} src2->u.${_}.${_});\n";
+	}
+    }
+}
+
+
+sub convert {
+    local($from_types, $to_types) = @_;
+    %src_cast = ('pul', '(IMM_TYPE)', 'ulp', '(void*)', 'c', '(char)', 's', '(short)', 'uc', '(unsigned char)', 'us', '(unsigned short)', 'i', '(int)', 'u', '(unsigned int)', 'l', '(intptr_t)', 'ul', '(uintptr_t)', 'f', '(float)', 'd', '(double)');
+    %convert_right = ('c', 'src->u.c.c', 's', '((short)(0xffff & src->u.s.s))', 'i', '((int)(0xffffffff & src->u.i.i))', 'uc', '((unsigned char)(0xff & src->u.uc.uc))', 'us', '((unsigned short)(0xffff & src->u.us.us))', 'u', '((unsigned int)(0xffffffff & src->u.u.u))', 'l', 'src->u.l.l', 'ul', '(UIMM_TYPE)src->u.ul.ul', 'd', 'src->u.d.d', 'f', 'src->u.f.f', 'p', 'src->u.l.l');
+    foreach (split(' ', $from_types)) {
+	$from = $_;
+	foreach (split(' ', $to_types)) {
+	    if (${from} eq ${_}) { 
+		next;
+	    }
+	    $dest_fld = ${_};
+	    if ($_ eq "p") {$dest_fld = "ul";}
+	    $vm_cvt_code .= "\tcase CONV(DILL_" . &upperc(${from}) . ", DILL_" . &upperc($_) . "): dest->u.${dest_fld}.${dest_fld} = $src_cast{$_} $convert_right{$from}; break;\n";
+	}
+    }
+}
+
+sub load_store {
+    local($types) = @_;
+    %load_store = ('c', '*((char*)(src->u.l.l + imm))', 's', '*((short*)(src->u.l.l + imm))', 'i', '*((int*)(src->u.l.l + imm))', 'uc', '*((unsigned char*)(src->u.l.l + imm))', 'us', '*((unsigned short *)(src->u.l.l + imm))', 'u', '*((unsigned int *)(src->u.l.l + imm))', 'l', '*((IMM_TYPE*)(src->u.l.l + imm))', 'ul', '*((UIMM_TYPE *)(src->u.l.l + imm))', 'd', '*((double*)(src->u.l.l + imm))', 'f', '*((float*)(src->u.l.l + imm))', 'p', '*((void**)((char*)src->u.p.p + imm))');
+    foreach (split(' ', $types)) {
+	if (($_ eq 'f') || ($_ eq 'd')) {
+	    $vm_loadi_code .= "\tcase DILL_" . &upperc(${_}). ": dest->u.${_}.${_} = $load_store{$_}; break;\n";
+	} else {
+	    $vm_loadi_code .= "\tcase DILL_" . &upperc(${_}). ": dest->u.l.l = (IMM_TYPE) $load_store{$_}; break;\n";
+	}
+	$vm_storei_code .= "\tcase DILL_" . &upperc(${_}). ": $load_store{$_} = dest->u.${_}.${_}; break;\n";
+    }
+}
+
+sub output_header {
+    $mach = virtual;
+    open(COUT, ">dill_${mach}.c") || die "Can't open header output";
+    open(VMOUT, ">vm_include.c") || die "Can't open vm_include output";
+print VMOUT<<EOF;
+/* This file is generated from virtual.ops.  Do not edit directly. */
+
+EOF
+print COUT "# line ". (__LINE__ + 2) . " \"virtual.ops\"\n";
+print COUT<<EOF;
+/* This file is generated from virtual.ops.  Do not edit directly. */
+
+#include "config.h"
+#include "dill.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <assert.h>
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#else
+#include <unistd.h>
+#endif
+#include "dill_internal.h"
+#include "virtual.h"
+
+static void 
+dill_varith3(dill_stream s, int op3, int op, int dest, int src1, int src2)
+{
+    virtual_insn i;
+    i.class_code = iclass_arith3;
+    i.insn_code = op3;
+    i.opnds.a3.dest = dest;
+    i.opnds.a3.src1 = src1;
+    i.opnds.a3.src2 = src2;
+    INSN_OUT(s, i);
+}
+
+static void 
+virtual_compare(dill_stream s, int op, int junk, int dest, int src1, int src2)
+{
+    virtual_insn i;
+    i.class_code = iclass_compare;
+    i.insn_code = op;
+    i.opnds.a3.dest = dest;
+    i.opnds.a3.src1 = src1;
+    i.opnds.a3.src2 = src2;
+    INSN_OUT(s, i);
+}
+
+static void 
+dill_varith3i(dill_stream s, int op3, int op, int dest, int src1, IMM_TYPE imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_arith3i;
+    i.insn_code = op3;
+    i.opnds.a3i.dest = dest;
+    i.opnds.a3i.src = src1;
+    i.opnds.a3i.u.imm = imm;
+    INSN_OUT(s, i);
+}
+
+static void dill_varith2(dill_stream s, int op3, int op, int dest, int src)
+{
+    virtual_insn i;
+    i.class_code = iclass_arith2;
+    i.insn_code = op3;
+    i.opnds.a2.dest = dest;
+    i.opnds.a2.src = src;
+    INSN_OUT(s, i);
+}
+
+extern void virtual_ret(dill_stream s, int data1, int data2, int src)
+{
+    virtual_insn i;
+    i.class_code = iclass_ret;
+    i.insn_code = data1;
+    memset(&i.opnds, 0, sizeof(i.opnds));
+    i.opnds.a1.src = src;
+    INSN_OUT(s, i);
+}
+
+
+extern void
+virtual_convert(dill_stream s, int from_type, int to_type, 
+	      int dest, int src)
+{
+    virtual_insn i;
+    i.class_code = iclass_convert;
+    i.insn_code = (unsigned)((from_type<<4) + to_type);
+    i.opnds.a2.dest = dest;
+    i.opnds.a2.src = src;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_load(dill_stream s, int type, int junk, int dest, int src1, int src2)
+{
+    virtual_insn i;
+    i.class_code = iclass_loadstore;
+    i.insn_code = type;
+    i.opnds.a3.dest = dest;
+    i.opnds.a3.src1 = src1;
+    i.opnds.a3.src2 = src2;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_loadi(dill_stream s, int type, int junk, int dest, int src1, IMM_TYPE imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_loadstorei;
+    i.insn_code = type;
+    i.opnds.a3i.dest = dest;
+    i.opnds.a3i.src = src1;
+    i.opnds.a3i.u.imm = imm;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_pbsload(dill_stream s, int type, int junk, int dest, int src1, int src2)
+{
+    virtual_insn i;
+    i.class_code = iclass_loadstore;
+    i.insn_code = 0x20 | type;
+    i.opnds.a3.dest = dest;
+    i.opnds.a3.src1 = src1;
+    i.opnds.a3.src2 = src2;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_pbsloadi(dill_stream s, int type, int junk, int dest, int src1, IMM_TYPE imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_loadstorei;
+    i.insn_code = 0x20 | type;
+    i.opnds.a3i.dest = dest;
+    i.opnds.a3i.src = src1;
+    i.opnds.a3i.u.imm = imm;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_store(dill_stream s, int type, int junk, int dest, int src1, int src2)
+{
+    virtual_insn i;
+    i.class_code = iclass_loadstore;
+    i.insn_code = 0x10 | type;
+    i.opnds.a3.dest = dest;
+    i.opnds.a3.src1 = src1;
+    i.opnds.a3.src2 = src2;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_storei(dill_stream s, int type, int junk, int dest, int src1, IMM_TYPE imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_loadstorei;
+    i.insn_code = 0x10 | type;
+    i.opnds.a3i.dest = dest;
+    i.opnds.a3i.src = src1;
+    i.opnds.a3i.u.imm = imm;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_mov(dill_stream s, int type, int junk, int dest, int src)
+{
+    virtual_insn i;
+    i.class_code = iclass_mov;
+    i.insn_code = type;
+    i.opnds.a2.dest = dest;
+    i.opnds.a2.src = src;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_pset(dill_stream s, int type, int junk, int dest, IMM_TYPE imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_set;
+    i.insn_code = type;
+    i.opnds.a3i.dest = dest;
+    i.opnds.a3i.u.imm = imm;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_setp(dill_stream s, int type, int junk, int dest, void *imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_set;
+    i.insn_code = type;
+    i.opnds.a3i.dest = dest;
+    i.opnds.a3i.u.imm_a = imm;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_setf(dill_stream s, int type, int junk, int dest, double imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_setf;
+    i.insn_code = type;
+    i.opnds.sf.dest = dest;
+    i.opnds.sf.imm = imm;
+    INSN_OUT(s, i);
+}
+
+extern void
+virtual_reti(dill_stream s, int type, int junk, IMM_TYPE imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_reti;
+    i.insn_code = type;
+    i.opnds.a3i.u.imm = imm;
+    INSN_OUT(s, i);
+}
+
+static void
+virtual_branch(dill_stream s, int op, int type, int src1, int src2, int label)
+{
+    virtual_insn i;
+    i.class_code = iclass_branch;
+    i.insn_code = op;
+    i.opnds.br.src1 = src1;
+    i.opnds.br.src2 = src2;
+    i.opnds.br.label = label;
+    INSN_OUT(s, i);
+}
+
+static void
+virtual_mark_label(dill_stream s, int op, int type, int src1, int src2, int label)
+{
+    virtual_insn i;
+    i.class_code = iclass_mark_label;
+    i.insn_code = 0;
+    i.opnds.label.label = label;
+    i.opnds.label.label_name = NULL;
+    INSN_OUT(s, i);
+}
+
+static void
+virtual_branchi(dill_stream s, int op, int type, int src, IMM_TYPE imm, int label)
+{
+    virtual_insn i;
+    i.class_code = iclass_branchi;
+    i.insn_code = op;
+    i.opnds.bri.src = src;
+    i.opnds.bri.imm_l = imm;
+    i.opnds.bri.label = label;
+    INSN_OUT(s, i);
+}
+
+static void
+virtual_jump_to_label(dill_stream s, unsigned long label)
+{
+    virtual_insn i;
+    i.class_code = iclass_jump_to_label;
+    i.insn_code = 0;
+    i.opnds.br.label = (unsigned short) label;
+    INSN_OUT(s, i);
+}
+
+extern void virtual_jump_to_reg(dill_stream s, unsigned long reg)
+{
+    virtual_insn i;
+    i.class_code = iclass_jump_to_reg;
+    i.insn_code = 0;
+    i.opnds.br.src1 = (unsigned short) reg;
+    INSN_OUT(s, i);
+}
+
+extern void virtual_jump_to_imm(dill_stream s, void *imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_jump_to_imm;
+    i.insn_code = 0;
+    i.opnds.bri.imm_a = imm;
+    INSN_OUT(s, i);
+}
+
+extern int virtual_calli(dill_stream s, int type, void *xfer_address, const char *name)
+{
+    virtual_insn i;
+    i.class_code = iclass_call;
+    i.insn_code = type;
+    i.opnds.calli.src = -1;
+    if (type != DILL_V) i.opnds.calli.src = dill_getreg(s, type);
+    i.opnds.calli.imm_a = xfer_address;
+    i.opnds.calli.xfer_name = name;
+    INSN_OUT(s, i);
+    return i.opnds.calli.src;
+}
+
+extern int virtual_callr(dill_stream s, int type, int src)
+{
+    virtual_insn i;
+    i.class_code = iclass_call;
+    i.insn_code = 0x10 | type;
+    i.opnds.bri.src = -1;
+    if (type != DILL_V) i.opnds.bri.src = dill_getreg(s, type);
+    i.opnds.bri.imm_l = src;
+    INSN_OUT(s, i);
+    return i.opnds.bri.src;
+}
+
+extern void virtual_push(dill_stream s, int type, int reg)
+{
+    virtual_insn i;
+    i.class_code = iclass_push;
+    i.insn_code = type;
+    i.opnds.a1.src = reg;
+    INSN_OUT(s, i);
+}
+
+extern void virtual_pushi(dill_stream s, int type, IMM_TYPE value)
+{
+    virtual_insn i;
+    i.class_code = iclass_pushi;
+    i.insn_code = type;
+    i.opnds.a3i.u.imm = value;
+    INSN_OUT(s, i);
+}
+
+extern void virtual_pushpi(dill_stream s, int type, void *value)
+{
+    virtual_insn i;
+    i.class_code = iclass_pushi;
+    i.insn_code = type;
+    i.opnds.a3i.u.imm_a = value;
+    INSN_OUT(s, i);
+}
+
+extern void virtual_pushfi(dill_stream s, int type, double value)
+{
+    virtual_insn i;
+    i.class_code = iclass_pushf;
+    i.insn_code = type;
+    i.opnds.sf.imm = value;
+    INSN_OUT(s, i);
+}
+
+extern void virtual_lea(dill_stream s, int junk1, int junk2, int dest, int src,
+			IMM_TYPE imm)
+{
+    virtual_insn i;
+    i.class_code = iclass_lea;
+    i.insn_code = 0;
+    i.opnds.a3i.dest = dest;
+    i.opnds.a3i.src = src;
+    i.opnds.a3i.u.imm = imm;
+    INSN_OUT(s, i);
+}
+
+extern void virtual_special(dill_stream s, special_operations type, IMM_TYPE param)
+{
+    virtual_insn i;
+    i.class_code = iclass_special;
+    i.insn_code = 0;
+    i.opnds.spec.type = type;
+    i.opnds.spec.param = param;
+    INSN_OUT(s, i);
+}
+
+static int
+virtual_init_disassembly_info(dill_stream s, void *ptr)
+{
+    return 1;
+}
+
+int virtual_type_align[] = {
+        1, /* C */
+        1, /* UC */
+        2, /* S */
+        2, /* US */
+        4, /* I */
+        4, /* U */
+        sizeof(uintptr_t), /* UL */
+        sizeof(intptr_t), /* L */
+        sizeof(char*), /* P */
+        4, /* F */
+        8, /* D */
+        4, /* V */
+        4, /* B */
+        sizeof(char*), /* EC */
+};
+
+int virtual_type_size[] = {
+        1, /* C */
+        1, /* UC */
+        2, /* S */
+        2, /* US */
+        4, /* I */
+        4, /* U */
+        sizeof(uintptr_t), /* UL */
+        sizeof(intptr_t), /* L */
+        sizeof(char*), /* P */
+        sizeof(float), /* F */
+        sizeof(double), /* D */
+        4, /* V */
+        0, /* B */
+        sizeof(char*), /* EC */
+};
+
+EOF
+}

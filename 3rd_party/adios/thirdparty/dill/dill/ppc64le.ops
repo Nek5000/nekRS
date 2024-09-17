@@ -1,0 +1,270 @@
+#!perl
+sub upperc {
+    local($_) = pop(@_);
+    tr/[a-z]/[A-Z]/;
+    return $_;
+}
+
+&output_header;
+
+&arith_insn("add", "i u ul l p", "ppc64le_XOFORM_arith", "31", "266");
+&arith_insn("sub", "i u ul l p", "ppc64le_swap_arith", "31", "40");
+&arith_insn("mul", "u ul", "ppc64le_XOFORM_arith", "31", "233");
+&arith_insn("mul", "i l", "ppc64le_XOFORM_arith", "31", "233");
+&arith_insn("div", "u", "ppc64le_div", "459/*divwu*/", 0); 
+&arith_insn("div", "ul", "ppc64le_div", "457/*divdu*/", 1);
+&arith_insn("div", "i", "ppc64le_div", "491/*divw*/", 0);
+&arith_insn("div", "l", "ppc64le_div", "489/*divd*/", 1);
+&arith_insn("mul", "i l", "ppc64le_XOFORM_arith", "31", "233");
+&arith_insn("mod", "u", "ppc64le_mod", "0", 0);
+&arith_insn("mod", "ul", "ppc64le_mod", "0", 1);
+&arith_insn("mod", "i", "ppc64le_mod", "1", 0);
+&arith_insn("mod", "l", "ppc64le_mod", "1", 1);
+&arith_insn("and", "i u ul l", "ppc64le_log_arith", "31", "28");
+&arith_insn("or", "i u ul l", "ppc64le_log_arith", "31", "444");
+&arith_insn("xor", "i u ul l", "ppc64le_log_arith", "31", "316");
+&arith2_insn("com", "i u ul l", "(arith_op2)ppc64le_FORM2_arith", "31", "124");
+&arith2_insn("neg", "i u ul l", "(arith_op2)ppc64le_XOFORM_arith", "31", "104");
+&arith2_insn("not", "i u ul l", "(arith_op2)ppc64le_FORM2_arith", 0, "T");
+&arith_insn("lsh", "i u ul l", "ppc64le_shift_arith", "27", "T");
+&arith_insn("rsh", "i l", "ppc64le_shift_arith", "792", "T");
+&arith_insn("rsh", "u ul", "ppc64le_shift_arith", "539", "T");
+&arith_insn("add", "f", "ppc64le_farith", "60", "0");
+&arith_insn("add", "d", "ppc64le_farith", "60", "96");
+&arith_insn("sub", "f", "ppc64le_farith", "60", "8");
+&arith_insn("sub", "d", "ppc64le_farith", "60", "40");
+&arith_insn("mul", "f", "ppc64le_farith", "60", "16");
+&arith_insn("mul", "d", "ppc64le_farith", "60", "48");
+&arith_insn("div", "f", "ppc64le_farith", "60", "24");
+&arith_insn("div", "d", "ppc64le_farith", "60", "56");
+&arith2_insn("neg", "f", "ppc64le_XFORM2_farith", "40", "0");
+&arith2_insn("neg", "d", "ppc64le_XFORM2_farith", "40", "0");
+&arith2_insn("bswap", "s us i u ul l f d", "ppc64le_bswap", "0", "T");
+
+&arithi_insn("add", "i u ul l p", "ppc64le_imm_arith", "14", "266");
+&arithi_insn("sub", "i u ul l p", "ppc64le_imm_arith", "8", "266");
+&arithi_insn("mul", "u ul", "ppc64le_imm_arith", "7", "233");
+&arithi_insn("mul", "i l", "ppc64le_imm_arith", "7", "233");
+&arithi_insn("div", "u", "ppc64le_divi", "459", "0");
+&arithi_insn("div", "ul", "ppc64le_divi", "457", "1");
+&arithi_insn("div", "i", "ppc64le_divi", "491", "0");
+&arithi_insn("div", "l", "ppc64le_divi", "489", "1");
+&arithi_insn("mod", "u", "ppc64le_modi", "0", "0");
+&arithi_insn("mod", "i", "ppc64le_modi", "1", "0");
+&arithi_insn("mod", "ul", "ppc64le_modi", "0", "1");
+&arithi_insn("mod", "l", "ppc64le_modi", "1", "1");
+&arithi_insn("and", "i u ul l", "ppc64le_logimm_arith", "28", "28");
+&arithi_insn("or", "i u ul l", "ppc64le_logimm_arith", "24", "444");
+&arithi_insn("xor", "i u ul l", "ppc64le_logimm_arith", "26", "316");
+&arithi_insn("lsh", "i u ul l", "ppc64le_shiftimm_arith", "21", "T");
+&arithi_insn("rsh", "i u ul l", "ppc64le_shiftimm_arith", "413", "T");
+&branch_insn( "eq ge gt le lt ne", "c uc s us i u ul l p d f", "ppc64le_branch");
+&branchi_insn( "eq ge gt le lt ne", "c uc s us i u ul l p", "ppc64le_branchi");
+&compare_insn( "eq ge gt le lt ne", "c uc s us i u ul l p d f", "ppc64le_compare");
+&comparei_insn( "eq ge gt le lt ne", "c uc s us i u ul l p", "ppc64le_comparei");
+
+print COUT <<EOF;
+static struct jmp_table_s ${mach}_jump_table_struct;
+static arith_op3 ${mach}_arith_op3_table[dill_jmp_a3_size + 1];
+static jmp_data  ${mach}_arith_op3_data[dill_jmp_a3_size + 1];
+static arith_op3i ${mach}_arith_op3i_table[dill_jmp_a3_size + 1];
+static jmp_data  ${mach}_arith_op3i_data[dill_jmp_a3_size + 1];
+static arith_op2 ${mach}_arith_op2_table[dill_jmp_a2_size + 1];
+static jmp_data  ${mach}_arith_op2_data[dill_jmp_a2_size + 1];
+static branch_op ${mach}_branch_table[dill_jmp_branch_size + 1];
+static branch_opi ${mach}_branchi_table[dill_jmp_branch_size + 1];
+static jmp_data  ${mach}_branch_data[dill_jmp_branch_size + 1];
+static compare_op ${mach}_compare_table[dill_jmp_compare_size + 1];
+static compare_opi ${mach}_comparei_table[dill_jmp_compare_size + 1];
+static jmp_data ${mach}_compare_data[dill_jmp_compare_size + 1];
+
+jmp_table ${mach}_jump_table;
+static void gen_${mach}_jump_table()
+{
+    ${mach}_jump_table = &${mach}_jump_table_struct;          
+    memset(${mach}_jump_table, 0, sizeof(struct jmp_table_s));
+    /* arith3 */
+    ${mach}_jump_table->jmp_a3 = ${mach}_arith_op3_table;
+    memset(${mach}_jump_table->jmp_a3, 0, sizeof(${mach}_arith_op3_table));
+    ${mach}_jump_table->a3_data = ${mach}_arith_op3_data;
+    memset(${mach}_jump_table->a3_data, 0, sizeof(${mach}_arith_op3_data));
+    /* arith3i */
+    ${mach}_jump_table->jmp_a3i = ${mach}_arith_op3i_table;
+    memset(${mach}_jump_table->jmp_a3i, 0, sizeof(${mach}_arith_op3i_table));
+    ${mach}_jump_table->a3i_data = ${mach}_arith_op3i_data;
+    memset(${mach}_jump_table->a3i_data, 0, sizeof(${mach}_arith_op3i_data));
+    /* arith2 */
+    ${mach}_jump_table->jmp_a2 = ${mach}_arith_op2_table;
+    memset(${mach}_jump_table->jmp_a2, 0, sizeof(${mach}_arith_op2_table));
+    ${mach}_jump_table->a2_data = ${mach}_arith_op2_data;
+    memset(${mach}_jump_table->a2_data, 0, sizeof(${mach}_arith_op2_data));
+    /* branch */
+    ${mach}_jump_table->jmp_b = ${mach}_branch_table;
+    memset(${mach}_jump_table->jmp_b, 0, sizeof(${mach}_branch_table));
+    /* branchi */
+    ${mach}_jump_table->jmp_bi = ${mach}_branchi_table;
+    memset(${mach}_jump_table->jmp_bi, 0, sizeof(${mach}_branch_table));
+    ${mach}_jump_table->b_data = ${mach}_branch_data;
+    memset(${mach}_jump_table->b_data, 0, sizeof(${mach}_branch_data));
+    /* compare */
+    ${mach}_jump_table->jmp_c = ${mach}_compare_table;
+    memset(${mach}_jump_table->jmp_c, 0, sizeof(${mach}_compare_table));
+    /* comparei */
+    ${mach}_jump_table->jmp_ci = ${mach}_comparei_table;
+    memset(${mach}_jump_table->jmp_ci, 0, sizeof(${mach}_compare_table));
+    ${mach}_jump_table->c_data = ${mach}_compare_data;
+    memset(${mach}_jump_table->c_data, 0, sizeof(${mach}_compare_data));
+EOF
+print COUT $jmp_a3_assigns;
+print COUT $jmp_a3i_assigns;
+print COUT $jmp_a2_assigns;
+print COUT $jmp_b_assigns;
+print COUT $jmp_c_assigns;
+print COUT "    ${mach}_jump_table->proc_start = (dill_mach_proc_start) ppc64le_proc_start;\n";
+print COUT "    ${mach}_jump_table->end = ppc64le_end;\n";
+print COUT "    ${mach}_jump_table->package_end = ppc64le_package_end;\n";
+print COUT "    ${mach}_jump_table->clone_code = ppc64le_clone_code;\n";
+print COUT "    ${mach}_jump_table->type_align = ppc64le_type_align;\n";
+print COUT "    ${mach}_jump_table->type_size = ppc64le_type_size;\n";
+print COUT "    ${mach}_jump_table->ret = ppc64le_ret;\n";
+print COUT "    ${mach}_jump_table->reti = ppc64le_reti;\n";
+print COUT "    ${mach}_jump_table->retf = (ret_opf)ppc64le_reti;\n";
+print COUT "    ${mach}_jump_table->load = ppc64le_pload;\n";
+print COUT "    ${mach}_jump_table->bsload = ppc64le_pbsload;\n";
+print COUT "    ${mach}_jump_table->loadi = ppc64le_ploadi;\n";
+print COUT "    ${mach}_jump_table->bsloadi = ppc64le_pbsloadi;\n";
+print COUT "    ${mach}_jump_table->loadi = ppc64le_ploadi;\n";
+print COUT "    ${mach}_jump_table->store = ppc64le_pstore;\n";
+print COUT "    ${mach}_jump_table->storei = ppc64le_pstorei;\n";
+print COUT "    ${mach}_jump_table->convert = ppc64le_convert;\n";
+print COUT "    ${mach}_jump_table->mov = ppc64le_mov;\n";
+print COUT "    ${mach}_jump_table->set = ppc64le_pset;\n";
+print COUT "    ${mach}_jump_table->setf = ppc64le_setf;\n";
+print COUT "    ${mach}_jump_table->setp = ppc64le_setp;\n";
+print COUT "    ${mach}_jump_table->jv = ppc64le_jump_to_label;\n";
+print COUT "    ${mach}_jump_table->jp = ppc64le_jump_to_reg;\n";
+print COUT "    ${mach}_jump_table->jpi = ppc64le_jump_to_imm;\n";
+print COUT "    ${mach}_jump_table->jal = ppc64le_jal;\n";
+print COUT "    ${mach}_jump_table->push = ppc64le_push;\n";
+print COUT "    ${mach}_jump_table->pushi = ppc64le_pushi;\n";
+print COUT "    ${mach}_jump_table->pushfi = ppc64le_pushfi;\n";
+print COUT "    ${mach}_jump_table->pushpi = ppc64le_pushpi;\n";
+print COUT "    ${mach}_jump_table->calli = ppc64le_calli;\n";
+print COUT "    ${mach}_jump_table->callr = ppc64le_callr;\n";
+print COUT "    ${mach}_jump_table->local = ppc64le_local_op;\n";
+print COUT "    ${mach}_jump_table->save_restore = ppc64le_save_restore_op;\n";
+#print COUT "    ${mach}_jump_table->lea = ppc64le_lea;\n";
+print COUT "    ${mach}_jump_table->init_disassembly = ppc64le_init_disassembly_info;\n";
+print COUT "    ${mach}_jump_table->print_insn = ppc64le_print_insn;\n";
+print COUT "    ${mach}_jump_table->print_reg = ppc64le_print_reg;\n";
+print COUT "    ${mach}_jump_table->count_insn = ppc64le_count_insn;\n";
+print COUT "    ${mach}_jump_table->do_reverse_push = 0;\n";
+print COUT "    ${mach}_jump_table->target_byte_order = 2;  /* Format_Integer_littleendian */\n";
+print COUT "    ${mach}_jump_table->target_float_format = 3;  /* Format_IEEE_754_littleendian */ \n";
+print COUT "}\n\n";
+print COUT "extern void dill_ppc64le_init(dill_stream s)\n{\n";
+print COUT "        gen_ppc64le_jump_table();\n";
+print COUT "    s->j = ppc64le_jump_table;\n";
+print COUT "    s->dill_local_pointer = _sp;\n";
+print COUT "    s->dill_param_reg_pointer = _sp;\n";
+print COUT "    s->p->mach_info = (void*)gen_ppc64le_mach_info(s,1);\n";
+print COUT "    s->p->machine_strr_tmp_reg = _gpr0;\n";
+print COUT "    return;\n";
+print COUT "}\n";
+
+sub arith_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    foreach(split(' ', $type_list)) {
+	$pcode2 = $code2;
+	if ($code2 eq "T") {
+	    $pcode2 = "DILL_". &upperc(${_});
+	}
+	$jmp_a3_assigns = $jmp_a3_assigns . "    ${mach}_jump_table->jmp_a3[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a3_assigns = $jmp_a3_assigns . "    ${mach}_jump_table->a3_data[dill_jmp_${op}${_}].data1 = $code1;\n";
+	$jmp_a3_assigns = $jmp_a3_assigns . "    ${mach}_jump_table->a3_data[dill_jmp_${op}${_}].data2 = $pcode2;\n";
+    }
+}
+
+sub arith2_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    foreach(split(' ', $type_list)) {
+	$pcode2 = $code2;
+	if ($code2 eq "T") {
+	    $pcode2 = "DILL_". &upperc(${_});
+	}
+	$jmp_a2_assigns = $jmp_a2_assigns . "    ${mach}_jump_table->jmp_a2[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a2_assigns = $jmp_a2_assigns . "    ${mach}_jump_table->a2_data[dill_jmp_${op}${_}].data1 = $code1;\n";
+	$jmp_a2_assigns = $jmp_a2_assigns . "    ${mach}_jump_table->a2_data[dill_jmp_${op}${_}].data2 = $pcode2;\n";
+    }
+}
+
+sub arithi_insn {
+    local ($op, $type_list, $subr, $code1, $code2) = @_;
+    foreach(split(' ', $type_list)) {
+	$pcode2 = $code2;
+	if ($code2 eq "T") {
+	    $pcode2 = "DILL_". &upperc(${_});
+	}
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "    ${mach}_jump_table->jmp_a3i[dill_jmp_${op}${_}] = $subr;\n";
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "    ${mach}_jump_table->a3i_data[dill_jmp_${op}${_}].data1 = $code1;\n";
+	$jmp_a3i_assigns = $jmp_a3i_assigns . "    ${mach}_jump_table->a3i_data[dill_jmp_${op}${_}].data2 = $pcode2;\n";
+    }
+}
+
+sub branch_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_b_assigns = $jmp_b_assigns . "    ${mach}_jump_table->jmp_b[dill_jmp_b${op}${_}] = $subr;\n";
+	    $jmp_b_assigns = $jmp_b_assigns . "    ${mach}_jump_table->b_data[dill_jmp_b${op}${_}].data1 = dill_${op}_code;\n";
+	    $jmp_b_assigns = $jmp_b_assigns . "    ${mach}_jump_table->b_data[dill_jmp_b${op}${_}].data2 = DILL_". &upperc(${_}). ";\n";
+	}
+    }
+}
+
+sub compare_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_c_assigns = $jmp_c_assigns . "  ${mach}_jump_table->jmp_c[dill_jmp_c${op}${_}] = $subr;\n";
+	    $jmp_c_assigns = $jmp_c_assigns . "  ${mach}_jump_table->c_data[dill_jmp_c${op}${_}].data1 = dill_${op}_code;\n";
+	    $jmp_c_assigns = $jmp_c_assigns . "  ${mach}_jump_table->c_data[dill_jmp_c${op}${_}].data2 = DILL_". &upperc(${_}). ";\n";
+	}
+    }
+}
+
+sub branchi_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_b_assigns = $jmp_b_assigns . "    ${mach}_jump_table->jmp_bi[dill_jmp_b${op}${_}] = $subr;\n";
+	}
+    }
+}
+
+sub comparei_insn {
+    local($ops, $types, $subr) = @_;
+    foreach (split(' ', $ops)) {
+	$op = $_;
+	foreach (split(' ', $types)) {
+	    $jmp_c_assigns = $jmp_c_assigns . "  ${mach}_jump_table->jmp_ci[dill_jmp_c${op}${_}] = $subr;\n";
+	}
+    }
+}
+
+sub output_header {
+    $mach = ppc64le;
+    open(COUT, ">dill_${mach}.c") || die "Can't open header output";
+print COUT<<EOF;
+/* This file is generated from ppc64le.ops.  Do not edit directly. */
+
+#include "config.h"
+#include "dill.h"
+#include "dill_internal.h"
+#include "ppc64le.h"
+#include <string.h>
+EOF
+}

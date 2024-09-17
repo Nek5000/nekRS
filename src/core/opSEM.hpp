@@ -4,7 +4,10 @@
 #include "platform.hpp"
 #include "mesh.h"
 
-// output is always weighted by Jw
+/*
+  unless noted otherwise, operators are based on weak formulation
+  strong operators are weighted by Jw
+*/
 
 namespace opSEM 
 {

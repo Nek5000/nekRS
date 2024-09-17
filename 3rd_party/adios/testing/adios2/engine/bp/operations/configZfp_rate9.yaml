@@ -1,0 +1,15 @@
+---
+# Config YAML file for the operator API using Zfp compression rate
+
+- IO: "TestIO"
+  
+  Variables:
+  
+  - Variable: "r32"
+    Operations:
+      - { Type: zfp, rate: 9 }
+    
+  - Variable: "r64"
+    Operations:
+    - { Type: zfp, rate: 18 }
+    

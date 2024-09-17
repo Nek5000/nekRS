@@ -1,0 +1,23 @@
+\def\section{\@startsection {section}{1}{\z@}{1.5ex plus 1ex minus 
+    .2ex}{0.8ex plus .2ex}{\Large\bf}}
+\def\subsection{\@startsection{subsection}{2}{\z@}{1.25ex plus 1ex minus 
+   .2ex}{0.5ex plus .2ex}{\large\bf}}
+\def\subsubsection{\@startsection{subsubsection}{3}{\z@}{3.25ex plus 
+ 1ex minus .2ex}{1.5ex plus .2ex}{\normalsize\bf}}
+\def\@maketitle{\newpage
+% \null
+% \vskip 2em                 % Vertical space above title.
+ \begin{center}
+  {\LARGE \@title \par}     % Title set in \LARGE size. 
+  \vskip 1.5em                % Vertical space after title.
+  {\large                        % each author set in \large, in a
+   \lineskip .5em           % tabular environment
+   \begin{tabular}[t]{c}\@author 
+   \end{tabular}\par}                   
+\end{center}
+ \par
+ \vskip 1.5em}                % Vertical space after date.
+
+\def\footnoterule{\kern-3\p@   
+  \hrule width .4\columnwidth 
+  \kern 2.6\p@}                 % The \hrule has default height of .4pt .

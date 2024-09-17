@@ -56,7 +56,7 @@
     const dlong bcType = EToB[face + p_Nfaces * e];                                                          \
     if (bcType == p_bcTypeONX || bcType == p_bcTypeONY || bcType == p_bcTypeONZ || bcType == p_bcTypeON || bcType == p_bcTypeO) { \
       bc.p = 0;                                                                                              \
-      pressureDirichletConditions(&bc);                                                                      \
+      codedFixedValuePressure(&bc);                                                                          \
       TRx = -bc.p * bc.nx;                                                                                   \
       TRy = -bc.p * bc.ny;                                                                                   \
       TRz = -bc.p * bc.nz;                                                                                   \
@@ -64,7 +64,7 @@
     if (bcType == p_bcTypeSHL) {                                                                             \
       bc.tr1 = 0;                                                                                            \
       bc.tr2 = 0;                                                                                            \
-      velocityNeumannConditions(&bc);                                                                        \
+      codedFixedGradientVelocity(&bc);                                                                       \
       TRx = bc.t1x * bc.tr1 + bc.t2x * bc.tr2;                                                               \
       TRy = bc.t1y * bc.tr1 + bc.t2y * bc.tr2;                                                               \
       TRz = bc.t1z * bc.tr1 + bc.t2z * bc.tr2;                                                               \

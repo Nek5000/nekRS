@@ -73,12 +73,14 @@ using dlong = long long int;
 #include <map>
 #include <algorithm>
 #include <numeric>
+#include <memory>
 #include <functional>
 #include <cstdio>
 #include <cstdlib>
 #include <cstddef>
 #include <unistd.h>
 #include <getopt.h>
+#include <cstdint>
 #include <sys/stat.h>
 #include <cfenv>
 
@@ -154,7 +156,7 @@ extern platform_t *platform;
 namespace
 {
 
-constexpr double targetTimeBenchmark{1.0};
+constexpr double targetTimeBenchmark{0.5};
 
 constexpr int BLOCKSIZE = 256;
 constexpr int ALIGN_SIZE = 1024;

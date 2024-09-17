@@ -5,16 +5,19 @@
 * FP32 solver mode
 * Interpolation based velocity recycling
 * [Ascent](https://ascent.readthedocs.io/en/latest/) in situ visualisation plugin
-* [ADIOS2](https://adios2.readthedocs.io/) field file writer
+* iofld class reading/writing field files including [ADIOS2](https://adios2.readthedocs.io/) support 
 * Addtional output options (element filter and interpolation on uniform grid / different polynomial-order)
 * Multi session nek-nek including multi-rate time stepping
-* Combined CG for improved performance
 * CHT nek-nek support
+* nek-nek support for nrsqsub scripts
 * Improved JIT compilation performance
 * HIP support for BoomerAMG
 * Intel GPU support
 * Aero forces
-* User friendly opSEM class
+* opSEM class
+* Mesh surface ops
+* Linear implicit velocity source term
+* Combined CG for improved performance
 * Various bug fixes
 
 ## Good to know
@@ -29,7 +32,11 @@
 
 This list provides an overview of the most significant changes in this release, although it may not encompass all modifications. We acknowledge that this release introduces several breaking changes. These adjustments were essential to enhance the stability of the user interface in future iterations. We apologize for any inconvenience this may cause.
 
-* call `build.sh` instead of `nrsconfig` to build the code 
+* call `build.sh` instead of `nrsconfig` to build the code
+* change par section `TEMPERATURE` to `SCALAR00` in case it does not represent a physical temperature
+* use `codedFixedValueScalar` instead of `scalarDirichletConditions` (same for velocity)
+* use `codedFixedGradientScalar` instead of `scalarNeumannConditions` (same for velocity)
+* use `nrs->copyToNek` instead of ``nek::copyToNek` (same for all other variants) 
 * use `auto foo = platform->o_memPool.reserve<T>(nWords)` instead of preallocated slices of `occa::memory::o_mempool`
 * change count argument of `occa::memory::slice, occa::memory::copyFrom, occa::memory::copyTo` to number of words instead of bytes 
 * pass `const occa::memory&` instead of `const void*` to `writeFld`
@@ -42,8 +49,8 @@ This list provides an overview of the most significant changes in this release, 
 * `nrs_t::userDivergence = std::function<void(double)>` -> `udf::udfdif = std::function<void(nrs_t *, dfloat, occa::memory)>`
 * `tavg::setup(dlong fieldOffset, const fields& fields)` -> `tavg::setup(nrs_t*)`
 * `planarAvg(mesh_t*, const std::string&, int, int, int, int, dlong, occa::memory o_avg)` -> `postProcessing::planarAvg(nrs_t*, const std::string&, int, int, int, int, occa::memory)`
-* `nrs->o_NLT` -> `nrs->o_FU`
-* `cds->o_NLT` -> `cds->o_FS`
+* use `nrs->o_NLT` instead of `nrs->o_FU`
+* use `cds->o_NLT` instead of `cds->o_FS`
 * `::postProcessing` functions are now members of `nrs_t` (except planarAvg)
 * access `nekrs::nrsPtr` through `nekrs::platform()`
 * use `nekrs_registerPtr` instead of common blocks NRSSCPTR / SCNRS in usr file and access them using `nek::ptr` in udf
@@ -52,6 +59,7 @@ This list provides an overview of the most significant changes in this release, 
 * use pay key `avm+highestModalDecay` instead of `avm+hpfResidual`
 * `nrs->isOutputStep` -> `nrs->isCheckpointStep`
 * `pointInterpolation_t::setPoints` now takes std::vector<T> instead of raw pointers and number points are determined on the vector size 
+* use `iofld` instead of `writeFld`
 
 ## Known Bugs / Restrictions
 
@@ -62,7 +70,7 @@ This list provides an overview of the most significant changes in this release, 
 
 ## Thanks to our Contributors
 
-@kris-rowe, @MalachiTimothyPhillips, @yslan, @tcew
+@kris-rowe, @yslan, @MalachiTimothyPhillips, @tcew
 
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.

@@ -1,0 +1,14 @@
+encoded data is 80 bytes, XML string is 341 bytes
+XML string is :
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE dynamic [
+        <!ELEMENT dynamic (strfield, icount, doublearray)>
+        <!ELEMENT strfield (#PCDATA)>
+        <!ELEMENT icount (#PCDATA)>
+        <!ELEMENT doublearray (#PCDATA)>
+]>
+<dynamic>
+        <strfield>Hi Mom! </strfield>
+        <icount>5 </icount>
+        <doublearray>0 2.717 5.434 8.151 10.868 </doublearray>
+</dynamic>

@@ -1,0 +1,110 @@
+<?xml version="1.0"?>
+<!-- Config XML file fo the
+     - adios2_simulations_heatTransferWrite
+     - adios2_simulations_heatTransferRead
+     executables in build/bin -->
+
+<adios-config>
+
+    <!--====================================
+           Configuration for the Writer
+        ====================================-->
+
+    <io name="writer">
+        <engine type="DataMan">
+
+            <!-- Microseconds (default), Milliseconds, Seconds,
+                 Minutes, Hours -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+
+            <!-- XXKb, XXMb, or XXXGb supported, default=16Kb
+                (applications might choose an optimal value) -->
+            <parameter key="InitialBufferSize" value="1Gb"/>
+
+        </engine>
+
+        <transport type="WAN">
+
+            <!-- POSIX, stdio (C FILE*), fstream (C++) -->
+            <parameter key="Library" value="ZMQ"/>
+
+            <!-- IP Address for network transfer -->
+            <parameter key="IPAddress" value="127.0.0.1"/>
+
+            <!-- For read/write, Microseconds (default), Milliseconds, Seconds,
+                 Minutes, Hours. open/close always in Microseconds -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+
+        </transport>
+
+    </io>
+
+
+    <!--=======================================
+           Configuration for the Reader input
+        =======================================-->
+
+    <io name="readerInput">
+        <engine type="DataMan">
+
+            <!-- Microseconds (default), Milliseconds, Seconds,
+                 Minutes, Hours -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+
+            <!-- XXKb, XXMb, or XXXGb supported, default=16Kb
+                (applications might choose an optimal value) -->
+            <parameter key="InitialBufferSize" value="1Gb"/>
+
+        </engine>
+
+        <transport type="WAN">
+
+            <!-- POSIX, stdio (C FILE*), fstream (C++) -->
+            <parameter key="Library" value="ZMQ"/>
+
+            <!-- timeout in seconds -->
+            <parameter key="Timeout" value="5"/>
+
+            <!-- IP Address for network transfer -->
+            <parameter key="IPAddress" value="127.0.0.1"/>
+
+            <!-- For read/write, Microseconds (default), Milliseconds, Seconds,
+                 Minutes, Hours. open/close always in Microseconds -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+
+        </transport>
+
+    </io>
+
+
+    <!--=======================================
+           Configuration for the Reader output
+        =======================================-->
+
+    <io name="readerOutput">
+        <engine type="BPFile">
+            
+            <!-- for vectorized memory operations, make sure your system 
+                 enables threads--> 
+            <parameter key="Threads" value="1"/>
+
+            <!-- Microseconds (default), Milliseconds, Seconds, 
+                 Minutes, Hours -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+
+        </engine>
+
+        <transport type="File">
+            
+            <!-- POSIX, stdio (C FILE*), fstream (C++) -->
+            <parameter key="Library" value="stdio"/>
+            
+            <!-- For read/write, Microseconds (default), Milliseconds, Seconds, 
+                 Minutes, Hours. open/close always in Microseconds -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+            
+        </transport>
+
+    </io>
+
+</adios-config>

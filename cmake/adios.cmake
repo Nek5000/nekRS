@@ -1,0 +1,20 @@
+function(add_adios)
+
+if(NOT "${ADIOS2_INSTALL_DIR}" STREQUAL "")
+  find_package(adios2 HINTS ${ADIOS2_INSTALL_DIR})
+endif()
+
+if (NOT ADIOS2_FOUND) 
+  set(BUILD_SHARED_LIBS ON)
+  set(ADIOS2_USE_HDF5 "FALSE")
+  set(ADIOS2_USE_HDF5_VOL "FALSE")
+  set(ADIOS2_USE_Fortran "FALSE")
+  set(ADIOS2_USE_Kokkos "FALSE")
+  set(ADIOS2_USE_Python "FALSE")
+  set(ADIOS2_INSTALL_GENERATE_CONFIG "FALSE")
+  set(ADIOS2_RUN_INSTALL_TEST FALSE)
+  add_subdirectory(3rd_party/adios)
+  set(ADIOS2_INSTALL_DIR ${CMAKE_INSTALL_PREFIX} PARENT_SCOPE)
+endif()
+
+endfunction()

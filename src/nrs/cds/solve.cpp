@@ -16,7 +16,7 @@ void cds_t::solve(double time, int stage)
     platform->timer.tic("scalar rhs", 1);
 
     auto o_rhs = platform->o_memPool.reserve<dfloat>(this->fieldOffset[is]);
-    o_rhs.copyFrom(this->o_BF, this->fieldOffset[is], 0, this->fieldOffsetScan[is]);
+    o_rhs.copyFrom(this->o_JwF, this->fieldOffset[is], 0, this->fieldOffsetScan[is]);
 
     this->neumannBCKernel(mesh->Nelements,
                           1,

@@ -1,0 +1,21 @@
+set(_ADIOS2_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
+list(INSERT CMAKE_MODULE_PATH 0 "@ADIOS2_SOURCE_DIR@/cmake")
+
+if(NOT @BUILD_SHARED_LIBS@)
+  set(atl_DIR @atl_DIR@)
+  set(dill_DIR @dill_DIR@)
+  set(ffs_DIR @ffs_DIR@)
+endif()
+
+if(@ADIOS2_HAVE_SST@)
+  set(EVPath_DIR @EVPath_DIR@)
+  if(NOT @BUILD_SHARED_LIBS@)
+    set(enet_DIR @enet_DIR@)
+  endif()
+endif()
+
+set(${CMAKE_FIND_PACKAGE_NAME}_CONFIG "${CMAKE_CURRENT_LIST_FILE}")
+include("${CMAKE_CURRENT_LIST_DIR}/adios2-config-common.cmake")
+
+set(CMAKE_MODULE_PATH ${_ADIOS2_CMAKE_MODULE_PATH})
+unset(_ADIOS2_CMAKE_MODULE_PATH)

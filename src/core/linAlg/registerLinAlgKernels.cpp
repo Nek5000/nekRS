@@ -63,6 +63,7 @@ void registerLinAlgKernels()
       {"entrywiseMag", false},
       {"linearCombination", false},
       {"relativeError", false},
+      {"absoluteError", false},
       {"magSqrVector", false},
       {"magSqrSymTensor", false},
       {"magSqrSymTensorDiag", false},

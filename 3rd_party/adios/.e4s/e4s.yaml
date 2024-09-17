@@ -1,0 +1,8 @@
+- e4s_product: adios2
+  version: 0.1.0
+  website: https://github.com/ornladios/adios2
+  docs: [ReadMe.md, LICENSE]
+  spack_name: adios2
+  area: Data & Viz
+  Description: "ADIOS2 is the latest implementation of the Adaptable Input Output System, a modular high performance framework for HPC I/O."
+  MemberProduct: False

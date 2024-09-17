@@ -5,6 +5,7 @@ c-----------------------------------------------------------------------
       include 'PARALLEL' 
       include 'TSTEP' 
       include 'INPUT'
+      include 'RESTART'
 
       integer comm, newcomm, newcommg
       character session_in*(*), path_in*(*)
@@ -27,6 +28,8 @@ c-----------------------------------------------------------------------
       call mpi_comm_dup(comm,newcommg,ierr)
       newcomm = newcommg
       nekcomm = newcommg 
+
+      commrs = MPI_COMM_NULL
 
       call mpi_comm_size(nekcomm,np_global,ierr)
       call mpi_comm_rank(nekcomm,nid_global,ierr)
@@ -63,7 +66,13 @@ c-----------------------------------------------------------------------
  22        rewind(8)
            if (nlin.gt.2) then 
              read(8,*,err=24) nsessions
-             if(nsessions.gt.nsessmax) goto 24
+             if(nsessions.gt.nsessmax) then
+               write(6,82) nsessmax, nsessions
+ 82            format(//,2x,'Error: Nek has been compiled for max.',i4,
+     $                 /,2x,'       sessions. This run requires that'
+     $                 /,2x,'       nsessmax be set to',i4,'.')
+               call exitt
+             endif
            endif
            if (nsessions.gt.1) read(8,*,err=24) ifneknekc
            do n=0,nsessions-1
@@ -198,6 +207,7 @@ C     Test timer accuracy
       edif = edif/10.
 
       call fgslib_crystal_setup(cr_h,nekcomm,np)  ! set cr handle to new instance
+
       return
       end
 c-----------------------------------------------------------------------

@@ -1,0 +1,52 @@
+{
+  "ONECELL": {
+    "data_sources": [
+      {
+      "name": "source",
+      "filename_mode": "input"
+      }
+    ],
+    "coordinate_system" : {
+      "array" : {
+        "array_type" : "composite",
+        "x_array" : {
+          "array_type" : "basic",
+          "data_source": "source",
+          "variable" : "Mesh/Coords/X"
+          },
+        "y_array" : {
+          "array_type" : "basic",
+          "data_source": "source",
+          "variable" : "Mesh/Coords/Y"
+          },
+        "z_array" : {
+          "array_type" : "basic",
+          "data_source": "source",
+          "variable" : "Mesh/Coords/Z"
+          }
+      }
+    },
+    "cell_set": {
+      "cell_set_type" : "single_type",
+      "cell_type" : "hexahedron",
+      "data_source": "source",
+      "variable" : "Mesh/Cells"
+    },
+    "fields": [
+      {
+        "name": "pointdata",
+        "association": "points",
+        "array" : {
+          "array_type" : "basic",
+          "data_source": "source",
+          "variable" : "DataOnPoints"
+        }
+      }
+    ],
+    "step_information": {
+      "data_source": "source",
+      "variable": "time"
+    }
+  }
+}
+

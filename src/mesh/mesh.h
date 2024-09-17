@@ -56,8 +56,8 @@ struct mesh_t {
   std::vector<dfloat> minDistance(const std::vector<dlong> &bID, std::string type, int maxIter = 10000);
 
   occa::memory intpMatrix(std::vector<dfloat> M);
-  void interpolate(mesh_t *meshC, const occa::memory& o_z, occa::memory& o_zC);
-  void map2Uniform(mesh_t *meshU, const occa::memory& o_z, occa::memory& o_zU);
+  void interpolate(const occa::memory& o_z, mesh_t *meshC, occa::memory& o_zC);
+  void map2Uniform(const occa::memory& o_z, mesh_t *meshU, occa::memory& o_zU);
   void map2Uniform(const occa::memory& o_z, occa::memory& o_zUni);
 
   void move();
@@ -72,11 +72,11 @@ struct mesh_t {
                                                    const occa::memory &o_bID, 
                                                    const occa::memory &o_fld);
 
-  std::vector<dfloat> surfaceAreaNormalMultiplyIntegrate(int Nfields,
-                                                         dlong fieldOffset,
-                                                         int nbID,
-                                                         const occa::memory &o_bID,
-                                                         const occa::memory &o_fld);
+  std::vector<dfloat> surfaceAreaMultiplyIntegrate(int Nfields,
+                                                   dlong fieldOffset,
+                                                   int nbID,
+                                                   const occa::memory &o_bID,
+                                                   const occa::memory &o_fld);
 
   std::vector<dfloat> surfaceAreaNormalMultiplyIntegrate(dlong fieldOffset,
                                                          int nbID,
@@ -405,12 +405,15 @@ void meshApplyVectorElementMatrix(mesh_t *mesh,
 
 void meshRecursiveSpectralBisectionPartition(mesh_t *mesh);
 
-void matrixInverse(int N, dfloat *A);
 dfloat matrixConditionNumber(int N, dfloat *A);
 
 void matrixRightSolve(int NrowsA, int NcolsA, dfloat *A, int NrowsB, int NcolsB, dfloat *B, dfloat *C);
 void matrixEig(int N, dfloat *A, dfloat *VR, dfloat *WR, dfloat *WI);
-void matrixTranspose(const int M, const int N, const dfloat *A, const int LDA, dfloat *AT, const int LDAT);
+
+void meshLoadKernels(mesh_t *mesh);
+
+void OrthonormalBasisHex3D(dfloat a, dfloat b, dfloat c, int i, int j, int k, dfloat* P);
+void VandermondeHex3D(int _N, int Npoints, dfloat* _r, dfloat* _s, dfloat* _t, dfloat* V);
 
 // 1D mesh basis functions
 void Nodes1D(int _N, dfloat *_r);
@@ -430,4 +433,5 @@ dfloat JacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
 dfloat GradJacobiP(dfloat a, dfloat alpha, dfloat beta, int _N);
 void JacobiGLL(int _N, dfloat *_x, dfloat *_w = nullptr);
 void JacobiGQ(dfloat alpha, dfloat beta, int _N, dfloat *_x, dfloat *_w);
+
 #endif

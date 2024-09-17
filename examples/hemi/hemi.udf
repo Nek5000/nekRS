@@ -113,7 +113,7 @@ void UDF_Setup()
 
   // interpolate initial fluid velocity onto particle positions
   std::vector<dfloat> particleU0(nrs->NVfields * nParticles);
-  auto interpolator = pointInterpolation_t(mesh);
+  auto interpolator = pointInterpolation_t(mesh, platform->comm.mpiComm);
   interpolator.setPoints(xPart, yPart, zPart);
   interpolator.find();
 
@@ -234,9 +234,9 @@ void UDF_ExecuteStep(double time, int tstep)
   }
 
   if (nrs->isCheckpointStep) {
-    nek::ocopyToNek(time, tstep);
+    nrs->ocopyToNek(time, tstep);
     nek::userchk(); // compute lambda2
-    nek::ocopyFromNek(time);
+    nrs->ocopyFromNek(time);
 
     particles->writeFld();
   }

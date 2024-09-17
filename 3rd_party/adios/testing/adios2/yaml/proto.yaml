@@ -1,0 +1,37 @@
+---
+# adios2 config.yaml
+- IO: "SimulationOutput"
+  Engine:
+      Type: "BP4"
+      CollectiveMetadata: On
+      Threads: 2
+      InitialBufferSize: 10Gb
+
+
+- IO: "PDFAnalysisOutput"
+  Engine:
+    Type: "BP4"
+    # Simple parameters are passed as dict/maps as in adios2 code
+    # SST engine parameters
+    RendevouzReaderCount: 1
+    QueueLimit: 5
+    QueueFullPolicy: Block
+    # BP4/SST engine parameters
+    OpenTimeOutSecs: 10.0
+    MaxBufferSize: 100Gb
+    #CollectiveMetadata: On  # easily commented out
+    
+  Variables:
+    - Variable: "U"
+      Operations:
+        - Type: zfp
+          accuracy: 0.001
+            
+    - Variable: "V"
+      Operations:
+        - {Type: zfp, accuracy: 0.001}
+        
+  
+  Transports: 
+    - {Type: file, library: fstream}
+...

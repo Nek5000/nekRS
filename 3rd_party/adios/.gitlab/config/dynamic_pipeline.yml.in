@@ -1,0 +1,9 @@
+child_pipeline_{branch}:
+  variables:
+    DOWNSTREAM_COMMIT_SHA: '{commit}'
+    DOWNSTREAM_BRANCH_REF: '{branch}'
+  trigger:
+    include:
+      - project: 'ci/csc303_crusher/dev/adios2'
+        ref: '{branch}'
+        file: '.gitlab/gitlab-ci-crusher.yml'

@@ -1,0 +1,192 @@
+compound_statement:
+	sm_list decls;
+	sm_list statements;
+
+enumerator:
+	char *id;
+	sm_ref const_expression;
+	int enum_value;
+
+declaration:
+	sm_list type_spec;
+	sm_ref sm_complex_type;
+	sm_ref freeable_complex_type;
+	int static_var;
+	int const_var;
+	int param_num;
+	char *id;
+	sm_ref init_value;
+	srcpos lx_srcpos;
+	int  is_subroutine;
+	int  varidiac_subroutine_param_count;
+	int  is_typedef;
+	int  addr_taken;
+	int  is_extern;
+	sm_list params;
+	int  cg_oprnd;
+	int  cg_type;
+	void  *closure_id;
+	void *cg_address;
+
+label_statement:
+	char *name;
+	int cg_label;
+	sm_ref statement;
+
+return_statement:
+	sm_ref expression;
+	int cg_func_type;
+	srcpos lx_srcpos;
+
+jump_statement:
+	int continue_flag;
+	char *goto_target;
+	sm_ref sm_target_stmt;
+	srcpos lx_srcpos;
+
+selection_statement:
+	sm_ref conditional;
+	sm_ref then_part;
+	sm_ref else_part;
+	srcpos lx_srcpos;
+
+iteration_statement:
+	sm_ref init_expr;
+	sm_ref test_expr;
+	sm_ref post_test_expr;
+	sm_ref iter_expr;
+	sm_ref statement;
+	int cg_iter_label;
+	int cg_end_label;
+	srcpos lx_srcpos;
+
+expression_statement:
+	sm_ref expression;
+
+assignment_expression:
+	sm_ref left;
+	sm_ref right;
+	srcpos lx_srcpos;
+	operator_t op;	
+	int    cg_type;
+
+comma_expression:
+	sm_ref left;
+	sm_ref right;
+	srcpos lx_srcpos;
+
+operator:
+	operator_t op;
+	sm_ref left;
+	sm_ref right;
+	srcpos lx_srcpos;
+	int    operation_type;
+	int    result_type;
+
+conditional_operator:
+	sm_ref condition;
+	sm_ref e1;
+	sm_ref e2;
+	srcpos lx_srcpos;
+	int    result_type;
+
+identifier:
+	char *id;
+	srcpos lx_srcpos;
+	sm_ref sm_declaration;
+	int    cg_type;
+
+constant:
+	int  token;
+	char *const_val;
+	char *freeable_name;
+	srcpos lx_srcpos;
+
+type_specifier:
+	int token;
+	srcpos lx_srcpos;
+	sm_ref created_type_decl;
+
+struct_type_decl:
+	srcpos lx_srcpos;
+	char *id;
+	sm_list fields;
+	int cg_size;
+	enc_info encode_info;
+
+enum_type_decl:
+	srcpos lx_srcpos;
+	char *id;
+	sm_list enums;
+
+array_type_decl:
+	srcpos lx_srcpos;
+	sm_ref size_expr;
+	sm_ref element_ref;
+	int    static_var;
+	sm_list type_spec;
+	dimen_p dimensions;
+	int    cg_static_size;
+	sm_ref sm_dynamic_size;
+	int    cg_element_type;
+	sm_ref sm_complex_element_type;
+	sm_ref freeable_complex_element_type;
+	int    cg_element_size;
+
+reference_type_decl:
+	srcpos lx_srcpos;
+	char *name;
+	sm_list type_spec;
+	int    cg_referenced_type;
+	sm_ref sm_complex_referenced_type;
+	sm_ref freeable_complex_referenced_type;
+	int    cg_referenced_size;
+	int    kernel_ref;
+
+field:
+	char *name;
+	char *string_type;
+	sm_list type_spec;
+	sm_ref sm_complex_type;
+	sm_ref freeable_complex_type;
+	int  cg_size;
+	int  cg_offset;
+	int  cg_type;
+
+field_ref:
+	srcpos lx_srcpos;
+	sm_ref struct_ref;
+	char *lx_field;
+	sm_ref sm_field_ref;
+
+subroutine_call:
+	srcpos lx_srcpos;
+	sm_ref sm_func_ref;
+	sm_list arguments;
+
+element_ref:
+	srcpos lx_srcpos;
+	sm_ref array_ref;
+	sm_ref sm_complex_element_type;
+	sm_ref sm_containing_structure_ref;
+	int cg_element_type;
+	int this_index_dimension;
+	sm_ref expression;
+
+cast:
+	srcpos lx_srcpos;
+	sm_list type_spec;
+	int    cg_type;
+	sm_ref expression;
+	sm_ref sm_complex_type;
+
+initializer_list:
+	sm_list initializers;
+
+initializer:
+	sm_list designation;
+	sm_ref initializer;
+
+designator:
+	sm_ref expression;
+	char *id;

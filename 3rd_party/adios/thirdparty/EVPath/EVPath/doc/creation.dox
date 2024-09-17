@@ -1,0 +1,84 @@
+/*! \page creation The EVPath Creation Myth
+
+ \section evpath-creation The EVPath Creation Myth
+
+EVPath was originally created from an earlier event system called 'ECho'.
+ECho was an implementation of a publish/subscribe style event system in the
+model of CORBA event channels.  That is, ECho allowed subscription to event
+streams based upon 'channels'.  Event sources would submit data (events) to
+a particular channel, and ECho would deliver that data to subscribers
+(sinks).  One of ECho's innovations wat the ability for subscribers to
+customize the event stream that they saw in a particular event channel, for
+example to do thresholding, filtering or other simple transformations.  In
+ECho, such a filtered stream would be accomplished with a derived event
+chanel.  ECho was designed to scale to the high data rates of HPC
+applications by providing efficient binary transmission of event data with
+additional features that support runtime data-type discovery and
+enterprise-scale application evolution.  In order to efficiently implement
+derived event channels, dynamic code generation was employed in order to
+move the content filtering from specifier (sinks) to the producer (sources).
+This way only useful data was actually sent on the wire.  Dynamic code
+generation meant that this filtering was performed at native-code speeds,
+even in heterogenous environments where the supplier of the filter function
+and the source of the data might not share a common architecture.  ECho
+provided this advanced functionality while still delivering full network
+bandwidth to application-level communications, a critical capability for
+high-performance codes.
+
+ECho was a relatively successful system, and useful in its designed
+application space, but there were difficulties in extending it to other
+environments.  
+
+For example, as described above, to support the performance needs of complex
+HPC applications, ECho's API allowed receivers to specify event filtering
+and transformation in `derived event channels' as a means to customize their
+delivered event stream.  However, in the context of channel-based
+subscriptions, those transformations could only happen within type-rigid
+event channels (i.e., channels that could only carry events of a particular
+data type). Many applications need to send multiple types of data to the
+same clients (raw data, control, metadata), which because of ECho's
+type-rigid channel semantics, forced them to create multiple event channels
+with endpoints in the same processes. While the presence of these extra
+channels created little additional overhead after they are established,
+channel creation and maintenance costs were substantial.
+
+A second issue that impacted ECho's scalability was that its bookkeeping
+operations were implemented using a peer-to-peer message passing protocol
+that required all communication endpoints associated with a channel (sinks
+and sources) to maintain a fully-connected communication topology.  This was
+a reasonable design decision at the time because ECho's target domain of
+monitoring of high-performance computing typically had only a few
+destination endpoints.  However, as high performance messaging requirements
+evolved this design choice made it impractical for ECho to scale to large
+numbers of endpoints. 
+
+Third, ECho's control mechanism was an obstacle to extension another
+promising domain, optimizing event delivery by exploiting innovations in
+peer-to-peer and overlay networks. Specifically, because the ECho protocol
+was largely peer-to-peer rather than client-server, there was no unique
+source for knowledge about subscribers.  Instead, such knowledge is
+maintained by the control protocol itself and associated (i.e., `cached
+locally') with each process involved in a channel.  This resulted in a
+complex protocol for creating and updating subscriber information. Extending
+it to accommodate the creation and maintenance of internal overlay networks
+was a daunting task, particularly given the domain mandates to experiment
+with multiple overlay mechanisms.
+
+In the face of these issues, and with the realization that no single control
+scheme would be the "best" across a range of applications, a decision was
+made to divide ECho into two parts: The fast-path data handling bits, and
+more control-oriented bits that manage subscribers, setup and tear-down the
+datapath.  The fast-path data handling bits were formalized as EVpath.
+EVPath itself has no end-to-end management, no overall control scheme, no
+event channel semantics, etc.  Rather its APIs let you setup low-level event
+processing and delivery datapaths, but provide no direct mechanisms to
+manage those things.
+
+The higher-level bits of ECho were abstracted into ECho2, which mostly
+replicated the ECho APIs, but was built on EVPath as a separate interface.
+ECho2 had most of the issues that affected ECho originally, so it is largely
+abandoned.  Other higher-level systems have made use of EVPath as well, but
+most were specialized or point solutions rather than attempts to provide a
+broadly-useful interface with corresponding control functionality.  
+
+*/

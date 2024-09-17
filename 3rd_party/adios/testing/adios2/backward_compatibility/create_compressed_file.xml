@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<adios-config>
+
+    <operator name="CompressorBlosc" type="blosc">
+    </operator>
+    <operator name="CompressorBzip2" type="bzip2">
+    </operator>
+
+    <io name="io_T1">
+        <engine type="BP4">
+        </engine>
+        <!--variable name="a">
+            <operation operator="CompressorBzip2">
+            </operation>
+        </variable-->
+    </io>
+
+</adios-config>

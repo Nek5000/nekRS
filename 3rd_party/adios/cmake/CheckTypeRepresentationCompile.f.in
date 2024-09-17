@@ -1,0 +1,11 @@
+program check_type_representation_compile
+  type check_type_representation_info
+    character(len=16) :: header = "16 byte header ["
+    @type@ :: sample = @value@
+    character(len=32) :: footer = "] 32 byte footer                "
+  end type check_type_representation_info
+
+  type(check_type_representation_info) :: ctri
+
+  print *, ctri%header
+end program check_type_representation_compile

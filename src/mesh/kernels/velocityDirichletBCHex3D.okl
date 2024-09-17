@@ -113,7 +113,7 @@
             bc.usrwrk = work;
             bc.fieldOffset = offset;
 
-            meshVelocityDirichletConditions(&bc);
+            codedFixedValueMesh(&bc);
 
             W[idM + 0 * offset] = bc.meshu;
             W[idM + 1 * offset] = bc.meshv;

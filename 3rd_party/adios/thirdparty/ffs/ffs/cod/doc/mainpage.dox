@@ -1,0 +1,18 @@
+/*!\mainpage The COD Library
+
+ \section intro Introduction
+
+COD is a higher-level language for dynamic code generation. COD
+specifically targets the dynamic generation of small code segments whose
+simplicity does not merit the complexity of a large interpreted
+environment. To that end, COD is as simple and restricted a language as
+possible within the bounds of its target environment. COD's dynamic code
+generation capabilities are based on DILL, a Georgia Tech package that
+provides a programmatic on-the-fly code generation through a virtual RISC
+instruction set. DILL also has a "virtual register" mode in which it
+performs simple register allocation and assignment. COD consists
+primarily of a lexer, parser, semanticizer and code generator.
+
+A somewhat dated manual for COD can be found <a HREF="http://www.cc.gatech.edu/systems/projects/ECL/manual.pdf">online</a>.
+
+*/

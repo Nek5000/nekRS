@@ -1,0 +1,30 @@
+ARG baseos=ubuntu-bionic
+FROM spack/${baseos}
+
+# Setup sudo and the adios user
+COPY setup-user.sh /root/setup-user.sh
+RUN /root/setup-user.sh && \
+    rm -f /root/setup-user.sh
+
+# Switch to spack@develop
+RUN cd ${SPACK_ROOT} && \
+    git init && \
+    git remote add origin https://github.com/spack/spack.git && \
+    git fetch origin develop && \
+    git checkout -f develop && \
+    rm -rf .git
+
+# Fix the python version being used
+ENV SPACK_PYTHON=/usr/bin/python3.6
+
+# Setup the default configuration
+COPY packages.yaml $SPACK_ROOT/etc/spack/packages.yaml
+COPY modules.yaml $SPACK_ROOT/etc/spack/modules.yaml
+RUN rm -rf /root/.spack && \
+    spack compiler find --scope site
+
+# Install dependencies
+RUN spack install \
+        -v -j$(grep -c '^processor' /proc/cpuinfo) --only dependencies \
+        adios2 && \
+    spack clean -a

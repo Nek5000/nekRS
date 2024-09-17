@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<!-- Config XML file fo the  
+     - adios2_simulations_heatTransferWrite
+     - adios2_simulations_heatTransferRead
+     executables in build/bin -->
+
+<adios-config>
+
+    <!--====================================
+           Configuration for the Writer 
+        ====================================-->
+
+    <io name="writer">
+        <engine type="BP4">
+            
+            <!-- for vectorized memory operations, make sure your system 
+                 enables threads--> 
+            <parameter key="Threads" value="1"/>
+
+            <!-- Microseconds (default), Milliseconds, Seconds, 
+                 Minutes, Hours -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+
+            <!-- XXKb, XXMb, or XXXGb supported, default=16Kb 
+                (applications might choose an optimal value) -->
+            <parameter key="InitialBufferSize" value="16Kb"/> 
+            
+            <!-- XXKb, XXMb, or XXXGb supported, default=Unlimited (until 
+                 fails), maximum at each time step  
+                (applications might choose an optimal value) -->
+            <!-- <parameter key="MaxBufferSize" value="2Gb"/> -->
+
+            <!-- exponential growth factor > 1, default = 1.05 
+                 1.05  is good for a few large variables, for many small
+                 variables increase the value to 1.5 to 2 
+                 (optimal value is application dependent)--> 
+            <!-- <parameter key="BufferGrowthFactor" value="1.05"/> -->
+            
+            <!-- Indicates how often (in number of steps), pick a large 
+                 number so metadata will only be written at Close  
+                (applications might choose an optimal value) -->
+            <parameter key="FlushStepsCount" value="1"/>
+            
+        </engine>
+
+        <transport type="File">
+            
+            <!-- POSIX, stdio (C FILE*), fstream (C++) -->
+            <parameter key="Library" value="stdio"/>
+            <parameter key="Buffered" value="false"/>
+            
+            <!-- For read/write, Microseconds (default), Milliseconds, Seconds, 
+                 Minutes, Hours. open/close always in Microseconds -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+            
+        </transport>
+        
+    </io>
+    <!--=======================================
+           Configuration for the Reader input
+        =======================================-->
+
+    <io name="readerInput">
+        <engine type="BP4">
+            
+            <!-- for vectorized memory operations, make sure your system 
+                 enables threads--> 
+            <parameter key="Threads" value="1"/>
+
+            <!-- Microseconds (default), Milliseconds, Seconds, 
+                 Minutes, Hours -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+
+        </engine>
+
+        <transport type="File">
+            
+            <!-- POSIX, stdio (C FILE*), fstream (C++) -->
+            <parameter key="Library" value="stdio"/>
+            
+            <!-- For read/write, Microseconds (default), Milliseconds, Seconds, 
+                 Minutes, Hours. open/close always in Microseconds -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+            
+        </transport>
+        
+    </io>
+
+
+    <!--=======================================
+           Configuration for the Reader output
+        =======================================-->
+    
+    <io name="readerOutput">
+        <engine type="BPFile">
+            
+            <!-- for vectorized memory operations, make sure your system 
+                 enables threads--> 
+            <parameter key="Threads" value="1"/>
+
+            <!-- Microseconds (default), Milliseconds, Seconds, 
+                 Minutes, Hours -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+
+        </engine>
+
+        <transport type="File">
+            
+            <!-- POSIX, stdio (C FILE*), fstream (C++) -->
+            <parameter key="Library" value="stdio"/>
+            
+            <!-- For read/write, Microseconds (default), Milliseconds, Seconds, 
+                 Minutes, Hours. open/close always in Microseconds -->
+            <parameter key="ProfileUnits" value="Microseconds"/>
+            
+        </transport>
+
+    </io>
+</adios-config>

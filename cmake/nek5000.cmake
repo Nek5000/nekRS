@@ -1,5 +1,7 @@
 set(NEK5000_PPLIST "PARRSB DPROCMAP" CACHE STRING "Preprocessor macros for Nek5000")
 
+function(add_nek5000)
+
 message(CHECK_START "Checking for a supported Nek5000 Fortran compiler")
 
 if(USING_GNU OR USING_INTEL_LLVM OR USING_NVHPC OR USING_FLANG)
@@ -38,7 +40,7 @@ set(BLASLAPACK_DIR ${NEK5000_SOURCE_DIR}/3rd_party/blasLapack)
 # gslib
 # =====
 
-set(NEK5000_GS_SUBTREE ${CMAKE_CURRENT_LIST_DIR}/../3rd_party/gslib)
+set(NEK5000_GS_SUBTREE ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/gslib)
 set(NEK5000_GS_DIR ${NEK5000_SOURCE_DIR}/3rd_party/gslib/gslib)
 
 FetchContent_Declare(
@@ -58,7 +60,7 @@ set(NEK5000_GS_LIB_DIR ${NEK5000_GS_DIR}/../lib)
 # parRSB
 # ======
 
-set(PARRSB_SUBTREE ${CMAKE_CURRENT_LIST_DIR}/../3rd_party/nek5000_parRSB)
+set(PARRSB_SUBTREE ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/nek5000_parRSB)
 set(PARRSB_DIR ${NEK5000_SOURCE_DIR}/3rd_party/parRSB/parRSB)
 
 FetchContent_Declare(
@@ -146,7 +148,7 @@ ExternalProject_Add(
   nek5000_deps
   SOURCE_DIR ${NEK5000_SOURCE_DIR}
   CONFIGURE_COMMAND
-    ${CMAKE_CURRENT_LIST_DIR}/run_nekconfig.sh 
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_nekconfig.sh 
     "LDFLAGS=  ${LDFLAGS_}" 
     "CC=${CMAKE_C_COMPILER}" 
     "CFLAGS=${_EXTERNAL_C_FLAGS} ${FPIC_FLAG} ${MCMODEL_FLAG} ${LARGE_DATA_THRES_FLAG}"
@@ -186,7 +188,6 @@ endif()
 # Install
 # ---------------------------------------------------------
 
-
 install(DIRECTORY ${NEK5000_SOURCE_DIR}/core DESTINATION nek5000
   PATTERN "*"
   PATTERN "mkuserfile" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
@@ -205,3 +206,5 @@ if (${USE_PARRSB})
   install(FILES ${PARRSB_LIB_DIR}/libparRSB.a DESTINATION nek5000/3rd_party/parRSB/lib)
   install(DIRECTORY ${PARRSB_INCLUDE_DIR} DESTINATION nek5000/3rd_party/parRSB)
 endif()
+
+endfunction()

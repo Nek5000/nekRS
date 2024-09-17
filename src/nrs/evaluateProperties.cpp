@@ -17,20 +17,10 @@ void nrs_t::evaluateProperties(const double timeNew)
 
   if (this->userProperties) {
     this->userProperties(timeNew);
-  }
+  } else {
+    if (Nscalar) cds->applyAVM();
+  } 
 
-  if (this->Nscalar) {
-    cds_t *cds = this->cds;
-    for (int is = 0; is < cds->NSfields; ++is) {
-      std::string sid = scalarDigitStr(is);
-
-      std::string regularizationMethod;
-      platform->options.getArgs("SCALAR" + sid + " REGULARIZATION METHOD", regularizationMethod);
-      const bool applyAVM = regularizationMethod.find("AVM_HIGHEST_MODAL_DECAY") != std::string::npos; 
-      if (applyAVM)
-        avm::apply(cds, timeNew, is, cds->o_S);
-    }
-  }
 
   platform->timer.toc(tag);
 }

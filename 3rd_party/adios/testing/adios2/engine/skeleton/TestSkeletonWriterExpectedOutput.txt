@@ -1,0 +1,16 @@
+Skeleton Writer 0 Open(skeleton_stream).
+Skeleton Writer 0   BeginStep() new step 0
+Skeleton Writer 0   CurrentStep() returns 0
+Skeleton Writer 0     PutSync(mySyncString)
+Skeleton Writer 0   CurrentStep() returns 0
+Skeleton Writer 0     PutDeferred(myArray)
+Skeleton Writer 0     PerformPuts()
+Skeleton Writer 0   EndStep()
+Skeleton Writer 0   BeginStep() new step 1
+Skeleton Writer 0   CurrentStep() returns 1
+Skeleton Writer 0     PutSync(mySyncString)
+Skeleton Writer 0   CurrentStep() returns 1
+Skeleton Writer 0     PutDeferred(myArray)
+Skeleton Writer 0     PerformPuts()
+Skeleton Writer 0   EndStep()
+Skeleton Writer 0 Close(skeleton_stream)

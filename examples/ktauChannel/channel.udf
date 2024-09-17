@@ -46,8 +46,8 @@ void extractLine(nrs_t *nrs, double time)
       o_Up.resize(nrs->NVfields * offset);
     }
 
-    interpolator = new pointInterpolation_t(nrs->meshV);
-    interpolator->setPoints(np, xp.data(), yp.data(), zp.data());
+    interpolator = new pointInterpolation_t(nrs->meshV, platform->comm.mpiComm);
+    interpolator->setPoints(xp, yp, zp);
     interpolator->find();
   }
 
@@ -111,10 +111,7 @@ void UDF_Setup()
   nrs->userScalarSource = &userq;
 
   const int scalarFieldStart = 1;
-  platform->options.getArgs("VISCOSITY", mueLam);
-  platform->options.getArgs("DENSITY", rho);
-
-  RANSktau::setup(mueLam, rho, scalarFieldStart);
+  RANSktau::setup(scalarFieldStart);
 }
 
 void UDF_ExecuteStep(double time, int tstep)

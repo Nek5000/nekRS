@@ -77,7 +77,9 @@ public:
   void compileWhenLoad(){ _compileWhenLoad = true; };
 
 
-  size_t memoryUsage();
+  size_t memoryUsage() const;
+
+  void printMemoryUsage(MPI_Comm comm = MPI_COMM_SELF) const;
 
 private:
   occa::kernel wrapperCompileKernel(const std::string &fileName,

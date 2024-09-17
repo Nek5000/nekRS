@@ -13,10 +13,10 @@ checkpointInterval = 100
 residualTol = 1e-08
 
 [VELOCITY]
-boundaryTypeMap = shl, sym
+boundaryTypeMap = zeroNValue/codedFixedGradient, zeroNValue/zeroGradient 
 residualTol = 1e-12
-density = 1.0
-viscosity = -100.0
+rho = 1.0
+viscosity = 1/100.0
 
 [CASEDATA]
 P_ROT = 0.5

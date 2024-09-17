@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.12)
+
+set(_ADIOS2_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_LIST_DIR}")
+
+if(NOT @BUILD_SHARED_LIBS@)
+  if(NOT @ADIOS2_USE_EXTERNAL_EVPATH@)
+    set(EVPath_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty)
+  endif()
+
+  if(NOT @ADIOS2_USE_EXTERNAL_ATL@)
+    set(atl_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty)
+  endif()
+
+  if(NOT @ADIOS2_USE_EXTERNAL_DILL@)
+    set(dill_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty)
+  endif()
+
+  if(NOT @ADIOS2_USE_EXTERNAL_FFS@)
+    set(ffs_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty)
+  endif()
+
+  if(NOT @ADIOS2_USE_EXTERNAL_ENET@)
+    set(enet_DIR ${CMAKE_CURRENT_LIST_DIR}/thirdparty)
+  endif()
+endif()
+
+set(${CMAKE_FIND_PACKAGE_NAME}_CONFIG "${CMAKE_CURRENT_LIST_FILE}")
+include("${CMAKE_CURRENT_LIST_DIR}/adios2-config-common.cmake")
+
+set(CMAKE_MODULE_PATH ${_ADIOS2_CMAKE_MODULE_PATH})
+unset(_ADIOS2_CMAKE_MODULE_PATH)

@@ -1,0 +1,12 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+...
+   fun:attr_atom_from_string
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+...
+   fun:atom_from_string
+}

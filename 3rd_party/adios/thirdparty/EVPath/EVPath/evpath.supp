@@ -1,0 +1,238 @@
+{
+   Known DILL leak
+   Memcheck:Leak
+   fun:malloc
+   fun:alloc_dill_jump_table
+}
+{
+   Funky strcpy overlap in decode
+   Memcheck:Overlap
+   fun:strcpy
+...
+   fun:FFSconvert_record
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:*
+   fun:init_env_table
+}
+{
+   Unpleasant leak of string constant.  Generated code references this.  Bad.
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:cg_expr
+}
+{
+   Less painful, but could be better.  Leak name of subroutine being called.
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:cg_subroutine_call
+}
+{
+   This seems to be a Lex/Flex issue.  Possible non-reentrant.
+   Memcheck:Leak
+   fun:*
+   fun:cod_yyrealloc
+   fun:yyensure_buffer_stack
+}
+{
+   This seems to be a Lex/Flex issue.  Possible non-reentrant.
+   Memcheck:Leak
+   fun:*
+   fun:yyensure_buffer_stack
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Cond
+   fun:__intel_sse2_strlen
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Addr8
+   fun:__intel_sse2_strlen
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Cond
+   fun:__intel_sse2_strcpy
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Addr4
+   fun:__intel_sse2_strcpy
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Addr8
+   fun:__intel_sse2_strcpy
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Addr8
+   fun:__intel_sse2_strchr
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Cond
+   fun:__intel_sse2_strcat
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Value8
+   fun:__intel_sse2_strcat
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Addr8
+   fun:__intel_sse2_strcat
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Cond
+   fun:FMstr_to_data_type
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Addr8
+   fun:FMstr_to_data_type
+}
+{
+   Intel compilers fool valgrind.
+   Memcheck:Value8
+   fun:FMstr_to_data_type
+}
+{
+   Anything under dlopen isn't our fault.
+   Memcheck:Leak
+   fun:*
+...
+   fun:CMdlopen
+}
+{
+   Atl atoms are persistent and never cleaned up
+   Memcheck:Leak
+   fun:*
+...
+   fun:set_string_and_atom
+}
+{
+   Atl atoms are persistent and never cleaned up
+   Memcheck:Leak
+   fun:*
+...
+   fun:init_atom_server
+}
+{
+   Transports are not deallocated once loaded
+   Memcheck:Leak
+   fun:*
+...   
+   fun:load_transport
+}
+{
+   CMdladdsearchdir leaks everything under it
+   Memcheck:Leak
+   fun:*
+...
+   fun:CMdladdsearchdir
+}
+{
+   non CM handlers are leaked.
+   Memcheck:Leak
+   fun:*
+...
+   fun:INT_CMregister_non_CM_message_handler
+}
+{
+   We leave this dill stream around for efficiency
+   Memcheck:Leak
+...
+   fun:dill_create_stream
+   fun:get_localized_formats
+}
+{
+   We leave this dill stream around for efficiency
+   Memcheck:Leak
+...
+   fun:dill_cross_init
+...
+   fun:generate_localized_subformat
+}
+{
+   This is a uninit in enet.
+   Memcheck:Param
+   socketcall.sendmsg(msg.msg_iov[i])
+   obj:*
+   fun:enet_socket_send
+   fun:enet_protocol_send_outgoing_commands
+}
+{
+   Leaked packet in enet_host_service
+   Memcheck:Leak
+   fun:malloc
+   fun:enet_malloc
+   fun:enet_packet_create
+   fun:enet_host_service
+}
+{
+   when we create field lists in COD, they get leaked
+   Memcheck:Leak
+...
+   fun:add_field_list
+   fun:semanticize_expr
+...
+}
+{
+   don't warn about uninit write vectors.  Too common...
+   Memcheck:Param
+   writev(vector[...])
+   ...
+   fun:*
+   fun:INT_CMwrite_raw
+   fun:internal_write_event
+}
+
+{
+  don't warn about uninit write vectors.  Too common...
+    Memcheck:Param
+    writev(vector[...])
+    ...
+    fun:*
+    fun:INT_CMwrite_raw
+}
+{
+  don't warn about uninit write vectors.  Too common...
+    Memcheck:Param
+    writev(vector[...])
+    fun:*
+    fun:*
+    fun:*
+    fun:INT_CMwrite_raw
+}
+{
+  don't warn about uninit write vectors.  Too common...
+    Memcheck:Param
+    writev(vector[...])
+    fun:*
+    fun:*
+    fun:INT_CMwrite_raw
+}
+{
+   known_leak
+   Memcheck:Leak
+   fun:malloc
+   fun:INT_CMregister_simple_format
+   fun:CMregister_simple_format
+}
+{
+  don't warn about uninit write vectors.  Too common...
+    Memcheck:Param
+     socketcall.sendmsg(msg.msg_iov[i])
+    obj:/lib/x86_64-linux-gnu/libpthread-2.15.so
+    ...
+    fun:*
+    fun:INT_CMwrite_raw
+}

@@ -1,0 +1,75 @@
+{
+   "io": {
+      "name": "query",
+      "file": "/Users/junmin/software/adios2/query/data/heatbp4.bp",
+      "idx": "default",
+      "tag": [
+         {
+            "name": "q1",
+            "var": {
+               "name": "T",
+               "boundingbox": {
+                  "start": "1,2",
+                  "count": "12,12"
+               },
+               "op": {
+                  "value": "OR",
+                  "range": [
+                     {
+                        "compare": "GT",
+                        "value": "6.6"
+                     },
+                     {
+                        "compare": "LT",
+                        "value": "-6.6"
+                     }
+                  ],
+                  "op": {
+                     "value": "AND",
+                     "range": [
+                        {
+                           "compare": "LT",
+                           "value": "10.9"
+                        },
+                        {
+                           "compare": "GT",
+                           "value": "10.8"
+                        }
+                     ]
+                  }
+               }
+            }
+         },
+         {
+            "name": "q2",
+            "var": {
+               "name": "T",
+               "boundingbox": {
+                  "start": "1,5",
+                  "count": "12,12"
+               },
+               "op": {
+                  "value": "AND",
+                  "range": [
+                     {
+                        "compare": "LT",
+                        "value": "10.9"
+                     },
+                     {
+                        "compare": "GT",
+                        "value": "10.8"
+                     }
+                  ]
+               }
+            }
+         }
+      ],
+      "query": {
+         "op": "AND",
+	 "comp": ["q1", "q2"]
+      }
+   }
+}
+
+
+

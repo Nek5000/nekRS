@@ -1,0 +1,18 @@
+Language:  Cpp
+BasedOnStyle:  Chromium
+BreakBeforeBraces:  Custom
+IndentWidth: 4
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+Standard: Cpp11
+ColumnLimit: 80
+AllowAllParametersOfDeclarationOnNextLine: false
+AlwaysBreakAfterReturnType: All
+AlignEscapedNewlines: Right
+AlignAfterOpenBracket: Align
+SortUsingDeclarations: false
+IndentCaseLabels: false
+BraceWrapping:
+  AfterFunction: true
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true

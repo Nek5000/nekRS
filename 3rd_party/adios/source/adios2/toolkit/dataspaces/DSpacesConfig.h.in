@@ -1,0 +1,12 @@
+/*
+ * Distributed under the OSI-approved Apache License, Version 2.0.  See
+ * accompanying file Copyright.txt for details.
+ */
+
+#ifndef DSPACESCONFIG_H_
+#define DSPACESCONFIG_H_
+
+/* Everything past this line is programatically generated */
+#cmakedefine HAVE_DSPACES2
+
+#endif /* DSPACESCONFIG_H_ */

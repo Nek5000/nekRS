@@ -1,33 +1,20 @@
-
-#include <cstdio>
-#include <cstdlib>
-#include <mpi.h>
-#include "platform.hpp"
-#include <vector>
-
-#include "findpts.hpp"
-
-#include "pointInterpolation.hpp"
-#include <algorithm>
 #include <inttypes.h>
-
-#include "bcMap.hpp"
+#include "platform.hpp"
+#include "findpts.hpp"
+#include "pointInterpolation.hpp"
 
 pointInterpolation_t::pointInterpolation_t(mesh_t *mesh,
-                                           double bb_tol,
-                                           double newton_tol_,
+                                           MPI_Comm comm,
                                            bool mySession_,
-                                           dlong sessionID_,
-                                           bool multipleSessionSupport_)
+                                           std::vector<int> bID)
     : pointInterpolation_t(mesh,
-                           platform->comm.mpiCommParent,
+                           comm,
                            mesh->Nlocal,
                            mesh->Nlocal,
-                           bb_tol,
-                           newton_tol_,
-                           mySession_,
-                           sessionID_,
-                           multipleSessionSupport_)
+                           0.01,
+                           0,
+                           true,
+                           bID)
 {
 }
 
@@ -38,11 +25,10 @@ pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
                                            double bb_tol,
                                            double newton_tol_,
                                            bool mySession_,
-                                           dlong sessionID_,
-                                           bool multipleSessionSupport_)
-    : mesh(mesh_), newton_tol(newton_tol_), mySession(mySession_), sessionID(sessionID_),
-      multipleSessionSupport(multipleSessionSupport_), nPoints(0)
+                                           std::vector<int> bIntID)
+    : mesh(mesh_), newton_tol(newton_tol_), mySession(mySession_), nPoints(0)
 {
+
   // communicator is implicitly required to be either platform->comm.mpiComm or platform->comm.mpiCommParent
   // due to other communicator synchronous calls, such as platform->timer.tic
   bool supported = false;
@@ -54,13 +40,13 @@ pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
   nekrsCheck(!supported,
              comm,
              EXIT_FAILURE,
-             "%s",
+             "%s\n",
              "Communicator must be either platform->comm.mpiComm or platform->comm.mpiCommParent");
 
   newton_tol =
-      (sizeof(dfloat) == sizeof(double)) ? std::max(5e-13, newton_tol_) : std::max(1e-6, newton_tol_);
-
-  const int npt_max = 1;
+      (sizeof(dfloat) == sizeof(double))
+      ? std::max(5e-13, newton_tol_)
+      : std::max(1e-6, newton_tol_);
 
   if (mySession) {
     mesh->o_x.copyTo(mesh->x, mesh->Nlocal);
@@ -68,27 +54,20 @@ pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
     mesh->o_z.copyTo(mesh->z, mesh->Nlocal);
   }
 
-  std::vector<dfloat> dist;
-  if (multipleSessionSupport_) {
-    std::vector<int> bID;
-    for (auto &[key, bcID] : bcMap::map()) {
-      const auto field = key.first;
-      if (field == "velocity") {
-        if (bcID == bcMap::bcTypeINT) {
-          bID.push_back(key.second + 1);
-        }
-      }
-    }
-
-    const auto nbID = bID.size();
-    auto o_bID = platform->o_memPool.reserve<dlong>(nbID);
-    o_bID.copyFrom(bID.data());
-
-    _o_distance = mesh->minDistance(nbID, o_bID, "cheap_dist");
-    dist.resize(mesh->Nlocal);
-    _o_distance.copyTo(dist.data(), mesh->Nlocal);
-    o_bID.free();
+  std::vector<dfloat> distanceINT;
+  if (bIntID.size()) {
+    auto o_bIntID = platform->o_memPool.reserve<int>(bIntID.size());
+    o_bIntID.copyFrom(bIntID.data());
+    _o_distanceINT = mesh->minDistance(bIntID.size(), o_bIntID, "cheap_dist");
+    distanceINT.resize(mesh->Nlocal);
+    _o_distanceINT.copyTo(distanceINT.data(), mesh->Nlocal);
   }
+
+  // number of points to iterate on simultaneously
+  const int npt_max = 1;
+
+  int sessionID = 0;
+  platform->options.getArgs("NEKNEK SESSION ID", sessionID);
 
   findpts_ = std::make_unique<findpts::findpts_t>(comm,
                                                   mySession ? mesh->x : nullptr,
@@ -103,17 +82,18 @@ pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
                                                   npt_max,
                                                   newton_tol,
                                                   sessionID,
-                                                  dist.data());
+                                                  distanceINT.data());
 }
 
-occa::memory pointInterpolation_t::distance()
+occa::memory pointInterpolation_t::distanceINT()
 {
-  nekrsCheck(!multipleSessionSupport,
+  nekrsCheck(!_o_distanceINT.isInitialized(),
              platform->comm.mpiComm,
              EXIT_FAILURE,
              "%s\n",
-             "distance requires multipleSessionSupport to be enabled in the pointInterpolation_t object!");
-  return _o_distance;
+             "No INT boundary IDs provided on setup!");
+
+  return _o_distanceINT;
 }
 
 void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity, bool matchSession)
@@ -275,6 +255,7 @@ void pointInterpolation_t::setPoints(const std::vector<dfloat>& x, const std::ve
   occa::memory o_session;
   if (session.size()) {
     o_session = platform->device.malloc<dlong>(session.size());
+    o_session.copyFrom(session.data());
   } 
   this->setPoints(o_x, o_y, o_z, o_session);
 }

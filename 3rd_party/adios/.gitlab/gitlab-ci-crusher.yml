@@ -1,0 +1,223 @@
+# Ad-hoc build that runs in the ECP Hardware, concretely in OLCF Crusher.
+
+stages:
+  - pre
+  - setup
+  - build
+  - post
+
+.setup_env_ecpci: &setup_env_ecpci |
+  git fetch
+  source scripts/ci/gitlab-ci/setup-vars.sh
+  git checkout "$CI_COMMIT_REF"
+  module purge
+  module load ${JOB_MODULES}
+  module list
+  export PATH="${CCACHE_INSTALL_DIR}/ccache:$PATH"
+
+.install_ccache: &install_ccache |
+  mkdir -p "$CCACHE_INSTALL_DIR"
+  cmake --version
+  cmake -VV -P .gitlab/config/ccache.cmake
+  ccache -z
+  ccache -s
+
+.crusher-common:
+  rules:
+    - if: $CI_PIPELINE_SOURCE =~ /parent_pipeline|web/
+  interruptible: true
+  variables:
+    CCACHE_BASEDIR:       "/lustre/orion/csc303/scratch/"
+    CCACHE_DIR:           "/lustre/orion/csc303/scratch/vbolea/ci/adios2/ccache"
+    CUSTOM_CI_BUILDS_DIR: "/lustre/orion/csc303/scratch/vbolea/ci/adios2/runtime"
+
+    # -isystem= is not affected by CCACHE_BASEDIR, thus we must ignore it
+    CCACHE_IGNOREOPTIONS: "-isystem=*"
+    CCACHE_NOHASHDIR:     "true"
+    CCACHE_INSTALL_DIR:   "$CI_PROJECT_DIR/deps/ccache_install"
+
+    CMAKE_BUILD_TYPE:     "RelWithDebInfo"
+    CMAKE_GENERATOR:      "Ninja"
+    CMAKE_PREFIX_PATH:    "$CI_PROJECT_DIR/deps/kokkos_install"
+
+    # We do not want to use the user's ~/.gitconfig
+    GIT_CONFIG_GLOBAL:    "true"
+    GITLAB_SITE:          "OLCF Crusher"
+    CI_BIN_DIR:           "$CI_PROJECT_DIR/build"
+
+.setup-common:
+  stage: setup
+  tags: [ shell ]
+  before_script:
+    - *setup_env_ecpci
+    - *install_ccache
+  script:
+    - bash scripts/ci/gitlab-ci/run.sh update
+  artifacts:
+    expire_in: 24 hours
+    when: always
+    paths:
+      - deps/*install/
+      - build/
+
+.build-common:
+  stage: build
+  tags: [ slurm ]
+  variables:
+    SCHEDULER_PARAMETERS: "-ACSC303_crusher -t30 --nice=0 -c32 --gpus=4 -N 1"
+  before_script:
+    - *setup_env_ecpci
+  script:
+    - bash scripts/ci/gitlab-ci/run.sh configure
+    - bash scripts/ci/gitlab-ci/run.sh build
+    - bash scripts/ci/gitlab-ci/run.sh test
+  after_script:
+    - *setup_env_ecpci
+    - bash scripts/ci/gitlab-ci/run.sh submit
+    - ccache -s
+
+.kokkos-hip-common:
+  variables:
+    Kokkos_DIR: "$CI_PROJECT_DIR/deps/kokkos_install"
+    # Cmake would not install a RPATH inside the source dir
+    LD_LIBRARY_PATH: "$Kokkos_DIR/lib64/:$LD_LIBRARY_PATH"
+    # Order matters
+    JOB_MODULES: >-
+      craype-accel-amd-gfx90a
+      gcc/12
+      cmake
+      rocm/5.4.3
+      git
+      ninja
+      libffi
+      hdf5
+      zstd
+
+setup:crusher-kokkos-hip:
+  variables:
+    KOKKOS_VER: 3.7.01
+    KOKKOS_OPTS: >-
+      -DCMAKE_INSTALL_PREFIX:PATH=$Kokkos_DIR
+      -DCMAKE_CXX_COMPILER:FILEPATH=/opt/rocm-5.4.3/hip/bin/hipcc
+      -DKokkos_ARCH_VEGA90A:BOOL=ON
+      -DKokkos_ENABLE_HIP:BOOL=ON
+      -DKokkos_ENABLE_HIP_RELOCATABLE_DEVICE_CODE:BOOL=OFF
+      -DKokkos_ENABLE_SERIAL:BOOL=ON
+  extends:
+    - .crusher-common
+    - .setup-common
+    - .kokkos-hip-common
+  before_script:
+    - *setup_env_ecpci
+    - *install_ccache
+    - .gitlab/config/kokkos.sh "$CI_PROJECT_DIR/deps" "$KOKKOS_VER" $KOKKOS_OPTS
+
+build:crusher-kokkos-hip:
+  extends:
+    - .crusher-common
+    - .build-common
+    - .kokkos-hip-common
+  before_script:
+    - *setup_env_ecpci
+  needs:
+    - setup:crusher-kokkos-hip
+  dependencies:
+    - setup:crusher-kokkos-hip
+
+.cray-common:
+  variables:
+    # Order matters
+    JOB_MODULES: >-
+      PrgEnv-cray
+      cmake
+      git
+      ninja
+      libffi
+      zstd
+      DefApps
+  extends:
+    - .crusher-common
+
+setup:crusher-cray:
+  extends:
+    - .setup-common
+    - .cray-common
+
+build:crusher-cray:
+  extends:
+    - .build-common
+    - .cray-common
+  needs:
+    - setup:crusher-cray
+  dependencies:
+    - setup:crusher-cray
+
+.report-status:
+  rules:
+    - if: $CI_PIPELINE_SOURCE =~ /parent_pipeline|web/
+  tags: [ shell ]
+  variables:
+    STATUS_PROJECT: ornladios/ADIOS2
+    STATUS_NAME: OLCF Crusher (Frontier)
+  before_script: |
+    git fetch
+    source scripts/ci/gitlab-ci/setup-vars.sh
+    git checkout "$CI_COMMIT_REF"
+  script: >
+    curl -X POST -H @${GITHUB_CURL_HEADERS}
+    "https://api.github.com/repos/${STATUS_PROJECT}/statuses/${CI_ORIGINAL_SHA}"
+    -d "{\"state\":\"${CI_JOB_NAME}\", \"context\":\"${STATUS_NAME}\",\"target_url\":\"${CI_PIPELINE_URL}\",\"description\":\"${STATUS_DESC}\"}"
+  environment:
+    name: report-$DOWNSTREAM_COMMIT_SHA
+
+pending:
+  stage: pre
+  variables:
+    STATUS_DESC: Pipeline is running
+  extends:
+    - .report-status
+success:
+  stage: post
+  variables:
+    STATUS_DESC: Pipeline succeeded
+  extends:
+    - .report-status
+  dependencies:
+    - build:crusher-kokkos-hip
+    - build:crusher-cray
+failure:
+  stage: post
+  rules:
+    - if: $CI_PIPELINE_SOURCE =~ /parent_pipeline|web/
+      when: on_failure
+  variables:
+    STATUS_DESC: Pipeline failed
+  extends:
+    - .report-status
+  dependencies:
+    - build:crusher-kokkos-hip
+    - build:crusher-cray
+
+generate_pipelines:
+  stage: setup
+  tags: [ shell ]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  variables:
+    CUSTOM_CI_BUILDS_DIR: "/lustre/orion/csc303/scratch/vbolea/ci/adios2/runtime"
+  script:
+    - .gitlab/config/generate_pipelines.py -u "https://code.olcf.ornl.gov/" -p 78 -n ornladios/ADIOS2 -f .gitlab/config/dynamic_pipeline.yml.in > generated_pipelines.yml
+  artifacts:
+    paths:
+      - generated_pipelines.yml
+
+launch_pipelines:
+  stage: build
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  variables:
+    CUSTOM_CI_BUILDS_DIR: "/lustre/orion/csc303/scratch/vbolea/ci/adios2/runtime"
+  trigger:
+    include:
+      - artifact: generated_pipelines.yml
+        job: generate_pipelines

@@ -1,0 +1,282 @@
+\documentclass[11pt]{article}
+\usepackage{fancyvrb,psfig,indent}
+\setlength{\topmargin}{-0.4in}
+\setlength{\oddsidemargin}{+0.0in}
+\setlength{\evensidemargin}{+0.0in}
+\setlength{\textheight}{8.5in}
+\setlength{\textwidth}{6.50in}
+\setlength{\marginparwidth}{0.0in}
+\setlength{\marginparsep}{0.0in}
+\setlength{\marginparpush}{0.0in}
+\setlength{\unitlength}{1.0in}
+\setlength{\parskip}{.1in}
+\renewcommand{\bottomfraction}{.90}
+\renewcommand{\topfraction}{.90}
+\makeatletter
+\def\tightitemize{\ifnum \@itemdepth >3 \@toodeep\else \advance\@itemdepth \@ne
+\edef\@itemitem{labelitem\romannumeral\the\@itemdepth}%
+\list{\csname\@itemitem\endcsname}{\setlength{\topsep}{-\parskip}\setlength{\parsep}{0in}\setlength{\itemsep}{0in}\setlength{\parskip}{0in}\def\makelabel##1{\hss\llap{##1}}}\fi}
+ 
+\let\endtightitemize =\endlist
+\begingroup
+ \catcode`\`=\active
+ \gdef\verbatim@font{\footnotesize\tt \catcode96\active
+   \def`{\leavevmode\kern\z@\char96 }}
+\endgroup
+\makeatother
+\pssilent
+\pagestyle{empty}
+\renewcommand{\baselinestretch}{.95}   % -- double spaced lines
+\title{Dynamic Code Generation with the E-Code Language}
+\author{ 
+\begin{tabular}{c}
+\makebox[3.0in][c]{\Large Greg Eisenhauer} \\
+\makebox[3.0in][c]{eisen@cc.gatech.edu} \\
+\end{tabular}\\ \\\
+College of Computing \\
+Georgia Institute of Technology \\
+Atlanta, Georgia 30332 \\
+}
+\DefineVerbatimEnvironment%
+{Code}{Verbatim}{fontsize=\small,samepage=true,xleftmargin=1in}
+\begin{document}
+\bibliographystyle{plain}
+% \begin{titlepage}
+\maketitle
+\begin{center}
+\today{} -- E-Code Version 1.0 
+%\\
+%Caveat:  This is a very rough document.  Just the basics at the moment.\\
+\end{center}
+\section{Introduction}
+
+{\bf E-Code} is a higher-level language for dynamic code generation.  E-Code
+specifically targets the dynamic generation of small code segments whose
+simplicity does not merit the complexity of a large interpreted environment.
+To that end, E-code is as simple and restricted a language as possible within
+the bounds of its target environment.  E-Code's dynamic code generation
+capabilities are based on DRISC, a Georgia Tech package that provides a
+programatic on-the-fly code generation through a virtual RISC instruction
+set.  DRISC also has a ``virtual register'' mode in which it performs simple
+register allocation and assignment.  E-Code consists primarily of a lexer,
+parser, semanticizer and code generator.
+
+This paper describes the E-Code language and the subroutines that support its
+conversion into native code.
+
+\section{The Basics}
+
+\subsection{The E-Code Language}
+E-Code may be extended as future needs warrant, but currently it is a subset
+of C.  Currently it supports the C operators, function calls, {\tt for} loops,
+{\tt if} statements and {\tt return} statements.  
+
+In terms of basic types, it supports C-style declarations of integer and
+floating point types.  That is, the type specifiers  {\tt char}, {\tt short},
+{\tt int}, {\tt long}, {\tt signed}, {\tt unsigned}, {\tt float} and {\tt
+double} may be mixed as in C.
+{\tt void} is also supported as a return type.  E-Code does not currently
+support pointers, though the type {\tt string} is introduced as a special case
+with limited support.
+
+E-Code supports the C operators
+!,+,-,*,/,\%,$\rangle$,$\langle$,$\langle$=,$\rangle$=,==,!=,\&\&,$\|$,= with
+the same precedence rules as in C.  Paranthesis can be used for grouping in
+expressions.  As in C, assignment yields a value which can be used in an
+expression.  C's pre/post increment/decrement operators are not included in
+E-Code.  Type promotions and conversions also work as in C.
+
+As in C, semicolons are used to end statments and brackets are used to group
+them.   Variable declarations must preceed executable statements.  So, a
+simple E-Code segment would be:
+\begin{Code}
+{
+    int j = 0;
+    long k = 10;
+    double d = 3.14;
+
+    return d * (j + k);
+}
+\end{Code}
+
+\subsection{Generating Code}
+The subroutine which translates E-Code to native code is {\tt
+ecl\_code\_gen()}.  The sample program below illustrates a very simple use of
+{\tt ecl\_code\_gen()} using the previous E-Code segment.
+\begin{Code}
+#include "ecl.h"
+
+char code_string[] = "\
+{\n\
+    int j = 4;\n\
+    long k = 10;\n\
+    short l = 3;\n\
+\n\
+    return l * (j + k);\n\
+}";
+
+main()
+{
+    ecl_parse_context context = new_ecl_parse_context();
+    ecl_code gen_code;
+    long (*func)();
+
+    gen_code = ecl_code_gen(code_string, context);
+    func = (long(*)()) gen_code->func;
+
+    printf("generated code returns %ld\n", func());
+    ecl_free_parse_context(context);
+    ecl_code_free(gen_code);
+}
+\end{Code}
+When executed, this program should print ``{\tt generated code returns 42.}''
+Note that code generation creates a function in malloc'd memory and returns a
+pointer to that function.  That pointer is cast into the appropriate function
+pointer type and stored in the {\tt gen\_code} variable.  It is the programs
+responsibility to free the function memory when it is no longer needed.  This
+demonstrates basic code generation capability, but the functions generated are
+not particularly useful.  The next sections will extend these basic
+capabilities. 
+
+\section{Parameters and Structured Types}
+
+\subsection{Simple Parameters}
+
+The simplest extensions to the subroutine generated above involve adding
+parameters of atomic data types.  As an example, we'll add an integer
+parameter ``i''.  To make use of this parameter we'll modify the return
+expression in the {\tt code\_string} to {\tt l * (j + k + i)}.  The subroutine
+{\tt ecl\_add\_param()} is used to add the parameter to the generation
+context.  It's parameters are the name of the parameter, it's data type (as a
+string), the parameter number (starting at zero) and the {\tt
+ecl\_parse\_context} variable.  To create a function with a prototype like
+{\tt long f(int i)} the code becomes:
+\begin{Code}
+    ecl_parse_context context = new_ecl_parse_context();
+    ecl_code gen_code;
+    long (*func)(int i);
+
+    ecl_add_param("i", "int", 0, context);
+    gen_code = ecl_code_gen(code_string, context);
+    func = (long(*)()) gen_code->func;
+
+    printf("generated code returns %ld\n", func(15));
+    ecl_free_parse_context(context);
+    ecl_code_free(gen_code);
+}
+\end{Code}
+When executed, this program prints  {\tt ``generated code returns 87.''}
+Additional parameters of atomic data types can be added in a similar manner.
+
+\subsection{Structured Types}
+
+Adding structured and array parameters to the subroutine is slightly more
+complex.  In particular, E-Code tries to avoid making assumptions about the
+alighment and layout decisions that might be made by whatever compiler is in
+use.  In order to avoid this, structured E-Code types must be described in the
+manner of PBIO\cite{psdbds}, specifying the name, type, size and offset for
+each field.  For convenience, the PBIO declarations relating to {\tt IOField}
+lists are repeated in {\tt ecl.h}.  A detailed discussion of their use can be
+found in \cite{psdbds}, but an example structure declaration and its
+associated {\tt IOField} declaration is below:
+\begin{Code}
+typedef struct test {
+    int i;
+    int j;
+    long k;
+    short l;
+} test_struct, *test_struct_p;
+
+ecl_field_elem struct_fields[] = {
+    {"i", "integer", sizeof(int), IOOffset(test_struct_p, i)},
+    {"j", "integer", sizeof(int), IOOffset(test_struct_p, j)},
+    {"k", "integer", sizeof(long), IOOffset(test_struct_p, k)},
+    {"l", "integer", sizeof(short), IOOffset(test_struct_p, l)},
+    {(void*)0, (void*)0, 0, 0}};
+\end{Code}
+
+The {\tt ecl\_add\_struct\_type()} routine is used to add this structured type
+definition to the parse context.  If we define a single parameter ``input'' as
+this structured type, the new return value in {\tt code\_string} is {\tt
+input.l * (input.j + input.k + input.i)} and the program body is:
+\begin{Code}
+main() {
+    ecl_parse_context context = new_ecl_parse_context();
+    test_struct str;
+    ecl_code gen_code;
+    long (*func)(test_struct *s);
+
+    ecl_add_struct_type("struct_type", struct_fields, context);
+    ecl_add_param("input", "struct_type", 0, context);
+
+    gen_code = ecl_code_gen(code_string, context);
+    func = (long(*)()) gen_code->func;
+
+    str.i = 15;
+    str.j = 4;
+    str.k = 10;
+    str.l = 3;
+    printf("generated code returns %ld\n", func(&str));
+	ecl_code_free(gen_code);
+	ecl_free_parse_context(context);
+}
+\end{Code}
+Note that the structured type parameter is passed by reference to the
+generated routine.  However in {\tt code\_string} fields are still referenced
+with the `.' operator instead of `-$\rangle$' (which is nor present in E-Code).
+
+\section{External Context and Function Calls}
+
+One aspect of external context not yet addressed is E-Code's ability to
+generate calls to external functions and subroutines.  Like all external
+entities, subroutines must be defined to E-Code before they are available for
+reference.  To make a subroutine accessable in E-code requires defining both
+the subroutine's profile (return and parameter types) and its address.  To
+specify the subroutine profile, E-code parses C-style subroutine and function
+declarations, such as:
+\begin{Code}
+int printf(string format, ...);
+void external_proc(double value);
+\end{Code}
+This is done through the subroutine {\tt ecl\_parse\_for\_context()}.  
+
+However, to associate addresses with symbols requires a somewhat different
+mechanism.  To accomplish this, E-code allows a list of external symbols to be
+associated with the {\tt ecl\_parse\_context()} value.  This list is simply a
+null-terminated sequence of $\langle symbol name, symbol value\rangle$ pairs
+of type {\tt ecl\_extern\_entry}.  The symbol name should match the name used
+for the subroutine declaration.  For example, the following code sequence
+makes the subroutine ``printf'' accessable in E-code:
+\begin{Code}
+extern int printf();
+static ecl_extern_entry externs[] = 
+{
+    {"printf", (void*)printf},
+    {NULL, NULL}
+};
+
+static char extern_string[] = "int printf(string format, ...);";
+
+{
+    ecl_parse_context context = new_ecl_parse_context();
+    ecl_assoc_externs(context, externs);
+    ecl_parse_for_context(extern_string, context);
+    ...
+\end{Code}
+
+\begin{thebibliography}{10}
+\bibitem{psdbds}
+Greg Eisenhauer.
+\newblock Portable self-describing binary data streams.
+\newblock Technical Report GIT-CC-94-45, College of Computing, Georgia
+  Institute of Technology, 1994.
+\newblock {\it (anon. ftp from ftp.cc.gatech.edu)}.
+
+\bibitem{Eisenhauer98DE}
+Greg Eisenhauer, Beth Schroeder, and Karsten Schwan.
+\newblock Dataexchange: High performance communication in distributed
+  laboratories.
+\newblock {\em Journal of Parallel Computing}, (24), 1998.
+
+\end{thebibliography}
+\end{document}

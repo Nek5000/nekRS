@@ -1,0 +1,41 @@
+name: Upload Contexts
+description: Dump GitHub Action CI contexts and upload as artifacts
+runs:
+  using: composite
+  steps:
+    - name: Dump github context
+      shell: bash
+      run: echo '${{ toJSON(github) }}' > context-github.json
+    - name: Dump env context
+      shell: bash
+      run: echo '${{ toJSON(env) }}' > context-env.json
+    - name: Dump job context
+      shell: bash
+      run: echo '${{ toJSON(job) }}' > context-job.json
+    - name: Dump steps context
+      shell: bash
+      run: echo '${{ toJSON(steps) }}' > context-steps.json
+    - name: Dump runner context
+      shell: bash
+      run: echo '${{ toJSON(runner) }}' > context-runner.json
+    - name: Dump strategy context
+      shell: bash
+      run: echo '${{ toJSON(strategy) }}' > context-strategy.json
+    - name: Dump matrix context
+      shell: bash
+      run: echo '${{ toJSON(matrix) }}' > context-matrix.json
+    - name: Upload contexts as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: contexts
+        path: |
+          ${{ github.event_path }}
+          context-github.json
+          context-env.json
+          context-job.json
+          context-steps.json
+          context-runner.json
+          context-secrets.json
+          context-strategy.json
+          context-matrix.json
+          context-inputs.json

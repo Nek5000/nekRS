@@ -19,7 +19,7 @@ chk_case $ntasks
 
 striping_unit=16777216
 max_striping_factor=128
-let striping_factor=$nodes/2
+set +e; let striping_factor=$nodes/2; set -e
 if [ $striping_factor -gt $max_striping_factor ]; then
   striping_factor=$max_striping_factor
 fi

@@ -111,63 +111,6 @@ void setupRowBlocks(ogs_t *ogs, occa::device &device)
   free(blockRowStarts);
 }
 
-dlong stripGatherScatterSingletons(dlong Ngather, dlong *gatherStarts, dlong *gatherIds){
-  
-  std::vector<dlong> newGatherStarts(Ngather+1, 0);
-  std::vector<dlong> newGatherIds(gatherStarts[Ngather]);
-
-  const dlong maxNg = [&]() {
-    dlong maximum{};
-    for (std::size_t n = 0; n < Ngather; ++n) {
-      maximum = std::max(maximum, gatherStarts[n+1] - gatherStarts[n]);
-    }
-    return maximum;
-  }();
-
-  // Eliminate singletons and cluster degree < threshhold first ...
-  constexpr dlong threshold = 9;
-  auto currentStart = newGatherStarts.begin();
-  for (std::size_t n = 0; n < Ngather; ++n) {
-    const dlong oldStart = gatherStarts[n];
-    const dlong oldNg = gatherStarts[n+1] - oldStart;
-    if((1 < oldNg) && (oldNg < threshold)){
-      for(std::size_t m = 0; m < oldNg; ++m){
-	      newGatherIds[*currentStart+m] = gatherIds[oldStart+m];
-      }
-      *std::next(currentStart) = *currentStart + oldNg;
-      std::advance(currentStart,1);
-    }
-  }
-
-  // ... then degree >= threshold second
-  for (std::size_t n = 0; n < Ngather; ++n) {
-    const dlong oldStart = gatherStarts[n];
-    const dlong oldNg = gatherStarts[n+1] - oldStart;
-    if(threshold <= oldNg){
-      for(int m = 0; m < oldNg ; ++m){
-	      newGatherIds[*currentStart+m] = gatherIds[oldStart+m];
-      }
-      *std::next(currentStart) = *currentStart + oldNg;
-      std::advance(currentStart,1);
-      
-    }
-  }
-  
-  const dlong newNgather = std::distance(newGatherStarts.begin(), currentStart);
-  
-  for(std::size_t n = 0; n <= newNgather; ++n){
-    gatherStarts[n] = newGatherStarts[n];
-  }
-  
-  for(std::size_t n = 0; n < newGatherStarts[newNgather]; ++n){
-    gatherIds[n] = newGatherIds[n];
-  }
-  
-  return newNgather;
-}
-
-
-
 ogs_t *ogsSetup(dlong N, hlong *ids, const MPI_Comm &comm,
                 int verbose, occa::device device){
 
@@ -304,10 +247,6 @@ ogs_t *ogsSetup(dlong N, hlong *ids, const MPI_Comm &comm,
       localGatherCounts[gatherId]++;
     }
     free(localGatherCounts);
-
-    // TW - strip out singletons here (localGatherIds, localGatherOffets, NlocalGather
-    // TW - already done in Nek5000 (interior nodes set to 0)
-    ogs->NlocalGather = stripGatherScatterSingletons(ogs->NlocalGather, ogs->localGatherOffsets, ogs->localGatherIds);
 
     ogs->o_localGatherOffsets = device.malloc((ogs->NlocalGather+1)*sizeof(dlong), ogs->localGatherOffsets);
     ogs->o_localGatherIds     = device.malloc((ogs->Nlocal)*sizeof(dlong), ogs->localGatherIds);

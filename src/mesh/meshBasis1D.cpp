@@ -24,6 +24,7 @@
 
  */
 
+#include "platform.hpp"
 #include "mesh.h"
 
 // ------------------------------------------------------------------------
@@ -99,7 +100,9 @@ void MassMatrix1D(int _Np, dfloat *V, dfloat *_MM)
       _MM[n * _Np + m] = res;
     }
   }
-  matrixInverse(_Np, _MM);
+  std::vector<dfloat> MM(_MM,  _MM + _Np * _Np);
+  auto invMM = platform->linAlg->matrixInverse(_Np, MM);
+  for (size_t i = 0; i < invMM.size(); ++i) _MM[i] = invMM[i];
 }
 
 void Dmatrix1D(int _N, int NpointsIn, dfloat *_rIn, int NpointsOut, dfloat *_rOut, dfloat *_Dr)

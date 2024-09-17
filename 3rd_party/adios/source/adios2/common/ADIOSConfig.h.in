@@ -1,0 +1,56 @@
+/*
+ * Distributed under the OSI-approved Apache License, Version 2.0.  See
+ * accompanying file Copyright.txt for details.
+ */
+
+#ifndef ADIOSCONFIG_H_
+#define ADIOSCONFIG_H_
+
+/* ADIOS Version Information */
+#define ADIOS2_VERSION_STR   "@ADIOS2_VERSION@"
+#define ADIOS2_VERSION_MAJOR @ADIOS2_VERSION_MAJOR@
+#define ADIOS2_VERSION_MINOR @ADIOS2_VERSION_MINOR@
+#define ADIOS2_VERSION_PATCH @ADIOS2_VERSION_PATCH@
+#cmakedefine ADIOS2_VERSION_TWEAK @ADIOS2_VERSION_TWEAK@
+
+#define ADIOS2_VERSION (ADIOS2_VERSION_MAJOR* 10000 + ADIOS2_VERSION_MINOR * 100 + ADIOS2_VERSION_PATCH)
+
+/*
+ * ADIOS Build Information:
+ *
+ * Compiler:
+ *   C: @CMAKE_C_COMPILER@
+ *     Id: @CMAKE_C_COMPILER_ID@ @CMAKE_C_COMPILER_VERSION@
+ *   CXX: @CMAKE_CXX_COMPILER@
+ *     Id: @CMAKE_CXX_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@
+ *   Fortran: @CMAKE_CXX_COMPILER@
+ *     Id: @CMAKE_Fortran_COMPILER_ID@ @CMAKE_CXX_COMPILER_VERSION@
+ */
+
+/* Everything between here and the note below is programatically generated */
+
+@ADIOS2_CONFIG_DEFINES@
+
+#define ADIOS2_FEATURE_LIST @ADIOS2_CONFIG_FEATURE_LIST@
+
+/* Everything between here and the note above is programatically generated */
+
+#ifndef ADIOS2_USE_MPI
+#  define ADIOS2_USE_MPI 0
+#endif
+
+#if ADIOS2_USE_MPI && !defined(ADIOS2_HAVE_MPI)
+#  error "ADIOS2 was not built with MPI enabled."
+#endif
+
+#ifndef ADIOS2_DEPRECATED
+#  if defined(__GNUC__) || defined (__clang__)
+#    define ADIOS2_DEPRECATED __attribute__((deprecated))
+#  elif defined(_MSC_VER)
+#    define ADIOS2_DEPRECATED __declspec(deprecated)
+#  else
+#    define ADIOS2_DEPRECATED
+#  endif
+#endif
+
+#endif /* ADIOSCONFIG_H_ */

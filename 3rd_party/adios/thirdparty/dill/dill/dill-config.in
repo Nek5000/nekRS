@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export PKG_CONFIG_LIBDIR=$(realpath $(dirname $(realpath ${BASH_SOURCE}))/..)/@CMAKE_INSTALL_LIBDIR@/pkgconfig
+pkg-config dill "$@"

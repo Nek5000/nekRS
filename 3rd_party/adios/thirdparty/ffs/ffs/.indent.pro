@@ -1,0 +1,4 @@
+-nbad -bap -nbc -br -c33  -cd33  -ncdb  -ce  -ci4
+-cli0  -cp33  -d0  -di1	-fc1  -fca -i4 -ip0 -l75 -lp
+-npcs -psl -sc -nsob -nss -ts8 -TIOFile -TIOFormat -TIOConversionPtr 
+-TIOFieldList -TIORecordType -TIOFieldPtr

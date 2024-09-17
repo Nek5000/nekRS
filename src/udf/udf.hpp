@@ -4,7 +4,7 @@
 #include "platform.hpp"
 #include "nekInterfaceAdapter.hpp"
 #include "bcMap.hpp"
-#include "fld.hpp"
+#include "iofldFactory.hpp"
 #include "opSEM.hpp" 
 
 extern "C" {
@@ -41,6 +41,7 @@ void udfBuild(setupAide &options);
 void udfLoad();
 void udfEcho();
 void *udfLoadFunction(const char *fname, int errchk);
+void udfUnload();
 occa::kernel oudfBuildKernel(occa::properties kernelInfo, const std::string& kernelName);
 
 #endif

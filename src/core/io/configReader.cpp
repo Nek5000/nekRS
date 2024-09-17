@@ -128,6 +128,11 @@ void configRead(MPI_Comm comm)
     setenv("NEKRS_UDF_LIBS", buf.c_str(), 1);
   }
 
+  ini.extract("general", "nekrs_adios2_install_dir", buf);
+  if (!getenv("NEKRS_ADIOS2_INSTALL_DIR") && !buf.empty()) {
+    setenv("NEKRS_ADIOS2_INSTALL_DIR", buf.c_str(), 1);
+  }
+
   ini.extract("general", "occa_cxx", buf);
   if (!getenv("OCCA_CXX")) {
     setenv("OCCA_CXX", buf.c_str(), 1);

@@ -1,0 +1,61 @@
+# Config file for Task 1 Producer
+#   - Produce variables  a  
+#   - Write variables    a      to    stream_T1.bp
+
+# Config file for Task 2 Producer
+#   - Produce variables  b  
+#   - Write variables    b      to    stream_T2.bp
+
+# Config file for Task 3 Consumer of Task 1 and Task 2
+#   - Read in variable   a      from  stream_T1.bp
+#   - Read in variable   b      from  stream_T2.bp
+#   - Write variables    a  b   to    stream_T3.bp
+
+
+group  io_T1
+  # item  type    varname     N   [dim1 dim2 ... dimN  decomp1 decomp2 ... decompN]
+  array   double  a           2    100   200              X       YZ
+
+group  io_T2
+  # item  type    varname     N   [dim1 dim2 ... dimN  decomp1 decomp2 ... decompN]
+  array   float   b           1    100                    XYZ 
+
+group  io_T3
+  # use all variables read into io_T2_in in the output 
+  link group io_T1
+  link group io_T2
+
+
+
+# Task 1 actions
+app 1
+  steps   3
+  sleep   5.0      
+    # write all of io_T1 into stream_T1.bp
+  write   stream_T1.bp    io_T1
+
+# Task 2 actions
+app 2
+  steps   5
+  sleep   3.0      
+    # write all of io_T2 into stream_T2.bp
+  write   stream_T2.bp    io_T2
+
+# Task 3 actions
+app 3
+  steps   over stream_T1.bp stream_T2.bp
+  # read stream_T1.bp using io_T1 definition with non-blocking wait
+  read  next  stream_T1.bp    io_T1  0.0 
+  # read stream_T2.bp using io_T2 definition with non-blocking wait
+  read  next  stream_T2.bp    io_T2  0.0
+
+  # write a and/or b from io_T3 into stream_T3.bp
+  #   as separate steps, merging a and b into one step is not possible
+  cond stream_T1.bp   write   stream_T3.bp    io_T3  a
+  cond stream_T2.bp   write   stream_T3.bp    io_T3  b
+
+  sleep   1.0
+
+
+
+

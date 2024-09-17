@@ -1,0 +1,83 @@
+# vim: ft=dockerfile
+FROM ecpe4s/ubuntu20.04-runner-amd64-gcc-11.4:2023.08.01
+
+ARG E4S_VERSION=23.08
+
+# Clone and patch spack
+RUN cd / && \
+    git clone --depth 1 --single-branch --branch e4s-${E4S_VERSION} https://github.com/spack/spack
+
+COPY packages.yaml /etc/spack/packages.yaml
+# TODO: Patch only needed until we merge https://github.com/spack/spack/pull/40964
+COPY 0001-mpich-support-ch3-sock.patch /spack
+
+# Install base specs
+RUN cd spack && \
+    git apply 0001-mpich-support-ch3-sock.patch && \
+    . /spack/share/spack/setup-env.sh && \
+    spack mirror add E4S "https://cache.e4s.io/${E4S_VERSION}" && \
+    export ADIOS_SPEC_NO_MPI="adios2~mpi" && \
+    export ADIOS_SPEC_OPENMPI="adios2+mpi^openmpi" && \
+    export ADIOS_SPEC_MPICH="adios2+mpi^mpich" && \
+    spack config add "config:checksum:false" && \
+    spack config add "config:build_jobs:$(nproc)" && \
+    spack config add "concretizer:unify:true" && \
+    spack env create adios2-ci-serial && \
+    spack -e adios2-ci-serial add ${ADIOS_SPEC_NO_MPI} && \
+    spack -e adios2-ci-serial concretize && \
+    spack -e adios2-ci-serial install \
+      --include-build-deps \
+      --no-check-signature \
+      --fail-fast \
+      --only dependencies && \
+    spack env create adios2-ci-ompi && \
+    spack -e adios2-ci-ompi add ${ADIOS_SPEC_OPENMPI} && \
+    spack -e adios2-ci-ompi concretize && \
+    spack -e adios2-ci-ompi install \
+      --include-build-deps \
+      --no-check-signature \
+      --fail-fast \
+      --only dependencies && \
+    spack env create adios2-ci-mpich && \
+    spack -e adios2-ci-mpich add ${ADIOS_SPEC_MPICH} && \
+    spack -e adios2-ci-mpich concretize && \
+    spack -e adios2-ci-mpich install \
+      --include-build-deps \
+      --no-check-signature \
+      --fail-fast \
+      --only dependencies && \
+    spack clean -a && \
+    echo "source /spack/share/spack/setup-env.sh" >> /etc/profile.d/zz-spack.sh
+
+### Other missing packages (compared to el8 base):
+RUN apt-get update && apt-get install -y \
+    ccache \
+    libcurl4-gnutls-dev && \
+    apt-get remove -y \
+    gcc-9 \
+    g++-9 \
+    gfortran-9 && \
+    apt-get autoremove --purge -y && \
+    apt-get clean && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100 && \
+    update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-11 100
+
+# NONSPACK dependency
+WORKDIR /opt/blosc2
+RUN curl -L https://github.com/Blosc/c-blosc2/archive/refs/tags/v2.10.1.tar.gz | tar -xvz && \
+    mkdir build && \
+    cd build && \
+    . /spack/share/spack/setup-env.sh && \
+    spack env activate adios2-ci-serial && \
+    cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/blosc2/2.10.1 ../c-blosc2-2.10.1  && \
+    cmake --build . -j$(grep -c '^processor' /proc/cpuinfo) && \
+    cmake --install . && \
+    cd .. && \
+    rm -rf c-blosc2-2.10.1 build
+
+ENV PATH /opt/cmake/bin:/opt/blosc2/2.10.1/bin:${PATH}
+ENV LD_LIBRARY_PATH /opt/blosc2/2.10.1/lib64:${LD_LIBRARY_PATH}
+ENV CMAKE_PREFIX_PATH /opt/blosc2/2.10.1:${CMAKE_PREFIX_PATH}
+
+ENTRYPOINT ["/bin/bash", "--login"]

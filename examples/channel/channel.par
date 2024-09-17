@@ -13,9 +13,9 @@ equation = Stokes+variableViscosity
 residualTol = 1e-08
 
 [VELOCITY]
-boundaryTypeMap = sym
+boundaryTypeMap = zeroNValue/zeroGradient 
 residualTol = 1e-12
-density = 1.0
+rho = 1.0
 viscosity = 0.1 
 
 [CASEDATA]

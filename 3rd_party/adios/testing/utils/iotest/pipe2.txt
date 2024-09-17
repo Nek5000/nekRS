@@ -1,0 +1,50 @@
+# Config file for Task 1 in a pipeline
+#   - Produce variables  a  b  c 
+#   - Write variables    a  b  c     to    pipe2_write.bp
+
+# Config file for Task 2 in a pipeline
+#   - Read in variables  a  b  from Task 1 (ignore c) from pipe2_write.bp
+#     using a different decomposition
+#   - Write variables    a  b        to   pipe2_read.bp
+
+
+group  io_T1
+  # item  type    varname     N   [dim1 dim2 ... dimN  decomp1 decomp2 ... decompN]
+  array   double  a           2    100   200              X       YZ
+  array   float   b           1    100                    XYZ 
+  array   float   c           3    100   200   300        XY      z     1
+
+group  io_T2_in
+  # item  type    varname     N   [dim1 dim2 ... dimN  decomp1 decomp2 ... decompN]
+  array   double  a           2    100   200              XY      Z
+  array   float   b           1    100                    XYZ 
+
+group  io_T2_out
+  # use all variables read into io_T2_in in the output 
+  link group io_T2_in
+
+
+
+# Task 1 actions
+app 1
+  steps   3
+  sleep   0.1      
+  # write all of io_T1 into pipe2_write.bp
+  write   pipe2_write.bp    io_T1
+
+# Task 2 actions
+app 2
+  steps   over pipe2_write.bp   
+  # read a & b from pipe2_write.bp using io_T2_in definition with blocking wait
+  read  next  pipe2_write.bp    io_T2_in  -1   a   b
+
+  # Sleep and write only if read was successful:
+  cond pipe2_write.bp   sleep   0.1 
+  # write io_T2 into pipe2_read.bp
+  cond pipe2_write.bp   write   pipe2_read.bp    io_T2_out  
+
+  sleep   0.123456789
+
+
+
+

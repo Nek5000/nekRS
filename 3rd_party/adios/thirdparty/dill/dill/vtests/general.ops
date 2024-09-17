@@ -1,0 +1,1185 @@
+#!perl
+sub upperc {
+    local($_) = pop(@_);
+    tr/[a-z]/[A-Z]/;
+    return $_;
+}
+
+%c_types = ('c', 'signed char', 'uc', 'unsigned char', 's', 'short', 'us', 'unsigned short', 'i', 'int', 'u', 'unsigned int', 'l', 'IMM_TYPE', 'ul', 'UIMM_TYPE', 'p', 'char*', 'f', 'float', 'd', 'double');
+%c_arg_types = ('c', 'signed int', 'uc', 'unsigned int', 's', 'signed int', 'us', 'unsigned int', 'i', 'int', 'u', 'unsigned int', 'l', 'IMM_TYPE', 'ul', 'UIMM_TYPE', 'p', 'char*', 'f', 'float', 'd', 'double');
+%rand_types = ('c', 'l', 'uc', 'l', 's', 'l', 'us', 'l', 'i', 'l', 'u', 'l', 'l', 'l', 'ul', 'l', 'p', '(char *)l', 'f', 'd', 'd', 'd');
+%c_print_formats = ('c', '%d', 'uc', '%u', 's', '%d', 'us', '%u', 'i', '%d', 'u', '%u', 'l', '%zx', 'ul', '%zu', 'p', '%p', 'f', '%g', 'd', '%g');
+%drisc_arg_formats = ('c', '%i', 'uc', '%u', 's', '%i', 'us', '%u', 'i', '%i', 'u', '%u', 'l', '%l', 'ul', '%ul', 'p', '%p', 'f', '%f', 'd', '%d');
+
+%print_cast = ('p', '(void*)');
+
+$FT = "f";
+$DT = "d";
+
+while ($_ = $ARGV[0]) {
+	shift;
+	last if /^--$/;
+}
+
+&output_header;
+
+&arith_insn("add sub mul div mod and or xor lsh rsh", "+ - * / % & | ^ << >>", "i u ul l");
+&arithp_insn("add sub", "+ -");
+&arith_insn("add sub mul div", "+ - * /",  "$FT $DT");
+
+&arith2_insn("com not", "~ !", "i u ul l");
+&arith2_insn("neg", "-", "i u ul l $FT $DT");
+
+&arithi_insn("add sub mul div mod and or xor lsh rsh", "+ - * / % & | ^ << >>", "i u ul l");
+&arithpi_insn("add sub", "+ -","p");
+
+&branch_insn( "eq ge gt le lt ne", "== >= > <= < !=", "c uc s us i u ul l p $DT $FT");
+&branchi_insn( "eq ge gt le lt ne", "== >= > <= < !=", "c uc s us i u ul l p");
+
+&compare_insn( "eq ge gt le lt ne", "== >= > <= < !=", "c uc s us i u ul l p $DT $FT");
+
+&convert( "c $DT $FT i l s u ul us", "c uc s us i u ul l");
+&convert( "$DT $FT c us s us i l u ul", "$FT $DT");
+&convert( "i l u ul", "c s");
+&convert( "p ul", "ul p");
+
+&load("c uc s us i u ul l $FT $DT");
+&store("c uc s us i u ul l $FT $DT");
+
+&setmovret("c uc s us i u ul l $FT $DT");
+
+print COUT "    dill_free_stream(c);\n";
+print COUT "    return failed;\n}\n";
+
+
+sub arith_insn {
+    local ($dill_ops, $c_ops, $type_list) = @_;
+    @c_ops = split(' ', $c_ops);
+    foreach(split(' ', $dill_ops)) {
+	$dill_op = $_;
+	$c_op = shift(@c_ops);
+	$print_op = $c_op;
+	if ($print_op eq "%") {
+	    $print_op = "%%";
+	}
+	
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "$drisc_arg_formats{${_}}$drisc_arg_formats{${_}}";
+	    $result_if = "if (expected_result != result)";
+	    $range_decl = "";
+	    if ((${_} eq "f") || (${_} eq "d")) {
+		$result_if = "if ((result > (expected_result + range)) || (result < (expected_result - range)))";
+		if ((${c_op} eq "+") || (${c_op} eq "-")) {
+		    $range_decl ="double range = 0.000001 * (fabs((double)source1_${_}) + fabs((double)source2_${_}));";
+		} elsif  ((${c_op} eq "*") || (${c_op} eq "/")) {
+		    $range_decl ="double range = 0.000001 * (fabs((double)source1_${_} $c_op (double)source2_${_}));";
+		}
+	    }
+	    if ($dill_op eq "div") {
+		$div_continue = "if (source2_$_ == 0) goto skip$skip_count;";
+		$div_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } elsif ($dill_op eq "mod") {
+		$div_continue = "if (source2_$_ <= 0) goto skip$skip_count;";
+		$div_continue .= "if (source2_$_  > 0) goto skip$skip_count;";
+		$div_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } elsif (($dill_op eq "rsh") || ($dill_op eq "lsh")) {
+		$div_continue = "if (source2_$_ >= sizeof(IMM_TYPE)) goto skip$skip_count;";
+		$div_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } else {
+		$div_continue = "";
+		$div_label = "";
+	    }
+	    $full_op = "${dill_op}${_}";
+	    print COUT "\n    /* test for dill_$dill_op${_} */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$dill_op${_}\");\n";
+	    if (defined($c_src1_values{$full_op})) {
+		$vals = $c_src1_values{$full_op};
+		print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+		print COUT "        $c_type source1_$_ = ($c_type) $vals\[i\];\n";
+	    } else {
+		print COUT "    {\n";
+		print COUT "        $c_type source1_$_ = rand1_$_;\n";
+	    }
+	    if (defined($c_src2_values{$full_op})) {
+		$vals = $c_src2_values{$full_op};
+		print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+		print COUT "            $c_type source2_$_ = ($c_type) $vals\[j\];\n";
+	    } else {
+		print COUT "        {\n";
+		print COUT "            $c_type source2_$_ = rand2_$_;\n";
+	    }
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_reg opnd1, opnd2, dest;
+	    dill_exec_ctx ec;
+	    $c_type result;
+	    $c_type expected_result;
+	    $c_type (*proc)(dill_exec_ctx ec, $c_type a, $c_type b);
+	    dill_exec_handle h;
+	    $range_decl
+	    if (verbose) {printf(".");fflush(stdout);}
+	    $div_continue
+	    dill_start_proc(c, "no name", $dill_type, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	    opnd2 = dill_param_reg(c, 2);
+	    dest = dill_getreg(c, $dill_type);
+	    dill_$dill_op${_}(c, dest, opnd1, opnd2);
+	    dill_ret${_}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_type(*)(dill_exec_ctx ec, $c_type a, $c_type b)) dill_get_fp(h);
+	    expected_result = source1_$_ $c_op source2_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$_, source2_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    $result_if {
+		printf("Failed dill_$dill_op${_} test, expected $c_pformat, got $c_pformat, for $c_pformat $print_op $c_pformat\\n",
+		       expected_result, result, source1_$_, source2_$_);
+		dill_dump(c);
+		failed++;
+	    }
+$div_label	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub arithp_insn {
+    local ($dill_ops, $c_ops) = @_;
+    $type_list = "p";
+    @c_ops = split(' ', $c_ops);
+    foreach(split(' ', $dill_ops)) {
+	$dill_op = $_;
+	$c_op = shift(@c_ops);
+	
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "$drisc_arg_formats{${_}}%l";
+	    $full_op = "${dill_op}${_}";
+	    print COUT "\n    /* test for dill_$dill_op${_} */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$dill_op${_}\");\n";
+	    if (defined($c_src1_values{$full_op})) {
+		$vals = $c_src1_values{$full_op};
+		print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+		print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    } else {
+		print COUT "    {\n";
+		print COUT "        $c_type source1_$_ = rand1_$_;\n";
+	    }
+	    if (defined($c_src2_values{"addl"})) {
+		$vals = $c_src2_values{'addl'};
+		print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+		print COUT "            IMM_TYPE source2_l = $vals\[j\];\n";
+	    } else {
+		print COUT "        {\n";
+		print COUT "            IMM_TYPE source2_l = rand2_$_;\n";
+	    }
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_reg opnd1, opnd2, dest;
+	    dill_exec_ctx ec;
+	    $c_type result;
+	    $c_type expected_result;
+	    $c_type (*proc)(dill_exec_ctx ec, $c_type a, IMM_TYPE b);
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+
+	    dill_start_proc(c, "no name", $dill_type, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	    opnd2 = dill_param_reg(c, 2);
+	    dest = dill_getreg(c, $dill_type);
+	    dill_$dill_op${_}(c, dest, opnd1, opnd2);
+	    dill_ret${_}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_type(*)(dill_exec_ctx, $c_type, IMM_TYPE)) dill_get_fp(h);
+	    expected_result = source1_$_ $c_op source2_l;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$_, source2_l);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$dill_op${_} test, expected $c_pformat, got $c_pformat, for $c_pformat $c_op %zx\\n",
+		       $print_cast{$_} expected_result, $print_cast{$_} result, $print_cast{$_} source1_$_, source2_l);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub arith2_insn {
+    local ($dill_ops, $c_ops, $type_list) = @_;
+    @c_ops = split(' ', $c_ops);
+    foreach(split(' ', $dill_ops)) {
+	$dill_op = $_;
+	$c_op = shift(@c_ops);
+	
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $arg_str = "$drisc_arg_formats{${_}}";
+	    $full_op = "${dill_op}${_}";
+		if (($c_op eq '-') and ($_ eq "u")) {
+		    $actual_op = '(unsigned) - (int)';
+	    } elsif (($c_op eq '-') and ($_ eq "ul")) {
+		    $actual_op = '(uintptr_t) - (intptr_t)';
+	    } else {
+            $actual_op = $c_op;
+        }
+	    print COUT "\n    /* test for dill_$dill_op${_} */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$dill_op${_}\");\n";
+	    if (defined($c_src1_values{$full_op})) {
+		$vals = $c_src1_values{$full_op};
+		print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+		print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    } else {
+		print COUT "    {\n";
+		print COUT "        $c_type source1_$_ = rand1_$_;\n";
+	    }
+		print COUT "        {\n";
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, dest;
+	    $c_type result;
+	    $c_type expected_result;
+	    $c_type (*proc)(dill_exec_ctx ec, $c_type a);
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+	    dill_start_proc(c, "no name", $dill_type, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	    dest = dill_getreg(c, $dill_type);
+	    dill_$dill_op${_}(c, dest, opnd1);
+	    dill_ret${_}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_type(*)(dill_exec_ctx, $c_type)) dill_get_fp(h);
+	    expected_result = $actual_op source1_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$dill_op${_} test, expected $c_pformat, got $c_pformat, for $c_op $c_pformat\\n",
+		       expected_result, result, source1_$_);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub arithi_insn {
+    local ($dill_ops, $c_ops, $type_list) = @_;
+    @c_ops = split(' ', $c_ops);
+    foreach(split(' ', $dill_ops)) {
+	$dill_op = $_;
+	$c_op = shift(@c_ops);
+	$print_op = $c_op;
+	if ($print_op eq "%") {
+	    $print_op = "%%";
+	}
+	
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "$drisc_arg_formats{${_}}$drisc_arg_formats{${_}}";
+	    if ($dill_op eq "div") {
+		$div_continue = "if (source2_$_ == 0) goto skip$skip_count;";
+		$div_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } elsif ($dill_op eq "mod") {
+		$div_continue = "if (source2_$_ <= 0) goto skip$skip_count;";
+		$div_continue .= "if (source2_$_  > 0) goto skip$skip_count;";
+		$div_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } elsif (($dill_op eq "rsh") || ($dill_op eq "lsh")) {
+		$div_continue = "if ((source2_$_ >= sizeof(IMM_TYPE)) || (source2_$_ <= 0)) goto skip$skip_count;";
+		$div_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } else {
+		$div_continue = "";
+		$div_label = "";
+	    }
+	    $full_op = "${dill_op}${_}i";
+	    print COUT "\n    /* test for dill_$dill_op${_}i (immediate) */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$dill_op${_}i (immediate)\");\n";
+	    if (defined($c_src1_values{$full_op})) {
+		$vals = $c_src1_values{$full_op};
+		print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+		print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    } else {
+		print COUT "    {\n";
+		print COUT "        $c_type source1_$_ = rand1_$_;\n";
+	    }
+	    if (defined($c_src2_values{$full_op})) {
+		$vals = $c_src2_values{$full_op};
+		print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+		print COUT "            $c_type source2_$_ = ($c_type)$vals\[j\];\n";
+	    } else {
+		print COUT "        {\n";
+		print COUT "            $c_type source2_$_ = rand2_$_;\n";
+	    }
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, dest;
+	    $c_type result;
+	    $c_type expected_result;
+	    $c_type (*proc)(dill_exec_ctx ec, $c_type a);
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+	    $div_continue
+	    dill_start_proc(c, "no name", $dill_type, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	    dest = dill_getreg(c, $dill_type);
+	    dill_$dill_op${_}i(c, dest, opnd1, source2_$_);
+	    dill_ret${_}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_type(*)(dill_exec_ctx, $c_type)) dill_get_fp(h);
+	    expected_result = source1_$_ $c_op source2_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$dill_op${_}i (immediate) test, expected $c_pformat, got $c_pformat, for $c_pformat $print_op $c_pformat\\n",
+		       expected_result, result, source1_$_, source2_$_);
+		dill_dump(c);
+		failed++;
+	    }
+$div_label	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub arithpi_insn {
+    local ($dill_ops, $c_ops, $type_list) = @_;
+    @c_ops = split(' ', $c_ops);
+    foreach(split(' ', $dill_ops)) {
+	$dill_op = $_;
+	$c_op = shift(@c_ops);
+	
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "$drisc_arg_formats{${_}}$drisc_arg_formats{${_}}";
+	    $full_op = "${dill_op}${_}i";
+	    print COUT "\n    /* test for dill_$dill_op${_}i (immediate) */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$dill_op${_}i (immediate)\");\n";
+	    if (defined($c_src1_values{$full_op})) {
+		$vals = $c_src1_values{$full_op};
+		print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+		print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    } else {
+		print COUT "    {\n";
+		print COUT "        $c_type source1_$_ = rand1_$_;\n";
+	    }
+	    if (defined($c_src2_values{'addl'})) {
+		$vals = $c_src2_values{'addl'};
+		print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+		print COUT "            IMM_TYPE source2_l = $vals\[j\];\n";
+	    } else {
+		print COUT "        {\n";
+		print COUT "            IMM_TYPE source2_l = rand2_$_;\n";
+	    }
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, dest;
+	    $c_type result;
+	    $c_type expected_result;
+	    $c_type (*proc)(dill_exec_ctx, $c_type);
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+
+	    dill_start_proc(c, "no name", $dill_type, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	    dest = dill_getreg(c, $dill_type);
+	    dill_$dill_op${_}i(c, dest, opnd1, source2_l);
+	    dill_ret${_}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_type(*)(dill_exec_ctx, $c_type)) dill_get_fp(h);
+	    expected_result = source1_$_ $c_op source2_l;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$dill_op${_}i (immediate) test, expected $c_pformat, got $c_pformat, for $c_pformat $c_op %zx\\n",
+		       $print_cast{$_} expected_result, $print_cast{$_} result, $print_cast{$_} source1_$_, source2_l);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub branch_insn {
+    local ($dill_ops, $c_ops, $type_list) = @_;
+    @c_ops = split(' ', $c_ops);
+    foreach(split(' ', $dill_ops)) {
+	$dill_op = $_;
+	$c_op = shift(@c_ops);
+	
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_arg_type = $c_arg_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "$drisc_arg_formats{${_}}$drisc_arg_formats{${_}}";
+	    $full_op = "b${dill_op}${_}";
+	    print COUT "\n    /* test for dill_$full_op */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$full_op\");\n";
+	    if (defined($c_src1_values{"br${_}"})) {
+		$vals = $c_src1_values{"br${_}"};
+		print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+		print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    } else {
+		print COUT "    {\n";
+		print COUT "        $c_type source1_$_ = rand1_$_;\n";
+	    }
+	    if (defined($c_src2_values{"br${_}"})) {
+		$vals = $c_src2_values{"br${_}"};
+		print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+		print COUT "            $c_type source2_$_ = $vals\[j\];\n";
+	    } else {
+		print COUT "        {\n";
+		print COUT "            $c_type source2_$_ = rand2_$_;\n";
+	    }
+	    if ($_ eq "p") {
+		$br_continue = "if (((IMM_TYPE)source2_$_ < 0) || ((IMM_TYPE)source1_$_ < 0))goto skip$skip_count;";
+		$br_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } else {
+		$br_continue = "";
+		$br_label = "";
+	    }
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, opnd2;
+	    int label;
+	    int result;
+	    int expected_result;
+	    int (*proc)(dill_exec_ctx ec, $c_arg_type a, $c_arg_type b);
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+	    $br_continue
+	    dill_start_proc(c, "no name", DILL_I, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	    opnd2 = dill_param_reg(c, 2);
+	
+	    label = dill_alloc_label(c, NULL);
+	    dill_$full_op(c, opnd1, opnd2, label);
+	    dill_retii(c, 0);
+	    dill_mark_label(c, label);	    
+	    dill_retii(c, 1);
+	    h = dill_finalize(c);
+	    proc = (int(*)(dill_exec_ctx, $c_arg_type, $c_arg_type)) dill_get_fp(h);
+	    expected_result = source1_$_ $c_op source2_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$_, source2_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$full_op test, expected %d, got %d, for $c_pformat $c_op $c_pformat\\n",
+		       expected_result, result, $print_cast{$_} source1_$_, $print_cast{$_} source2_$_);
+		dill_dump(c);
+		failed++;
+	    }
+$br_label	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub branchi_insn {
+    local ($dill_ops, $c_ops, $type_list) = @_;
+    @c_ops = split(' ', $c_ops);
+    foreach(split(' ', $dill_ops)) {
+	$dill_op = $_;
+	$c_op = shift(@c_ops);
+	
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_arg_type = $c_arg_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "$drisc_arg_formats{${_}}";
+	    $full_op = "b${dill_op}${_}i";
+	    print COUT "\n    /* test for dill_$full_op */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$full_op\");\n";
+	    if (defined($c_src1_values{"br${_}"})) {
+		$vals = $c_src1_values{"br${_}"};
+		print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+		print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    } else {
+		print COUT "    {\n";
+		print COUT "        $c_type source1_$_ = rand1_$_;\n";
+	    }
+	    if (defined($c_src2_values{"br${_}"})) {
+		$vals = $c_src2_values{"br${_}"};
+		print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+		print COUT "            $c_type source2_$_ = $vals\[j\];\n";
+	    } else {
+		print COUT "        {\n";
+		print COUT "            $c_type source2_$_ = rand2_$_;\n";
+	    }
+	    $cast = "";
+	    if ($_ eq 'p') {
+		$cast = "(IMM_TYPE)";
+		$br_continue = "if (((IMM_TYPE)source2_$_ < 0) || ((IMM_TYPE)source1_$_ < 0))goto skip$skip_count;";
+		$br_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } else {
+		$br_continue = "";
+		$br_label = "";
+	    }
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1;
+	    int label;
+	    int result;
+	    int expected_result;
+	    int (*proc)(dill_exec_ctx, $c_arg_type a);
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+	    $br_continue
+	    dill_start_proc(c, "no name", DILL_I, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	
+	    label = dill_alloc_label(c, NULL);
+	    dill_$full_op(c, opnd1, $cast source2_$_, label);
+	    dill_retii(c, 0);
+	    dill_mark_label(c, label);	    
+	    dill_retii(c, 1);
+	    h = dill_finalize(c);
+	    proc = (int(*)(dill_exec_ctx, $c_arg_type)) dill_get_fp(h);
+	    expected_result = source1_$_ $c_op source2_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$full_op test, expected %d, got %d, for $c_pformat $c_op $c_pformat\\n",
+		       expected_result, result, $print_cast{$_} source1_$_, $print_cast{$_} source2_$_);
+		dill_dump(c);
+		failed++;
+	    }
+$br_label	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub compare_insn {
+    local ($dill_ops, $c_ops, $type_list) = @_;
+    @c_ops = split(' ', $c_ops);
+    foreach(split(' ', $dill_ops)) {
+	$dill_op = $_;
+	$c_op = shift(@c_ops);
+	
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_arg_type = $c_arg_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "$drisc_arg_formats{${_}}$drisc_arg_formats{${_}}";
+	    $full_op = "${dill_op}${_}";
+	    print COUT "\n    /* test for dill_$full_op */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$full_op\");\n";
+	    if (defined($c_src1_values{"br${_}"})) {
+		$vals = $c_src1_values{"br${_}"};
+		print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+		print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    } else {
+		print COUT "    {\n";
+		print COUT "        $c_type source1_$_ = rand1_$_;\n";
+	    }
+	    if (defined($c_src2_values{"br${_}"})) {
+		$vals = $c_src2_values{"br${_}"};
+		print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+		print COUT "            $c_type source2_$_ = $vals\[j\];\n";
+	    } else {
+		print COUT "        {\n";
+		print COUT "            $c_type source2_$_ = rand2_$_;\n";
+	    }
+	    if ($_ eq "p") {
+		$br_continue = "if (((IMM_TYPE)source2_$_ < 0) || ((IMM_TYPE)source1_$_ < 0))goto skip$skip_count;";
+		$br_label = "skip$skip_count: ;\n";
+		$skip_count++;
+	    } else {
+		$br_continue = "";
+		$br_label = "";
+	    }
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, opnd2, dest;
+	    int result;
+	    int expected_result;
+	    int (*proc)(dill_exec_ctx ec, $c_arg_type a, $c_arg_type b);
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+	    $br_continue
+	    dill_start_proc(c, "no name", DILL_I, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	    opnd2 = dill_param_reg(c, 2);
+	
+	    dest = dill_getreg(c, DILL_I);
+	    dill_$full_op(c, dest, opnd1, opnd2);
+	    dill_reti(c, dest);
+	    h = dill_finalize(c);
+	    proc = (int(*)(dill_exec_ctx, $c_arg_type, $c_arg_type)) dill_get_fp(h);
+	    expected_result = source1_$_ $c_op source2_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$_, source2_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$full_op test, expected %d, got %d, for $c_pformat $c_op $c_pformat\\n",
+		       expected_result, result, $print_cast{$_} source1_$_, $print_cast{$_} source2_$_);
+		dill_dump(c);
+		failed++;
+	    }
+$br_label	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub convert {
+    local($from_types, $to_types) = @_;
+    foreach (split(' ', $from_types)) {
+	$from = $_;
+	foreach (split(' ', $to_types)) {
+	    if (${from} eq ${_}) { 
+	        next;
+	    } 
+
+	    $dill_type = "DILL_".&upperc(${_});
+            $to = $_;
+	    $dill_to_type = "DILL_".&upperc(${_});
+	    $c_to_type = $c_types{${to}};
+	    $c_from_type = $c_types{${from}};
+	    $c_from_arg_type = $c_arg_types{${from}};
+	    $c_to_pformat = $c_print_formats{${to}};
+	    $c_from_pformat = $c_print_formats{${from}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "$drisc_arg_formats{${from}}";
+	    $full_op = "cv${from}2${to}";
+	    print COUT "\n    /* test for dill_$full_op */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$full_op\");\n";
+	    $vals = "src1${from}_vals";
+	    print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+	    print COUT "        $c_from_type source1_$from = $vals\[i\];\n";
+	    $result_if = "if (expected_result != result)";
+	    $range_decl = "";
+	    if ($to eq "f") {
+		$result_if = "if ((result > (expected_result + range)) || (result < (expected_result - range)))";
+		$range_decl ="double range = 0.000001 * fabs((double)source1_$from);";
+	    }
+		
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+	{
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, dest;
+	    $c_to_type result;
+	    $c_to_type expected_result;
+	    $c_to_type (*proc)(dill_exec_ctx ec, $c_from_arg_type a);
+	    dill_exec_handle h;
+	    $range_decl
+	    if (verbose) {printf(".");fflush(stdout);}
+
+	    dill_start_proc(c, "no name", $dill_type, "%EC$arg_str");
+	    opnd1 = dill_param_reg(c, 1);
+	    dest = dill_getreg(c, $dill_to_type);
+	    dill_$full_op(c, dest, opnd1);
+	    dill_ret${to}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_to_type(*)(dill_exec_ctx, $c_from_arg_type)) dill_get_fp(h);
+	    expected_result = ($c_to_type) source1_${from};
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, source1_$from);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    $result_if {
+		printf("Failed dill_$full_op test, expected $c_to_pformat, got $c_to_pformat, for ($c_to_type) $c_from_pformat\\n",
+		       $print_cast{$to} expected_result, $print_cast{$to} result, $print_cast{$from} source1_$from);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	}
+    }
+}
+
+sub load {
+    local ($type_list) = @_;
+    foreach(("", "i")) {
+	$imm = $_;
+	$dill_op = "ld";
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "%p";
+	    $full_op = "${dill_op}${_}$imm";
+	    print COUT "\n    /* test for dill_$full_op */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$full_op\");\n";
+	    $vals = "src1${_}_vals";
+	    print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+	    print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    if ($imm eq 'i') {
+		$vals = "bit_pattern_vals";
+	    } else {
+		$vals = "src1l_vals";
+	    }
+	    print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+	    print COUT "            IMM_TYPE offset = $vals\[j\];\n";
+	    if ($imm eq 'i') {
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+	        print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, dest;
+	    $c_type result;
+	    $c_type expected_result;
+	    $c_type (*proc)(dill_exec_ctx ec, void *p);
+	    dill_exec_handle h;
+            void *p;
+
+	    offset &= ~3;
+	    p = ((char*)&source1_$_) - offset;
+	    if (verbose) {printf(".");fflush(stdout);}
+	    dill_start_proc(c, "no name", $dill_type, "%EC%p");
+	    opnd1 = dill_param_reg(c, 1);
+	    dest = dill_getreg(c, $dill_type);
+	    dill_${full_op}(c, dest, opnd1, offset);
+	    dill_ret${_}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_type(*)(dill_exec_ctx, void*)) dill_get_fp(h);
+	    expected_result = source1_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, p);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$dill_op${_}i test, expected $c_pformat, got $c_pformat, for loading $c_pformat at offset %zx\\n",
+		       expected_result, result, source1_$_, offset);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	    } else {
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+	        print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, opnd2, dest;
+	    $c_type result;
+	    $c_type expected_result;
+	    $c_type (*proc)(dill_exec_ctx, void*);
+            void *p = ((char*)&source1_$_) - offset;
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+	    dill_start_proc(c, "no name", $dill_type, "%EC%p");
+	    opnd1 = dill_param_reg(c, 1);
+	    dest = dill_getreg(c, $dill_type);
+	    opnd2 = dill_getreg(c, DILL_P);
+	    dill_setl(c, opnd2, offset);
+	    dill_${full_op}(c, dest, opnd1, opnd2);
+	    dill_ret${_}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_type(*)(dill_exec_ctx, void*)) dill_get_fp(h);
+	    expected_result = source1_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec, p);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$dill_op${_} test, expected $c_pformat, got $c_pformat, for loading $c_pformat\\n",
+		       expected_result, result, source1_$_);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	    }
+	}
+    }
+}
+sub store {
+    local ($type_list) = @_;
+    foreach(("", "i")) {
+	$imm = $_;
+	$dill_op = "st";
+	foreach(split(' ', $type_list)) {
+	    $dill_type = "DILL_".&upperc(${_});
+	    $c_type = $c_types{${_}};
+	    $c_pformat = $c_print_formats{${_}};
+	    $line = __LINE__ + 3;
+	    $arg_str = "%p";
+	    $full_op = "${dill_op}${_}$imm";
+	    print COUT "\n    /* test for dill_$full_op */\n";
+	    print COUT "    if (verbose) printf(\"test for dill_$full_op\");\n";
+	    $vals = "src1${_}_vals";
+	    print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+	    print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	    if ($imm eq 'i') {
+		$vals = "bit_pattern_vals";
+	    } else {
+		$vals = "src1l_vals";
+	    }
+	    print COUT "        for (j=0 ; j < sizeof($vals)/sizeof($vals\[0\]) ; j++) {\n";
+	    print COUT "            IMM_TYPE offset = $vals\[j\];\n";
+	    if ($imm eq 'i') {
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+	        print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, opnd2;
+	    $c_type result = 0;
+	    $c_type expected_result;
+	    void (*proc)(dill_exec_ctx ec, void*p, $c_type a);
+            void *p;
+	    dill_exec_handle h;
+
+	    offset &= ~3;
+	    p = ((char*)&result) - offset;
+	    if (verbose) {printf(".");fflush(stdout);}
+	    dill_start_proc(c, "no name", DILL_V, "%EC%p$drisc_arg_formats{${_}}");
+	    opnd1 = dill_param_reg(c, 1);
+	    opnd2 = dill_param_reg(c, 2);
+	    dill_${full_op}(c, opnd2, opnd1, offset);
+	    dill_retii(c, 0);
+	    
+	    h = dill_finalize(c);
+	    proc = (void (*)(dill_exec_ctx, void *, $c_type)) dill_get_fp(h);
+	    expected_result = source1_$_;
+
+	    ec = dill_get_exec_context(c);
+	    proc(ec, p, source1_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$dill_op${_}$imm test, expected $c_pformat, got $c_pformat, for storing $c_pformat\\n",
+		       expected_result, result, source1_$_);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	    } else {
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+	        print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, opnd2, source;
+	    $c_type result = 0;
+	    $c_type expected_result;
+	    void (*proc)(dill_exec_ctx ec, void *p, $c_type a);
+            void *p = ((char*)&result) - offset;
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+	    dill_start_proc(c, "no name", DILL_V, "%EC%p$drisc_arg_formats{${_}}");
+	    opnd1 = dill_param_reg(c, 1);
+	    source = dill_param_reg(c, 2);
+	    opnd2 = dill_getreg(c, DILL_P);
+	    dill_setl(c, opnd2, offset);
+	    dill_${full_op}(c, source, opnd1, opnd2);
+	    dill_retii(c, 0);
+	    
+	    h = dill_finalize(c);
+	    proc = (void (*)(dill_exec_ctx, void *, $c_type)) dill_get_fp(h);
+	    expected_result = source1_$_;
+
+	    ec = dill_get_exec_context(c);
+	    proc(ec, p, source1_$_);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed dill_$dill_op${_} test, expected $c_pformat, got $c_pformat, for storing $c_pformat\\n",
+		       expected_result, result, source1_$_);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+	    }
+	}
+    }
+}
+
+sub setmovret {
+    local ($type_list) = @_;
+    foreach(split(' ', $type_list)) {
+	$dill_type = "DILL_".&upperc(${_});
+	$c_type = $c_types{${_}};
+	$c_pformat = $c_print_formats{${_}};
+	$arg_str = "$drisc_arg_formats{${_}}";
+	print COUT "\n    /* test for set/mov/ret ${_} */\n";
+	print COUT "    if (verbose) printf(\"test for set/mov/ret ${_}\");\n";
+	$vals = "src1${_}_vals";
+	print COUT "    for (i=0 ; i < sizeof($vals)/sizeof($vals\[0\]) ; i++) {\n";
+	print COUT "        $c_type source1_$_ = $vals\[i\];\n";
+	print COUT "        {\n";
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+
+	    dill_exec_ctx ec;
+	    dill_reg opnd1, dest;
+	    $c_type result;
+	    $c_type expected_result;
+	    $c_type (*proc)(dill_exec_ctx ec);
+	    dill_exec_handle h;
+
+	    if (verbose) {printf(".");fflush(stdout);}
+	    dill_start_proc(c, "no name", $dill_type, "%EC");
+	    opnd1 = dill_getreg(c, $dill_type);
+	    dest = dill_getreg(c, $dill_type);
+	    dill_set${_}(c, opnd1, source1_$_);
+	    dill_mov${_}(c, dest, opnd1);
+	    dill_ret${_}(c, dest);
+	    
+	    h = dill_finalize(c);
+	    proc = ($c_type(*)(dill_exec_ctx)) dill_get_fp(h);
+	    expected_result = source1_$_;
+
+	    ec = dill_get_exec_context(c);
+	    result = proc(ec);
+	    dill_free_handle(h);
+	    dill_free_exec_context(ec);
+	    if (expected_result != result) {
+		printf("Failed set/mov/ret ${_} test, expected $c_pformat, got $c_pformat\\n",
+		       expected_result, result);
+		dill_dump(c);
+		failed++;
+	    }
+	}
+    }
+    if (verbose) printf(" done\\n");
+EOF
+    }
+}
+
+sub output_header {
+    open(COUT, ">general.c") || die "Can't open test output";
+print COUT<<EOF;
+/* This file is generated from general.ops.  Do not edit directly. */
+
+#include "config.h"
+#include "dill.h"
+#include "stdio.h"
+#include "math.h"
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+#include <stdint.h>
+
+#ifdef _MSC_VER
+#include <stdlib.h>
+#define srand48(s) srand(s)
+#define drand48() (rand()*(1./RAND_MAX))
+#define lrand48() ((long long)rand() << 32 | rand())
+#define kill(x,y) 
+#else
+extern double drand48();
+extern IMM_TYPE lrand48();
+void srand48(IMM_TYPE seedval);
+#endif
+
+int
+main(int argc, char **argv)
+{
+    dill_stream c = dill_create_stream();
+    int failed = 0, verbose = 0;
+    size_t i, j;
+EOF
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+    foreach $dill_type (keys %c_types) {
+        $c_type = $c_types{$dill_type};
+        $rand_type = $rand_types{$dill_type};
+        print COUT "    $c_type rand1_$dill_type = ($c_type)${rand_type}rand48();\n";
+	print COUT "    $c_type rand2_$dill_type = ($c_type)${rand_type}rand48();\n";
+	print COUT "    $c_type src1${dill_type}_vals[2];\n";
+	print COUT "    $c_type src2${dill_type}_vals[2];\n";
+	print COUT "    $c_type br_src${dill_type}_vals[6];\n";
+    }
+    print COUT "    int sh_src2_vals[] = {";
+    for (0..62) {
+	print COUT " $_,";
+    }
+    print COUT " 63};\n\n";
+
+    print COUT "    UIMM_TYPE bit_pattern_vals[] = {";
+    for (0..31) {
+	printf COUT " 0x%x, 0x%x, ",(1<<$_), ((1<<$_) - 1);
+    }
+    print COUT " 0xffffffff};\n\n";
+
+    foreach $dill_type (split(' ', "f d c s i l")) {
+        $c_type = $c_types{$dill_type};
+	print COUT "    src1${dill_type}_vals[0] = rand1_$dill_type;\n";
+	print COUT "    src1${dill_type}_vals[1] = -rand1_$dill_type;\n";
+	print COUT "    src2${dill_type}_vals[0] = rand2_$dill_type;\n";
+	print COUT "    src2${dill_type}_vals[1] = -rand2_$dill_type;\n";
+    }
+	%u_casts = ('uc', '(char)', 'us', '(short)', 'u', '(int)', 'ul', '(intptr_t)');
+    foreach $dill_type (split(' ', "uc us u ul")) {
+        $c_type = $c_types{$dill_type};
+
+	print COUT "    src1${dill_type}_vals[0] = ($c_type) rand1_$dill_type;\n";
+	print COUT "    src1${dill_type}_vals[1] = ($c_type) - $u_casts{$dill_type} rand1_$dill_type;\n";
+	print COUT "    src2${dill_type}_vals[0] = ($c_type) rand2_$dill_type;\n";
+	print COUT "    src2${dill_type}_vals[1] = ($c_type) - $u_casts{$dill_type} rand2_$dill_type;\n";
+    }
+    foreach $dill_type (split(' ', "uc c us s i u l ul d f")) {
+        $c_type = $c_types{$dill_type};
+	print COUT "    br_src${dill_type}_vals[0] = ($c_type) rand1_$dill_type;\n";
+	print COUT "    br_src${dill_type}_vals[1] = ($c_type) - $u_casts{$dill_type} rand1_$dill_type;\n";
+	print COUT "    br_src${dill_type}_vals[2] = ($c_type) rand1_$dill_type + 1;\n";
+	print COUT "    br_src${dill_type}_vals[3] = ($c_type) -($u_casts{$dill_type} rand1_$dill_type) + 1;\n";
+	print COUT "    br_src${dill_type}_vals[4] = ($c_type) rand1_$dill_type - 1;\n";
+	print COUT "    br_src${dill_type}_vals[5] = ($c_type) -($u_casts{$dill_type} rand1_$dill_type) - 1;\n";
+    }
+    $dill_type = 'p';
+    $c_type = $c_types{'p'};
+    print COUT "    br_src${dill_type}_vals[0] = ($c_type) rand1_$dill_type;\n";
+    print COUT "    br_src${dill_type}_vals[1] = ($c_type) rand1_$dill_type;\n";
+    print COUT "    br_src${dill_type}_vals[2] = ($c_type) rand1_$dill_type + 1;\n";
+    print COUT "    br_src${dill_type}_vals[3] = ($c_type) rand1_$dill_type + 1;\n";
+    print COUT "    br_src${dill_type}_vals[4] = ($c_type) rand1_$dill_type - 1;\n";
+    print COUT "    br_src${dill_type}_vals[5] = ($c_type) rand1_$dill_type - 1;\n";
+
+# print COUT "# line ". (__LINE__ + 2) . " \"general.ops\"\n";
+print COUT<<EOF;
+    /* reference these values since they currently aren't done elsewhere */
+    src2p_vals[0] = src1p_vals[0] = rand1_p; src2p_vals[1] = src1p_vals[1] = rand2_p;
+    (void)src2d_vals[0];
+    (void)src2s_vals[0];
+    (void)src2p_vals[0];
+    (void)src2c_vals[0];
+    (void)src2uc_vals[0];
+    (void)src2us_vals[0];
+    (void)src2f_vals[0];
+    if (argc > 1) verbose++;
+EOF
+    %c_src2_values = ("rshi", "sh_src2_vals", "rshl", "sh_src2_vals", 
+		      "rshu", "sh_src2_vals", "rshul", "sh_src2_vals",
+		      "rshii", "sh_src2_vals", "rshli", "sh_src2_vals", 
+		      "rshui", "sh_src2_vals", "rshuli", "sh_src2_vals",
+		      "lshi", "sh_src2_vals", "lshl", "sh_src2_vals", 
+		      "lshu", "sh_src2_vals", "lshul", "sh_src2_vals",
+		      "lshii", "sh_src2_vals", "lshli", "sh_src2_vals", 
+		      "lshui", "sh_src2_vals", "lshuli", "sh_src2_vals");
+    foreach $dill_op (split(' ', "add sub mul div mod and or xor")) {
+        foreach $dill_type (split(' ', "i u l ul")) {
+	    $full_op = "${dill_op}${dill_type}i";
+	    $c_src2_values{"$full_op"} = "bit_pattern_vals";
+	}
+        foreach $dill_type (split(' ', "i u l ul")) {
+	    $full_op = "${dill_op}${dill_type}";
+	    $c_src2_values{"$full_op"} = "src2${dill_type}_vals";
+	    $c_src1_values{"$full_op"} = "src1${dill_type}_vals";
+	}
+    }
+    foreach $dill_type (split(' ', "uc c us s i u l ul d f p")) {
+	$full_op = "br${dill_type}";
+	$c_src2_values{"$full_op"} = "br_src${dill_type}_vals";
+	$c_src1_values{"$full_op"} = "br_src${dill_type}_vals";
+    }
+}

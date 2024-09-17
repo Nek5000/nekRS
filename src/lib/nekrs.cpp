@@ -14,6 +14,7 @@
 #include "hypreWrapper.hpp"
 #include "hypreWrapperDevice.hpp"
 #include "compileKernels.hpp"
+#include "tavg.hpp"
 
 // define extern variable from nekrsSys.hpp
 platform_t *platform;
@@ -27,7 +28,6 @@ static int rank, size;
 static MPI_Comm commg, comm;
 
 static double currDt;
-static double lastCheckpointTime = 0;
 static int enforceLastStep = 0;
 static int enforceCheckpointStep = 0;
 static bool initialized = false;
@@ -103,7 +103,6 @@ namespace nekrs
 
 void reset()
 {
-  lastCheckpointTime = 0;
   enforceLastStep = 0;
   enforceCheckpointStep = 0;
 }
@@ -138,10 +137,11 @@ void setup(MPI_Comm commg_in,
 
   if (rank == 0) {
     printHeader();
-    std::cout << "default FP precision: "; 
+    std::cout << "default FP precision: ";
     if (sizeof(dfloat) == sizeof(double)) {
       std::cout << "64" << std::endl;
-    } if (sizeof(dfloat) == sizeof(float)) {
+    }
+    if (sizeof(dfloat) == sizeof(float)) {
       std::cout << "32" << std::endl;
     }
 
@@ -336,9 +336,10 @@ void setup(MPI_Comm commg_in,
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if (rank == 0) {
     std::cout << "\noptions:\n"
-              << platform->options << std::endl
-              << "occa memory usage: " << platform->device.memoryUsage() / 1e9 << " GB" << std::endl;
+              << platform->options << std::endl;
   }
+
+  platform->device.printMemoryUsage(platform->comm.mpiComm);
 
   platform->flopCounter->clear();
 
@@ -358,7 +359,7 @@ void setup(MPI_Comm commg_in,
 
 void copyFromNek(double time, int tstep)
 {
-  nek::ocopyToNek(time, tstep);
+  nrs->ocopyToNek(time, tstep);
 }
 
 void udfExecuteStep(double time, int tstep, int isCheckpointStep)
@@ -384,7 +385,7 @@ void nekUserchk(void)
   nek::userchk();
 }
 
-double dt(int tstep)
+std::tuple<double, double> dt(int tstep)
 {
   dfloat dt_ = -1;
   platform->options.getArgs("DT", dt_);
@@ -414,10 +415,18 @@ double dt(int tstep)
     }
   }
 
+  // limit dt to 5 significant digits
+  dt_ = setPrecision(dt_, 5);
+
   if (nrs->neknek) {
-    // call only once as neknek doesn't support variable dt 
-    if (tstep == 1) dt_ = nrs->neknek->adjustDt(dt_); 
+    // call only once as neknek doesn't support variable dt
+    if (tstep == 1) {
+      dt_ = nrs->neknek->adjustDt(dt_);
+    }
   }
+
+  int innerSteps = 1;
+  platform->options.getArgs("NEKNEK MULTIRATE STEPS", innerSteps);
 
   nekrsCheck(dt_ < 1e-10 || std::isnan(dt_) || std::isinf(dt_),
              MPI_COMM_SELF,
@@ -425,9 +434,8 @@ double dt(int tstep)
              "Invalid time step size %.2e\n",
              dt_);
 
-  // limit dt to 5 significant digits
-  dt_ = setPrecision(dt_, 5);
-  return dt_;
+
+  return std::make_tuple(dt_, innerSteps * dt_);
 }
 
 double writeInterval(void)
@@ -446,12 +454,14 @@ int checkpointStep(double time, int tStep)
 {
   int outputStep = 0;
   if (writeControlRunTime()) {
+    static auto cnt = 1;
+
     double val;
     platform->options.getArgs("START TIME", val);
-    if (lastCheckpointTime == 0 && val > 0) {
-      lastCheckpointTime = val;
-    }
-    outputStep = ((time - lastCheckpointTime) + 1e-10) > nekrs::writeInterval();
+    if (cnt == 1 && val > 0) cnt = val/nekrs::writeInterval() + 1; 
+
+    outputStep = time > cnt*nekrs::writeInterval();
+    if (outputStep) cnt++;
   } else {
     if (writeInterval() > 0) {
       outputStep = (tStep % (int)writeInterval() == 0);
@@ -470,17 +480,9 @@ void checkpointStep(int val)
   nrs->isCheckpointStep = val;
 }
 
-int checkpointStep(double time, double dt, int tStep)
-{
-  int innerSteps = 1;
-  platform->options.getArgs("MULTIRATE STEPS", innerSteps);
-  return checkpointStep(time + innerSteps * dt, tStep);
-}
-
 void writeCheckpoint(double time, int step)
 {
   nrs->writeCheckpoint(time, step);
-  lastCheckpointTime = time;
 }
 
 double endTime(void)
@@ -512,11 +514,6 @@ int lastStep(double timeNew, int tstep, double elapsedTime)
   return nrs->lastStep;
 }
 
-void *platformPtr(void)
-{
-  return platform;
-}
-
 int runTimeStatFreq()
 {
   int freq = 500;
@@ -524,7 +521,7 @@ int runTimeStatFreq()
   return freq;
 }
 
-int printInfoFreq()
+int printStepInfoFreq()
 {
   int freq = 1;
   platform->options.getArgs("PRINT INFO FREQUENCY", freq);
@@ -618,12 +615,12 @@ void processUpdFile()
   }
 }
 
-void printInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo)
+void printStepInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo)
 {
-  nrs->printInfo(time, tstep, printStepInfo, printVerboseInfo);
+  nrs->printStepInfo(time, tstep, printStepInfo, printVerboseInfo);
 }
 
-void verboseInfo(bool enabled)
+void verboseStepInfo(bool enabled)
 {
   platform->options.setArgs("VERBOSE SOLVER INFO", "FALSE");
   if (enabled) {
@@ -678,15 +675,14 @@ int timeStep()
 double finalTimeStepSize(double time)
 {
   int innerSteps = 1;
-  platform->options.getArgs("MULTIRATE STEPS", innerSteps);
+  platform->options.getArgs("NEKNEK MULTIRATE STEPS", innerSteps);
 
   return (endTime() - time) / innerSteps;
 }
 
-double finishStep()
+void finishStep()
 {
   nrs->finishStep();
-  return nrs->timePrevious + setPrecision(currDt, 5);
 }
 
 bool stepConverged()
@@ -700,6 +696,8 @@ int finalize()
   if (platform->options.compareArgs("BUILD ONLY", "FALSE")) {
     nrs->finalize();
 
+    tavg::free();
+
     hypreWrapper::finalize();
     hypreWrapperDevice::finalize();
     AMGXfinalize();
@@ -708,7 +706,7 @@ int finalize()
 
   MPI_Allreduce(MPI_IN_PLACE, &exitValue, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
   if (platform->comm.mpiRank == 0) {
-    std::cout << "finished with exit code " << exitValue << std::endl;
+    std::cout << std::endl << "finished with exit code " << exitValue << std::endl;
   }
 
   return exitValue;

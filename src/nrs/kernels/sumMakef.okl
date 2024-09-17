@@ -1,4 +1,3 @@
-// BF := -rho/dt * v^* = sum{beta_j * nlt^n-j} + rho/dt * sum{alpha_j * v^n-j}
 @kernel void sumMakef(const dlong N,
                       const int isVelocity,
                       @ restrict const dfloat *massMatrix,
@@ -14,6 +13,7 @@
                       @ restrict const dfloat *FU,
                       @ restrict dfloat *BF)
 {
+  // BF := -1/dt * v^* = sum{beta_j * nlt^n-j} + 1/dt * sum{alpha_j * v^n-j}
   if (isVelocity) {
 
     for (dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)) {
@@ -38,7 +38,6 @@
         bdfz += coeffBDF[s] * JW * U[id + 2 * fieldOffset + s * fieldSumOffset];
      }
 #endif
-      const dfloat rho = RHO[id];
       dfloat nltx = 0;
       dfloat nlty = 0;
       dfloat nltz = 0;
@@ -47,20 +46,19 @@
 #if p_MovingMesh
         JW = massMatrix[id + s * fieldOffsetJW];
 #endif
-        // multiply by rho^n+1 here instead of using sum{beta_j * rho^n-j * nlt^n-j}
-        // relevant in case of a lowMach flow where rho^n+1 is only avaiable after solving for temperature
-        nltx += rho * JW * coeffEXT[s] * FU[id + 0 * fieldOffset + s * fieldSumOffset];
-        nlty += rho * JW * coeffEXT[s] * FU[id + 1 * fieldOffset + s * fieldSumOffset];
-        nltz += rho * JW * coeffEXT[s] * FU[id + 2 * fieldOffset + s * fieldSumOffset];
+        nltx += JW * coeffEXT[s] * FU[id + 0 * fieldOffset + s * fieldSumOffset];
+        nlty += JW * coeffEXT[s] * FU[id + 1 * fieldOffset + s * fieldSumOffset];
+        nltz += JW * coeffEXT[s] * FU[id + 2 * fieldOffset + s * fieldSumOffset];
       }
 
-      BF[id + 0 * fieldOffset] = nltx + rho * (idt * bdfx);
-      BF[id + 1 * fieldOffset] = nlty + rho * (idt * bdfy);
-      BF[id + 2 * fieldOffset] = nltz + rho * (idt * bdfz);
+      BF[id + 0 * fieldOffset] = nltx + idt * bdfx;
+      BF[id + 1 * fieldOffset] = nlty + idt * bdfy;
+      BF[id + 2 * fieldOffset] = nltz + idt * bdfz;
     }
 
   } else {
 
+    // BF := -rho/dt * v^* = sum{beta_j * nlt^n-j} + rho/dt * sum{alpha_j * v^n-j}
     for (dlong id = 0; id < N; ++id; @tile(p_blockSize, @outer, @inner)) {
       dfloat JW = massMatrix[id];
 
@@ -78,7 +76,6 @@
      }
 #endif
 
-      const dfloat rho = RHO[id + fieldOffset];
       dfloat nltx = 0;
 #pragma unroll p_nEXT
       for (int s = 0; s < p_nEXT; s++) {
@@ -89,7 +86,8 @@
         nltx += JW * coeffEXT[s] * FU[id + fieldOffset + s * fieldSumOffset];
       }
 
-      BF[id + fieldOffset] = nltx + rho * (idt * bdfx);
+      const dfloat rho = RHO[id + fieldOffset];
+      BF[id + fieldOffset] = nltx + rho * idt * bdfx;
     }
 
   }

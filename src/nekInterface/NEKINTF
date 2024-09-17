@@ -1,0 +1,8 @@
+      common /nekmpi/ mid,mp,nekcomm,nekgroup,nekreal
+      integer         mid,mp,nekcomm,nekgroup,nekreal
+
+      common /c_is1/  glo_num((2**ldim)*lelt)
+      integer*8       glo_num
+
+      common /INTNRS/ getxr, getur, getpr, gettr, gtpsr(ldimt-1)
+      integer         getxr, getur, getpr, gettr, gtpsr

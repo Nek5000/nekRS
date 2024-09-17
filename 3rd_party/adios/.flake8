@@ -1,0 +1,6 @@
+[flake8]
+max-line-length = 100
+max-complexity = 1000
+format = pylint
+ignore = E302,F401,F403,F405,F999,W504
+exclude = thirdparty/,.gitlab/config/SpackCIBridge.py

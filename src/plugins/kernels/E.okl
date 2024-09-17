@@ -1,12 +1,50 @@
-@kernel void EXYZ(const dlong N,
-                 const dlong offset,
-                 const dlong Nfields,
-                 const dfloat a,
-                 const dfloat b,
-                 @ restrict const dfloat *X,
-                 @ restrict const dfloat *Y,
-                 @ restrict const dfloat *Z,
-                 @ restrict dfloat *OUT)
+@kernel void E1(const dlong N,
+                const dlong offset,
+                const dlong Nfields,
+                const dfloat a,
+                const dfloat b,
+                @ restrict const dfloat *X,
+                @ restrict double *OUT)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+    if (n < N) {
+      for (dlong fld = 0; fld < Nfields; ++fld) {
+        const dlong id = n + fld * offset;
+        const dfloat xn = X[id];
+        OUT[id] = a * OUT[id] + b * xn;
+      }
+    }
+}
+
+@kernel void E2(const dlong N,
+                const dlong offset,
+                const dlong Nfields,
+                const dfloat a,
+                const dfloat b,
+                @ restrict const dfloat *X,
+                @ restrict const dfloat *Y,
+                @ restrict double *OUT)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
+    if (n < N) {
+      for (dlong fld = 0; fld < Nfields; ++fld) {
+        const dlong id = n + fld * offset;
+        const dfloat xn = X[id];
+        const dfloat yn = Y[id];
+        OUT[id] = a * OUT[id] + b * xn * yn;
+      }
+    }
+}
+
+@kernel void E3(const dlong N,
+                const dlong offset,
+                const dlong Nfields,
+                const dfloat a,
+                const dfloat b,
+                @ restrict const dfloat *X,
+                @ restrict const dfloat *Y,
+                @ restrict const dfloat *Z,
+                @ restrict double *OUT)
 {
   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
     if (n < N) {
@@ -20,45 +58,6 @@
     }
 }
 
-
-@kernel void EXY(const dlong N,
-                 const dlong offset,
-                 const dlong Nfields,
-                 const dfloat a,
-                 const dfloat b,
-                 @ restrict const dfloat *X,
-                 @ restrict const dfloat *Y,
-                 @ restrict dfloat *OUT)
-{
-  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
-    if (n < N) {
-      for (dlong fld = 0; fld < Nfields; ++fld) {
-        const dlong id = n + fld * offset;
-        const dfloat xn = X[id];
-        const dfloat yn = Y[id];
-        OUT[id] = a * OUT[id] + b * xn * yn;
-      }
-    }
-}
-
-@kernel void EX(const dlong N,
-                const dlong offset,
-                const dlong Nfields,
-                const dfloat a,
-                const dfloat b,
-                @ restrict const dfloat *X,
-                @ restrict dfloat *OUT)
-{
-  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
-    if (n < N) {
-      for (dlong fld = 0; fld < Nfields; ++fld) {
-        const dlong id = n + fld * offset;
-        const dfloat xn = X[id];
-        OUT[id] = a * OUT[id] + b * xn;
-      }
-    }
-}
-
 @kernel void E4(const dlong N,
                 const dlong offset,
                 const dlong Nfields,
@@ -68,7 +67,7 @@
                 @ restrict const dfloat *X2,
                 @ restrict const dfloat *X3,
                 @ restrict const dfloat *X4,
-                @ restrict dfloat *OUT)
+                @ restrict double *OUT)
 {
   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner))
     if (n < N) {

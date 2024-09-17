@@ -113,19 +113,14 @@ void registerCommonMGPreconditionerKernels(int N, occa::properties kernelInfo, i
   const bool serial = platform->serial;
   const std::string extension = serial ? ".c" : ".okl";
 
-  int M;
-  platform->options.getArgs("POLYNOMIAL DEGREE", M);
+  int p;
+  platform->options.getArgs("POLYNOMIAL DEGREE", p);
 
-  {
+  if (N != p){
     std::string fileName;
     const std::string oklpath = getenv("NEKRS_KERNEL_DIR");
 
     auto meshKernelInfo = platform->kernelInfo + meshKernelProperties(N);
-
-    int cubN = 0;
-    const auto cubNq = cubN + 1;
-    meshKernelInfo["defines/p_cubNq"] = cubNq;
-    meshKernelInfo["defines/p_cubNp"] = cubNq * cubNq * cubNq;
 
     kernelName = "geometricFactorsHex3D";
     fileName = oklpath + "/mesh/" + kernelName + ".okl";
@@ -235,27 +230,15 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N, in
   const std::string optionsPrefix = createOptionsPrefix(section);
 
   const int Nc = N;
-  auto gen_suffix = [N](const char *floatString) {
-    const std::string precision = std::string(floatString);
-    if (precision.find(pfloatString) != std::string::npos) {
-      return std::string("_") + std::to_string(N) + std::string("pfloat");
-    }
-    else {
-      return std::string("_") + std::to_string(N);
-    }
-  };
 
   occa::properties kernelInfo = platform->kernelInfo + meshKernelProperties(N);
-
   const std::string suffix = "Hex3D";
-
   std::string fileName, kernelName;
 
   const std::string oklpath = getenv("NEKRS_KERNEL_DIR") + std::string("/elliptic/");
   registerCommonMGPreconditionerKernels(N, kernelInfo, poissonEquation);
 
   const bool serial = platform->serial;
-
   const std::string fileNameExtension = (serial) ? ".c" : ".okl";
 
   {

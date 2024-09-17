@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<adios-config>
+    <io name="checkpoint">
+        <engine type="BP4">
+            <parameter key="SubStreams" value="16"/>
+        </engine>
+    </io>
+</adios-config>

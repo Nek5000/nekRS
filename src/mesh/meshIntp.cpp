@@ -33,7 +33,7 @@ occa::memory mesh_t::intpMatrix(std::vector<dfloat> M)
   return o_J[M.size() - 1];
 }
 
-void mesh_t::interpolate(mesh_t *mesh, const occa::memory& o_z, occa::memory& o_zM)
+void mesh_t::interpolate(const occa::memory& o_z, mesh_t *mesh, occa::memory& o_zM)
 {
   std::vector<dfloat> M(mesh->Nq);
   for(int i = 0; i < M.size(); i++) M[i] = mesh->r[i];
@@ -44,7 +44,7 @@ void mesh_t::interpolate(mesh_t *mesh, const occa::memory& o_z, occa::memory& o_
   this->intpKernel[mesh->N](nel, intpMatrix(M), o_z, o_zM);
 }
 
-void mesh_t::map2Uniform(mesh_t *meshU, const occa::memory& o_z, occa::memory& o_zU)
+void mesh_t::map2Uniform(const occa::memory& o_z, mesh_t *meshU, occa::memory& o_zU)
 {
   const auto Nu = meshU->N;
 
@@ -65,5 +65,5 @@ void mesh_t::map2Uniform(mesh_t *meshU, const occa::memory& o_z, occa::memory& o
 
 void mesh_t::map2Uniform(const occa::memory& o_z, occa::memory& o_zU)
 {
-  map2Uniform(this, o_z, o_zU); 
+  map2Uniform(o_z, this, o_zU); 
 }

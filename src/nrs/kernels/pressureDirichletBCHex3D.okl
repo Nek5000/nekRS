@@ -72,7 +72,7 @@
           bc.diff = mue[idM];
 
           bc.p = 0;
-          pressureDirichletConditions(&bc);
+          codedFixedValuePressure(&bc);
           PI[idM] = bc.p;
         }
       }

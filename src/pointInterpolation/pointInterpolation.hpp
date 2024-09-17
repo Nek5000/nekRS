@@ -13,20 +13,17 @@ class pointInterpolation_t
 public:
   enum class VerbosityLevel { None, Basic, Detailed };
   pointInterpolation_t(mesh_t *mesh,
-                       double bb_tol = 0.01,
-                       double newton_tol_ = 0,
+                       MPI_Comm comm,
                        bool mySession_ = true,
-                       dlong sessionID_ = 0,
-                       bool multipleSessionSupport_ = false);
+                       std::vector<int> bIntID = {});
   pointInterpolation_t(mesh_t *mesh_,
                        MPI_Comm comm,
                        dlong localHashSize,
                        dlong globalHashSize,
                        double bb_tol = 0.01,
-                       double newton_tol_ = 0,
+                       double newton_tol = 0,
                        bool mySession_ = true,
-                       dlong sessionID_ = 0,
-                       bool multipleSessionSupport_ = false);
+                       std::vector<int> bIntID = {});
   ~pointInterpolation_t() = default;
 
   // Finds the process, element, and reference coordinates of the given points
@@ -72,8 +69,8 @@ public:
   // this is used to prefix the timer names
   void setTimerName(std::string name);
 
-  // for multi-session cases, query distance function to "int" bounds
-  occa::memory distance();
+  // for multi-session cases, query distance function to "INT" bounds
+  occa::memory distanceINT();
 
 private:
   mesh_t *mesh;
@@ -83,8 +80,6 @@ private:
   std::unique_ptr<findpts::findpts_t> findpts_;
   findpts::data_t data_;
   bool mySession;
-  dlong sessionID;
-  bool multipleSessionSupport;
 
   bool findCalled = false;
 
@@ -105,7 +100,7 @@ private:
   occa::memory _o_y;
   occa::memory _o_z;
   occa::memory _o_session;
-  occa::memory _o_distance;
+  occa::memory _o_distanceINT;
 
   // for storing host points to output when a particle leaves the domain
   std::vector<dfloat> h_x_vec;

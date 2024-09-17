@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!-- Config XML file for the  
+     - operator API using Zfp compression rate
+     executables in build/bin -->
+
+<adios-config>
+
+     <!--====================================
+          Create operator inside ADIOS object 
+          using this config file 
+         ====================================-->
+	<operator name="CompressorZfp" type="zfp">
+	</operator>
+
+    <!--====================================
+           Apply to variables inside an IO
+           for as an operation  
+        ====================================-->
+    <io name="TestIO">
+        
+        <variable name="r32">
+        	<operation operator="CompressorZfp">
+        		<parameter key="rate" value="10"/>	
+        	</operation>
+        </variable>
+        
+        <variable name="r64">
+        	<operation operator="CompressorZfp">
+        		<parameter key="rate" value="20"/>	
+        	</operation>
+        </variable>
+    </io>
+    
+</adios-config>

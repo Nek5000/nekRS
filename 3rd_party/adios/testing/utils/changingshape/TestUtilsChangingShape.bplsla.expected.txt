@@ -1,0 +1,5 @@
+  double   AlternatingStepsAndChangingShapeVar  5*{1, __} = 0 / 8.1
+  double   AlternatingStepsVar                  5*{1, 8} = 0 / 8.07
+  double   ChangingShapeVar                     10*{1, __} = 0 / 9.11
+  double   FixedShapeVar                        10*{1, 8} = 0 / 9.07
+  double   SingleStepVar                        {1, 8} = 0 / 0.07

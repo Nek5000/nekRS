@@ -1,0 +1,53 @@
+usage: bpls [OPTIONS] file [mask1 mask2 ...]
+
+List/dump content of a BP/HDF5 file. 
+A mask can be a shell pattern like with 'ls' e.g. "*/x?".
+Variables with multiple timesteps are reported with an extra dimensions.
+The time dimension is the first dimension then.
+
+  --long      | -l           Print values of all scalars and attributes and
+                               min/max values of arrays (no overhead to get them!)
+  --attrs     | -a           List/match attributes too
+  --attrsonly | -A           List attributes only
+  --meshes    | -m           List meshes
+  --timestep  | -t           Read content step by step (stream reading)
+  --ignore_flatten           Display steps as written (don't flatten, even if writer said to)
+  --dump      | -d           Dump matched variables/attributes
+                               To match attributes too, add option -a
+  --regexp    | -e           Treat masks as extended regular expressions
+  --output    | -o <path>    Print to a file instead of stdout
+  --start     | -s "spec"    Offset indices in each dimension 
+                               (default is 0 for all dimensions) 
+                               <0 is handled as in python (-1 is last)
+  --count     | -c "spec"    Number of elements in each dimension
+                               -1 denotes 'until end' of dimension
+                               (default is -1 for all dimensions)
+  --noindex   | -y           Print data without array indices
+  --string    | -S           Print 8bit integer arrays as strings
+  --columns   | -n "cols"    Number of data elements per row to print
+  --format    | -f "str"     Format string to use for one data item in print
+                               instead of the default. E.g. "%6.3f"
+  --hidden_attrs             Show hidden ADIOS attributes in the file
+  --decomp    | -D           Show decomposition of variables as layed out in file
+  --error     | -X string    Specify read accuracy (error,norm,rel|abs)
+                             e.g. error="0.0,0.0,abs"
+                             L2 norm = 0.0, Linf = inf
+  --transport-parameters | -T         Specify File transport parameters
+                                      e.g. "Library=stdio"
+  --engine               | -E <name>  Specify ADIOS Engine
+  --engine-params        | -P string  Specify ADIOS Engine Parameters
+                                      e.g. "SelectSteps=0:n:2"
+  Examples for slicing:
+  -s "0,0,0"   -c "1,99,1":  Print 100 elements (of the 2nd dimension).
+  -s "0,0"     -c "1,-1":    Print the whole 2nd dimension however large it is.
+  -s "-1,-1"   -c "1,1":     Print the very last element (of a 2D array)
+
+Help options
+  --help      | -h           Print this help.
+  --verbose   | -v           Print log about what this program is doing.
+                               Use multiple -v to increase logging level.
+  --version   | -V           Print version information; compatible  with
+                               --verbose for additional information, i.e.
+                               -v --version.
+
+Typical use: bpls -lav <file>

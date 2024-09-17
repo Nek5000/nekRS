@@ -131,7 +131,7 @@ void velRecycling::setup(occa::memory o_wrk_,
   // relies on a special global element numbering (extruded mesh)
   auto ids = (hlong *)calloc(Ntotal, sizeof(hlong));
   for (int e = 0; e < mesh->Nelements; e++) {
-    const hlong eg = nek::lglel(e); // 0-based
+    auto eg = nek::localElementIdToGlobal(e);
 
     for (int n = 0; n < mesh->Np; n++) {
       ids[e * mesh->Np + n] = eg * mesh->Np + (n + 1);
@@ -207,7 +207,7 @@ void velRecycling::setup(occa::memory o_wrk_,
   }
   o_maskIds.copyFrom(maskIds.data());
 
-  interp = new pointInterpolation_t(mesh);
+  interp = new pointInterpolation_t(mesh, platform->comm.mpiComm);
 
   auto o_xBid = platform->device.malloc<dfloat>(nPoints, xBid.data());
   auto o_yBid = platform->device.malloc<dfloat>(nPoints, yBid.data());

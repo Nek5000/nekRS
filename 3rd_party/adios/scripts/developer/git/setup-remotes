@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+GH_UPSTREAM_URL=$(git remote show origin | grep "Fetch URL" | sed 's|.*: \(.*\)|\1|')
+BRANCH="$(git branch | sed -n 's|^\* \(.*\)|\1|p')"
+if [ "${GH_UPSTREAM_URL}" != "https://github.com/ornladios/ADIOS2.git" ] || \
+   [ "${BRANCH}" != "master" ]
+then
+  echo "  Warning: This script is intended to run off of the master branch"
+  echo "           of the upstream repository.  Setup might not work as"
+  echo "           expected otherwise."
+fi
+
+read -p "Enter your GitHub username: " GH_USERNAME
+if [ -z "${GH_USERNAME}" ]
+then
+  echo "  Error: GitHub username cannot be empty."
+  exit 1
+fi
+git remote set-url origin https://github.com/${GH_USERNAME}/ADIOS2.git
+
+echo "Testing SSH access to GitHub..."
+ssh -o ConnectTimeout=10 -T git@github.com 2>/dev/null
+if [ $? -eq 1 ]
+then
+  echo "Success!  Setting up SSH push access to your fork."
+  git config remote.origin.pushurl "git@github.com:${GH_USERNAME}/ADIOS2.git"
+else
+  echo "SSH access failed.  Setting up HTTPS push access instead"
+  git config remote.origin.pushurl https://${GH_USERNAME}@github.com/${GH_USERNAME}/ADIOS2.git
+fi
+
+
+if git remote show upstream > /dev/null 2>&1
+then
+  echo "  Warning: upstream remote already exists; replacing..."
+  git remote rm upstream
+fi
+git remote add upstream https://github.com/ornladios/ADIOS2.git
+
+echo "Re-configuring local master branch to use upstream"
+git config branch.master.remote upstream
+git config branch.master.mergeOptions "--ff-only"
+git config merge.log 100
+git fetch --all -p
+
+exit 0

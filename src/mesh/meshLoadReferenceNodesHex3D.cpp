@@ -24,8 +24,8 @@
 
  */
 
+#include "platform.hpp"
 #include "mesh3D.h"
-#include <cstring>
 #define NODE_GEN
 
 void meshLoadReferenceNodesHex3D(mesh_t *mesh, int N, int cubN)
@@ -79,7 +79,11 @@ void meshLoadReferenceNodesHex3D(mesh_t *mesh, int N, int cubN)
     mesh->cubInterp = (dfloat*) calloc(mesh->Nq * mesh->cubNq, sizeof(dfloat));
     InterpolationMatrix1D(mesh->N, mesh->Nq, mesh->r, mesh->cubNq, mesh->cubr, mesh->cubInterp); //uses the fact that r = gllz for 1:Nq
     mesh->cubProject = (dfloat*) calloc(mesh->cubNq * mesh->Nq, sizeof(dfloat));
-    matrixTranspose(mesh->cubNq, mesh->Nq, mesh->cubInterp, mesh->Nq, mesh->cubProject, mesh->cubNq);
+
+    std::vector<dfloat> cubInterp( mesh->cubInterp,  mesh->cubInterp + mesh->Nq * mesh->cubNq);
+    auto cubProject = platform->linAlg->matrixTranspose(mesh->Nq, cubInterp);
+    for (size_t i = 0; i < cubProject.size(); ++i) mesh->cubProject[i] = cubProject[i]; 
+    //matrixTranspose(mesh->cubNq, mesh->Nq, mesh->cubInterp, mesh->Nq, mesh->cubProject, mesh->cubNq);
  
     //cubature derivates matrix, cubD: differentiate on cubature nodes
     mesh->cubD = (dfloat*) malloc(mesh->cubNq * mesh->cubNq * sizeof(dfloat));

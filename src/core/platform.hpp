@@ -1,7 +1,6 @@
 #ifndef platform_hpp_
 #define platform_hpp_
 #include <set>
-#include <memory>
 #include "nekrsSys.hpp"
 #include "QQt.hpp"
 #include "flopCounter.hpp"
@@ -63,6 +62,8 @@ public:
   occa::kernel copyDfloatToPfloatKernel;
   occa::kernel copyPfloatToDfloatKernel;
   occa::kernel copyDfloatToDoubleKernel;
+  occa::kernel copyDoubleToDfloatKernel;
+
 };
 #endif
 

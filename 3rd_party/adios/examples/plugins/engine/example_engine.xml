@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!-- Example config XML file for the plugin engine example -->
+
+<adios-config>
+
+    <!--====================================
+           Configuration for the Writer
+        ====================================-->
+
+    <io name="writer">
+        <engine type="Plugin">
+            <parameter key="PluginName" value="WritePlugin" />
+            <parameter key="PluginLibrary" value="adios2_plugins_exampleWritePlugin" />
+        </engine>
+    </io>
+
+
+    <!--====================================
+           Configuration for the Reader
+        ====================================-->
+
+    <io name="reader">
+        <engine type="Plugin">
+            <parameter key="PluginName" value="ReadPlugin" />
+            <parameter key="PluginLibrary" value="adios2_plugins_exampleReadPlugin" />
+        </engine>
+    </io>
+</adios-config>

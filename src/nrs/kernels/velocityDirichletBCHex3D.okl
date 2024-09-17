@@ -136,7 +136,7 @@
             bc.winterp = neknekU[neknekId + 2 * neknekOffset];
           }
 
-          velocityDirichletConditions(&bc);
+          codedFixedValueVelocity(&bc);
 
           UH[idM + 0 * offset] = bc.u;
           UH[idM + 1 * offset] = bc.v;

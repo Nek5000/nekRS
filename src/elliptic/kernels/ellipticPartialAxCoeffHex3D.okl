@@ -1642,25 +1642,19 @@
 #endif
 
 #if p_knl == 8
-#if (p_Nq % 2 == 0)
-  #define k_block 2
-#else
-  #define k_block 1
-#endif
-#define k_tile (p_Nq/k_block)
 @kernel void  ellipticPartialAxCoeffHex3D_v8(const dlong Nelements,
-                                                    const dlong offset,
-                                                    const dlong loffset,
-                                                    @restrict const dlong *elementList,
-                                                    @restrict const dfloat *ggeo,
-                                                    @restrict const dfloat *D,
-                                                    @restrict const dfloat *S,
-                                                    @restrict const dfloat *lambda0,
-                                                    @restrict const dfloat *lambda1,
-                                                    @restrict const dfloat *q,
-                                                    @restrict dfloat *Aq)
+                                             const dlong offset,
+                                             const dlong loffset,
+                                             @restrict const dlong *elementList,
+                                             @restrict const dfloat *ggeo,
+                                             @restrict const dfloat *D,
+                                             @restrict const dfloat *S,
+                                             @restrict const dfloat *lambda0,
+                                             @restrict const dfloat *lambda1,
+                                             @restrict const dfloat *q,
+                                             @restrict dfloat *Aq)
 {
-  #if defined(XeHPC)
+  #if defined (XeHPC) && !defined(FP32)
   @simd_length(16)
   #endif
   @outer for (dlong e = 0; e < Nelements; ++e) {
@@ -1670,7 +1664,6 @@
     @shared dfloat s_Ur[p_Nq][p_Nq][p_Nq];
     @shared dfloat s_Us[p_Nq][p_Nq][p_Nq];
 
-    @inner for (int k0 = 0; k0 < k_block; ++k0) {
     @inner for (int j = 0; j < p_Nq; ++j) {
     @inner for (int i = 0; i < p_Nq; ++i) {
 
@@ -1682,163 +1675,350 @@
         #define Ng p_Nggeo
       #endif
 
-      dfloat r_G[k_tile * Ng];
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
+      dfloat r_G[p_Nq * Ng];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
       #pragma unroll Ng
       for (int g = 0; g < Ng; ++g) {
-          r_G[k + k_tile * g] = ggeo[i + p_Nq * (j + p_Nq * (k0 + k_block * k + p_Nq * (g + p_Nggeo * element)))];
+          r_G[k + p_Nq * g] = ggeo[i + p_Nq * (j + p_Nq * (k + p_Nq * (g + p_Nggeo * element)))];
       }
       }
 
-      dfloat r_lam0[k_tile];
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
+      dfloat r_lam0[p_Nq];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
         #if p_lambda==1
-          r_lam0[k] = lambda0[i + p_Nq * (j + p_Nq * (k0 + k_block * k + p_Nq * element))];
+          r_lam0[k] = lambda0[i + p_Nq * (j + p_Nq * (k + p_Nq * element))];
         #else
           r_lam0[k] = lambda0[0];
         #endif
       }
 
       #ifndef p_poisson
-      dfloat r_lam1[k_tile];
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
+      dfloat r_lam1[p_Nq];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
         #if p_lambda==1
-          r_lam1[k] = lambda1[i + p_Nq * (j + p_Nq * (k0 + k_block * k + p_Nq * element))];
+          r_lam1[k] = lambda1[i + p_Nq * (j + p_Nq * (k + p_Nq * element))];
         #else
           r_lam1[k] = lambda1[0];
         #endif
       }
       #endif
 
-      dfloat r_U[k_tile];
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
-        r_U[k] = q[i + p_Nq * (j + p_Nq * (k0 + k_block * k + p_Nq * element))];
+      dfloat r_U[p_Nq];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        r_U[k] = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element))];
+        s_U[k][j][i] = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element))];
       }
 
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
-        s_U[k0 + k_block * k][j][i] = r_U[k];
-      }
       @barrier();
       
-      dfloat r_Ud[k_tile];
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
+      dfloat r_Ud[p_Nq];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
         r_Ud[k] = 0;
       }
       for (int l = 0; l < p_Nq; ++l) {
         const dfloat U_jil = s_U[j][i][l];
-        #pragma unroll k_tile
-        for (int k = 0; k < k_tile; ++k) {
-          r_Ud[k] += c_D[k0 + k_block * k][l] * U_jil;
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[k][l] * U_jil;
         }
       }
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
-        s_Ur[j][i][k0 + k_block * k] = r_Ud[k];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        s_Ur[j][i][k] = r_Ud[k];
       }
 
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
         r_Ud[k] = 0;
       }
       for (int l = 0; l < p_Nq; ++l) {
         const dfloat U_jli = s_U[j][l][i];
-        #pragma unroll k_tile
-        for (int k = 0; k < k_tile; ++k) {
-          r_Ud[k] += c_D[k0 + k_block * k][l] * U_jli;
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[k][l] * U_jli;
         }
       }
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
-        s_Us[j][k0 + k_block * k][i] = r_Ud[k];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        s_Us[j][k][i] = r_Ud[k];
       }
 
-      @barrier();
-
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
         r_Ud[k] = 0;
       }
       for (int l = 0; l < p_Nq; ++l) {
         const dfloat U_lji = r_U[l];
-        #pragma unroll k_tile
-        for (int k = 0; k < k_tile; ++k) {
-          r_Ud[k] += c_D[k0 + k_block * k][l] * U_lji;
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[k][l] * U_lji;
         }
       }
+
+      @barrier();
       
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
-        const dfloat GUr = r_G[k + k_tile * p_G00ID] * s_Ur[k0 + k_block * k][j][i] + r_G[k + k_tile *p_G01ID] * s_Us[k0 + k_block * k][j][i] + r_G[k + k_tile * p_G02ID] * r_Ud[k];
-        const dfloat GUs = r_G[k + k_tile * p_G01ID] * s_Ur[k0 + k_block * k][j][i] + r_G[k + k_tile *p_G11ID] * s_Us[k0 + k_block * k][j][i] + r_G[k + k_tile * p_G12ID] * r_Ud[k];
-        const dfloat GUt = r_G[k + k_tile * p_G02ID] * s_Ur[k0 + k_block * k][j][i] + r_G[k + k_tile *p_G12ID] * s_Us[k0 + k_block * k][j][i] + r_G[k + k_tile * p_G22ID] * r_Ud[k];
-        s_Ur[k0 + k_block * k][j][i] = r_lam0[k] * GUr;
-        s_Us[k0 + k_block * k][j][i] = r_lam0[k] * GUs;
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        const dfloat GUr = r_G[k+ p_Nq * p_G00ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G01ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G02ID] * r_Ud[k];
+        const dfloat GUs = r_G[k+ p_Nq * p_G01ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G11ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G12ID] * r_Ud[k];
+        const dfloat GUt = r_G[k+ p_Nq * p_G02ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G12ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G22ID] * r_Ud[k];
+        s_Ur[k][j][i] = r_lam0[k] * GUr;
+        s_Us[k][j][i] = r_lam0[k] * GUs;
         r_Ud[k]       = r_lam0[k] * GUt;
       }
 
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
+      @barrier();
+
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
         #ifdef p_poisson
-          r_U[k] = 0.0;
+          r_U[k] = 0;
         #else
-          r_U[k] *= r_G[k + k_tile * p_GWJID] * r_lam1[k];
+          r_U[k] *= r_G[k + p_Nq * p_GWJID] * r_lam1[k];
         #endif
       }
       for (int l = 0; l < p_Nq; ++l) {
         const dfloat GUt_lji = r_Ud[l];
-        #pragma unroll k_tile
-        for (int k = 0; k < k_tile; ++k) {
-          r_U[k] += c_D[l][k0 + k_block * k] * GUt_lji;
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_U[k] += c_D[l][k] * GUt_lji;
         }
       }
 
-      @barrier();
-
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
         r_Ud[k] = 0;
       }
       for (int l = 0; l < p_Nq; ++l) {
         const dfloat GUr_jil = s_Ur[j][i][l];
-        #pragma unroll k_tile
-        for (int k = 0; k < k_tile; ++k) {
-          r_Ud[k] += c_D[l][k0 + k_block * k] * GUr_jil;
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[l][k] * GUr_jil;
         }
       }
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
-        s_Ur[j][i][k0 + k_block * k] = r_Ud[k];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        s_Ur[j][i][k] = r_Ud[k];
       }
 
-      #pragma unroll
-      for (int k = 0; k < k_tile; ++k) {
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
         r_Ud[k] = 0;
       }
       for (int l = 0; l < p_Nq; ++l) {
         const dfloat GUs_jli = s_Us[j][l][i];
-        #pragma unroll k_tile
-        for (int k = 0; k < k_tile; ++k) {
-          r_Ud[k] += c_D[l][k0 + k_block * k] * GUs_jli;
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[l][k] * GUs_jli;
         }
       }
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
-        s_Us[j][k0 + k_block * k][i] = r_Ud[k];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        s_Us[j][k][i] = r_Ud[k];
       }
       
       @barrier();
 
-      #pragma unroll k_tile
-      for (int k = 0; k < k_tile; ++k) {
-        Aq[i + p_Nq * (j + p_Nq * (k0 + k_block * k + p_Nq * element))] = r_U[k] + s_Ur[k0 + k_block * k][j][i] + s_Us[k0 + k_block * k][j][i];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        Aq[i + p_Nq * (j + p_Nq * (k + p_Nq * element))] = r_U[k] + s_Ur[k][j][i] + s_Us[k][j][i];
       }
     }
+    }
+  }
+}
+#endif
+
+#if p_knl == 9
+@kernel void  ellipticPartialAxCoeffHex3D_v9(const dlong Nelements,
+                                             const dlong offset,
+                                             const dlong loffset,
+                                             @restrict const dlong *elementList,
+                                             @restrict const dfloat *ggeo,
+                                             @restrict const dfloat *D,
+                                             @restrict const dfloat *S,
+                                             @restrict const dfloat *lambda0,
+                                             @restrict const dfloat *lambda1,
+                                             @restrict const dfloat *q,
+                                             @restrict dfloat *Aq)
+{
+  #if defined(XeHPC) && !defined(FP32)
+  @simd_length(16)
+  #endif
+  @outer for (dlong e = 0; e < Nelements; ++e) {
+
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Ur[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Us[p_Nq][p_Nq][p_Nq];
+
+    @inner for (int j = 0; j < p_Nq; ++j) {
+    @inner for (int i = 0; i < p_Nq; ++i) {
+
+      const dlong element = elementList[e];
+
+      #ifdef p_poisson
+        #define Ng p_Nggeo-1
+      #else
+        #define Ng p_Nggeo
+      #endif
+
+      dfloat r_G[p_Nq * Ng];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+      #pragma unroll Ng
+      for (int g = 0; g < Ng; ++g) {
+          r_G[k + p_Nq * g] = ggeo[i + p_Nq * (j + p_Nq * (k + p_Nq * (g + p_Nggeo * element)))];
+      }
+      }
+
+      dfloat r_lam0[p_Nq];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        #if p_lambda==1
+          r_lam0[k] = lambda0[i + p_Nq * (j + p_Nq * (k + p_Nq * element))];
+        #else
+          r_lam0[k] = lambda0[0];
+        #endif
+      }
+
+      dfloat r_U[p_Nq];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        r_U[k]       = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element))];
+        s_U[k][j][i] = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element))];
+      }
+
+      dfloat r_AU[p_Nq];
+      #ifndef p_poisson
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        #if p_lambda==1
+          r_AU[k] = r_G[k + p_Nq * p_GWJID] * lambda1[i + p_Nq * (j + p_Nq * (k + p_Nq * element))] * r_U[k];
+        #else
+          r_AU[k] = r_G[k + p_Nq * p_GWJID] * lambda1[0] * r_U[k];
+        #endif
+      }
+      #endif
+      
+      @barrier();
+      
+      dfloat r_Ud[p_Nq];
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        r_Ud[k] = 0;
+      }
+      for (int l = 0; l < p_Nq; ++l) {
+        const dfloat U_jil = s_U[j][i][l];
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[k][l] * U_jil;
+        }
+      }
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        s_Ur[j][i][k] = r_Ud[k];
+      }
+
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        r_Ud[k] = 0;
+      }
+      for (int l = 0; l < p_Nq; ++l) {
+        const dfloat U_jli = s_U[j][l][i];
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[k][l] * U_jli;
+        }
+      }
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        s_Us[j][k][i] = r_Ud[k];
+      }
+
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        r_Ud[k] = 0;
+      }
+      for (int l = 0; l < p_Nq; ++l) {
+        const dfloat U_lji = r_U[l];
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[k][l] * U_lji;
+        }
+      }
+      
+      @barrier();
+
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        const dfloat GUr = r_G[k + p_Nq * p_G00ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G01ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G02ID] * r_Ud[k];
+        const dfloat GUs = r_G[k + p_Nq * p_G01ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G11ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G12ID] * r_Ud[k];
+        const dfloat GUt = r_G[k + p_Nq * p_G02ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G12ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G22ID] * r_Ud[k];
+        s_Ur[k][j][i] = r_lam0[k] * GUr;
+        s_Us[k][j][i] = r_lam0[k] * GUs;
+        r_Ud[k]       = r_lam0[k] * GUt;
+      }
+
+      @barrier();
+
+      #ifdef p_poisson
+      // Non-poisson case was handled at start
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        r_AU[k] = 0;
+      }
+      #endif
+      for (int l = 0; l < p_Nq; ++l) {
+        const dfloat GUt_lji = r_Ud[l];
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_AU[k] += c_D[l][k] * GUt_lji;
+        }
+      }
+
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        r_Ud[k] = 0;
+      }
+      for (int l = 0; l < p_Nq; ++l) {
+        const dfloat GUr_jil = s_Ur[j][i][l];
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[l][k] * GUr_jil;
+        }
+      }
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        s_Ur[j][i][k] = r_Ud[k];
+      }
+
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        r_Ud[k] = 0;
+      }
+      for (int l = 0; l < p_Nq; ++l) {
+        const dfloat GUs_jli = s_Us[j][l][i];
+        #pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+          r_Ud[k] += c_D[l][k] * GUs_jli;
+        }
+      }
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        s_Us[j][k][i] = r_Ud[k];
+      }
+      
+      @barrier();
+
+      #pragma unroll p_Nq
+      for (int k = 0; k < p_Nq; ++k) {
+        Aq[i + p_Nq * (j + p_Nq * (k + p_Nq * element))] = r_AU[k] + s_Ur[k][j][i] + s_Us[k][j][i];
+      }
     }
     }
   }

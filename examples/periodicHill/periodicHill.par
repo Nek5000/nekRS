@@ -19,10 +19,7 @@ constFlowRate = meanVelocity=1.0 + direction=X
 residualTol = 1.0e-04
 
 [VELOCITY]
-boundaryTypeMap = wall
+boundaryTypeMap = zeroValue 
 viscosity = 1/6000.0
-density = 1.0
+rho = 1.0
 residualTol = 1.0e-06
-
-[TEMPERATURE]
-solver = none
