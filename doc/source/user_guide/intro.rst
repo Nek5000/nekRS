@@ -113,7 +113,7 @@ Compute Backend Abstraction (OCCA)
 ----------------------------------
 
 One important overarching feature of nekRS is the use of :term:`OCCA` to provide a layer
-of abstraction of the potential compute backends (E.G CPU, GPU's and Intel XPU's)
+of abstraction of the potential compute backends (E.G. CPU, GPU's and Intel XPU's)
 so a universal language can be used to program the compute intensive areas of a case.
 The two main elements of this abstraction is to provide mechanisms to transfer 
 relevant data into the memory of the compute target, and a way to write functions 
@@ -121,8 +121,8 @@ that can be executed on the compute target.
 
 Here we introduce these elements in the most relevant way to nekRS, but further
 information can be found in the `OCCA documentation <https://libocca.org/>`_. The
-sections below all refer to code that will be present within the `.udf` file (
-see :ref:`udf_functions` for more details)
+sections below all refer to code that will be present within the ``.udf`` file 
+(see :ref:`udf_functions` for more details)
 
 .. _occa_memory:
 
@@ -153,12 +153,13 @@ Typically, relevant fields should be created and initialised in the
 Functions
 """""""""
 
-The :term:`OKL` language extends C with keywords to allows functions to be written 
-in a consistent language which are then translated to device specific code (E.G. CUDA).
+The :term:`OKL` language extends C with keywords allowing functions to be written 
+in a consistent language which are translated to device specific code (E.G. CUDA).
 These functions should typically be in the ``.udf`` file within a ``#ifdef __okl__``
 block, and are preceded with a ``@kernel`` keyword. This block would also have
 any standard functions that would be required for relevant boundary conditions
-(see :ref:`boundary_conditions`).
+(see :ref:`boundary_conditions`). Below is an example showing both of these 
+types of function.
 
 .. code-block::
 

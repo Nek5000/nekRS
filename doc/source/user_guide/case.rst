@@ -746,14 +746,13 @@ OKL block
 """""""""
 
 The ``.udf`` typically has a ``#ifdef __okl__`` block near the start which is 
-where all OKL code will be placed that run on the compute backed specified to
-:term:`OCCA`. The most frequent use of this block is to providr the functions 
+where all OKL code will be placed that will run on the compute backed specified to
+:term:`OCCA`. The most frequent use of this block is to provide the functions 
 for boundary conditions that require additional information, such as a value to
 impose for a Dirichlet velocity condition, or a flux to impose for a Neumann
-temperature condition. 
-
-Additional user functions may be placed in this block to allow exact values to
-be calulcated that are called at specific time intervals.
+temperature condition. Additional user functions may be placed in this block to
+allow advanced modification of the simulation or functionality such as calculating
+exact values at a specified time point.
 
 .. tip::
 
@@ -793,7 +792,20 @@ be calulcated that are called at specific time intervals.
     bc->flux = tflux;
   }
 
-TODO Put in reverse lookup table of boundary conditions functions
+.. table:: Boundary Condition Functions
+
+  =========================================== =================================================== =============================
+  Function                                    Character Map                                       Purpose
+  =========================================== =================================================== =============================
+  ``pressureDirichletConditions(bcData* bc)`` ``onx``, ``ony``, ``onz``,                          Dirichlet pressure condition
+                                              ``outlet``, ``outflow``, ``o``
+  ``velocityDirichletConditions(bcData* bc)`` ``v``, ``inlet``, ``mv``,                           Dirichlet velocity condition
+                                              ``codedfixedvalue+moving``, ``int``
+  ``velocityNeumannConditions(bcData* bc)``   ``tractionx``, ``shlx``, ``tractiony``, ``shly``,   Neumann velocity condition
+                                              ``tractionz``, ``shlz``, ``traction``, ``shl``
+  ``scalarDirichletConditions(bcData* bc)``   ``t``, ``inlet``, ``int``                           Dirichlet condition
+  ``scalarNeumannConditions(bcData* bc)``     ``f``, ``flux``                                     Neumann condition
+  =========================================== =================================================== =============================
 
 .. _udf_setup0:
 

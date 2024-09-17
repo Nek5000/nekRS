@@ -17,7 +17,7 @@ nekRS, ``parHelp.txt`` and below.
 
 
 For each of the values that have a function name present, this must be created
-within the ``.udf`` file when used (E.G setting a ``codedFixedValue`` boundary will 
+within the ``.udf`` file when used (E.G. setting a ``codedFixedValue`` boundary will 
 require the ``velocityDirichletConditions`` to be present in the OKL section).
 
 .. tip::
