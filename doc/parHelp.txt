@@ -188,7 +188,8 @@ regularization
                                                                        (has to be applied manually in case user user props)
                               +c0                                      make viscosity C0
                               +scalingCoeff=<float>
-                              +decaythreshold=<float>                  decay exponent threshold
+                              +noiseThreshold=<float>                  smaller values will be considered to be noise
+                              +decayThreshold=<float>
                               +activationWidth=<float>                 half-width of activation function
 ----------------------------------------------------------------------------------------------------------------------
 [MESH]

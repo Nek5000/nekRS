@@ -69,13 +69,13 @@ void applyZeroNormalMask(nrs_t *nrs, mesh_t *mesh, const occa::memory &o_EToB, c
 void applyDirichletVelocity(nrs_t *nrs, double time, occa::memory& o_U,occa::memory& o_Ue,occa::memory& o_P)
 {
   if (bcMap::unalignedMixedBoundary("velocity")) {
-    applyZeroNormalMask(nrs, nrs->meshV, nrs->uvwSolver->o_EToB(), nrs->o_zeroNormalMaskVelocity, o_U);
-    applyZeroNormalMask(nrs, nrs->meshV, nrs->uvwSolver->o_EToB(), nrs->o_zeroNormalMaskVelocity, o_Ue);
+    applyZeroNormalMask(nrs, nrs->mesh, nrs->uvwSolver->o_EToB(), nrs->o_zeroNormalMaskVelocity, o_U);
+    applyZeroNormalMask(nrs, nrs->mesh, nrs->uvwSolver->o_EToB(), nrs->o_zeroNormalMaskVelocity, o_Ue);
   }
 
   const auto neknekFieldOffset = nrs->neknek ? nrs->neknek->fieldOffset() : 0;
 
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   occa::memory o_tmp = platform->o_memPool.reserve<dfloat>((nrs->NVfields+1) * nrs->fieldOffset);
   platform->linAlg->fill((1 + nrs->NVfields) * nrs->fieldOffset, TINY, o_tmp);
@@ -243,7 +243,7 @@ void applyDirichletScalars(nrs_t *nrs, double time, occa::memory& o_S, occa::mem
 
 void applyDirichletMesh(nrs_t *nrs, double time, occa::memory& o_UM, occa::memory& o_UMe, occa::memory& o_U)
 {
-  mesh_t *mesh = nrs->_mesh;
+  auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
   if (bcMap::unalignedMixedBoundary("mesh")) {
     applyZeroNormalMask(nrs, mesh, nrs->meshSolver->o_EToB(), nrs->o_zeroNormalMaskMeshVelocity, o_UM);
     applyZeroNormalMask(nrs, mesh, nrs->meshSolver->o_EToB(), nrs->o_zeroNormalMaskMeshVelocity, o_UMe);

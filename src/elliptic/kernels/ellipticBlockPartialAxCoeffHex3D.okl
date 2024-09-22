@@ -1,20 +1,21 @@
 #if p_knl == 0
 @kernel void ellipticBlockPartialAxCoeffHex3D_v0(const dlong Nelements,
-                                                    const dlong offset,
-                                                    const dlong loffset,
-                                                    @ restrict const dlong *elementList,
-                                                    @ restrict const dfloat *ggeo,
-                                                    @ restrict const dfloat *D,
-                                                    @ restrict const dfloat *S,
-                                                    @ restrict const dfloat *lambda0,
-                                                    @ restrict const dfloat *lambda1,
-                                                    @ restrict const dfloat *q,
-                                                    @ restrict dfloat *Aq)
+                                                 const dlong offset,
+                                                 const dlong loffset,
+                                                 @ restrict const dlong *elementList,
+                                                 @ restrict const dfloat *ggeo,
+                                                 @ restrict const dfloat *D,
+                                                 @ restrict const dfloat *S,
+                                                 @ restrict const dfloat *lambda0,
+                                                 @ restrict const dfloat *lambda1,
+                                                 @ restrict const dfloat *q,
+                                                 @ restrict dfloat *Aq)
 {
 #if defined(XeHPC) && (p_Nq < 9)
   @simd_length(16)
 #endif
-  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+      for (dlong e = 0; e < Nelements; ++e; @outer(0))
+  {
     @shared dfloat s_D[p_Nq][p_Nq];
 
     @shared dfloat s_U[p_Nq][p_Nq];
@@ -36,7 +37,7 @@
     @exclusive dfloat r_U[p_Nq], r_V[p_Nq], r_W[p_Nq];
     @exclusive dfloat r_AU[p_Nq], r_AV[p_Nq], r_AW[p_Nq];
 
-    for (int j = 0; j < p_Nq; ++j; @inner(1))
+    for (int j = 0; j < p_Nq; ++j; @inner(1)) {
       for (int i = 0; i < p_Nq; ++i; @inner(0)) {
         element = elementList[e];
         s_D[j][i] = D[p_Nq * j + i]; // D is column major
@@ -53,6 +54,7 @@
           r_AW[k] = 0.f;
         }
       }
+    }
 
 #pragma unroll p_Nq
     for (int k = 0; k < p_Nq; k++) {
@@ -99,14 +101,14 @@
           }
           const dlong id = element * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
 
-          const dfloat u_lam0 = lambda0[p_lambda*id + 0 * loffset];
-          const dfloat v_lam0 = lambda0[p_lambda*id + 1 * loffset];
-          const dfloat w_lam0 = lambda0[p_lambda*id + 2 * loffset];
+          const dfloat u_lam0 = lambda0[p_lambda * id + 0 * loffset];
+          const dfloat v_lam0 = lambda0[p_lambda * id + 1 * loffset];
+          const dfloat w_lam0 = lambda0[p_lambda * id + 2 * loffset];
 
 #ifndef p_poisson
-          const dfloat u_lam1 = lambda1[p_lambda*id + 0 * loffset];
-          const dfloat v_lam1 = lambda1[p_lambda*id + 1 * loffset];
-          const dfloat w_lam1 = lambda1[p_lambda*id + 2 * loffset];
+          const dfloat u_lam1 = lambda1[p_lambda * id + 0 * loffset];
+          const dfloat v_lam1 = lambda1[p_lambda * id + 1 * loffset];
+          const dfloat w_lam1 = lambda1[p_lambda * id + 2 * loffset];
 #endif
 
           const dlong gbase = element * p_Nggeo * p_Np + k * p_Nq * p_Nq + j * p_Nq + i;
@@ -190,21 +192,22 @@
 
 #if p_knl == 1
 @kernel void ellipticBlockPartialAxCoeffHex3D_v1(const dlong Nelements,
-                                                    const dlong offset,
-                                                    const dlong loffset,
-                                                    @ restrict const dlong *elementList,
-                                                    @ restrict const dfloat *ggeo,
-                                                    @ restrict const dfloat *D,
-                                                    @ restrict const dfloat *S,
-                                                    @ restrict const dfloat *lambda0,
-                                                    @ restrict const dfloat *lambda1,
-                                                    @ restrict const dfloat *q,
-                                                    @ restrict dfloat *Aq)
+                                                 const dlong offset,
+                                                 const dlong loffset,
+                                                 @ restrict const dlong *elementList,
+                                                 @ restrict const dfloat *ggeo,
+                                                 @ restrict const dfloat *D,
+                                                 @ restrict const dfloat *S,
+                                                 @ restrict const dfloat *lambda0,
+                                                 @ restrict const dfloat *lambda1,
+                                                 @ restrict const dfloat *q,
+                                                 @ restrict dfloat *Aq)
 {
 #if defined(XeHPC) && (p_Nq < 9)
   @simd_length(16)
 #endif
-  for (dlong e = 0; e < Nelements; ++e; @outer(0)) {
+      for (dlong e = 0; e < Nelements; ++e; @outer(0))
+  {
     @shared dfloat s_D[p_Nq][p_Nq], s_Dt[p_Nq][p_Nq];
 
     @shared dfloat s_tmp[3][p_Nq][p_Nq][p_Nq];
@@ -212,42 +215,42 @@
     @exclusive dlong element;
     @exclusive dfloat r_AU[pts_per_thread], r_AV[pts_per_thread], r_AW[pts_per_thread];
     @exclusive dfloat r_G00[pts_per_thread], r_G01[pts_per_thread], r_G02[pts_per_thread],
-      r_G11[pts_per_thread], r_G12[pts_per_thread], r_G22[pts_per_thread], r_GwJ[pts_per_thread];
+        r_G11[pts_per_thread], r_G12[pts_per_thread], r_G22[pts_per_thread], r_GwJ[pts_per_thread];
     @exclusive dfloat r_Ut[pts_per_thread], r_Ur[pts_per_thread], r_Us[pts_per_thread];
     @exclusive dfloat r_Vt[pts_per_thread], r_Vr[pts_per_thread], r_Vs[pts_per_thread];
     @exclusive dfloat r_Wt[pts_per_thread], r_Wr[pts_per_thread], r_Ws[pts_per_thread];
-    
+
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
           element = elementList[e];
           if (s == 0) {
             dfloat t_D = D[p_Nq * j + i]; // D is column major
-            s_D[j][i] = t_D; 
+            s_D[j][i] = t_D;
             s_Dt[i][j] = t_D;
           }
 
           const dlong base = i + j * p_Nq + element * p_Np;
 
           for (int k = 0; k < pts_per_thread; k++) {
-            s_tmp[0][s+k*n_plane][j][i] = q[base + (s+k*n_plane) * p_Nq * p_Nq + 0 * offset];
-            s_tmp[1][s+k*n_plane][j][i] = q[base + (s+k*n_plane) * p_Nq * p_Nq + 1 * offset];              
-            s_tmp[2][s+k*n_plane][j][i] = q[base + (s+k*n_plane) * p_Nq * p_Nq + 2 * offset];              
-              
+            s_tmp[0][s + k * n_plane][j][i] = q[base + (s + k * n_plane) * p_Nq * p_Nq + 0 * offset];
+            s_tmp[1][s + k * n_plane][j][i] = q[base + (s + k * n_plane) * p_Nq * p_Nq + 1 * offset];
+            s_tmp[2][s + k * n_plane][j][i] = q[base + (s + k * n_plane) * p_Nq * p_Nq + 2 * offset];
+
             r_AU[k] = 0.f;
             r_AV[k] = 0.f;
-            r_AW[k] = 0.f;              
+            r_AW[k] = 0.f;
             r_Ur[k] = 0;
             r_Us[k] = 0;
-            r_Ut[k] = 0;              
+            r_Ut[k] = 0;
             r_Vr[k] = 0;
             r_Vs[k] = 0;
-            r_Vt[k] = 0;              
+            r_Vt[k] = 0;
             r_Wr[k] = 0;
             r_Ws[k] = 0;
-            r_Wt[k] = 0;              
-              
-            const dlong gbase = element * p_Nggeo * p_Np + (s+k*n_plane) * p_Nq * p_Nq + j * p_Nq + i;
+            r_Wt[k] = 0;
+
+            const dlong gbase = element * p_Nggeo * p_Np + (s + k * n_plane) * p_Nq * p_Nq + j * p_Nq + i;
             r_G00[k] = ggeo[gbase + p_G00ID * p_Np];
             r_G01[k] = ggeo[gbase + p_G01ID * p_Np];
             r_G02[k] = ggeo[gbase + p_G02ID * p_Np];
@@ -260,19 +263,19 @@
       }
     }
     @barrier();
- 
+
     // grad in r
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll p_Nq          
+#pragma unroll p_Nq
           for (int m = 0; m < p_Nq; m++) {
             dfloat Dim = s_Dt[m][i];
-#pragma unroll pts_per_thread            
+#pragma unroll pts_per_thread
             for (int k = 0; k < pts_per_thread; k++) {
-              r_Ur[k] += Dim * s_tmp[0][s+k*n_plane][j][m];
-              r_Vr[k] += Dim * s_tmp[1][s+k*n_plane][j][m];
-              r_Wr[k] += Dim * s_tmp[2][s+k*n_plane][j][m];
+              r_Ur[k] += Dim * s_tmp[0][s + k * n_plane][j][m];
+              r_Vr[k] += Dim * s_tmp[1][s + k * n_plane][j][m];
+              r_Wr[k] += Dim * s_tmp[2][s + k * n_plane][j][m];
             }
           }
         }
@@ -283,91 +286,91 @@
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll p_Nq          
+#pragma unroll p_Nq
           for (int m = 0; m < p_Nq; m++) {
             dfloat Djm = s_D[j][m];
-#pragma unroll pts_per_thread            
+#pragma unroll pts_per_thread
             for (int k = 0; k < pts_per_thread; k++) {
-              r_Us[k] += Djm * s_tmp[0][s+k*n_plane][m][i];
-              r_Vs[k] += Djm * s_tmp[1][s+k*n_plane][m][i];
-              r_Ws[k] += Djm * s_tmp[2][s+k*n_plane][m][i];
+              r_Us[k] += Djm * s_tmp[0][s + k * n_plane][m][i];
+              r_Vs[k] += Djm * s_tmp[1][s + k * n_plane][m][i];
+              r_Ws[k] += Djm * s_tmp[2][s + k * n_plane][m][i];
             }
           }
         }
       }
-    }    
+    }
 
     // grad in t
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll pts_per_thread          
+#pragma unroll pts_per_thread
           for (int k2 = 0; k2 < pts_per_thread; k2++) {
-#pragma unroll n_plane            
+#pragma unroll n_plane
             for (int s2 = 0; s2 < n_plane; s2++) {
-              dfloat t_U = s_tmp[0][s2+k2*n_plane][j][i];
-              dfloat t_V = s_tmp[1][s2+k2*n_plane][j][i];
-              dfloat t_W = s_tmp[2][s2+k2*n_plane][j][i];
-#pragma unroll pts_per_thread              
+              dfloat t_U = s_tmp[0][s2 + k2 * n_plane][j][i];
+              dfloat t_V = s_tmp[1][s2 + k2 * n_plane][j][i];
+              dfloat t_W = s_tmp[2][s2 + k2 * n_plane][j][i];
+#pragma unroll pts_per_thread
               for (int k = 0; k < pts_per_thread; k++) {
-                dfloat t_D = s_D[s+k*n_plane][s2+k2*n_plane];
+                dfloat t_D = s_D[s + k * n_plane][s2 + k2 * n_plane];
                 r_Ut[k] += t_D * t_U;
                 r_Vt[k] += t_D * t_V;
-                r_Wt[k] += t_D * t_W;                                    
+                r_Wt[k] += t_D * t_W;
               }
             }
           }
         }
       }
     }
-    
+
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
           for (int k = 0; k < pts_per_thread; k++) {
-            const dlong id = element * p_Np + (s+k*n_plane) * p_Nq * p_Nq + j * p_Nq + i;
+            const dlong id = element * p_Np + (s + k * n_plane) * p_Nq * p_Nq + j * p_Nq + i;
 
-            const dfloat u_lam0 = lambda0[p_lambda*id + 0 * loffset];
-            const dfloat v_lam0 = lambda0[p_lambda*id + 1 * loffset];
-            const dfloat w_lam0 = lambda0[p_lambda*id + 2 * loffset];
+            const dfloat u_lam0 = lambda0[p_lambda * id + 0 * loffset];
+            const dfloat v_lam0 = lambda0[p_lambda * id + 1 * loffset];
+            const dfloat w_lam0 = lambda0[p_lambda * id + 2 * loffset];
 
 #ifndef p_poisson
-            const dfloat u_lam1 = lambda1[p_lambda*id + 0 * loffset];
-            const dfloat v_lam1 = lambda1[p_lambda*id + 1 * loffset];
-            const dfloat w_lam1 = lambda1[p_lambda*id + 2 * loffset];
+            const dfloat u_lam1 = lambda1[p_lambda * id + 0 * loffset];
+            const dfloat v_lam1 = lambda1[p_lambda * id + 1 * loffset];
+            const dfloat w_lam1 = lambda1[p_lambda * id + 2 * loffset];
 #endif
- 
+
             dfloat GUr = u_lam0 * (r_G00[k] * r_Ur[k] + r_G01[k] * r_Us[k] + r_G02[k] * r_Ut[k]);
             dfloat GUs = u_lam0 * (r_G01[k] * r_Ur[k] + r_G11[k] * r_Us[k] + r_G12[k] * r_Ut[k]);
             dfloat GUt = u_lam0 * (r_G02[k] * r_Ur[k] + r_G12[k] * r_Us[k] + r_G22[k] * r_Ut[k]);
-            
+
             r_Ur[k] = GUr;
             r_Us[k] = GUs;
             r_Ut[k] = GUt;
 #ifndef p_poisson
-            r_AU[k] += r_GwJ[k] * u_lam1 * s_tmp[0][s+k*n_plane][j][i];
+            r_AU[k] += r_GwJ[k] * u_lam1 * s_tmp[0][s + k * n_plane][j][i];
 #endif
             dfloat GVr = v_lam0 * (r_G00[k] * r_Vr[k] + r_G01[k] * r_Vs[k] + r_G02[k] * r_Vt[k]);
             dfloat GVs = v_lam0 * (r_G01[k] * r_Vr[k] + r_G11[k] * r_Vs[k] + r_G12[k] * r_Vt[k]);
             dfloat GVt = v_lam0 * (r_G02[k] * r_Vr[k] + r_G12[k] * r_Vs[k] + r_G22[k] * r_Vt[k]);
-            
+
             r_Vr[k] = GVr;
             r_Vs[k] = GVs;
             r_Vt[k] = GVt;
 #ifndef p_poisson
-            r_AV[k] += r_GwJ[k] * v_lam1 * s_tmp[1][s+k*n_plane][j][i];
+            r_AV[k] += r_GwJ[k] * v_lam1 * s_tmp[1][s + k * n_plane][j][i];
 #endif
 
             dfloat GWr = w_lam0 * (r_G00[k] * r_Wr[k] + r_G01[k] * r_Ws[k] + r_G02[k] * r_Wt[k]);
             dfloat GWs = w_lam0 * (r_G01[k] * r_Wr[k] + r_G11[k] * r_Ws[k] + r_G12[k] * r_Wt[k]);
             dfloat GWt = w_lam0 * (r_G02[k] * r_Wr[k] + r_G12[k] * r_Ws[k] + r_G22[k] * r_Wt[k]);
-            
+
             r_Wr[k] = GWr;
             r_Ws[k] = GWs;
             r_Wt[k] = GWt;
 #ifndef p_poisson
-            r_AW[k] += r_GwJ[k] * w_lam1 * s_tmp[2][s+k*n_plane][j][i];             
-#endif 
+            r_AW[k] += r_GwJ[k] * w_lam1 * s_tmp[2][s + k * n_plane][j][i];
+#endif
           }
         }
       }
@@ -378,27 +381,27 @@
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll pts_per_thread          
+#pragma unroll pts_per_thread
           for (int k = 0; k < pts_per_thread; k++) {
-            s_tmp[0][s+k*n_plane][j][i] = r_Ur[k];
-            s_tmp[1][s+k*n_plane][j][i] = r_Vr[k];
-            s_tmp[2][s+k*n_plane][j][i] = r_Wr[k];              
+            s_tmp[0][s + k * n_plane][j][i] = r_Ur[k];
+            s_tmp[1][s + k * n_plane][j][i] = r_Vr[k];
+            s_tmp[2][s + k * n_plane][j][i] = r_Wr[k];
           }
         }
       }
     }
-    @barrier();      
+    @barrier();
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll p_Nq          
+#pragma unroll p_Nq
           for (int m = 0; m < p_Nq; m++) {
             dfloat Dmi = s_D[m][i];
-#pragma unroll pts_per_thread            
+#pragma unroll pts_per_thread
             for (int k = 0; k < pts_per_thread; k++) {
-              r_AU[k] += Dmi * s_tmp[0][s+k*n_plane][j][m];
-              r_AV[k] += Dmi * s_tmp[1][s+k*n_plane][j][m];
-              r_AW[k] += Dmi * s_tmp[2][s+k*n_plane][j][m];                
+              r_AU[k] += Dmi * s_tmp[0][s + k * n_plane][j][m];
+              r_AV[k] += Dmi * s_tmp[1][s + k * n_plane][j][m];
+              r_AW[k] += Dmi * s_tmp[2][s + k * n_plane][j][m];
             }
           }
         }
@@ -409,11 +412,11 @@
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll pts_per_thread          
+#pragma unroll pts_per_thread
           for (int k = 0; k < pts_per_thread; k++) {
-            s_tmp[0][s+k*n_plane][j][i] = r_Us[k];
-            s_tmp[1][s+k*n_plane][j][i] = r_Vs[k];
-            s_tmp[2][s+k*n_plane][j][i] = r_Ws[k];
+            s_tmp[0][s + k * n_plane][j][i] = r_Us[k];
+            s_tmp[1][s + k * n_plane][j][i] = r_Vs[k];
+            s_tmp[2][s + k * n_plane][j][i] = r_Ws[k];
           }
         }
       }
@@ -424,11 +427,11 @@
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
           for (int m = 0; m < p_Nq; m++) {
             dfloat Dmj = s_D[m][j];
-#pragma unroll pts_per_thread  
+#pragma unroll pts_per_thread
             for (int k = 0; k < pts_per_thread; k++) {
-              r_AU[k] += Dmj * s_tmp[0][s+k*n_plane][m][i];
-              r_AV[k] += Dmj * s_tmp[1][s+k*n_plane][m][i];
-              r_AW[k] += Dmj * s_tmp[2][s+k*n_plane][m][i];
+              r_AU[k] += Dmj * s_tmp[0][s + k * n_plane][m][i];
+              r_AV[k] += Dmj * s_tmp[1][s + k * n_plane][m][i];
+              r_AW[k] += Dmj * s_tmp[2][s + k * n_plane][m][i];
             }
           }
         }
@@ -440,11 +443,11 @@
       for (int s = 0; s < n_plane; ++s; @inner(2)) {
         for (int j = 0; j < p_Nq; ++j; @inner(1)) {
           for (int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll pts_per_thread          
+#pragma unroll pts_per_thread
             for (int k = 0; k < pts_per_thread; k++) {
-              s_tmp[0][s+k*n_plane][j][i] = r_Ut[k];
-              s_tmp[1][s+k*n_plane][j][i] = r_Vt[k];
-              s_tmp[2][s+k*n_plane][j][i] = r_Wt[k];              
+              s_tmp[0][s + k * n_plane][j][i] = r_Ut[k];
+              s_tmp[1][s + k * n_plane][j][i] = r_Vt[k];
+              s_tmp[2][s + k * n_plane][j][i] = r_Wt[k];
             }
           }
         }
@@ -455,15 +458,15 @@
           for (int i = 0; i < p_Nq; ++i; @inner(0)) {
             for (int k = 0; k < pts_per_thread; k++) {
               for (int s2 = 0; s2 < n_plane; s2++) {
-                dfloat Utk = s_tmp[0][s2+k*n_plane][j][i];
-                dfloat Vtk = s_tmp[1][s2+k*n_plane][j][i];
-                dfloat Wtk = s_tmp[2][s2+k*n_plane][j][i];
-#pragma unroll pts_per_thread              
+                dfloat Utk = s_tmp[0][s2 + k * n_plane][j][i];
+                dfloat Vtk = s_tmp[1][s2 + k * n_plane][j][i];
+                dfloat Wtk = s_tmp[2][s2 + k * n_plane][j][i];
+#pragma unroll pts_per_thread
                 for (int k2 = 0; k2 < pts_per_thread; k2++) {
-                  double t_D = s_D[s2+k*n_plane][s+k2*n_plane];
+                  double t_D = s_D[s2 + k * n_plane][s + k2 * n_plane];
                   r_AU[k2] += t_D * Utk;
                   r_AV[k2] += t_D * Vtk;
-                  r_AW[k2] += t_D * Wtk;                  
+                  r_AW[k2] += t_D * Wtk;
                 }
               }
             }
@@ -476,28 +479,28 @@
           for (int i = 0; i < p_Nq; ++i; @inner(0)) {
 #pragma unroll p_Nq
             for (int m = 0; m < p_Nq; m++) {
-#pragma unroll p_Nq          
+#pragma unroll p_Nq
               for (int k = 0; k < p_Nq; ++k) {
-                const dfloat Dkm = s_D[m][k]; 
+                const dfloat Dkm = s_D[m][k];
                 r_AU[k] += Dkm * r_Ut[m];
                 r_AV[k] += Dkm * r_Vt[m];
-                r_AW[k] += Dkm * r_Wt[m];            
+                r_AW[k] += Dkm * r_Wt[m];
               }
             }
           }
         }
       }
-    }      
+    }
 
     for (int s = 0; s < n_plane; ++s; @inner(2)) {
       for (int j = 0; j < p_Nq; ++j; @inner(1)) {
         for (int i = 0; i < p_Nq; ++i; @inner(0)) {
-#pragma unroll pts_per_thread          
+#pragma unroll pts_per_thread
           for (int k = 0; k < pts_per_thread; k++) {
-            const dlong id = element * p_Np + (s+k*n_plane) * p_Nq * p_Nq + j * p_Nq + i;
+            const dlong id = element * p_Np + (s + k * n_plane) * p_Nq * p_Nq + j * p_Nq + i;
             Aq[id + 0 * offset] = r_AU[k];
             Aq[id + 1 * offset] = r_AV[k];
-            Aq[id + 2 * offset] = r_AW[k];              
+            Aq[id + 2 * offset] = r_AW[k];
           }
         }
       }
@@ -508,197 +511,204 @@
 
 #if p_knl == 2
 #define p_dim 3
+
 @kernel void ellipticBlockPartialAxCoeffHex3D_v2(const dlong Nelements,
-                                                    const dlong offset,
-                                                    const dlong loffset,
-                                                    @ restrict const dlong *elementList,
-                                                    @ restrict const dfloat *ggeo,
-                                                    @ restrict const dfloat *D,
-                                                    @ restrict const dfloat *S,
-                                                    @ restrict const dfloat *lambda0,
-                                                    @ restrict const dfloat *lambda1,
-                                                    @ restrict const dfloat *q,
-                                                    @ restrict dfloat *Aq)
+                                                 const dlong offset,
+                                                 const dlong loffset,
+                                                 @ restrict const dlong *elementList,
+                                                 @ restrict const dfloat *ggeo,
+                                                 @ restrict const dfloat *D,
+                                                 @ restrict const dfloat *S,
+                                                 @ restrict const dfloat *lambda0,
+                                                 @ restrict const dfloat *lambda1,
+                                                 @ restrict const dfloat *q,
+                                                 @ restrict dfloat *Aq)
 {
-  #if defined(XeHPC)
+#if defined(XeHPC)
   @simd_length(16)
-  #endif
-  @outer for (dlong e = 0; e < Nelements; ++e) {
+#endif
+      @outer for (dlong e = 0; e < Nelements; ++e)
+  {
     @exclusive dlong element;
 
     @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
     @shared dfloat s_Ur[p_Nq][p_Nq][p_Nq];
     @shared dfloat s_Us[p_Nq][p_Nq][p_Nq];
 
-    @inner for (int j = 0; j < p_Nq; ++j) {
-    @inner for (int i = 0; i < p_Nq; ++i) {
+    @inner for (int j = 0; j < p_Nq; ++j)
+    {
+      @inner for (int i = 0; i < p_Nq; ++i)
+      {
 
-      element = elementList[e];
-      #ifdef p_poisson
-      #define Ng p_Nggeo-1
-      #else
-      #define Ng p_Nggeo
-      #endif
+        element = elementList[e];
+#ifdef p_poisson
+#define Ng p_Nggeo - 1
+#else
+#define Ng p_Nggeo
+#endif
 
-      dfloat r_G[p_Nq * Ng];
-      #pragma unroll p_Nq
-      for (int k = 0; k < p_Nq; ++k) {
-      #pragma unroll Ng
-      for (int g = 0; g < Ng; ++g) {
-        r_G[k + p_Nq * g] = ggeo[i + p_Nq * (j + p_Nq * (k + p_Nq * (g + p_Nggeo * element)))];
-      }
-      }
-
-      for (int d = 0; d < p_dim; ++d) {
+        dfloat r_G[p_Nq * Ng];
+#pragma unroll p_Nq
+        for (int k = 0; k < p_Nq; ++k) {
+#pragma unroll Ng
+          for (int g = 0; g < Ng; ++g) {
+            r_G[k + p_Nq * g] = ggeo[i + p_Nq * (j + p_Nq * (k + p_Nq * (g + p_Nggeo * element)))];
+          }
+        }
 
         dfloat r_lam0[p_Nq];
-        #pragma unroll p_Nq
+#pragma unroll p_Nq
         for (int k = 0; k < p_Nq; ++k) {
-          #if p_lambda==1
-          r_lam0[k] = lambda0[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * loffset];
-          #else
-          r_lam0[k] = lambda0[d * loffset];
-          #endif
+#if p_lambda == 1
+          r_lam0[k] = lambda0[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + 0 * loffset];
+#else
+          r_lam0[k] = lambda0[0 * loffset];
+#endif
         }
-        
-        #ifndef p_poisson
+
+#ifndef p_poisson
         dfloat r_lam1[p_Nq];
-        #pragma unroll p_Nq
+#pragma unroll p_Nq
         for (int k = 0; k < p_Nq; ++k) {
-          #if p_lambda==1
-          r_lam1[k] = lambda1[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * loffset];
-          #else
-          r_lam1[k] = lambda1[d * loffset];
-          #endif
+#if p_lambda == 1
+          r_lam1[k] = lambda1[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + 0 * loffset];
+#else
+          r_lam1[k] = lambda1[0 * loffset];
+#endif
         }
-        #endif
+#endif
 
-        dfloat r_U[p_Nq];
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          r_U[k]       = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset];
-          s_U[k][j][i] = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset];
-        }
-        
-        @barrier();
-        
-        dfloat r_Ud[p_Nq];
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          r_Ud[k] = 0;
-        }
-        for (int l = 0; l < p_Nq; ++l) {
-          const dfloat U_jil = s_U[j][i][l];
-          #pragma unroll p_Nq
+        for (int d = 0; d < p_dim; ++d) {
+          dfloat r_U[p_Nq];
+#pragma unroll p_Nq
           for (int k = 0; k < p_Nq; ++k) {
-            r_Ud[k] += c_D[k][l] * U_jil;
+            r_U[k] = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset];
+            s_U[k][j][i] = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset];
           }
-        }
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          s_Ur[j][i][k] = r_Ud[k];
-        }
 
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          r_Ud[k] = 0;
-        }
-        for (int l = 0; l < p_Nq; ++l) {
-          const dfloat U_jli = s_U[j][l][i];
-          #pragma unroll p_Nq
+          @barrier();
+
+          dfloat r_Ud[p_Nq];
+#pragma unroll p_Nq
           for (int k = 0; k < p_Nq; ++k) {
-            r_Ud[k] += c_D[k][l] * U_jli;
+            r_Ud[k] = 0;
           }
-        }
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          s_Us[j][k][i] = r_Ud[k];
-        }
-
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          r_Ud[k] = 0;
-        }
-        for (int l = 0; l < p_Nq; ++l) {
-          const dfloat U_lji = r_U[l];
-          #pragma unroll p_Nq
+          for (int l = 0; l < p_Nq; ++l) {
+            const dfloat U_jil = s_U[j][i][l];
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; ++k) {
+              r_Ud[k] += c_D[k][l] * U_jil;
+            }
+          }
+#pragma unroll p_Nq
           for (int k = 0; k < p_Nq; ++k) {
-            r_Ud[k] += c_D[k][l] * U_lji;
+            s_Ur[j][i][k] = r_Ud[k];
           }
-        }
-        
-        @barrier();
-        
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          const dfloat GUr = r_G[k+ p_Nq * p_G00ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G01ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G02ID] * r_Ud[k];
-          const dfloat GUs = r_G[k+ p_Nq * p_G01ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G11ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G12ID] * r_Ud[k];
-          const dfloat GUt = r_G[k+ p_Nq * p_G02ID] * s_Ur[k][j][i] + r_G[k + p_Nq *p_G12ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G22ID] * r_Ud[k];
-          s_Ur[k][j][i] = r_lam0[k] * GUr;
-          s_Us[k][j][i] = r_lam0[k] * GUs;
-          r_Ud[k]       = r_lam0[k] * GUt;
-        }
 
-        @barrier();
-        
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          #ifdef p_poisson
-          r_U[k] = 0;
-          #else
-          r_U[k] *= r_G[k + p_Nq * p_GWJID] * r_lam1[k];
-          #endif
-        }
-        for (int l = 0; l < p_Nq; ++l) {
-          const dfloat GUt_lji = r_Ud[l];
-          #pragma unroll p_Nq
+#pragma unroll p_Nq
           for (int k = 0; k < p_Nq; ++k) {
-            r_U[k] += c_D[l][k] * GUt_lji;
+            r_Ud[k] = 0;
           }
-        }
-
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          r_Ud[k] = 0;
-        }
-        for (int l = 0; l < p_Nq; ++l) {
-          const dfloat GUr_jil = s_Ur[j][i][l];
-          #pragma unroll p_Nq
+          for (int l = 0; l < p_Nq; ++l) {
+            const dfloat U_jli = s_U[j][l][i];
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; ++k) {
+              r_Ud[k] += c_D[k][l] * U_jli;
+            }
+          }
+#pragma unroll p_Nq
           for (int k = 0; k < p_Nq; ++k) {
-            r_Ud[k] += c_D[l][k] * GUr_jil;
+            s_Us[j][k][i] = r_Ud[k];
           }
-        }
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          s_Ur[j][i][k] = r_Ud[k];
-        }
 
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          r_Ud[k] = 0;
-        }
-        for (int l = 0; l < p_Nq; ++l) {
-          const dfloat GUs_jli = s_Us[j][l][i];
-          #pragma unroll p_Nq
+#pragma unroll p_Nq
           for (int k = 0; k < p_Nq; ++k) {
-            r_Ud[k] += c_D[l][k] * GUs_jli;
+            r_Ud[k] = 0;
           }
-        }
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          s_Us[j][k][i] = r_Ud[k];
-        }
-        
-        @barrier();
+          for (int l = 0; l < p_Nq; ++l) {
+            const dfloat U_lji = r_U[l];
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; ++k) {
+              r_Ud[k] += c_D[k][l] * U_lji;
+            }
+          }
 
-        #pragma unroll p_Nq
-        for (int k = 0; k < p_Nq; ++k) {
-          Aq[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset] = r_U[k] + s_Ur[k][j][i] + s_Us[k][j][i];
-        }
+          @barrier();
 
-        @barrier();
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; ++k) {
+            const dfloat GUr = r_G[k + p_Nq * p_G00ID] * s_Ur[k][j][i] +
+                               r_G[k + p_Nq * p_G01ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G02ID] * r_Ud[k];
+            const dfloat GUs = r_G[k + p_Nq * p_G01ID] * s_Ur[k][j][i] +
+                               r_G[k + p_Nq * p_G11ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G12ID] * r_Ud[k];
+            const dfloat GUt = r_G[k + p_Nq * p_G02ID] * s_Ur[k][j][i] +
+                               r_G[k + p_Nq * p_G12ID] * s_Us[k][j][i] + r_G[k + p_Nq * p_G22ID] * r_Ud[k];
+            s_Ur[k][j][i] = r_lam0[k] * GUr;
+            s_Us[k][j][i] = r_lam0[k] * GUs;
+            r_Ud[k] = r_lam0[k] * GUt;
+          }
+
+          @barrier();
+
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; ++k) {
+#ifdef p_poisson
+            r_U[k] = 0;
+#else
+            r_U[k] *= r_G[k + p_Nq * p_GWJID] * r_lam1[k];
+#endif
+          }
+          for (int l = 0; l < p_Nq; ++l) {
+            const dfloat GUt_lji = r_Ud[l];
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; ++k) {
+              r_U[k] += c_D[l][k] * GUt_lji;
+            }
+          }
+
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; ++k) {
+            r_Ud[k] = 0;
+          }
+          for (int l = 0; l < p_Nq; ++l) {
+            const dfloat GUr_jil = s_Ur[j][i][l];
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; ++k) {
+              r_Ud[k] += c_D[l][k] * GUr_jil;
+            }
+          }
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; ++k) {
+            s_Ur[j][i][k] = r_Ud[k];
+          }
+
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; ++k) {
+            r_Ud[k] = 0;
+          }
+          for (int l = 0; l < p_Nq; ++l) {
+            const dfloat GUs_jli = s_Us[j][l][i];
+#pragma unroll p_Nq
+            for (int k = 0; k < p_Nq; ++k) {
+              r_Ud[k] += c_D[l][k] * GUs_jli;
+            }
+          }
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; ++k) {
+            s_Us[j][k][i] = r_Ud[k];
+          }
+
+          @barrier();
+
+#pragma unroll p_Nq
+          for (int k = 0; k < p_Nq; ++k) {
+            Aq[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset] =
+                r_U[k] + s_Ur[k][j][i] + s_Us[k][j][i];
+          }
+
+          @barrier();
+        }
       }
-    }
     }
   }
 }

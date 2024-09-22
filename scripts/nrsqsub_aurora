@@ -52,13 +52,26 @@ echo "export MPICH_GPU_SUPPORT_ENABLED=$NEKRS_GPU_MPI" >> $SFILE
 
 echo "export OCCA_DPCPP_COMPILER_FLAGS=\"$OCCA_DPCPP_COMPILER_FLAGS\"" >> $SFILE
 
-# https://github.com/Nek5000/Nek5000/issues/759
-echo "export FI_CXI_RX_MATCH_MODE=hybrid" >> $SFILE 
-
-# https://github.com/stgeke/nekRS/issues/1282
+# Workaround for MPICH 52.2 see https://docs.alcf.anl.gov/aurora/known-issues/
 echo "unset MPIR_CVAR_CH4_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
 echo "unset MPIR_CVAR_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
 echo "unset MPIR_CVAR_CH4_POSIX_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
+
+# Cray MPI libfabric defaults
+echo "export FI_CXI_RDZV_THRESHOLD=16384" >> $SFILE
+echo "export FI_CXI_RDZV_EAGER_SIZE=2048" >> $SFILE
+echo "export FI_CXI_DEFAULT_CQ_SIZE=131072" >> $SFILE
+echo "export FI_CXI_DEFAULT_TX_SIZE=1024" >> $SFILE
+echo "export FI_CXI_OFLOW_BUF_SIZE=12582912" >> $SFILE
+echo "export FI_CXI_OFLOW_BUF_COUNT=3" >> $SFILE
+echo "export FI_CXI_REQ_BUF_MIN_POSTED=6" >> $SFILE
+echo "export FI_CXI_REQ_BUF_SIZE=12582912" >> $SFILE
+echo "export FI_MR_CACHE_MAX_SIZE=-1" >> $SFILE
+echo "export FI_MR_CACHE_MAX_COUNT=524288" >> $SFILE
+echo "export FI_CXI_REQ_BUF_MAX_CACHED=0" >> $SFILE
+echo "export FI_CXI_REQ_BUF_MIN_POSTED=6" >> $SFILE
+# echo "export FI_CXI_RX_MATCH_MODE=hardware" >> $SFILE 
+echo "export FI_CXI_RX_MATCH_MODE=hybrid" >> $SFILE # required by parRSB
 
 CMD=.lhelper
 echo "#!/bin/bash" > $CMD

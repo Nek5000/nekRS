@@ -12,7 +12,7 @@ static int bp5NReps, bps5NReps, bp6NReps;
 
 void runBenchmarks(nrs_t *nrs)
 {
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->mesh;
 
   std::vector<dfloat> rhs;
   rhs.reserve(nrs->fieldOffset);
@@ -204,7 +204,7 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->mesh;
 
   runBenchmarks(nrs);
 }

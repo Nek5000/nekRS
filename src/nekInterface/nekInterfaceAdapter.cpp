@@ -372,7 +372,7 @@ void writeFld(const std::string& filename,
   }
 }
 
-void uic(int ifield)
+void getIC(int ifield)
 {
   (*nek_uic_ptr)(&ifield);
 }
@@ -409,7 +409,7 @@ void getIC(void)
   options->getArgs("NUMBER OF SCALARS", Nscalar);
 
   for (int ifield = 1; ifield <= 1 + Nscalar; ifield++) {
-    uic(ifield);
+    getIC(ifield);
   }
 }
 
@@ -427,23 +427,20 @@ void xm1N(dfloat *_x, dfloat *_y, dfloat *_z, int N, dlong Nelements)
     return; 
   }
 
-  auto x = (double *)calloc(Np, sizeof(double));
-  auto y = (double *)calloc(Np, sizeof(double));
-  auto z = (double *)calloc(Np, sizeof(double));
+  std::vector<double> x(Np);
+  std::vector<double> y(Np);
+  std::vector<double> z(Np);
 
   for (dlong e = 0; e < Nelements; ++e) {
-    map_m_to_n(x, N + 1, &nekData.xm1[e * nxyz], nekData.nx1);
-    map_m_to_n(y, N + 1, &nekData.ym1[e * nxyz], nekData.nx1);
-    map_m_to_n(z, N + 1, &nekData.zm1[e * nxyz], nekData.nx1);
+    map_m_to_n(x.data(), N + 1, &nekData.xm1[e * nxyz], nekData.nx1);
+    map_m_to_n(y.data(), N + 1, &nekData.ym1[e * nxyz], nekData.nx1);
+    map_m_to_n(z.data(), N + 1, &nekData.zm1[e * nxyz], nekData.nx1);
     for (int i = 0; i < Np; i++) {
       _x[i + e * Np] = x[i];
       _y[i + e * Np] = y[i];
       _z[i + e * Np] = z[i];
     }
   }
-  free(x);
-  free(y);
-  free(z);
 }
 
 void ifoutfld(int i)
@@ -1007,6 +1004,7 @@ int setup(int numberActiveFields)
   re2::nelg(options->getArgs("MESH FILE"), nelgt, nelgv, platform->comm.mpiComm);
   const int cht = (nelgt > nelgv) && nscal;
 
+
   auto boundaryIDMap = [&](bool vMesh = false)
   {
     const std::string prefix = (cht && vMesh) ? "MESHV " : "MESH ";
@@ -1153,6 +1151,26 @@ int setup(int numberActiveFields)
   dfloat startTime;
   options->getArgs("START TIME", startTime);
   *(nekData.time) = startTime;
+
+  {
+    hlong NelementsV = nekData.nelv;
+    MPI_Allreduce(MPI_IN_PLACE, &NelementsV, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+    nekrsCheck(NelementsV != nelgv,
+               MPI_COMM_SELF,
+               EXIT_FAILURE,
+               "%s\n",
+               "Invalid element partitioning");
+
+    if (cht) {
+      hlong NelementsT = nekData.nelt;
+      MPI_Allreduce(MPI_IN_PLACE, &NelementsT, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
+      nekrsCheck(NelementsT <= NelementsV || NelementsT != nelgt,
+                 MPI_COMM_SELF,
+                 EXIT_FAILURE,
+                 "%s\n",
+                 "Invalid solid element partitioning");
+    }
+  }
 
   return 0;
 }

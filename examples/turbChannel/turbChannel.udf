@@ -11,7 +11,7 @@ static dfloat betaY;
 
 void userf(double time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   dfloat mue, rho;
   platform->options.getArgs("VISCOSITY", mue);
   platform->options.getArgs("DENSITY", rho);
@@ -24,33 +24,44 @@ void userf(double time)
 
 void useric(nrs_t *nrs)
 {
-  auto mesh = nrs->meshV;
-
-  const auto C = 5.17;
-  const auto k = 0.41;
-  const auto eps = 1e-2;
-  const auto kx = 23.0;
-  const auto kz = 13.0;
-  const auto alpha = kx * 2 * M_PI / xLength;
-  const auto beta = kz * 2 * M_PI / zLength;
-  dfloat mue;
-  platform->options.getArgs("VISCOSITY", mue);
+  auto mesh = nrs->mesh;
 
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    const auto C = 5.17;
+    const auto k = 0.41;
+    const auto eps = 1e-2;
+    const auto kx = 23.0;
+    const auto kz = 13.0;
+    const auto alpha = kx * 2 * M_PI / xLength;
+    const auto beta = kz * 2 * M_PI / zLength;
+    dfloat mue;
+    platform->options.getArgs("VISCOSITY", mue);
+
+    platform->linAlg->rescale(0.0, xLength, mesh->o_x, platform->comm.mpiComm);
+    platform->linAlg->rescale(0.0, 1.0, mesh->o_y, platform->comm.mpiComm);
+    platform->linAlg->rescale(0.0, zLength, mesh->o_z, platform->comm.mpiComm);
+
+    auto [x, y, z] = mesh->xyzHost();
+
     for (int i = 0; i < mesh->Nlocal; i++) {
-      const auto x = mesh->x[i];
-      const auto y = mesh->y[i];
-      const auto z = mesh->z[i];
-      const auto yp = (y < 0) ? (1 + y) * ReTau : (1 - y) * ReTau;
+      y[i] = tanh(betaY * (2*y[i] - 1)) / tanh(betaY);
+    }
+    mesh->o_y.copyFrom(y.data());
+
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    for (int i = 0; i < mesh->Nlocal; i++) {
+      const auto yp = (y[i] < 0) ? (1 + y[i]) * ReTau : (1 - y[i]) * ReTau;
 
       dfloat ux =
           1 / k * log(1 + k * yp) + (C - (1 / k) * log(k)) * (1 - exp(-yp / 11) - yp / 11 * exp(-yp / 3));
       ux *= ReTau * mue;
 
-      nrs->U[i + 0 * nrs->fieldOffset] = ux + eps * beta * sin(alpha * x) * cos(beta * z);
-      nrs->U[i + 1 * nrs->fieldOffset] = eps * sin(alpha * x) * sin(beta * z);
-      nrs->U[i + 2 * nrs->fieldOffset] = -eps * alpha * cos(alpha * x) * sin(beta * z);
+      U[i + 0 * nrs->fieldOffset] = ux + eps * beta * sin(alpha * x[i]) * cos(beta * z[i]);
+      U[i + 1 * nrs->fieldOffset] = eps * sin(alpha * x[i]) * sin(beta * z[i]);
+      U[i + 2 * nrs->fieldOffset] = -eps * alpha * cos(alpha * x[i]) * sin(beta * z[i]);
     }
+    nrs->o_U.copyFrom(U.data(), U.size());
+
   }
 }
 
@@ -62,10 +73,6 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
   platform->par->extract("casedata", "zLength", zLength);
   platform->par->extract("casedata", "xLength", xLength);
   platform->par->extract("casedata", "betaY", betaY);
-
-  *nek::ptr<double>("xlen") = xLength;
-  *nek::ptr<double>("zlen") = zLength;
-  *nek::ptr<double>("betam") = betaY;
 }
 
 void UDF_Setup()

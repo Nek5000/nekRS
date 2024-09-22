@@ -68,6 +68,7 @@
 #pragma unroll
             for (int l = 0; l < p_Nq; ++l) {
               const dlong iid = e * p_Np + l * p_Nq * p_Nq + j * p_Nq + i;
+              const dfloat cond = DIFF[iid];
               r_U[l] = cond * gradQ[iid + 0 * offset];
               r_V[l] = cond * gradQ[iid + 1 * offset];
               r_W[l] = cond * gradQ[iid + 2 * offset];

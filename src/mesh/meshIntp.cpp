@@ -38,8 +38,6 @@ void mesh_t::interpolate(const occa::memory& o_z, mesh_t *mesh, occa::memory& o_
   std::vector<dfloat> M(mesh->Nq);
   for(int i = 0; i < M.size(); i++) M[i] = mesh->r[i];
 
-  platform->linAlg->fill(mesh->Nlocal, 0.0, o_zM);
-
   const dlong nel = std::min(this->Nelements, mesh->Nelements);
   this->intpKernel[mesh->N](nel, intpMatrix(M), o_z, o_zM);
 }
@@ -59,7 +57,6 @@ void mesh_t::map2Uniform(const occa::memory& o_z, mesh_t *meshU, occa::memory& o
     return r;
   }();
 
-  platform->linAlg->fill(this->Nelements * std::pow(U.size(), this->dim), 0.0, o_zU);
   this->intpKernel[Nu](this->Nelements, intpMatrix(U), o_z, o_zU);
 }
 

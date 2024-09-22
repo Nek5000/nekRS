@@ -29,7 +29,7 @@ static void lagFields(nrs_t *nrs)
   // lag mesh velocity
   const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
   if (movingMesh) {
-    auto mesh = nrs->_mesh;
+    auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
     for (int s = std::max(nrs->nEXT, mesh->nAB); s > 1; s--) {
       const auto N = nrs->NVfields * nrs->fieldOffset;
       mesh->o_U.copyFrom(mesh->o_U, N, (s - 1) * N, (s - 2) * N);
@@ -39,22 +39,18 @@ static void lagFields(nrs_t *nrs)
 
 static void extrapolate(nrs_t *nrs)
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
-  {
-    nrs->extrapolateKernel(mesh->Nlocal,
-                           nrs->NVfields,
-                           nrs->nEXT,
-                           nrs->fieldOffset,
-                           nrs->o_coeffEXT,
-                           nrs->o_U,
-                           nrs->o_Ue);
-  }
+  nrs->extrapolateKernel(mesh->Nlocal,
+                         nrs->NVfields,
+                         nrs->nEXT,
+                         nrs->fieldOffset,
+                         nrs->o_coeffEXT,
+                         nrs->o_U,
+                         nrs->o_Ue);
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    if (nrs->cht) {
-      mesh = nrs->_mesh;
-    }
+    auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
     nrs->extrapolateKernel(mesh->Nlocal,
                            nrs->NVfields,
                            nrs->nEXT,
@@ -95,7 +91,7 @@ static void setEXTBDFCoeffs(nrs_t *nrs, int tstep)
   }
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    mesh_t *mesh = nrs->meshV;
+    auto mesh = nrs->mesh;
     if (nrs->cht) {
       mesh = nrs->cds->mesh[0];
     }
@@ -122,7 +118,7 @@ static void computeUrst(nrs_t *nrs)
   const bool cubature = platform->options.compareArgs("ADVECTION TYPE", "CUBATURE");
 
   occa::memory &o_Urst = relative ? nrs->o_relUrst : nrs->o_Urst;
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   double flopCount = 0.0;
 
   if (cubature) {
@@ -188,25 +184,22 @@ dfloat nrs_t::adjustDt(int tstep)
 
         platform->linAlg->abs(this->NVfields * this->fieldOffset, this->o_NLT);
 
-        const auto maxFUx = platform->linAlg->max(this->meshV->Nlocal, o_FUx, platform->comm.mpiComm);
-        const auto maxFUy = platform->linAlg->max(this->meshV->Nlocal, o_FUy, platform->comm.mpiComm);
-        const auto maxFUz = platform->linAlg->max(this->meshV->Nlocal, o_FUz, platform->comm.mpiComm);
+        const auto maxFUx = platform->linAlg->max(this->mesh->Nlocal, o_FUx, platform->comm.mpiComm);
+        const auto maxFUy = platform->linAlg->max(this->mesh->Nlocal, o_FUy, platform->comm.mpiComm);
+        const auto maxFUz = platform->linAlg->max(this->mesh->Nlocal, o_FUz, platform->comm.mpiComm);
         const auto maxFU = std::max({maxFUx, maxFUy, maxFUz});
 
-        const auto minRho = platform->linAlg->min(this->meshV->Nlocal, this->o_rho, platform->comm.mpiComm);
+        const auto minRho = platform->linAlg->min(this->mesh->Nlocal, this->o_rho, platform->comm.mpiComm);
         const auto maxU = maxFU / minRho;
-        const auto x = this->meshV->x;
-        const auto y = this->meshV->y;
-        const auto z = this->meshV->z;
 
-        auto minLengthScale = 10 * std::numeric_limits<double>::max();
-        for (int i = 0; i < this->meshV->Nlocal; i++) {
-          const double lengthScale = sqrt((x[0] - x[1]) * (x[0] - x[1]) + (y[0] - y[1]) * (y[0] - y[1]) +
-                                          (z[0] - z[1]) * (z[0] - z[1]));
-          minLengthScale = std::min(lengthScale, minLengthScale);
+        std::vector<dfloat> Jw(mesh->Nlocal);
+        mesh->o_Jw.copyTo(Jw.data(), Jw.size());
+
+        auto minLengthScale = 10 * std::numeric_limits<dfloat>::max();
+        for (int i = 0; i < this->mesh->Nlocal; i++) {
+          minLengthScale = std::min(std::cbrt(Jw[i]), minLengthScale);
         }
-
-        MPI_Allreduce(MPI_IN_PLACE, &minLengthScale, 1, MPI_DOUBLE, MPI_MIN, platform->comm.mpiComm);
+        MPI_Allreduce(MPI_IN_PLACE, &minLengthScale, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
         if (maxU > TOLToZero) {
           dt_ = sqrt(targetCFL * minLengthScale / maxU);
         } else {
@@ -274,7 +267,7 @@ dfloat nrs_t::adjustDt(int tstep)
 
 static occa::memory meshSolve(nrs_t *nrs, double time, int iter)
 {
-  mesh_t *mesh = nrs->_mesh;
+  auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
   linAlg_t *linAlg = platform->linAlg;
 
   auto o_rhs = platform->o_memPool.reserve<dfloat>(mesh->dim * nrs->fieldOffset);
@@ -329,7 +322,7 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
   extrapolate(this);
 
   if (this->Nsubsteps) {
-    auto mesh = (this->cht) ? this->cds->mesh[0] : this->meshV;
+    auto mesh = (this->cht) ? this->cds->mesh[0] : this->mesh;
     const auto NCubature = this->NVfields * this->cubatureOffset;
     for (int s = this->nEXT; s > 1; s--) {
       const auto N = this->fieldOffset;
@@ -374,7 +367,7 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
 
         const std::string sid = scalarDigitStr(is);
 
-        auto mesh = (is) ? cds->meshV : cds->mesh[0];
+        auto mesh = cds->mesh[is];
         const dlong isOffset = cds->fieldOffsetScan[is];
 
         occa::memory o_Usubcycling;
@@ -435,7 +428,6 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
     occa::memory o_Usubcycling;
     this->makeNLT(time, tstep, o_Usubcycling);
 
-    auto mesh = this->meshV;
     this->sumMakefKernel(mesh->Nlocal,
                          1,
                          mesh->o_LMM,
@@ -475,7 +467,7 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
   }
 
   if (movingMesh) {
-    mesh_t *mesh = this->_mesh;
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
     for (int s = std::max(this->nBDF, this->nEXT); s > 1; s--) {
       const auto N = this->fieldOffset;
       mesh->o_LMM.copyFrom(mesh->o_LMM, N, (s - 1) * N, (s - 2) * N);
@@ -483,11 +475,14 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
     }
 
     mesh->move();
+    if (cht) {
+      mesh->computeInvLMM();
+    }
 
     if (this->flow) {
       if (bcMap::unalignedMixedBoundary("velocity")) {
         createZeroNormalMask(this,
-                             this->meshV,
+                             this->mesh,
                              this->uvwSolver->o_EToB(),
                              this->o_EToBVVelocity,
                              this->o_zeroNormalMaskVelocity);
@@ -502,10 +497,6 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
                              this->o_EToBVMeshVelocity,
                              this->o_zeroNormalMaskMeshVelocity);
       }
-    }
-
-    if (this->cht) {
-      this->meshV->computeInvLMM();
     }
   }
 }
@@ -544,9 +535,6 @@ bool nrs_t::runStep(std::function<bool(int)> convergenceCheck, int iter)
 
 bool nrs_t::runInnerStep(std::function<bool(int)> convergenceCheck, int iter)
 {
-  mesh_t *mesh = this->meshV;
-  cds_t *cds = this->cds;
-
   this->outerCorrector = iter;
 
   const auto tstep = this->tstep;
@@ -578,7 +566,8 @@ bool nrs_t::runInnerStep(std::function<bool(int)> convergenceCheck, int iter)
     }
 
     if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
-      applyDirichletMesh(this, timeNew, this->_mesh->o_U, this->_mesh->o_Ue, this->o_U);
+      auto mesh = (cht) ? cds->mesh[0] : this->mesh;
+      applyDirichletMesh(this, timeNew, mesh->o_U, mesh->o_Ue, this->o_U);
     }
 
     if (this->neknek) {
@@ -603,8 +592,6 @@ bool nrs_t::runInnerStep(std::function<bool(int)> convergenceCheck, int iter)
   }
 
   if (this->flow) {
-    auto mesh = this->meshV;
-
     platform->timer.tic("pressureSolve", 1);
     {
       const auto &o_Pnew = tombo::pressureSolve(this, timeNew, iter);
@@ -627,7 +614,7 @@ bool nrs_t::runInnerStep(std::function<bool(int)> convergenceCheck, int iter)
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
     auto o_Unew = meshSolve(this, timeNew, iter);
-    this->meshV->o_U.copyFrom(o_Unew, this->NVfields * this->fieldOffset);
+    mesh->o_U.copyFrom(o_Unew, this->NVfields * this->fieldOffset);
   }
 
   auto timeStepConverged = convergenceCheck(iter);
@@ -660,11 +647,12 @@ void nrs_t::saveSolutionState()
       o_Urstsave = platform->device.malloc<dfloat>(o_Urst_.length());
     }
     if (movingMesh) {
-      o_LMMsave = platform->device.malloc<dfloat>(_mesh->o_LMM.length());
-      o_Umeshsave = platform->device.malloc<dfloat>(_mesh->o_U.length());
-      o_xsave = platform->device.malloc<dfloat>(_mesh->o_x.length());
-      o_ysave = platform->device.malloc<dfloat>(_mesh->o_y.length());
-      o_zsave = platform->device.malloc<dfloat>(_mesh->o_z.length());
+      auto mesh = (cht) ? cds->mesh[0] : this->mesh;
+      o_LMMsave = platform->device.malloc<dfloat>(mesh->o_LMM.length());
+      o_Umeshsave = platform->device.malloc<dfloat>(mesh->o_U.length());
+      o_xsave = platform->device.malloc<dfloat>(mesh->o_x.length());
+      o_ysave = platform->device.malloc<dfloat>(mesh->o_y.length());
+      o_zsave = platform->device.malloc<dfloat>(mesh->o_z.length());
     }
   }
 
@@ -681,11 +669,12 @@ void nrs_t::saveSolutionState()
   }
 
   if (movingMesh) {
-    o_LMMsave.copyFrom(_mesh->o_LMM, _mesh->o_LMM.length());
-    o_Umeshsave.copyFrom(_mesh->o_U, _mesh->o_U.length());
-    o_xsave.copyFrom(_mesh->o_x, _mesh->o_x.length());
-    o_ysave.copyFrom(_mesh->o_y, _mesh->o_y.length());
-    o_zsave.copyFrom(_mesh->o_z, _mesh->o_z.length());
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
+    o_LMMsave.copyFrom(mesh->o_LMM, mesh->o_LMM.length());
+    o_Umeshsave.copyFrom(mesh->o_U, mesh->o_U.length());
+    o_xsave.copyFrom(mesh->o_x, mesh->o_x.length());
+    o_ysave.copyFrom(mesh->o_y, mesh->o_y.length());
+    o_zsave.copyFrom(mesh->o_z, mesh->o_z.length());
   }
 }
 
@@ -704,11 +693,12 @@ void nrs_t::restoreSolutionState()
     o_Urstsave.copyTo(o_Urst, o_Urst_.length());
   }
   if (movingMesh) {
-    o_LMMsave.copyTo(_mesh->o_LMM, _mesh->o_LMM.length());
-    o_Umeshsave.copyTo(_mesh->o_U, _mesh->o_U.length());
-    o_xsave.copyTo(_mesh->o_x, _mesh->o_x.length());
-    o_ysave.copyTo(_mesh->o_y, _mesh->o_y.length());
-    o_zsave.copyTo(_mesh->o_z, _mesh->o_z.length());
-    _mesh->update();
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
+    o_LMMsave.copyTo(mesh->o_LMM, mesh->o_LMM.length());
+    o_Umeshsave.copyTo(mesh->o_U, mesh->o_U.length());
+    o_xsave.copyTo(mesh->o_x, mesh->o_x.length());
+    o_ysave.copyTo(mesh->o_y, mesh->o_y.length());
+    o_zsave.copyTo(mesh->o_z, mesh->o_z.length());
+    mesh->update();
   }
 }

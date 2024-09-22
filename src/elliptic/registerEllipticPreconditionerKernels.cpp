@@ -246,6 +246,7 @@ void registerMultigridLevelKernels(const std::string &section, int Nf, int N, in
     int NqFine = (Nf + 1);
     int NqCoarse = (Nc + 1);
     occa::properties coarsenProlongateKernelInfo = kernelInfo;
+    coarsenProlongateKernelInfo["defines/p_add"] = 1;
     coarsenProlongateKernelInfo["defines/p_NqFine"] = Nf + 1;
     coarsenProlongateKernelInfo["defines/p_NqCoarse"] = Nc + 1;
 

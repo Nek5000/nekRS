@@ -29,10 +29,20 @@
 
 void meshPhysicalNodesHex3D(mesh_t *mesh)
 {
-  auto fieldOffset = (mesh->Nelements+mesh->totalHaloPairs) * mesh->Np;
-  mesh->x = (dfloat*) calloc(fieldOffset, sizeof(dfloat));
-  mesh->y = (dfloat*) calloc(fieldOffset, sizeof(dfloat));
-  mesh->z = (dfloat*) calloc(fieldOffset, sizeof(dfloat));
+  std::vector<dfloat> xm(mesh->Nlocal);
+  std::vector<dfloat> ym(mesh->Nlocal);
+  std::vector<dfloat> zm(mesh->Nlocal);
 
-  nek::xm1N(mesh->x, mesh->y, mesh->z, mesh->N, mesh->Nelements);
+  nek::xm1N(xm.data(), ym.data(), zm.data(), mesh->N, mesh->Nelements);
+
+  mesh->o_x =
+    platform->device.malloc<dfloat>(mesh->Nlocal);
+  mesh->o_y =
+    platform->device.malloc<dfloat>(mesh->Nlocal);
+  mesh->o_z =
+    platform->device.malloc<dfloat>(mesh->Nlocal);
+
+  mesh->o_x.copyFrom(xm.data());
+  mesh->o_y.copyFrom(ym.data());
+  mesh->o_z.copyFrom(zm.data());
 }

@@ -6,6 +6,15 @@
 
 void UDF_Setup() 
 {
+  auto mesh = nrs->mesh;
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    for(int n = 0; n < mesh->Nlocal; n++) {
+      U[n + 2 * nrs->fieldOffset] = 1;
+    }
+    nrs->o_U.copyFrom(U.data(), U.size());
+  }
 }
 
 void UDF_ExecuteStep(double time, int tstep) 

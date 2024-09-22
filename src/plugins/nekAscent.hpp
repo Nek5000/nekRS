@@ -1,11 +1,9 @@
+#if !defined(NEKRS_ENABLE_ASCENT)
+#error "No Ascent installation was found"
+#endif
+
 #if !defined(nekrs_nekascent_hpp_)
 #define nekrs_nekascent_hpp_
-
-#if !defined(NEKRS_ENABLE_ASCENT)
-
-#error "No Ascent installation was found"
-
-#else
 
 #define NEKRS_ASCENT_ENABLED
 #include "platform.hpp"
@@ -19,11 +17,11 @@ namespace nekAscent
 void setup(mesh_t *mesh_,
            const std::string& inputFile,
            int Nin_ = 0,
-           bool uniform_ = false);
+           bool uniform_ = false,
+           bool stageThroughHost = false);
 void run(const double time, const int tstep);
 void finalize();
-void addScalarField(const std::string& name, occa::memory o_fld, mesh_t *mesh_fld);
-void addVectorField(const std::string& name, occa::memory o_fld, mesh_t *mesh_fld, dlong offset);
+void addVariable(const std::string& name, mesh_t *mesh_fld, const std::vector<deviceMemory<dfloat>>& fld);
 void clearData();
 
 ascent::Ascent mAscent;
@@ -33,12 +31,15 @@ namespace
 {
 conduit::Node mesh_data;
 
-using field = std::tuple<std::string, occa::memory, mesh_t *, dlong>;
+using field = std::tuple<std::string, std::vector<occa::memory>, mesh_t *>;
 std::vector<field> userFieldList;
 occa::memory o_connectivity;
+occa::memory o_x, o_y, o_z;
 
 mesh_t *mesh_in;
 mesh_t *mesh_vis;
+
+bool stageThroughHost = false;
 
 bool setupCalled = false;
 bool updateMesh = true;
@@ -98,11 +99,11 @@ static void initializeAscent()
   fflush(stdout);
 }
 
-static void updateFieldData(occa::memory& o_fields)
+static void updateFieldData(occa::memory& o_work)
 {
   platform->timer.tic("nekAscent::run::update");
 
-  auto fieldOffsetScan = [&]()
+  const auto fieldOffsetScan = [&]()
   {
     std::vector<dlong> offsetScan(userFieldList.size() + 1);
     offsetScan[0] = 0;
@@ -112,23 +113,21 @@ static void updateFieldData(occa::memory& o_fields)
       auto fieldName = std::get<0>(entry);
       auto o_fld = std::get<1>(entry);
       auto mesh_fld = std::get<2>(entry);
-      auto& offset_fld = std::get<3>(entry);
-      const auto dim_fld = (offset_fld) ? o_fld.size() / offset_fld : 1;
+      const auto dim_fld = o_fld.size();
  
       offsetScan[ifld] =
           offsetScan[ifld - 1] +
-          alignStride<dfloat>(mesh_vis->Np * (mesh_fld->Nelements + mesh_fld->totalHaloPairs)) * dim_fld;
+          alignStride<dfloat>(mesh_vis->Np * mesh_fld->Nelements) * dim_fld;
  
       ifld++;
     }
     return offsetScan;
   }();
 
-  if (interpolate) {
-    if (!o_fields.isInitialized())
-      o_fields = platform->o_memPool.reserve<dfloat>(fieldOffsetScan.back());
- 
-    const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+  const auto movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
+  if (interpolate || uniform) {
+    o_work = platform->o_memPool.reserve<dfloat>(fieldOffsetScan.back());
+
     if (updateMesh || movingMesh) {
       if (uniform) {
         mesh_in->map2Uniform(mesh_in->o_x, mesh_vis, mesh_vis->o_x);
@@ -139,72 +138,68 @@ static void updateFieldData(occa::memory& o_fields)
         mesh_in->interpolate(mesh_in->o_y, mesh_vis, mesh_vis->o_y);
         mesh_in->interpolate(mesh_in->o_z, mesh_vis, mesh_vis->o_z);
       }
+
       updateMesh = false;
     }
   }
 
+  if (stageThroughHost && (updateMesh || movingMesh)) {
+    o_x.copyFrom(mesh_vis->o_x);
+    o_y.copyFrom(mesh_vis->o_y);
+    o_z.copyFrom(mesh_vis->o_z);
+  }
+
   int ifld = 0;
-  const std::string str_uvw = "uvw";
   const std::string str_xyz = "xyz";
   for (auto &entry : userFieldList) {
-    auto fieldName = std::get<0>(entry);
-    auto o_fldIn = std::get<1>(entry);
-    auto mesh_fld = std::get<2>(entry);
-    auto& offset_fldIn = std::get<3>(entry);
+    const auto& fieldName = std::get<0>(entry);
+    const auto& o_fldIn = std::get<1>(entry);
+    const auto& mesh_fld = std::get<2>(entry);
 
-    const auto dim_fld = (offset_fldIn) ? o_fldIn.size() / offset_fldIn : 1;
-    const dlong offset_fld = (interpolate) ? fieldOffsetScan[ifld] / dim_fld : 0;
-    const dlong fieldLength = mesh_fld->Nelements * mesh_vis->Np;
+    const auto dim_fld = o_fldIn.size();
+    const dlong Nlocal = mesh_fld->Nelements * mesh_vis->Np;
 
-    auto o_fld = (interpolate) ? o_fields.slice(fieldOffsetScan[ifld]) : o_fldIn;
-
-    if (dim_fld==1) { // scalar field
-      if (interpolate) {
-        if (uniform) {
-          mesh_fld->map2Uniform(mesh_vis, o_fldIn, o_fld);
-        } else {
-          mesh_fld->interpolate(mesh_vis, o_fldIn, o_fld);
-        }
-      }
-      mesh_data["fields/" + fieldName + "/association"] = "vertex";
-      mesh_data["fields/" + fieldName + "/topology"] = "mesh";
-      mesh_data["fields/" + fieldName + "/values"].set_external((dfloat *)o_fld.ptr(), fieldLength);
-
-    } else if (dim_fld==2 || dim_fld==3) { // vector field
-
-      for (int idim=0;idim<dim_fld;idim++) {
-        auto o_fldInComp = o_fldIn.slice(idim*offset_fldIn);
-        auto o_fldComp = (interpolate) ? o_fld.slice(idim*offset_fld) : o_fldInComp;
-
-        if (interpolate) {
-          if (uniform) {
-            mesh_fld->map2Uniform(mesh_vis, o_fldInComp, o_fldComp);
-          } else {
-            mesh_fld->interpolate(mesh_vis, o_fldInComp, o_fldComp);
+    if (dim_fld ==1 || dim_fld == 3) {
+      for (int idim=0; idim<dim_fld; idim++) {
+        auto data = [&]()
+        {
+          auto o_fldOut = o_fldIn.at(idim);
+          if (interpolate || uniform) {
+            auto o_fld = o_work.slice(fieldOffsetScan[ifld]);
+            const auto fieldOffset = fieldOffsetScan[ifld] / dim_fld;
+            o_fldOut = o_fld.slice(idim * fieldOffset, mesh_vis->Nlocal);
+            if (uniform) {
+              mesh_fld->map2Uniform(o_fldIn.at(idim), mesh_vis, o_fldOut);
+            } else {
+              mesh_fld->interpolate(o_fldIn.at(idim), mesh_vis, o_fldOut);
+            }
           }
-        }
 
-        // scalar field
-        std::string fieldNameXYZ = fieldName + "_" + str_xyz.at(idim);
-        mesh_data["fields/" + fieldNameXYZ + "/association"] = "vertex";
-        mesh_data["fields/" + fieldNameXYZ + "/topology"] = "mesh";
-        mesh_data["fields/" + fieldNameXYZ + "/values"].set_external((dfloat *)o_fldComp.ptr(), fieldLength);
+          if (stageThroughHost) {
+            auto o_out = platform->memPool.reserve<dfloat>(o_fldOut.size());
+            o_out.copyFrom(o_fldOut);
+            return o_out.ptr<dfloat>();
+          } else {
+            return o_fldOut.ptr<dfloat>();
+          }
+        }();
 
-/* Bug in Ascent
-   https://github.com/stgeke/nekRS/issues/1387
-   https://github.com/Alpine-DAV/ascent/issues/1329
-        // vector component
+// workaround for https://github.com/Alpine-DAV/ascent/issues/1329
+#if 0
         if (idim==0) {
           mesh_data["fields/" + fieldName + "/association"] = "vertex";
           mesh_data["fields/" + fieldName + "/topology"] = "mesh";
         }
-        mesh_data["fields/" + fieldName + "/values/" + str_uvw.at(idim)].set_external((dfloat *)o_fldComp.ptr(), fieldLength);
-*/
+        mesh_data["fields/" + fieldName + "/values/" + str_xyz.at(idim)].set_external(data, Nlocal);
+#else
+        const auto fieldNameXYZ = (dim_fld > 1) ? fieldName + "_" + str_xyz.at(idim) : fieldName;
+        mesh_data["fields/" + fieldNameXYZ + "/association"] = "vertex";
+        mesh_data["fields/" + fieldNameXYZ + "/topology"] = "mesh";
+        mesh_data["fields/" + fieldNameXYZ + "/values"].set_external(data, Nlocal);
+#endif
       }
     } else {
-      if (platform->comm.mpiRank == 0) {
-        nekrsCheck(0, MPI_COMM_SELF, EXIT_FAILURE, "Unsupported vector dim: %d\n", dim_fld);
-      }
+      nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "Unsupported vector dim: %d\n", dim_fld);
     }
 
     ifld++;
@@ -213,14 +208,11 @@ static void updateFieldData(occa::memory& o_fields)
   platform->timer.toc("nekAscent::run::update");
 }
 
-void nekAscent::addScalarField(const std::string& name, occa::memory o_fld, mesh_t *mesh_fld)
+void nekAscent::addVariable(const std::string& name, mesh_t *mesh_fld, const std::vector<deviceMemory<dfloat>>& fld)
 {
-  userFieldList.push_back(std::tuple{name, o_fld.slice(0, mesh_fld->Nlocal), mesh_fld, 0});
-}
-
-void nekAscent::addVectorField(const std::string& name, occa::memory o_fld, mesh_t *mesh_fld, dlong offset)
-{
-  userFieldList.push_back(std::tuple{name, o_fld.slice(0, mesh_fld->dim * offset), mesh_fld, offset});
+  std::vector<occa::memory> fld_;
+  for (const auto&entry : fld) fld_.push_back(entry);
+  userFieldList.push_back(std::tuple{name, fld_, mesh_fld});
 }
 
 void nekAscent::clearData()
@@ -231,21 +223,24 @@ void nekAscent::clearData()
 void nekAscent::setup(mesh_t *mesh_,
                       const std::string& inputFile,
                       int Nin_,
-                      bool uniform_)
+                      bool uniform_,
+                      bool stageThroughHost_)
 {
   const auto verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
   mesh_in = mesh_;
   uniform = uniform_;
+  stageThroughHost = stageThroughHost_;
+  if (platform->serial) stageThroughHost = false;
   const int Nin = (Nin_) ? Nin_ : mesh_in->N;
 
   platform->timer.addUserStat("nekAscent::");
 
-  interpolate = (uniform || (Nin != mesh_in->N));
+  interpolate = (Nin != mesh_in->N);
 
   const auto tStart = MPI_Wtime();
   if (platform->comm.mpiRank == 0) {
     printf("initializing nekAscent ");
-    if (interpolate) {
+    if (interpolate || uniform) {
       printf("(Nviz=%d", Nin);
       if (uniform)  printf(" +uniform"); 
       printf(") ...\n");
@@ -263,7 +258,7 @@ void nekAscent::setup(mesh_t *mesh_,
   mesh_vis = [&]()
   {
     auto mesh = mesh_in;
-    if (interpolate) {
+    if (interpolate || uniform) {
       mesh = new mesh_t();
       mesh->Nelements = mesh_in->Nelements;
       mesh->dim = mesh_in->dim;
@@ -275,14 +270,26 @@ void nekAscent::setup(mesh_t *mesh_,
       mesh->o_x = platform->device.malloc<dfloat>(mesh->Nlocal);
       mesh->o_y = platform->device.malloc<dfloat>(mesh->Nlocal);
       mesh->o_z = platform->device.malloc<dfloat>(mesh->Nlocal);
+      o_x = mesh->o_x;
+      o_y = mesh->o_y;
+      o_z = mesh->o_z;
     }
     return mesh;
   }();
 
+  if (stageThroughHost) {
+    o_x = platform->device.mallocHost<dfloat>(mesh_vis->Nlocal);
+    o_y = platform->device.mallocHost<dfloat>(mesh_vis->Nlocal);
+    o_z = platform->device.mallocHost<dfloat>(mesh_vis->Nlocal);
+    o_x.copyFrom(mesh_vis->o_x);
+    o_y.copyFrom(mesh_vis->o_y);
+    o_z.copyFrom(mesh_vis->o_z);
+  }
+
   mesh_data["coordsets/coords/type"] = "explicit";
-  mesh_data["coordsets/coords/values/x"].set_external((dfloat *)mesh_vis->o_x.ptr(), mesh_vis->Nlocal);
-  mesh_data["coordsets/coords/values/y"].set_external((dfloat *)mesh_vis->o_y.ptr(), mesh_vis->Nlocal);
-  mesh_data["coordsets/coords/values/z"].set_external((dfloat *)mesh_vis->o_z.ptr(), mesh_vis->Nlocal);
+  mesh_data["coordsets/coords/values/x"].set_external(o_x.ptr<dfloat>(), mesh_vis->Nlocal);
+  mesh_data["coordsets/coords/values/y"].set_external(o_y.ptr<dfloat>(), mesh_vis->Nlocal);
+  mesh_data["coordsets/coords/values/z"].set_external(o_z.ptr<dfloat>(), mesh_vis->Nlocal);
 
   mesh_data["topologies/mesh/type"] = "unstructured";
   mesh_data["topologies/mesh/coordset"] = "coords";
@@ -323,7 +330,7 @@ void nekAscent::setup(mesh_t *mesh_,
   if (platform->comm.mpiRank == 0) {
     printf("\ndone (%gs)\n\n", tSetup);
     if (verbose) {
-      conduit::Node mesh_copy; // copy mesh_data to host
+      conduit::Node mesh_copy;
       mesh_copy.set(mesh_data);
       mesh_copy.print();
     }
@@ -352,7 +359,7 @@ void nekAscent::run(const double time, const int tstep)
 
   if (platform->comm.mpiRank == 0 && verbose) {
     std::cout << "---------------- Ascent mesh_data ----------------" << std::endl;
-    conduit::Node mesh_copy; // copy mesh_data to host
+    conduit::Node mesh_copy;
     mesh_copy.set(mesh_data);
     mesh_copy.print();
     fflush(stdout);
@@ -370,7 +377,7 @@ void nekAscent::run(const double time, const int tstep)
 
   mAscent.execute(actions);
 
-  o_work.free();
+  o_work.free(); // now it's safe to free
 
   platform->timer.toc("nekAscent::run");
 }
@@ -383,5 +390,4 @@ void nekAscent::finalize()
   }
 }
 
-#endif
 #endif // hpp

@@ -182,9 +182,9 @@ if (NEKRS_BUILD_FLOAT)
   target_compile_definitions(nekrs-lib-fp32 PUBLIC NEKRS_USE_DFLOAT_FLOAT)
 endif()
 
-add_executable(nekrs-bin src/bin/main.cpp)
+add_executable(nekrs-bin src/bin/driver.cpp)
 if (NEKRS_BUILD_FLOAT)
-  add_executable(nekrs-bin-fp32 src/bin/main.cpp)
+  add_executable(nekrs-bin-fp32 src/bin/driver.cpp)
 endif()
 
 target_include_directories(nekrs-bin PRIVATE src/lib src/utils)

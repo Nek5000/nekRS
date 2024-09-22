@@ -124,7 +124,7 @@ inline dfloat nu_k(const dfloat s, const dfloat s0, const dfloat ramp)
   } else if (s > (s0 + ramp)) {
     multiplier = 0.0;
   } else {
-    multiplier = 1.0 - 0.5 * (1.0 + sin((M_PI * (s - s0)) / (2.0 * ramp)));
+    multiplier = 1.0 - 0.5 * (1.0 + sin((p_PI * (s - s0)) / (2.0 * ramp)));
   }
   return multiplier;
 }

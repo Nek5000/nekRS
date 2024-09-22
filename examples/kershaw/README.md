@@ -2,8 +2,12 @@
 
 This example runs the following benchmarks: 
 
-* CEED BP5  (proxy for velocity solve)
+* CEED BP5  (proxy for scalar solve)
+* CEED BP6  (proxy for velocity solve)
 * CEED BPS5 (proxy for pressure solve)
+
+The mesh size can be adjusted by changing `nelx, nely, nelz` in `kershaw.box`. 
+Then, run the nek5000 tool `genbox` and enter `kershaw.box`. Finally move the generated `box.re2` to `kershaw.re2` 
 
 ## Performance Results (E/GPU=8000) 
 

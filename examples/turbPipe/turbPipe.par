@@ -35,10 +35,10 @@ rho = 1.0
 diffusivity = 1/19000
 boundaryTypeMap = codedFixedValue, zeroFlux, codedFixedValue
 residualTol = 1e-06
-regularization = avm+absoluteTol=1e-3
+regularization = avm+noiseThreshold=1e-3
 
 [CASEDATA]
 # adjust to actual mesh 
 NSLABS  = 60
 NELSLAB = 132 
-renderStep = 100 # ascent
+processAscentYamlFrequency = 100

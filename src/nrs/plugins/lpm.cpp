@@ -15,8 +15,8 @@ lpm_t::lpm_t(dfloat bb_tol_, dfloat newton_tol_)
       solverOrder(nrs->nEXT), 
       bb_tol(bb_tol_),
       newton_tol(newton_tol_), 
-      interp(std::make_unique<pointInterpolation_t>(nrs->meshV, platform->comm.mpiComm, 
-        nrs->meshV->Nlocal, nrs->meshV->Nlocal, bb_tol, newton_tol))
+      interp(std::make_unique<pointInterpolation_t>(nrs->mesh, platform->comm.mpiComm, 
+        nrs->mesh->Nlocal, nrs->mesh->Nlocal, bb_tol, newton_tol))
 {
   nekrsCheck(!kernelsRegistered_,
              platform->comm.mpiComm,
@@ -502,8 +502,8 @@ void lpm_t::integrate(double tf)
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     interp.reset();
 
-    interp = std::make_unique<pointInterpolation_t>(nrs->meshV, platform->comm.mpiComm,
-      nrs->meshV->Nlocal, nrs->meshV->Nlocal, bb_tol, newton_tol);
+    interp = std::make_unique<pointInterpolation_t>(nrs->mesh, platform->comm.mpiComm,
+      nrs->mesh->Nlocal, nrs->mesh->Nlocal, bb_tol, newton_tol);
   }
 
   // set extrapolated state to t^n (copy from laggedInterpFields)
@@ -585,7 +585,7 @@ void lpm_t::extrapolateFluidState(dfloat tEXT)
   const auto extOrder = std::min(tstep, nEXT);
   const auto bdfOrder = std::min(tstep, nBDF);
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   std::copy(nrs->dt, nrs->dt + 3, dtEXT.begin());
   dtEXT[0] = tEXT - time;

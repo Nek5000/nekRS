@@ -49,5 +49,5 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   const int rank = platform->comm.mpiRank;
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->mesh;
 }

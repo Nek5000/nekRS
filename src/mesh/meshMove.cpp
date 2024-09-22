@@ -23,7 +23,7 @@ void mesh_t::move()
   platform->timer.toc("meshUpdate");
 }
 
-void mesh_t::update(bool updateHost)
+void mesh_t::update()
 {
   geometricFactors();
 
@@ -32,10 +32,4 @@ void mesh_t::update(bool updateHost)
   computeInvLMM();
 
   surfaceGeometricFactors();
-
-  if (updateHost) {
-    o_x.copyTo(x);
-    o_y.copyTo(y);
-    o_z.copyTo(z);
-  }
 }

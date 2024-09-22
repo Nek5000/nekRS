@@ -1475,7 +1475,7 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
           {"scalingcoeff"},
           {"activationwidth"},
           {"decaythreshold"},
-          {"absolutetol"},
+          {"noisethreshold"},
 
       };
       const std::vector<std::string> list = serializeString(regularization, '+');
@@ -1523,7 +1523,7 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
             append_error("cutoffRatio qualifier is invalid for avm!\n");
           }
 
-          const auto absTolStr = parseValueForKey(s, "absolutetol");
+          const auto absTolStr = parseValueForKey(s, "noisethreshold");
           if (!absTolStr.empty()) {
             options.setArgs(parPrefix + "REGULARIZATION AVM ABSOLUTE TOL", absTolStr);
           }

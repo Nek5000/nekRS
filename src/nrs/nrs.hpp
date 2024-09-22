@@ -46,8 +46,7 @@ public:
 
   int elementType = HEXAHEDRA;
 
-  mesh_t *_mesh = nullptr;
-  mesh_t *meshV = nullptr;
+  mesh_t* mesh = nullptr;
 
   elliptic *uSolver = nullptr;
   elliptic *vSolver = nullptr;
@@ -100,11 +99,9 @@ public:
 
   int Nsubsteps = 0;
 
-  dfloat *U = nullptr;
   occa::memory o_U;
   occa::memory o_Ue;
 
-  dfloat *P = nullptr;
   occa::memory o_P;
   occa::memory o_div;
 
@@ -245,18 +242,18 @@ public:
   occa::memory Qcriterion(const occa::memory &o_U);
   occa::memory Qcriterion();
 
+  void restartFromFile(const std::string& restartStr);
   void writeCheckpoint(double t, int step, bool enforceOutXYZ = false, bool enforceFP64 = false, int Nout = 0, bool uniform = false);
 
   void finalize();
   int setLastStep(double timeNew, int tstep, double elapsedTime);
   int lastStepLocalSession(double timeNew, int tstep, double elapsedTime);
 
-  void copyToNek(double time, int tstep);
-  void ocopyToNek();
-  void ocopyToNek(double time, int tstep);
-  void copyToNek(double time);
+  void copyToNek(double time, int tstep, bool updateMesh = false);
+  void copyToNek(double time, bool updateMesh = false);
+
   void copyFromNek(double &time);
-  void ocopyFromNek(double &time);
+  void copyFromNek();
 
 private:
   void initInnerStep(double time, dfloat dt, int tstep);

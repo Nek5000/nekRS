@@ -4,7 +4,7 @@ namespace tombo
 {
 occa::memory pressureSolve(nrs_t *nrs, double time, int stage)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   double flopCount = 0.0;
   platform->timer.tic("pressure rhs", 1);
@@ -25,7 +25,7 @@ occa::memory pressureSolve(nrs_t *nrs, double time, int stage)
 
     oogs::startFinish(o_curl, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-    platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->meshV->o_invLMM, o_curl);
+    platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->mesh->o_invLMM, o_curl);
     flopCount += mesh->Nlocal;
 
     auto o_stressTerm = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
@@ -74,7 +74,7 @@ occa::memory pressureSolve(nrs_t *nrs, double time, int stage)
     }
 
     oogs::startFinish(o_rhs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
-    platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->meshV->o_invLMM, o_rhs);
+    platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->mesh->o_invLMM, o_rhs);
 
     return o_rhs;
   }();
@@ -128,7 +128,7 @@ occa::memory pressureSolve(nrs_t *nrs, double time, int stage)
 
 occa::memory velocitySolve(nrs_t *nrs, double time, int stage)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   double flopCount = 0.0;
   platform->timer.tic("velocity rhs", 1);

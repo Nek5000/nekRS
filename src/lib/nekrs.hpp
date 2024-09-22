@@ -23,7 +23,6 @@ void setup(MPI_Comm commg_in,
            int nSessions,
            int sessionID,
            int debug);
-void copyFromNek(double time, int tstep);
 void udfExecuteStep(double time, int tstep, int isCheckpointStep);
 void writeCheckpoint(double time, int step);
 int checkpointStep(double time, int tStep);

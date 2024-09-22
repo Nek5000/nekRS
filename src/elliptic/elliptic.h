@@ -69,7 +69,8 @@ struct elliptic_t {
   int Nfields = 1;
   int stressForm = 0;
   int poisson = 0;
-  dlong loffset = 0;
+
+  const dlong loffset = 0; // same operator coeffs for all components
 
   bool mgLevel = false;
 

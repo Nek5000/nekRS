@@ -107,7 +107,11 @@ extern "C" void FUNC(prolongateHex3D)(const dlong& Nelements,
             res += s_R[m][i] * s_Pq[j][m];
 
           const int id = i + j * p_NqFine + k * p_NqFine * p_NqFine + e * p_NpFine;
+#if p_add
           qN[id] += res;
+#else
+          qN[id] = res;
+#endif
         }
     }
   }

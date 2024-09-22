@@ -357,11 +357,6 @@ void setup(MPI_Comm commg_in,
   fflush(stdout);
 }
 
-void copyFromNek(double time, int tstep)
-{
-  nrs->ocopyToNek(time, tstep);
-}
-
 void udfExecuteStep(double time, int tstep, int isCheckpointStep)
 {
   nrs->isCheckpointStep = isCheckpointStep;

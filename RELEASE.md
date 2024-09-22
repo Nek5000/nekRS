@@ -22,44 +22,54 @@
 
 ## Good to know
 
-* AmgX is no longer available use HYPRE instead
-* `nek::userchk` is no longer called automatically during setup 
+* HYPRE replaces AmgX
 * [reproducibility] variable time step controller restricts dt to 5 significant digits
-* send signal (defined in env-var `NEKRS_SIGNUM_UPD`) to process trigger file `nekrs.upd` (no automatic check every N steps)
 * after fixing a bug in the linear solver residual norm, iteration counts have increased compared to previous versions
 
 ## Breaking Changes
 
 This list provides an overview of the most significant changes in this release, although it may not encompass all modifications. We acknowledge that this release introduces several breaking changes. These adjustments were essential to enhance the stability of the user interface in future iterations. We apologize for any inconvenience this may cause.
 
-* call `build.sh` instead of `nrsconfig` to build the code
-* change par section `TEMPERATURE` to `SCALAR00` in case it does not represent a physical temperature
-* use `codedFixedValueScalar` instead of `scalarDirichletConditions` (same for velocity)
-* use `codedFixedGradientScalar` instead of `scalarNeumannConditions` (same for velocity)
-* use `nrs->copyToNek` instead of ``nek::copyToNek` (same for all other variants) 
+* run `build.sh` instead of `nrsconfig` to build the code
+* change par section `TEMPERATURE` to `SCALAR00` in case it does not represent indeed a physical temperature (e.g. lowMach or CHT)
+* `scalarDirichletConditions` -> `codedFixedValueVelocity` (same for scalars)
+* `scalarNeumannConditions` -> `codedFixedGradientVelocity` (same for scalars)
+* `useric` of nek5000 is no longer automatically called, instead call it in `UDF_Setup` (see e.g. lowMach example)
+* use `nrs->o_U` instead of `nrs->U` (host version was removed) 
+* use `cds->o_S` instead of `cds->S` (host version was removed)
+* use `mesh->o_x` instead of `mesh->x` (host version was removed, same for other components) 
+* `nrs->meshV` -> `nrs->mesh`
+* `nrs->_mesh` -> `cds->mesh[0]`
+* `nek::userchk` is no longer called automatically during setup 
+* `nek::copyToNek` -> `nrs->copyToNek` (same for all other variants) 
+* send signal (defined in env-var `NEKRS_SIGNUM_UPD`) to process trigger file `nekrs.upd` (no automatic check every N steps)
 * use `auto foo = platform->o_memPool.reserve<T>(nWords)` instead of preallocated slices of `occa::memory::o_mempool`
 * change count argument of `occa::memory::slice, occa::memory::copyFrom, occa::memory::copyTo` to number of words instead of bytes 
-* pass `const occa::memory&` instead of `const void*` to `writeFld`
-* `time` in all UDF APU funcrtions is now `double` instead of dfloat
+* define `time` as double (instead of defloat) in all UDF functions
 * remove `nrs_t` argument from UDF API functions (nrs object is now globally accessible within udf if the Navier Stokes solver is enabled)
-* use `nrs_t::userProperties = std::function<void(double)>` instead of `udf::properties = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory, occa::memory, occa::memory)>`
+* `nrs_t::userProperties = std::function<void(double)>` -> `udf::properties = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory, occa::memory, occa::memory)>`
 * `nrs_t::userVelocitySource = std::function<void(double)>` -> `udf::uEqnSource = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory)>`
 * `nrs_t::userScalarSource = std::function<void(double)>` -> `udf::sEqnSource = std::function<void(nrs_t *, dfloat, occa::memory, occa::memory)>`
 * `nrs_t::userConvergenceCheck = std::function<bool(int)>` -> `udf::udfconv = std::function<int(nrs_t *, int)>`
 * `nrs_t::userDivergence = std::function<void(double)>` -> `udf::udfdif = std::function<void(nrs_t *, dfloat, occa::memory)>`
 * `tavg::setup(dlong fieldOffset, const fields& fields)` -> `tavg::setup(nrs_t*)`
 * `planarAvg(mesh_t*, const std::string&, int, int, int, int, dlong, occa::memory o_avg)` -> `postProcessing::planarAvg(nrs_t*, const std::string&, int, int, int, int, occa::memory)`
-* use `nrs->o_NLT` instead of `nrs->o_FU`
-* use `cds->o_NLT` instead of `cds->o_FS`
+* `nrs->o_NLT` -> `nrs->o_FU`
+* `cds->o_NLT` ->  `cds->o_FS`
 * `::postProcessing` functions are now members of `nrs_t` (except planarAvg)
-* access `nekrs::nrsPtr` through `nekrs::platform()`
-* use `nekrs_registerPtr` instead of common blocks NRSSCPTR / SCNRS in usr file and access them using `nek::ptr` in udf
-* use `deviceKernel`, `deviceKernelProperties`, `deviceMemory`, `poolDeviceMemory` instead of `occa::` (consult examples for more details) 
+* use `nekrs_registerPtr` instead of common blocks NRSSCPTR / SCNRS in usr file and access them using `nek::ptr` in udf (see e.g. channel example)
+* `occaKernel` -> `deviceKernel`
+* `occaProperties` > `deviceKernelProperties`
+* `occa::memory` -> `deviceMemory` 
 * remove `nrs_t` argument from `<plugin>::setup`
-* use pay key `avm+highestModalDecay` instead of `avm+hpfResidual`
 * `nrs->isOutputStep` -> `nrs->isCheckpointStep`
-* `pointInterpolation_t::setPoints` now takes std::vector<T> instead of raw pointers and number points are determined on the vector size 
-* use `iofld` instead of `writeFld`
+* `pointInterpolation_t::setPoints(int, dfloat*, dfloat*, dfloat*)` -> `pointInterpolation_t::setPoints(const std::vector<dfloat>&, const std::vector<dfloat>&, const std::vector<dfloat>&)`
+* use `iofld` class instead of `writeFld`
+* `nrs->usrwrk` was removed (it's a user variable not used anywhere in the code)
+* field file extension start with 0-index
+* `nek::copyToNek` -> `nrs->copyToNek`
+* `nek::copyFromNek` -> `nrs->copyFromNek`
+* `nek::ocopyFromNek` and `nek::ocopyToNek` was removed 
 
 ## Known Bugs / Restrictions
 

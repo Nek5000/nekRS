@@ -21,4 +21,10 @@ foreach(DIR ${plugins})
   list(APPEND UDF_INCLUDES "${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/include")
 endforeach()
 
+# Propagate variables to the parent scope
+set(FOUND_PLUGINS "${FOUND_PLUGINS}" PARENT_SCOPE)
+set(UDF_RPATH "${UDF_RPATH}" PARENT_SCOPE)
+set(UDF_LIBS "${UDF_LIBS}" PARENT_SCOPE)
+set(UDF_INCLUDES "${UDF_INCLUDES}" PARENT_SCOPE)
+
 endfunction()

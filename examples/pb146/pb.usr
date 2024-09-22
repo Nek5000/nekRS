@@ -1,39 +1,4 @@
 c-----------------------------------------------------------------------
-      subroutine useric(i,j,k,eg) ! set up initial conditions
-      include 'SIZE'
-      include 'TOTAL'
-      include 'NEKUSE'
-      integer i,j,k,e,eg
-
-      ux   = 0.0
-      uy   = 0.0
-      uz   = 1.0
-      temp = 0.0
-  
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine userchk
-      include 'SIZE'
-      include 'TOTAL'
-
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine usrdat   ! This routine to modify element vertices
-      include 'SIZE'
-      include 'TOTAL'
-
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine usrdat3
-      include 'SIZE'
-      include 'TOTAL'
-
-      return
-      end
-c-----------------------------------------------------------------------
       subroutine usrdat2
       include 'SIZE'
       include 'TOTAL'

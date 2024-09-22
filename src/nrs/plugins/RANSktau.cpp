@@ -151,8 +151,8 @@ void RANSktau::updateProperties()
              "%s\n",
              "called prior to tavg::setup()!");
 
-  mesh_t *mesh = nrs->meshV;
-  cds_t *cds = nrs->cds;
+  auto mesh = nrs->mesh;
+  auto cds = nrs->cds;
 
   occa::memory o_mue = nrs->o_mue;
   occa::memory o_diff = cds->o_diff + cds->fieldOffsetScan[kFieldIndex];
@@ -175,7 +175,7 @@ void RANSktau::updateSourceTerms()
              "%s\n",
              "called prior to tavg::setup()!");
 
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   cds_t *cds = nrs->cds;
 
   occa::memory o_OiOjSk = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
@@ -227,8 +227,8 @@ void RANSktau::setup(int ifld)
                platform->comm.mpiComm, EXIT_FAILURE, "%s\n", "illegal property specificition for k/tau in par!");
   }
 
-  cds_t *cds = nrs->cds;
-  mesh_t *mesh = nrs->meshV;
+  auto cds = nrs->cds;
+  auto mesh = nrs->mesh;
 
   nekrsCheck(cds->NSfields < kFieldIndex+1, platform->comm.mpiComm, EXIT_FAILURE, 
     "%s\n", "number of scalar fields too low!");

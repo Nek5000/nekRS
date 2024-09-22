@@ -23,7 +23,10 @@ maskedFaceIds(mesh_t *mesh,
   const int largeNumber = 1 << 20;
 
   std::vector<int> mapB(Nlocal);
+ 
+  // assumes mapB is identical for all nFields
   for (int fld = 0; fld < nFields; fld++) {
+
     for (dlong e = 0; e < mesh->Nelements; e++) {
       for (int n = 0; n < mesh->Np; n++) {
         mapB[n + e * mesh->Np + fld * offset] = largeNumber;
@@ -40,6 +43,7 @@ maskedFaceIds(mesh_t *mesh,
         }
       }
     }
+
   }
   ogsGatherScatterMany(mapB.data(),
                        nFields,
