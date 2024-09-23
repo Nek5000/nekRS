@@ -626,13 +626,14 @@ void nrs_t::init()
  
     auto cubOffset = offset;
     if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
-      cubOffset = std::max(offset, meshV->Nelements * meshV->cubNp);
+      cubOffset = std::max(cubOffset, meshV->Nelements * meshV->cubNp);
     }
+
     offset = alignStride<dfloat>(offset);
     cubOffset = alignStride<dfloat>(cubOffset);
  
     this->fieldOffset = offset;
-    this->cubatureOffset = cubatureOffset;
+    this->cubatureOffset = cubOffset;
 
     meshT->fieldOffset = this->fieldOffset;
     meshV->fieldOffset = this->fieldOffset;
