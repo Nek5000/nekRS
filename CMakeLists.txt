@@ -230,7 +230,6 @@ include(cmake/hypre.cmake)
 add_hypre()
 
 include(cmake/external_plugins.cmake)
-add_external_plugins()
 
 include(cmake/cvode.cmake)
 if (ENABLE_CVODE)

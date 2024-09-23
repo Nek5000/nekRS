@@ -621,16 +621,15 @@ void nrs_t::init()
     auto [meshT, meshV] = createMesh(platform->comm.mpiComm, N, cubN, this->cht, platform->kernelInfo);
     if (!cht) meshV = meshT;
  
-    const auto [offset, cubatureOffset] = [&]() {
-      auto offset = meshV->Np * (meshV->Nelements);
-      offset = std::max(offset, meshT->Np * (meshT->Nelements));
+    auto offset = meshV->Np * (meshV->Nelements);
+    offset = std::max(offset, meshT->Np * (meshT->Nelements));
  
-      auto cubOffset = offset;
-      if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
-        cubOffset = std::max(offset, meshV->Nelements * meshV->cubNp);
-      }
-      return std::tuple(alignStride<dfloat>(offset), alignStride<dfloat>(cubOffset));
-    }();
+    auto cubOffset = offset;
+    if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
+      cubOffset = std::max(offset, meshV->Nelements * meshV->cubNp);
+    }
+    offset = alignStride<dfloat>(offset);
+    cubOffset = alignStride<dfloat>(cubOffset);
  
     this->fieldOffset = offset;
     this->cubatureOffset = cubatureOffset;

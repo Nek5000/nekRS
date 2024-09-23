@@ -75,7 +75,7 @@ endforeach()
 
 if(DEFINED ENV{NEKRS_ASCENT_INSTALL_DIR})
   find_package(Ascent
-               HINTS $ENV{NEKRS_ASCENT_INSTALL_DIR})
+               PATHS $ENV{NEKRS_ASCENT_INSTALL_DIR} NO_DEFAULT_PATH)
   if (ASCENT_FOUND)
     target_link_libraries(udf PRIVATE ascent::ascent_mpi)
     target_compile_definitions(udf PUBLIC NEKRS_ENABLE_ASCENT)

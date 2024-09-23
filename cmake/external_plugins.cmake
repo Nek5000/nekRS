@@ -3,8 +3,6 @@ set(UDF_RPATH "")
 set(UDF_LIBS "")
 set(UDF_INCLUDES "")
 
-function(add_external_plugins)
-
 file(GLOB plugins LIST_DIRECTORIES true ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/plugins/*)
 foreach(DIR ${plugins})
   get_filename_component(PLUGIN_NAME ${DIR} NAME)
@@ -20,11 +18,3 @@ foreach(DIR ${plugins})
   list(APPEND UDF_LIBS "${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}${PLUGIN_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
   list(APPEND UDF_INCLUDES "${CMAKE_INSTALL_PREFIX}/3rd_party/${PLUGIN_NAME}/include")
 endforeach()
-
-# Propagate variables to the parent scope
-set(FOUND_PLUGINS "${FOUND_PLUGINS}" PARENT_SCOPE)
-set(UDF_RPATH "${UDF_RPATH}" PARENT_SCOPE)
-set(UDF_LIBS "${UDF_LIBS}" PARENT_SCOPE)
-set(UDF_INCLUDES "${UDF_INCLUDES}" PARENT_SCOPE)
-
-endfunction()
