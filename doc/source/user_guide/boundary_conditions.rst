@@ -16,35 +16,76 @@ nekRS, ``parHelp.txt`` and below.
 
 .. literalinclude:: ../../parHelp.txt
    :language: none
-   :lines: 1-3, 144-166
+   :lines: 1-3, 149-179
 
+.. tip::
+
+   To setup some cases, you may need to use the ``boundaryIDMap`` parameter of 
+   the ``MESH`` section to apply the ``boundaryTypeMap`` options to the correct
+   boundary IDs of the mesh (By default NekRS assumes that the boundaryIDs start
+   at 1). Below is an example where the four boundary conditions are
+   applied to the boundary IDs 389 (``codeFixedValue``), 231 (``zeroGradient``),
+   4 (``zeroValue``) and 23 (``zeroValue``).
+
+   .. code-block::
+
+      [VELOCITY]
+      boundaryTypeMap = codedFixedValue, zeroGradient, zeroValue, zeroValue
+
+      [MESH]
+      boundaryIDMap = 389, 231, 4, 23
 
 User Defined Value/Gradient
 """""""""""""""""""""""""""
 
-boundary codedfixedvalue codedfixedgradient
+If a boundary condition requires a value setting rather than just a type, a 
+suitable function will need to be provided within the ``.udf`` file. The name of
+the function used should be in the form of ``codedFixed`` + ``Value/Gradient`` 
++ ``Velocity/Scalar/Mesh``, E.G. ``codedFixedValueVelocity``, 
+``codedFixedGradientScalar`` and ``codedFixedValueMesh``.
 
-name gets suffixed mesh, velocity, fixed or scalar
+All of these functions are passed the ``bcData`` struct which has the following
+parameters available:
 
-interface is bcData struct
-
-bcData struct mention or table
-nx - normal
-
-t1x
-
-u - velocity
-
-
-For each of the values that have a function name present, this must be created
-within the ``.udf`` file when used (E.G. setting a ``codedFixedValue`` boundary will 
-require the ``velocityDirichletConditions`` to be present in the OKL section).
-
-.. tip::
-
-   To setup some cases (E.G. periodic boundary conditions), you may need to use the 
-   ``boundaryIDMap`` parameter of the ``MESH`` section to apply the ``boundaryTypeMap``
-   options to the correct boundary IDs (NekRS assumed that the boundaryIDs start at 1).
++-----------------------------------------------------+------------------------------+------------------------------+
+| Name                                                | Type                         | Description                  |
++=====================================================+==============================+==============================+
+| ``idM``                                             | ``int``                      |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``fieldOffset``                                     | ``int``                      |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``id``                                              | ``int``                      |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``time``                                            | ``double``                   |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``x``, ``y``, ``z``                                 | ``dfloat``                   |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``nx``, ``ny``, ``nz``                              | ``dfloat``                   | normals                      |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``1x``, ``t1y``, ``t1z``, ``t2x``, ``t2y``, ``t2z`` | ``dfloat``                   | tangential directions        |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``tr1``, ``tr2``                                    | ``dfloat``                   |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``u``, ``v``, ``w``                                 | ``dfloat``                   | velocity                     |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``p``                                               | ``dfloat``                   |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``uinterp``, ``vinterp``, ``winterp``               | ``dfloat``                   | interpolated velocity values |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``scalarId``                                        | ``int``                      |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``s``                                               | ``dfloat``                   |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``flux``                                            | ``dfloat``                   |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``sinterp``                                         | ``dfloat``                   | interpolated scalar value    |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``meshu``, ``meshv``, ``meshw``                     | ``dfloat``                   |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``trans``, ``diff``                                 | ``dfloat``                   | properties                   |
++-----------------------------------------------------+------------------------------+------------------------------+
+| ``usrwrk``                                          | ``@globalPtr const dfloat*`` |                              |
++-----------------------------------------------------+------------------------------+------------------------------+
 
 Internal / Periodic
 """""""""""""""""""

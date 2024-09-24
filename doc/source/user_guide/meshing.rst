@@ -24,14 +24,14 @@ if using them, with further information also available in the
 Mesh with Cubit
 ---------------
 
-TODO Example of creating Exodus Mesh
+**TODO** Example of creating Exodus Mesh
 
 .. _gmsh_mesh:
 
 Meshing with Gmsh
 -----------------
 
-TODO Example of creating a Gmsh mesh
+**TODO** Example of creating a Gmsh mesh
 
 All your mesh should be hexahedral elements. Before exporting from Gmsh, you will need to set the mesh order to 2.
 The Gmsh mesh format must also be version 2, ASCII/binary format. If your Gmsh version
@@ -43,7 +43,7 @@ or "Save parametric elements".
 Creating a mesh with ?????? - CGNS 
 ----------------------------------
 
-TODO Example of creating a cgns mesh
+**TODO** Example of creating a cgns mesh
 
 .. _cht_mesh:
 

@@ -133,7 +133,7 @@ Memory management is done through the C++ API which allows the user to make data
 available on the compute backend device (sometimes referred to as the device) and
 copy data into this for future use. 
 
-TODO - explanation of any automatic copying??
+**TODO** - explanation of any automatic copying??
 
 Typically, relevant fields should be created and initialised in the 
 `UDF_loadKernels` function:
