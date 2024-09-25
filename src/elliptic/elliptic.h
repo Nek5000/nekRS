@@ -156,7 +156,7 @@ struct elliptic_t {
 };
 
 #include "ellipticSolutionProjection.hpp"
-#include "ellipticMultiGrid.h"
+#include "MG/ellipticMultiGrid.h"
 
 void ellipticMultiGridUpdateLambda(elliptic_t *elliptic);
 void ellipticMultiGridSetup(elliptic_t *elliptic);
