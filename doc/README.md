@@ -2,22 +2,28 @@
 
 This subdirectory contains documentation of the [nekRS](https://github.com/Nek5000/nekRS) project
 using the [Sphinx](http://www.sphinx-doc.org/) documentation framework. A read the docs website
-is hosted [here](https://nekrs.readthedocs.io/en/latest/).
+is hosted [here](https://nekrs-jezsw.readthedocs.io/en/latest/).
 
 ## How to build locally
 
-If you are developing the documentation you can preview the website locally before a pull request is
-merged.
+If you are developing the documentation you can preview the website locally 
+before a pull request is merged.
 
 ### Dependencies
 
-The documentation requires a python 3 installation and a few pip packages including 
-[Sphinx](https://pypi.python.org/pypi/Sphinx) and [sphinx_rtd_theme](https://pypi.python.org/pypi/sphinx_rtd_theme) Python packages.
+The documentation requires the following:
 
-In case you don't have the appropriate git and python dependencies these can be installed if using Debian/apt using the following command. If using alternative setups this may need adapting appropriately 
+* A python 3 installation
+* The pip packages detailed in requirements.txt (including [Sphinx](https://pypi.python.org/pypi/Sphinx) and [sphinx_rtd_theme](https://pypi.python.org/pypi/sphinx_rtd_theme))
+* [Doxygen](https://www.doxygen.nl/index.html)
+* [Make](https://www.gnu.org/software/make/)
+
+In case you don't have the appropriate git and python dependencies these can be
+installed if using Debian/Ubuntu using the following command. If using alternative
+setups this may need adapting appropriately 
 
 ```
-apt update && apt install -y git python3 python3-pip python3.10-venv
+apt update && apt install -y git doxygen build-essential python3 python3-venv
 ```
 
 You can then clone the nekRS repository.
