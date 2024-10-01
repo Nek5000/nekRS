@@ -45,7 +45,7 @@ echo "#SBATCH --gres=gpu:$gpu_per_node" >> $SFILE
 echo "#SBATCH --gpu-bind=closest" >>$SFILE
 echo "#SBATCH --distribution=block:cyclic:fcyclic" >> $SFILE
 
-echo "module load NVHPC OpenMPI Python UCX-settings/DC-CUDA CMake" >>$SFILE
+echo "module load GCC OpenMPI Python UCX-settings/DC-CUDA CMake Ascent" >>$SFILE
 echo "module list" >>$SFILE
 
 echo "nvidia-smi" >>$SFILE

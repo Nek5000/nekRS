@@ -36,7 +36,6 @@
 
     @shared dfloat s_R[p_NqCoarse][p_NqFine];
 
-    // OK:
     for (int j = 0; j < p_NqFine; ++j; @inner(1))
       for (int i = 0; i < p_NqFine; ++i; @inner(0)) {
         int t = i + j * p_NqFine;

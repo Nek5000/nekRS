@@ -1,7 +1,7 @@
 function(add_adios)
 
 if(NOT "${ADIOS2_INSTALL_DIR}" STREQUAL "")
-  find_package(adios2 HINTS ${ADIOS2_INSTALL_DIR})
+  find_package(adios2 PATHS ${ADIOS2_INSTALL_DIR} NO_DEFAULT_PATH)
 endif()
 
 if (NOT ADIOS2_FOUND) 

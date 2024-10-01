@@ -33,7 +33,7 @@
 #include "ellipticApplyMask.hpp"
 #include "ellipticBcTypes.h"
 
-//#define ELLIPTIC_ENABLE_TIMER
+// #define ELLIPTIC_ENABLE_TIMER
 
 class SolutionProjection;
 class elliptic_t;
@@ -91,7 +91,7 @@ struct elliptic_t {
 
   setupAide options;
 
-  bool allNeumann = 0;
+  bool nullspace = 0;
 
   int *EToB = nullptr;
 
@@ -157,7 +157,7 @@ struct elliptic_t {
 };
 
 #include "ellipticSolutionProjection.hpp"
-#include "ellipticMultiGrid.h"
+#include "MG/ellipticMultiGrid.h"
 
 void ellipticMultiGridUpdateLambda(elliptic_t *elliptic);
 void ellipticMultiGridSetup(elliptic_t *elliptic);
@@ -169,7 +169,11 @@ void ellipticPreconditioner(elliptic_t *elliptic, const occa::memory &o_r, occa:
 void ellipticPreconditionerSetup(elliptic_t *elliptic, ogs_t *ogs);
 void ellipticBuildMultigridLevelKernels(elliptic_t *elliptic);
 
-void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const occa::memory &o_lambda1, const occa::memory &o_r, occa::memory o_x);
+void ellipticSolve(elliptic_t *elliptic,
+                   const occa::memory &o_lambda0,
+                   const occa::memory &o_lambda1,
+                   const occa::memory &o_r,
+                   occa::memory o_x);
 
 void ellipticSolveSetup(elliptic_t *elliptic, const occa::memory &o_lambda0, const occa::memory &o_lambda1);
 
@@ -215,7 +219,6 @@ void ellipticAx(elliptic_t *elliptic,
 
 void ellipticUpdateJacobi(elliptic_t *ellipticBase, occa::memory &o_invDiagA);
 void ellipticUpdateJacobi(elliptic_t *elliptic);
-
 
 dfloat ellipticUpdatePCG(elliptic_t *elliptic,
                          occa::memory &o_p,

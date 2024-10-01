@@ -296,7 +296,7 @@ static void setupEllipticSolvers(nrs_t *nrs)
       nrs->vSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBy, o_lambda0, o_lambda1);
       nrs->wSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBz, o_lambda0, o_lambda1);
     }
-  } // flow
+  }
 
   if (nrs->flow) {
     auto mesh = nrs->mesh;
@@ -315,7 +315,7 @@ static void setupEllipticSolvers(nrs_t *nrs)
       nrs->cds->dpdt = nrs->pSolver->nullSpace();
     }
 
-  } // flow
+  }
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
     auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
@@ -738,7 +738,7 @@ void nrs_t::init()
 
   if (platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")) {
     this->o_Uc = platform->device.malloc<dfloat>(this->NVfields * this->fieldOffset);
-    this->o_Pc = platform->device.malloc<dfloat>(this->fieldOffset);
+    this->o_Pc = platform->device.malloc<dfloat>(mesh->Nlocal);
     this->o_prevProp = platform->device.malloc<dfloat>(2 * this->fieldOffset);
     this->o_prevProp.copyFrom(this->o_prop, this->o_prevProp.length());
   }
@@ -853,10 +853,9 @@ void nrs_t::init()
     }
   }
 
-  if (platform->comm.mpiRank == 0) {
-    std::cout << std::endl;
-  }
+
   printMeshMetrics(meshT);
+  if (mesh != meshT) printMeshMetrics(mesh);
 
   setupEllipticSolvers(this);
 }
@@ -1053,6 +1052,11 @@ void nrs_t::setIC()
   double startTime;
   platform->options.getArgs("START TIME", startTime);
   copyToNek(startTime, 0, true); // ensure both codes are in sync 
+
+  nekrsCheck(platform->options.compareArgs("LOWMACH", "TRUE") && p0th[0] <= 1e-6,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "Unreasonable p0th value %g!", p0th[0]);
 }
 
 void nrs_t::printRunStat(int step)
@@ -1505,33 +1509,6 @@ void nrs_t::printStepInfo(double time, int tstep, bool printStepInfo, bool print
       if (!printTimers) std::cout << std::endl;
     }
 
-    if (!verboseInfo) { // print basic solver stats
-      bool cvodePrinted = false;
-      for (int is = 0; is < this->Nscalar; is++) {
-        if (cds->compute[is] && !cds->cvodeSolve[is]) {
-          printf("  S: %d", cds->solver[is]->Niter());
-        } else if (cds->cvodeSolve[is] && !cvodePrinted) {
-          this->cds->cvode->printInfo(false);
-          cvodePrinted = true;
-        }
-      }
-
-      if (this->flow) {
-        printf("  P: %d", this->pSolver->Niter());
-        if (this->uvwSolver) {
-          printf("  UVW: %d", this->uvwSolver->Niter());
-        } else {
-          printf("  U: %d  V: %d  W: %d",
-                 this->uSolver->Niter(),
-                 this->vSolver->Niter(),
-                 this->wSolver->Niter());
-        }
-      }
-      if (this->meshSolver) {
-        printf("  MSH: %d", this->meshSolver->Niter());
-      }
-    }
-
     if (printTimers) {
       printf("  elapsedStep= %.2es  elapsedStepSum= %.5es\n", elapsedStep, elapsedStepSum);
     }
@@ -1554,13 +1531,6 @@ void nrs_t::printStepInfo(double time, int tstep, bool printStepInfo, bool print
 
 void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforceFP64, int N_, bool uniform)
 {
-  std::string outputMeshSave;
-  static bool firstTime = true;
-  if (firstTime) {
-    platform->options.getArgs("CHECKPOINT OUTPUT MESH", outputMeshSave);
-    platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
-  }
-
   const auto outXYZ = (enforceOutXYZ) ? true : platform->options.compareArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
   if (!checkpointWriter->isInitialized()) {
@@ -1618,11 +1588,6 @@ void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforce
   }
 
   checkpointWriter->process();
-
-  if (firstTime) {
-    platform->options.setArgs("CHECKPOINT OUTPUT MESH", outputMeshSave);
-    firstTime = false;
-  }
 }
 
 int nrs_t::lastStepLocalSession(double timeNew, int tstep, double elapsedTime)
@@ -1788,7 +1753,7 @@ void nrs_t::copyFromNek(double &time)
   }
 
   {
-    auto P = platform->memPool.reserve<dfloat>(fieldOffset);
+    auto P = platform->memPool.reserve<dfloat>(o_P.size());
     auto Pptr = P.ptr<dfloat>(); 
     for (int i = 0; i < mesh->Nlocal; i++) {
       Pptr[i] = nekData.pr[i];

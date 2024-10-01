@@ -91,8 +91,14 @@ occa::memory lowPassFilterSetup(mesh_t *mesh, const dlong filterNc)
   nekrsCheck(filterNc < 1,
              platform->comm.mpiComm,
              EXIT_FAILURE,
-             "filterNc must be at least 1, but is set to %d\n",
+             "number of filter modes must be at least 1, but is set to %d\n",
              filterNc);
+
+  nekrsCheck(filterNc >= mesh->N,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "mumber of filter modes must be < %d\n",
+             mesh->N);
 
   // Construct Filter Function
   int Nmodes = mesh->N + 1; // N+1, 1D GLL points

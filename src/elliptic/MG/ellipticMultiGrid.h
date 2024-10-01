@@ -28,7 +28,7 @@
 #define ELLIPTIC_MGLEVEL_HPP
 
 #include "elliptic.h"
-#include "MG/MGSolver.hpp"
+#include "MGSolver.hpp"
 #include <vector>
 
 enum class SmootherType

@@ -122,7 +122,7 @@ void UDF_ExecuteStep(double time, int tstep)
 {
   printDiagnostics(nrs, time, tstep);
 
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     nrs->Qcriterion(o_qcriterion);
   }
 }

@@ -158,7 +158,7 @@ int standardPCG(elliptic_t *elliptic,
 
   /*aux variables */
   auto &o_weight = elliptic->o_invDegree;
-  platform->linAlg->fill(elliptic->Nfields * elliptic->fieldOffset, 0.0, o_p);
+  platform->linAlg->fill(o_p.size(), 0.0, o_p);
 
   if (platform->comm.mpiRank == 0 && verbose) {
     if (flexible) {
@@ -289,8 +289,8 @@ int combinedPCG(elliptic_t *elliptic,
   /*aux variables */
   auto &o_Minv = (preco) ? precon->o_invDiagA : o_null;
   auto &o_weight = elliptic->o_invDegree;
-  platform->linAlg->fill(elliptic->Nfields * elliptic->fieldOffset, 0.0, o_p);
-  platform->linAlg->fill(elliptic->Nfields * elliptic->fieldOffset, 0.0, o_v);
+  platform->linAlg->fill(o_p.size(), 0.0, o_p);
+  platform->linAlg->fill(o_v.size(), 0.0, o_v);
 
   if (platform->comm.mpiRank == 0 && verbose) {
     printf("PCGC ");
@@ -420,7 +420,8 @@ int pcg(elliptic_t *elliptic,
 {
   setupAide &options = elliptic->options;
 
-  const auto Nlocal = elliptic->Nfields * static_cast<size_t>(elliptic->fieldOffset);
+  const auto Nlocal = (elliptic->Nfields > 1) ?
+                      elliptic->Nfields * static_cast<size_t>(elliptic->fieldOffset) : elliptic->mesh->Nlocal;
 
   o_p = platform->o_memPool.reserve<dfloat>(Nlocal);
   o_z = (elliptic->options.compareArgs("PRECONDITIONER", "NONE")) ? o_r : platform->o_memPool.reserve<dfloat>(Nlocal);

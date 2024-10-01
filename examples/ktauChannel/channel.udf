@@ -142,7 +142,7 @@ void UDF_ExecuteStep(double time, int tstep)
   if (ciMode) {
     ciTestErrors(nrs, time, tstep);
   }
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     extractLine(nrs, time);
   }
 }

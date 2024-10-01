@@ -216,7 +216,7 @@ void nrs_t::flowRatePrintInfo(bool verboseInfo)
     err = std::abs(userSpecifiedFlowRate - finalFlowRate);
   }
   if (verboseInfo) {
-    printf("flowRate : %s0 %.2e  %s %.2e  err %.2e  scale %.5e\n",
+    printf("flowRate  : %s0 %.2e  %s %.2e  err %.2e  scale %.5e\n",
            flowRateType.c_str(),
            currentRate,
            flowRateType.c_str(),

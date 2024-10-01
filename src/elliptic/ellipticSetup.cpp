@@ -148,6 +148,12 @@ void ellipticSolveSetup(elliptic_t *elliptic, const occa::memory &o_lambda0, con
                                                      platform->comm.mpiComm) /
                          elliptic->mesh->volume;
 
+  nekrsCheck(!std::isnormal(elliptic->lambda0Avg) || elliptic->lambda0Avg == 0,
+             MPI_COMM_SELF,
+             EXIT_FAILURE,
+             "unreasonable lambda0Avg=%g!\n",
+             elliptic->lambda0Avg);
+
   elliptic->poisson = (elliptic->o_lambda1.isInitialized()) ? 0 : 1;
 
   platform->options.getArgs("ELEMENT TYPE", elliptic->elementType);
@@ -220,9 +226,9 @@ void ellipticSolveSetup(elliptic_t *elliptic, const occa::memory &o_lambda0, con
     Nreductions = CombinedPCGId::nReduction;
   }
 
-  elliptic->allNeumann = 0;
+  elliptic->nullspace = 0;
   if (elliptic->poisson) {
-    int allNeumann = 1;
+    int nullspace = 1;
 
     // check based on BC
     for (int fld = 0; fld < elliptic->Nfields; fld++) {
@@ -231,14 +237,14 @@ void ellipticSolveSetup(elliptic_t *elliptic, const occa::memory &o_lambda0, con
           const int offset = fld * mesh->Nelements * mesh->Nfaces;
           const int bc = elliptic->EToB[f + e * mesh->Nfaces + offset];
           if (bc > 0 && bc != ellipticBcType::NEUMANN) {
-            allNeumann = 0;
+            nullspace = 0;
           }
         }
       }
     }
-    MPI_Allreduce(MPI_IN_PLACE, &allNeumann, 1, MPI_INT, MPI_MIN, platform->comm.mpiComm);
-    elliptic->allNeumann = allNeumann;
-    if (platform->comm.mpiRank == 0 && elliptic->allNeumann) {
+    MPI_Allreduce(MPI_IN_PLACE, &nullspace, 1, MPI_INT, MPI_MIN, platform->comm.mpiComm);
+    elliptic->nullspace = nullspace;
+    if (platform->comm.mpiRank == 0 && elliptic->nullspace) {
       printf("non-trivial nullSpace detected\n");
     }
   }
@@ -315,7 +321,6 @@ void ellipticSolveSetup(elliptic_t *elliptic, const occa::memory &o_lambda0, con
     elliptic->updatePCGKernel = platform->kernelRequests.load(sectionIdentifier + "ellipticBlockUpdatePCG");
   }
 
-
   oogs_mode oogsMode = OOGS_AUTO;
   elliptic->oogs =
       oogs::setup(elliptic->ogs, elliptic->Nfields, elliptic->fieldOffset, ogsDfloat, NULL, oogsMode);
@@ -324,24 +329,24 @@ void ellipticSolveSetup(elliptic_t *elliptic, const occa::memory &o_lambda0, con
   if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "TRUE")) {
     const auto Nlocal = elliptic->Nfields * static_cast<size_t>(elliptic->fieldOffset);
     auto o_p = platform->o_memPool.reserve<dfloat>(Nlocal);
-    auto o_Ap = platform->o_memPool.reserve<dfloat>(Nlocal); 
+    auto o_Ap = platform->o_memPool.reserve<dfloat>(Nlocal);
 
     auto timeEllipticOperator = [&]() {
       const int Nsamples = 10;
       ellipticOperator(elliptic, o_p, o_Ap, dfloatString);
- 
+
       platform->device.finish();
       MPI_Barrier(platform->comm.mpiComm);
       const double start = MPI_Wtime();
- 
+
       for (int test = 0; test < Nsamples; ++test) {
         ellipticOperator(elliptic, o_p, o_Ap, dfloatString);
       }
- 
+
       platform->device.finish();
       double elapsed = (MPI_Wtime() - start) / Nsamples;
       MPI_Allreduce(MPI_IN_PLACE, &elapsed, 1, MPI_DOUBLE, MPI_MAX, platform->comm.mpiComm);
- 
+
       return elapsed;
     };
 

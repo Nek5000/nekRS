@@ -6,6 +6,7 @@
 #include "bcMap.hpp"
 #include "iofldFactory.hpp"
 #include "opSEM.hpp" 
+#include "tinyexpr.h"
 
 extern "C" {
 void UDF_Setup0(MPI_Comm comm, setupAide &options);

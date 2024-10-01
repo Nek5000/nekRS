@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(NekRS LANGUAGES C CXX Fortran VERSION 24.0.2)
+project(NekRS LANGUAGES C CXX Fortran VERSION 24.0.3)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
@@ -88,7 +88,6 @@ if(NOT USING_LLVM)
 endif()
 string(COMPARE EQUAL "${CMAKE_CXX_COMPILER_ID}" "AppleClang" USING_APPLE_LLVM)
 string(COMPARE EQUAL "${CMAKE_CXX_COMPILER_ID}" "NVHPC" USING_NVHPC)
-string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "Flang" USING_FLANG)
 
 if(USING_GNU OR USING_LLVM OR USING_APPLE_LLVM)
   set(NEKRS_COMPILER_DEFAULT_FLAGS "-O2 -g -march=native -mtune=native -ftree-vectorize")

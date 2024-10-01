@@ -232,7 +232,11 @@
           const dfloat filteredNorm = s_filtered[0] + s_filtered[1];
           const dfloat unfilteredNorm = s_unfiltered[0] + s_unfiltered[1];
           const float S = filteredNorm / unfilteredNorm;
+#if defined(XeHPC)
+          logRelativeMassHighestMode[e] = abs(log10(S));
+#else
           logRelativeMassHighestMode[e] = fabs(log10f(S));
+#endif
         }
       }
     }

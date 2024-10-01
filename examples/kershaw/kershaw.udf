@@ -10,16 +10,28 @@ static int bp5NReps, bps5NReps, bp6NReps;
 
 #endif
 
+dfloat stdDev(const std::vector<dfloat>& data) 
+{
+  auto mean = std::accumulate(data.begin(), data.end(), 0.0) / data.size();
+  dfloat variance = 0.0;
+  for (auto x : data) {
+    variance += (x - mean) * (x - mean);
+  }
+  variance /= data.size();
+  return std::sqrt(variance);
+}
+
 void runBenchmarks(nrs_t *nrs)
 {
-  mesh_t *mesh = nrs->mesh;
+  auto *mesh = nrs->mesh;
+  auto [x, y, z] = mesh->xyzHost();
 
   std::vector<dfloat> rhs;
   rhs.reserve(nrs->fieldOffset);
 
   for (int i = 0; i < mesh->Nlocal; i++) {
     const dfloat lambda = 0;
-    rhs[i] = (3 * M_PI * M_PI + lambda) * sin(M_PI * mesh->x[i]) * sin(M_PI * mesh->y[i]) * sin(M_PI * mesh->z[i]);
+    rhs[i] = (3 * M_PI * M_PI + lambda) * sin(M_PI * x[i]) * sin(M_PI * y[i]) * sin(M_PI * z[i]);
   }
   deviceMemory<dfloat> o_rhs(nrs->NVfields * nrs->fieldOffset);
   o_rhs.copyFrom(rhs, nrs->fieldOffset, 0 * nrs->fieldOffset);
@@ -99,6 +111,7 @@ void runBenchmarks(nrs_t *nrs)
     std::vector<double> precoTime;
     std::vector<double> smootherTime;
     std::vector<double> crsTime;
+    std::vector<dfloat> iter;
 
     for (int i = 0; i < Nrep; i++) {
       platform->linAlg->fill(nrs->NVfields * nrs->fieldOffset, 0.0, nrs->o_U);
@@ -114,6 +127,7 @@ void runBenchmarks(nrs_t *nrs)
       platform->device.finish();
       platform->timer.set(solver->name() + "Solve", MPI_Wtime() - tStart);
 
+      iter.push_back(solver->Niter());
       eTime.push_back(platform->timer.query(solver->name() + "Solve", "DEVICE:MAX"));
       precoTime.push_back(platform->timer.query(solver->name() + " preconditioner", "DEVICE:MAX"));
       for (int i = mesh->N; i > 0; i--) {
@@ -139,9 +153,11 @@ void runBenchmarks(nrs_t *nrs)
     const double throughput = ((solver->Nfields() * Ntotal) / solveTime) / platform->comm.mpiCommSize;
     const double flopsPerSecond = platform->flopCounter->get(platform->comm.mpiComm) / solveTime;
 
+    const int iterAvg = std::accumulate(iter.begin(), iter.end(), 0.0) / Nrep;
+
     if (platform->comm.mpiRank == 0) {
       printf("repetitions: %d\n", Nrep);
-      printf("solve time: min: %gs  avg: %gs  max: %gs\n", solveTime, solveTimeAvg, solveTimeMax);
+      printf("solve time: min: %gs  max: %gs stdev: %gs\n", solveTime, solveTimeMax, stdDev(eTime));
       if (precoTime.at(minEntry) > 0) {
         printf("  preconditioner %gs\n", precoTime.at(minEntry));
       }
@@ -159,7 +175,7 @@ void runBenchmarks(nrs_t *nrs)
         }
       }
 
-      printf("iterations: %d\n", solver->Niter());
+      printf("iterations: %d  (stddev: %g)\n", iterAvg, stdDev(iter));
       printf("throughput: %g (DOF x iter)/s/rank\n", (double)solver->Niter() * throughput);
       if (benchmark == "BPS5") {
         printf("throughput: %g DOF/s/rank\n", throughput);

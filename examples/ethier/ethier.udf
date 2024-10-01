@@ -507,7 +507,7 @@ void UDF_ExecuteStep(double time, int tstep)
     userMeshVelocity(mesh->Nlocal, nrs->fieldOffset, time, o_x0, o_y0, o_z0, mesh->o_U);
   }
 
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     nrs->copyToNek(time, tstep);
     nek::userchk();
 

@@ -257,7 +257,7 @@ template <typename FPType> void LVector_t<FPType>::optr(occa::memory &o_L)
   nekrsCheck(o_L.byte_size() <= this->size(),
              platform->comm.mpiComm,
              EXIT_FAILURE,
-             "LVector_t::optr o_L.byte_size() = %ld, while expecting at least %d entries!\n",
+             "LVector_t::optr o_L.byte_size() = %llu, while expecting at least %d entries!\n",
              o_L.byte_size(),
              this->size());
 

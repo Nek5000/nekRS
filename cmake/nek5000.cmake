@@ -4,10 +4,15 @@ function(add_nek5000)
 
 message(CHECK_START "Checking for a supported Nek5000 Fortran compiler")
 
-if(USING_GNU OR USING_INTEL_LLVM OR USING_NVHPC OR USING_FLANG)
+string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "GNU" USING_Fortran_GNU)
+string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "IntelLLVM" USING_Fortran_INTEL_LLVM)
+string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "NVHPC" USING_Fortran_NVHPC)
+string(COMPARE EQUAL "${CMAKE_Fortran_COMPILER_ID}" "Flang" USING_Fortran_FLANG)
+
+if(USING_Fortran_GNU OR USING_Fortran_INTEL_LLVM OR USING_Fortran_NVHPC OR USING_Fortran_FLANG)
   message(CHECK_PASS "Found the ${CMAKE_Fortran_COMPILER_ID} Fortran compiler")
 else()
-  message(FATAL_ERROR "No supported Fortran compiler found to build Nek5000 interface!")
+  message(FATAL_ERROR "Fortran compiler ${CMAKE_Fortran_COMPILER_ID} not supported to build Nek5000 interface!")
 endif()
 
 if (${NEK5000_PPLIST} MATCHES "PARRSB")
@@ -27,7 +32,7 @@ FetchContent_Declare(
   URL ${CMAKE_CURRENT_SOURCE_DIR}/3rd_party/nek5000)
 FetchContent_GetProperties(nek5000_content)
 if (NOT nek5000_content_POPULATED)
-  FetchContent_Populate(nek5000_content)
+  FetchContent_MakeAvailable(nek5000_content)
 endif()
 
 set(NEK5000_SOURCE_DIR ${nek5000_content_SOURCE_DIR})
@@ -49,7 +54,7 @@ FetchContent_Declare(
   SOURCE_DIR ${NEK5000_GS_DIR}
 )
 if (NOT nek5000_gs_content_POPULATED)
-  FetchContent_Populate(nek5000_gs_content)
+  FetchContent_MakeAvailable(nek5000_gs_content)
 endif()
 
 # ./build/_deps/nek5000_content-src/3rd_party/gslib/lib/libgs.a
@@ -73,7 +78,7 @@ if (NOT parrsb_content_POPULATED)
   # Moves `install` script so it doesn't get clobbered when 
   # populating content.  
   #file(RENAME ${PARRSB_DIR}/install temp_parrsb_install)
-  FetchContent_Populate(parrsb_content)
+  FetchContent_MakeAvailable(parrsb_content)
   #file(RENAME temp_parrsb_install ${PARRSB_DIR}/install)
 endif()
 

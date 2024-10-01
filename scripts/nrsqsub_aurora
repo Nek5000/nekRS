@@ -9,7 +9,7 @@ set -e
 : ${RANKS_FOR_BUILD:=12}
 : ${CPU_BIND_LIST:="0-7,104-111:8-15,112-119:16-23,120-127:24-31,128-135:32-39,136-143:40-47,144-151:52-59,156-163:60-67,164-171:68-75,172-179:76-83,180-187:84-91,188-195:92-99,196-203"}
 : ${OCCA_DPCPP_COMPILER_FLAGS:="-O3 -fsycl -fsycl-targets=intel_gpu_pvc -ftarget-register-alloc-mode=pvc:auto -fma"}
-: ${ONEAPI_SDK:="oneapi/eng-compiler/2023.12.15.002"}
+: ${ONEAPI_SDK:=""}
 #--------------------------------------
 
 source $NEKRS_HOME/bin/nrsqsub_utils
@@ -42,7 +42,9 @@ echo "echo Jobid: \$PBS_JOBID" >>$SFILE
 echo "echo Running on host \`hostname\`" >>$SFILE
 echo "echo Running on nodes \`cat \$PBS_NODEFILE\`" >>$SFILE
 
-echo "module load ${ONEAPI_SDK}" >> $SFILE
+if [ -n "$ONEAPI_SDK" ]; then
+  echo "module load ${ONEAPI_SDK}" >> $SFILE
+fi
 echo "module load cmake" >> $SFILE
 echo "module list" >> $SFILE
 
@@ -53,9 +55,9 @@ echo "export MPICH_GPU_SUPPORT_ENABLED=$NEKRS_GPU_MPI" >> $SFILE
 echo "export OCCA_DPCPP_COMPILER_FLAGS=\"$OCCA_DPCPP_COMPILER_FLAGS\"" >> $SFILE
 
 # Workaround for MPICH 52.2 see https://docs.alcf.anl.gov/aurora/known-issues/
-echo "unset MPIR_CVAR_CH4_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
-echo "unset MPIR_CVAR_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
-echo "unset MPIR_CVAR_CH4_POSIX_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
+#echo "unset MPIR_CVAR_CH4_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
+#echo "unset MPIR_CVAR_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
+#echo "unset MPIR_CVAR_CH4_POSIX_COLL_SELECTION_TUNING_JSON_FILE" >> $SFILE
 
 # Cray MPI libfabric defaults
 echo "export FI_CXI_RDZV_THRESHOLD=16384" >> $SFILE

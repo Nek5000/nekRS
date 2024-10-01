@@ -44,7 +44,7 @@ int _pgmres(elliptic_t *elliptic,
 
   auto &o_weight = elliptic->o_residualWeight;
 
-  o_r0.copyFrom(o_r, elliptic->fieldOffset * elliptic->Nfields);
+  o_r0.copyFrom(o_r, o_r.size());
 
   dfloat nr = rdotr;
 

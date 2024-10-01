@@ -148,7 +148,7 @@ void UDF_ExecuteStep(double time, int tstep)
                      mesh->o_U);
   }
 
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     nrs->copyToNek(time, tstep);
     nek::userchk();
   }

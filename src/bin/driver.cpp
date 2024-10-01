@@ -246,8 +246,6 @@ int main(int argc, char** argv)
 
     if (rank == 0) std::cout << std::endl;
 
-    // outer time stepping loop 
-    // all sessions run the same number of global steps but some may do sub-stepping
     fflush(stdout);
     MPI_Pcontrol(1);
     while (!isLastStep) {
@@ -255,43 +253,36 @@ int main(int argc, char** argv)
       const double timeStartStep = MPI_Wtime();
  
       ++tStep;
-      auto [dtInnerStep, dtOuterStep] = nekrs::dt(tStep);
+      auto [dtSubStep, dt] = nekrs::dt(tStep);
 
-      const double endTimeOuterStep = time + dtOuterStep;
+      const double timeNew = time + dt;
  
-      isLastStep = nekrs::lastStep(endTimeOuterStep, tStep, elapsedTime);
+      isLastStep = nekrs::lastStep(timeNew, tStep, elapsedTime);
       if (sig_terminate) isLastStep = 1;
 
       if (isLastStep && nekrs::endTime() > 0) {
-        dtInnerStep = nekrs::finalTimeStepSize(time);
+        dtSubStep = nekrs::finalTimeStepSize(time);
       }
 
-      int checkpointStep = nekrs::checkpointStep(endTimeOuterStep, tStep);
+      int checkpointStep = nekrs::checkpointStep(timeNew, tStep);
       if (nekrs::writeInterval() == 0) checkpointStep = 0;
       if (isLastStep) checkpointStep = 1;
       if (nekrs::writeInterval() < 0) checkpointStep = 0;
       nekrs::checkpointStep(checkpointStep);
 
-      // run global step
+      // all sessions run the same number of global steps 
+      // but some may do sub-stepping
       {
-        auto tStep_ = tStep; // initialize local step counter 
-        nekrs::initStep(time, dtInnerStep, tStep_);
-
-        // run corrector loop for a given global step
-        { 
-          int outerCorrector = 1;
-          bool stepConverged = false;
-          do {
-            stepConverged = nekrs::runStep(outerCorrector++); // run sub-stepping if needed
-            if (nekrs::printStepInfoFreq() && !stepConverged) {
-              nekrs::printStepInfo(time, tStep, true, true);
-            }
-          } while (!stepConverged);
-        }
-
-        tStep_ = nekrs::timeStep();
+        nekrs::initStep(time, dtSubStep, tStep);
+        int corrector = 1;
+        bool stepConverged = false;
+        do {
+          stepConverged = nekrs::runStep(corrector++);
+          if (nekrs::printStepInfoFreq() && !stepConverged) {
+            nekrs::printStepInfo(timeNew, tStep, true, true);
+          }
+        } while (!stepConverged);
         nekrs::finishStep();
-        time = endTimeOuterStep;
       }
 
       if(sig_processUpdFile) {
@@ -302,10 +293,10 @@ int main(int argc, char** argv)
       // print solver stats only 
       if (nekrs::printStepInfoFreq()) {
         if (tStep % nekrs::printStepInfoFreq() == 0)
-          nekrs::printStepInfo(time, tStep, false, true);
+          nekrs::printStepInfo(timeNew, tStep, false, true);
       }
  
-      if (checkpointStep) nekrs::writeCheckpoint(time, tStep);
+      if (checkpointStep) nekrs::writeCheckpoint(timeNew, tStep);
  
       MPI_Barrier(comm);
       const double elapsedStep = MPI_Wtime() - timeStartStep;
@@ -320,10 +311,9 @@ int main(int argc, char** argv)
       nekrs::updateTimer("elapsedStepSum", elapsedStepSum);
       nekrs::updateTimer("elapsed", elapsedTime);
 
-      // print step summary 
       if (nekrs::printStepInfoFreq()) {
         if (tStep % nekrs::printStepInfoFreq() == 0) {
-          nekrs::printStepInfo(time, tStep, true, false);
+          nekrs::printStepInfo(timeNew, tStep, true, false);
         }
       }
  
@@ -333,6 +323,8 @@ int main(int argc, char** argv)
         }
       }
  
+      time = timeNew;
+
       if (tStep % 100 == 0) fflush(stdout);
     }
     MPI_Pcontrol(0);

@@ -79,7 +79,7 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     nrs->Qcriterion(o_qcriterion);
   }
 }

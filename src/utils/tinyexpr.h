@@ -58,7 +58,7 @@ typedef struct te_variable
 
 /* Parses the input expression, evaluates it, and frees it. */
 /* Returns NaN on error. */
-double te_interp(const char* expression, int* error);
+double parseFormula(const char* expression, int* error);
 
 /* Parses the input expression and binds variables. */
 /* Returns NULL on error. */

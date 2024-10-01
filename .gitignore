@@ -1,9 +1,13 @@
 build/
-CMakeFiles
 *.tgz
 .vscode/
 *.swp
-# From AMGX
-plugin_config.cu
 *.swp
+*.log
+*.nek5000
+*.f?????
+*.bp
+*.vtu
+logfile
+*.dat
 .cache/

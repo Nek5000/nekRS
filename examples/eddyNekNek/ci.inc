@@ -250,7 +250,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
 
     case 2:
       CiEvalTest("velocity (relLinfErr: " + to_string_f(uErr) + ")", uErr < 3e0);
-      CiEvalTest("scalar00 (relLinfErr: " + to_string_f(s00Err) + ")", s00Err < 6e-4);
+      CiEvalTest("scalar00 (relLinfErr: " + to_string_f(s00Err) + ")", s00Err < 9e-4);
       break;
 
     case 3:

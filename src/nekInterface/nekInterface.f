@@ -1267,7 +1267,7 @@ c-----------------------------------------------------------------------
                                     ! read hdr + element mapping 
 
       time_ = timer
-      p0th_ = p0thr
+      p0th_ = p0th
 
       ! what fields exist in file
       getxr = 1

@@ -232,7 +232,7 @@ void UDF_ExecuteStep(double time, int tstep)
   auto mesh = nrs->mesh;
 
   if (tstep == 0) {
-    nrs->writeCheckpoint(time, tstep); 
+    //nrs->writeCheckpoint(time, tstep); 
   }
 
   velRecycling::copy();
@@ -243,14 +243,14 @@ void UDF_ExecuteStep(double time, int tstep)
 #ifdef NEKRS_ASCENT_ENABLED
   blockSignal(ASCENT_UPDATE_SIGNAL);
   MPI_Bcast(const_cast<sig_atomic_t*>(&processAscentYaml), 1, MPI_INT, 0, platform->comm.mpiComm);
-  processAscentYaml = processAscentYaml || (tstep % processAscentYamlFrequency == 0);
+  processAscentYaml = processAscentYaml || (tstep % processAscentYamlFrequency == 0 && tstep > 0);
 #endif
 
-  if (nrs->isCheckpointStep || processAscentYaml) {
+  if (nrs->checkpointStep || processAscentYaml) {
     nrs->Qcriterion(nrs->o_U, o_qcriterion);
   }
 
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     auto o_UZ = nrs->o_U + 2 * nrs->fieldOffset;
     const dfloat ubar =
         platform->linAlg->innerProd(mesh->Nlocal, o_UZ, mesh->o_Jw, platform->comm.mpiComm) / mesh->volume;
@@ -272,6 +272,7 @@ void UDF_ExecuteStep(double time, int tstep)
     nekAscent::run(time, tstep);
     processAscentYaml = 0;
   }
+  if (nrs->lastStep) nekAscent::finalize();
   unblockSignal(ASCENT_UPDATE_SIGNAL);
 #endif
 }

@@ -95,7 +95,11 @@
        const dfloat L2normSqr = atol * atol;
        for (int fld = 0; fld < p_dNfields; fld++) {
           const float res = modsum[fld] + s_BLD[n] * L2normSqr;
-          s_LogMod[es][fld][n] = 0.5f * log10f(res); // use log(sqrt(a)) = 0.5*log(a)
+#if defined(XeHPC)
+          s_LogMod[es][fld][n] = 0.5f * log10(res);
+#else
+          s_LogMod[es][fld][n] = 0.5f * log10f(res);
+#endif
         }
       }
     }

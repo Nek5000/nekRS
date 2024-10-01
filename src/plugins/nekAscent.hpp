@@ -10,55 +10,43 @@
 #include "ascent.hpp"
 #include "vtkh/vtkh.hpp"
 #include "mesh.h"
+#include <future>
 
 namespace nekAscent
 {
 
-void setup(mesh_t *mesh_,
-           const std::string& inputFile,
-           int Nin_ = 0,
-           bool uniform_ = false,
-           bool stageThroughHost = false);
-void run(const double time, const int tstep);
-void finalize();
-void addVariable(const std::string& name, mesh_t *mesh_fld, const std::vector<deviceMemory<dfloat>>& fld);
-void clearData();
-
-ascent::Ascent mAscent;
-} // namespace nekAscent
-
 namespace
 {
+conduit::Node ascent_opts;
+ascent::Ascent mAscent;
 conduit::Node mesh_data;
+conduit::Node triggers;
+conduit::Node actions;
 
-using field = std::tuple<std::string, std::vector<occa::memory>, mesh_t *>;
-std::vector<field> userFieldList;
 occa::memory o_connectivity;
 occa::memory o_x, o_y, o_z;
+occa::memory o_work;
 
 mesh_t *mesh_in;
 mesh_t *mesh_vis;
 
+using field = std::tuple<std::string, std::vector<occa::memory>, mesh_t *>;
+std::vector<field> userFieldList;
+
+std::future<void> asyncRunner;
+
+bool async = false;
 bool stageThroughHost = false;
-
 bool setupCalled = false;
-bool updateMesh = true;
-
 bool interpolate = false;
 bool uniform = false;
 
-std::string actionFile;
-} // namespace
-
-static void errHandler(const std::string &msg,
-                       const std::string &file,
-                       int line)
+void errHandler(const std::string &msg, const std::string &file, int line)
 {
-  nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, 
-             "%s\n", msg.c_str());
+  nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", msg.c_str());
 }
 
-static void initializeAscent()
+void initializeAscent()
 {
   const double tStart = MPI_Wtime();
 
@@ -68,12 +56,12 @@ static void initializeAscent()
   conduit::utils::set_warning_handler(errHandler);
   conduit::utils::set_error_handler(errHandler);
 
-  conduit::Node ascent_opts;
   ascent_opts["mpi_comm"] = MPI_Comm_c2f(comm);
-  //ascent_opts["exceptions"] = "forward";
-  //ascent_opts["messages"] = "verbose";
+  //ascent_opts["runtime/vtkm/backend"] = "serial";
+  // ascent_opts["exceptions"] = "forward";
+  // ascent_opts["messages"] = "verbose";
 
-  nekAscent::mAscent.open(ascent_opts);
+  mAscent.open(ascent_opts);
 
   if (platform->comm.mpiRank == 0) {
     conduit::Node about;
@@ -94,144 +82,205 @@ static void initializeAscent()
     std::cout << vtkh::AboutVTKH() << std::endl;
   }
 
-  platform->timer.set("nekAscent::setup::initializeAscent", MPI_Wtime() - tStart);
-
   fflush(stdout);
 }
 
-static void updateFieldData(occa::memory& o_work)
+void allocWork(size_t size)
 {
+  if (!o_work.isInitialized()) {
+    // cannot use memPool as potential realloc can lead to dangling points when executing in async mode
+    if (stageThroughHost) {
+      o_work = platform->device.mallocHost<dfloat>(size);
+    } else {
+      o_work = platform->device.malloc<dfloat>(size);
+    }
+  } else {
+    nekrsCheck(o_work.size() < size,
+               MPI_COMM_SELF,
+               EXIT_FAILURE,
+               "%s\n",
+               "Invalid attempt to realloc o_work!");
+  }
+}
+
+void updateFieldData()
+{
+  static auto firstTime = true;
+
   platform->timer.tic("nekAscent::run::update");
 
-  const auto fieldOffsetScan = [&]()
-  {
-    std::vector<dlong> offsetScan(userFieldList.size() + 1);
-    offsetScan[0] = 0;
+  const auto fieldOffsetScan = [&]() {
+    std::vector<size_t> offsetScan(userFieldList.size() + 1);
 
     int ifld = 1;
+    offsetScan[0] = 0;
     for (auto &entry : userFieldList) {
-      auto fieldName = std::get<0>(entry);
       auto o_fld = std::get<1>(entry);
-      auto mesh_fld = std::get<2>(entry);
       const auto dim_fld = o_fld.size();
- 
+
       offsetScan[ifld] =
-          offsetScan[ifld - 1] +
-          alignStride<dfloat>(mesh_vis->Np * mesh_fld->Nelements) * dim_fld;
- 
+          offsetScan[ifld - 1] + alignStride<dfloat>(mesh_vis->Np * mesh_vis->Nelements) * dim_fld;
+
       ifld++;
     }
     return offsetScan;
   }();
 
   const auto movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
-  if (interpolate || uniform) {
-    o_work = platform->o_memPool.reserve<dfloat>(fieldOffsetScan.back());
-
-    if (updateMesh || movingMesh) {
+  if (firstTime || movingMesh) {
+    if (interpolate || uniform) {
       if (uniform) {
-        mesh_in->map2Uniform(mesh_in->o_x, mesh_vis, mesh_vis->o_x);
-        mesh_in->map2Uniform(mesh_in->o_y, mesh_vis, mesh_vis->o_y);
-        mesh_in->map2Uniform(mesh_in->o_z, mesh_vis, mesh_vis->o_z);
+        mesh_in->interpolate(mesh_in->o_x, mesh_vis, mesh_vis->o_x, true);
+        mesh_in->interpolate(mesh_in->o_y, mesh_vis, mesh_vis->o_y, true);
+        mesh_in->interpolate(mesh_in->o_z, mesh_vis, mesh_vis->o_z, true);
       } else {
         mesh_in->interpolate(mesh_in->o_x, mesh_vis, mesh_vis->o_x);
         mesh_in->interpolate(mesh_in->o_y, mesh_vis, mesh_vis->o_y);
         mesh_in->interpolate(mesh_in->o_z, mesh_vis, mesh_vis->o_z);
       }
+    }
 
-      updateMesh = false;
+    if (stageThroughHost || async) {
+      o_x.copyFrom(mesh_vis->o_x);
+      o_y.copyFrom(mesh_vis->o_y);
+      o_z.copyFrom(mesh_vis->o_z);
     }
   }
 
-  if (stageThroughHost && (updateMesh || movingMesh)) {
-    o_x.copyFrom(mesh_vis->o_x);
-    o_y.copyFrom(mesh_vis->o_y);
-    o_z.copyFrom(mesh_vis->o_z);
-  }
-
   int ifld = 0;
-  const std::string str_xyz = "xyz";
   for (auto &entry : userFieldList) {
-    const auto& fieldName = std::get<0>(entry);
-    const auto& o_fldIn = std::get<1>(entry);
-    const auto& mesh_fld = std::get<2>(entry);
+    const auto &fieldName = std::get<0>(entry);
+    const auto &o_fldIn = std::get<1>(entry);
+    const auto &mesh_fld = std::get<2>(entry);
 
     const auto dim_fld = o_fldIn.size();
-    const dlong Nlocal = mesh_fld->Nelements * mesh_vis->Np;
+    const auto fieldOffsetWork = (fieldOffsetScan[ifld + 1] - fieldOffsetScan[ifld]) / dim_fld;
 
-    if (dim_fld ==1 || dim_fld == 3) {
-      for (int idim=0; idim<dim_fld; idim++) {
-        auto data = [&]()
-        {
-          auto o_fldOut = o_fldIn.at(idim);
-          if (interpolate || uniform) {
-            auto o_fld = o_work.slice(fieldOffsetScan[ifld]);
-            const auto fieldOffset = fieldOffsetScan[ifld] / dim_fld;
-            o_fldOut = o_fld.slice(idim * fieldOffset, mesh_vis->Nlocal);
-            if (uniform) {
-              mesh_fld->map2Uniform(o_fldIn.at(idim), mesh_vis, o_fldOut);
-            } else {
-              mesh_fld->interpolate(o_fldIn.at(idim), mesh_vis, o_fldOut);
-            }
-          }
-
-          if (stageThroughHost) {
-            auto o_out = platform->memPool.reserve<dfloat>(o_fldOut.size());
-            o_out.copyFrom(o_fldOut);
-            return o_out.ptr<dfloat>();
+    for (int idim = 0; idim < dim_fld; idim++) {
+      auto data = [&]() {
+        occa::memory o_fldOut;
+        if (interpolate || uniform) {
+          auto o_tmp = platform->o_memPool.reserve<dfloat>(mesh_vis->Nlocal);
+          if (uniform) {
+            mesh_fld->interpolate(o_fldIn.at(idim), mesh_vis, o_tmp, true);
           } else {
-            return o_fldOut.ptr<dfloat>();
+            mesh_fld->interpolate(o_fldIn.at(idim), mesh_vis, o_tmp);
           }
-        }();
-
-// workaround for https://github.com/Alpine-DAV/ascent/issues/1329
-#if 0
-        if (idim==0) {
-          mesh_data["fields/" + fieldName + "/association"] = "vertex";
-          mesh_data["fields/" + fieldName + "/topology"] = "mesh";
+          allocWork(fieldOffsetScan.back());
+          auto o_fldWork = o_work.slice(fieldOffsetScan[ifld]);
+          o_fldOut = o_fldWork.slice(idim * fieldOffsetWork, o_tmp.size());
+          o_fldOut.copyFrom(o_tmp);
+        } else if (async) {
+          allocWork(fieldOffsetScan.back());
+          auto o_fldWork = o_work.slice(fieldOffsetScan[ifld]);
+          o_fldOut = o_fldWork.slice(idim * fieldOffsetWork, mesh_vis->Nlocal);
+          o_fldOut.copyFrom(o_fldIn.at(idim), o_fldIn.at(idim).size());
+        } else {
+          occa::memory o_tmp;
+          if (stageThroughHost) {
+            o_tmp = platform->memPool.reserve<dfloat>(mesh_vis->Nlocal);
+            auto ptr = o_tmp.ptr<dfloat>();
+            for (int i = 0; i < o_tmp.size(); i++) {
+              ptr[i] = 0.0;
+            }
+          } else {
+            o_tmp = platform->o_memPool.reserve<dfloat>(mesh_vis->Nlocal);
+            platform->linAlg->fill(o_tmp.size(), 0.0, o_tmp);
+          }
+          o_tmp.copyFrom(o_fldIn.at(idim), o_fldIn.at(idim).size());
+          o_fldOut = o_tmp;
         }
-        mesh_data["fields/" + fieldName + "/values/" + str_xyz.at(idim)].set_external(data, Nlocal);
-#else
+
+        return o_fldOut;
+      }();
+
+      {
+        const std::string str_xyz = "xyz";
+// workaround for https://github.com/Alpine-DAV/ascent/issues/1329
+#if 1
         const auto fieldNameXYZ = (dim_fld > 1) ? fieldName + "_" + str_xyz.at(idim) : fieldName;
         mesh_data["fields/" + fieldNameXYZ + "/association"] = "vertex";
         mesh_data["fields/" + fieldNameXYZ + "/topology"] = "mesh";
-        mesh_data["fields/" + fieldNameXYZ + "/values"].set_external(data, Nlocal);
+        mesh_data["fields/" + fieldNameXYZ + "/values"].set_external(data.ptr<dfloat>(), data.size());
+#else
+        const auto fieldNameXYZ = fieldName;
+        if (idim == 0) {
+          mesh_data["fields/" + fieldNameXYZ + "/association"] = "vertex";
+          mesh_data["fields/" + fieldNameXYZ + "/topology"] = "mesh";
+        }
+        mesh_data["fields/" + fieldNameXYZ + "/values/" + str_xyz.at(idim)].set_external(data.ptr<dfloat>(),
+                                                                                         data.size());
 #endif
       }
-    } else {
-      nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "Unsupported vector dim: %d\n", dim_fld);
     }
 
     ifld++;
   }
 
+  mAscent.publish(mesh_data);
+
   platform->timer.toc("nekAscent::run::update");
+
+  if (platform->comm.mpiRank == 0 && platform->verbose) {
+    std::cout << "---------------- Ascent mesh_data ----------------" << std::endl;
+    conduit::Node mesh_copy;
+    mesh_copy.set(mesh_data);
+    mesh_copy.print();
+    fflush(stdout);
+  }
+
+  firstTime = false;
 }
 
-void nekAscent::addVariable(const std::string& name, mesh_t *mesh_fld, const std::vector<deviceMemory<dfloat>>& fld)
+} // namespace
+
+void addVariable(const std::string &name,
+                            mesh_t *mesh_fld,
+                            const std::vector<deviceMemory<dfloat>> &fld)
 {
   std::vector<occa::memory> fld_;
-  for (const auto&entry : fld) fld_.push_back(entry);
+  for (const auto &entry : fld) {
+    fld_.push_back(entry);
+  }
+
+  const auto dim = fld_.size();
+  nekrsCheck(dim != 1 && dim != 3, MPI_COMM_SELF, EXIT_FAILURE, "Unsupported vector dim: %d\n", dim);
+
   userFieldList.push_back(std::tuple{name, fld_, mesh_fld});
 }
 
-void nekAscent::clearData()
+void clearData()
 {
   userFieldList.clear();
 }
 
-void nekAscent::setup(mesh_t *mesh_,
-                      const std::string& inputFile,
-                      int Nin_,
-                      bool uniform_,
-                      bool stageThroughHost_)
+void setup(mesh_t *mesh_,
+                      const std::string &actionFile,
+                      int Nin_ = 0,
+                      bool uniform_ = false,
+                      bool stageThroughHost_ = false
+                      bool async_ = false)
 {
-  const auto verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
   mesh_in = mesh_;
-  uniform = uniform_;
-  stageThroughHost = stageThroughHost_;
-  if (platform->serial) stageThroughHost = false;
   const int Nin = (Nin_) ? Nin_ : mesh_in->N;
+  uniform = uniform_;
+  async = async_;
+  stageThroughHost = stageThroughHost_;
+  if (platform->serial) {
+    stageThroughHost = false;
+  }
+
+  if (stageThroughHost) async = true; 
+
+  if (async) {
+    int provided;
+    MPI_Query_thread(&provided);
+    nekrsCheck(provided != MPI_THREAD_MULTIPLE,
+               MPI_COMM_SELF,
+               EXIT_FAILURE,
+               "%s\n",
+               "running Ascent in async mode requires NEKRS_MPI_THREAD_MULTIPLE=1");
+  }
 
   platform->timer.addUserStat("nekAscent::");
 
@@ -242,22 +291,26 @@ void nekAscent::setup(mesh_t *mesh_,
     printf("initializing nekAscent ");
     if (interpolate || uniform) {
       printf("(Nviz=%d", Nin);
-      if (uniform)  printf(" +uniform"); 
+      if (uniform) {
+        printf(" +uniform");
+      }
       printf(") ...\n");
       fflush(stdout);
     }
   }
 
   if (platform->comm.mpiRank == 0) {
-    nekrsCheck(!fs::exists(inputFile), MPI_COMM_SELF, EXIT_FAILURE, "Cannot find %s\n", inputFile.c_str());
+    nekrsCheck(!fs::exists(actionFile), MPI_COMM_SELF, EXIT_FAILURE, "Cannot find %s\n", actionFile.c_str());
   }
-  actionFile = inputFile;
 
   initializeAscent();
 
-  mesh_vis = [&]()
-  {
+  mesh_vis = [&]() {
     auto mesh = mesh_in;
+    o_x = mesh->o_x;
+    o_y = mesh->o_y;
+    o_z = mesh->o_z;
+
     if (interpolate || uniform) {
       mesh = new mesh_t();
       mesh->Nelements = mesh_in->Nelements;
@@ -266,40 +319,38 @@ void nekAscent::setup(mesh_t *mesh_,
       mesh->Nfaces = mesh_in->Nfaces;
       mesh->NfaceVertices = mesh_in->NfaceVertices;
       meshLoadReferenceNodesHex3D(mesh, Nin, 0);
- 
+
       mesh->o_x = platform->device.malloc<dfloat>(mesh->Nlocal);
       mesh->o_y = platform->device.malloc<dfloat>(mesh->Nlocal);
       mesh->o_z = platform->device.malloc<dfloat>(mesh->Nlocal);
       o_x = mesh->o_x;
       o_y = mesh->o_y;
       o_z = mesh->o_z;
+    } else if (async && !stageThroughHost) {
+      o_x = platform->device.malloc<dfloat>(mesh->Nlocal);
+      o_y = platform->device.malloc<dfloat>(mesh->Nlocal);
+      o_z = platform->device.malloc<dfloat>(mesh->Nlocal);
     }
+
+    if (stageThroughHost) {
+      o_x = platform->device.mallocHost<dfloat>(mesh->Nlocal);
+      o_y = platform->device.mallocHost<dfloat>(mesh->Nlocal);
+      o_z = platform->device.mallocHost<dfloat>(mesh->Nlocal);
+    }
+
     return mesh;
   }();
 
-  if (stageThroughHost) {
-    o_x = platform->device.mallocHost<dfloat>(mesh_vis->Nlocal);
-    o_y = platform->device.mallocHost<dfloat>(mesh_vis->Nlocal);
-    o_z = platform->device.mallocHost<dfloat>(mesh_vis->Nlocal);
-    o_x.copyFrom(mesh_vis->o_x);
-    o_y.copyFrom(mesh_vis->o_y);
-    o_z.copyFrom(mesh_vis->o_z);
-  }
-
-  mesh_data["coordsets/coords/type"] = "explicit";
-  mesh_data["coordsets/coords/values/x"].set_external(o_x.ptr<dfloat>(), mesh_vis->Nlocal);
-  mesh_data["coordsets/coords/values/y"].set_external(o_y.ptr<dfloat>(), mesh_vis->Nlocal);
-  mesh_data["coordsets/coords/values/z"].set_external(o_z.ptr<dfloat>(), mesh_vis->Nlocal);
-
-  mesh_data["topologies/mesh/type"] = "unstructured";
-  mesh_data["topologies/mesh/coordset"] = "coords";
-  mesh_data["topologies/mesh/elements/shape"] = "hex";
-
-  o_connectivity = [&]()
-  {
+  o_connectivity = [&]() {
     const dlong Nverts = mesh_vis->Nelements * std::pow(mesh_vis->N, mesh_vis->dim) * mesh_vis->Nverts;
     std::vector<dlong> etov(Nverts);
-    auto o_etov = platform->device.malloc<dlong>(etov.size());
+
+    occa::memory o_etov;
+    if (stageThroughHost) { 
+      o_etov = platform->device.mallocHost<dlong>(etov.size());
+    } else {
+      o_etov = platform->device.malloc<dlong>(etov.size());
+    }
 
     auto it = etov.begin();
     for (int e = 0; e < mesh_vis->Nelements; ++e) {
@@ -323,13 +374,30 @@ void nekAscent::setup(mesh_t *mesh_,
     o_etov.copyFrom(etov.data());
     return o_etov;
   }();
-  mesh_data["topologies/mesh/elements/connectivity"].set_external((dlong *)o_connectivity.ptr(), o_connectivity.size());
+
+  mesh_data["coordsets/coords/type"] = "explicit";
+  mesh_data["coordsets/coords/values/x"].set_external(o_x.ptr<dfloat>(), o_x.size());
+  mesh_data["coordsets/coords/values/y"].set_external(o_y.ptr<dfloat>(), o_y.size());
+  mesh_data["coordsets/coords/values/z"].set_external(o_z.ptr<dfloat>(), o_z.size());
+
+  mesh_data["topologies/mesh/type"] = "unstructured";
+  mesh_data["topologies/mesh/coordset"] = "coords";
+  mesh_data["topologies/mesh/elements/shape"] = "hex";
+  mesh_data["topologies/mesh/elements/connectivity"].set_external((dlong *)o_connectivity.ptr(),
+                                                                  o_connectivity.size());
+
+  triggers["t1/params/condition"] = "True";
+  triggers["t1/params/actions_file"] = actionFile;
+
+  conduit::Node &add_triggers = actions.append();
+  add_triggers["action"] = "add_triggers";
+  add_triggers["triggers"] = triggers;
 
   const auto tSetup = MPI_Wtime() - tStart;
   platform->timer.set("nekAscent::setup", tSetup);
   if (platform->comm.mpiRank == 0) {
     printf("\ndone (%gs)\n\n", tSetup);
-    if (verbose) {
+    if (platform->verbose) {
       conduit::Node mesh_copy;
       mesh_copy.set(mesh_data);
       mesh_copy.print();
@@ -340,54 +408,54 @@ void nekAscent::setup(mesh_t *mesh_,
   setupCalled = true;
 }
 
-
-void nekAscent::run(const double time, const int tstep)
+void run(const double time, const int tstep)
 {
   nekrsCheck(!setupCalled, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "called prior to nekAscent::setup()!");
-  const auto verbose = platform->options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
 
   platform->timer.tic("nekAscent::run");
+
+  if (asyncRunner.valid()) {
+    platform->timer.tic("nekAscent::run::execute");
+    asyncRunner.wait(); // wait until previous task is completed
+    platform->timer.toc("nekAscent::run::execute");
+  }
+
   if (platform->comm.mpiRank == 0) {
-    std::cout << "processing " << actionFile << std::endl;
+    std::cout << "processing Ascent action file ..." << std::endl << std::flush;
   }
 
   mesh_data["state/cycle"] = tstep;
   mesh_data["state/time"] = time;
 
-  occa::memory o_work;
-  updateFieldData(o_work);
+  updateFieldData();
 
-  if (platform->comm.mpiRank == 0 && verbose) {
-    std::cout << "---------------- Ascent mesh_data ----------------" << std::endl;
-    conduit::Node mesh_copy;
-    mesh_copy.set(mesh_data);
-    mesh_copy.print();
-    fflush(stdout);
+  if (async) {
+    asyncRunner = std::async(std::launch::async, [&]() { mAscent.execute(actions); });
+  } else {
+    platform->timer.tic("nekAscent::run::execute");
+    mAscent.execute(actions);
+    platform->timer.toc("nekAscent::run::execute");
   }
-  mAscent.publish(mesh_data);
-
-  conduit::Node triggers;
-  triggers["t1/params/condition"] = "True"; // control the condition in udf, not ascent
-  triggers["t1/params/actions_file"] = actionFile;
-
-  conduit::Node actions;
-  conduit::Node &add_triggers = actions.append();
-  add_triggers["action"] = "add_triggers";
-  add_triggers["triggers"] = triggers;
-
-  mAscent.execute(actions);
-
-  o_work.free(); // now it's safe to free
 
   platform->timer.toc("nekAscent::run");
 }
 
-void nekAscent::finalize()
+void finalize()
 {
+  if (asyncRunner.valid()) {
+    platform->timer.tic("nekAscent::run::execute");
+    asyncRunner.get();
+    platform->timer.toc("nekAscent::run::execute");
+  }
+
   if (setupCalled) {
     o_connectivity.free();
     mAscent.close();
   }
+
+  o_work.free();
 }
+
+} // namespace nekAscent
 
 #endif // hpp

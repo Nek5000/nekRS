@@ -71,4 +71,4 @@ betah = 7.8
 kappa = 0.4
 zwall = 0.01 # 1.0/lref
 
-startTimeStatistics = 0.1 # 2300 # 8h 
+startTimeStatistics = 2300 # 8h 
