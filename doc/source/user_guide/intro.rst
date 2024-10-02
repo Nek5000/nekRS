@@ -143,6 +143,22 @@ On the host, this kernel is launched by:
 
 Kernel launches look like regular function calls, but arrays must be passed as ``deviceMemory`` objects, and scalar value arguments (integer or floating point numbers) must have exact type matches, as no implicit type conversion is performed. Passing structs or pointers of any sort is currently not supported. Execution of kernels will occur in order, but may be (depending on the backend) asynchronous with respect to the host.
 
+To transfer data between the device (abraction layer) and the host, ``deviceMemory`` implements ``copyTo`` and ``copyFrom``. 
+
+.. code-block:: cpp
+
+ deviceMemory<dfloat> d_foo(Nlocal); 
+ ...
+
+ // copy device to host
+ std::vector<dfloat> foo(d_size());
+ d_foo.copyTo(foo);
+
+ ....
+
+ // copy host to device
+ d.foo.copyFrom(foo);
+
 .. _data_structures:
 
 Data Structures
