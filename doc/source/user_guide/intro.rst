@@ -112,71 +112,37 @@ information on the kernel setup.
 Compute Backend Abstraction (OCCA)
 ----------------------------------
 
-One important overarching feature of nekRS is the use of :term:`OCCA` to provide a layer
-of abstraction of the potential compute backends (E.G. CPU, GPU's and Intel XPU's)
-so a universal language can be used to program the compute intensive areas of a case.
-The two main elements of this abstraction is to provide mechanisms to transfer 
-relevant data into the memory of the compute target, and a way to write functions 
-that can be executed on the compute target.
+To support different accelerator architectures, a compute backend abstraction known as OCCA is used. OCCA provides a host abstraction layer for efficient memory management and kernel execution. Additionally, it defines a unified low-level kernel source code language, OKL. To offload a compute-intensive task to an accelerator (device), you need to implement an `occa::kernel` and invoke it from the host. Below is an example:
 
-Here we introduce these elements in the most relevant way to nekRS, but further
-information can be found in the `OCCA documentation <https://libocca.org/>`_. The
-sections below all refer to code that will be present within the ``.udf`` file 
-(see :ref:`udf_functions` for more details)
+.. code-block:: cpp
 
-.. _occa_memory:
+ @kernel void foo(const dlong Ntotal,
+                  const dlong offset,
+                  @restrict const dfloat* A,
+                  @restrict const dfloat* B,
+                  @restrict dfloat* OUT)
+ {
+   for(dlong b=0; b<(Ntotal+p_blockSize -1)/p_blockSize; ++b; @outer){
+     for(dlong n=0; n< p_blockSize; ++n; @inner){
+       const dlong id = b*p_blockSize + n;
+       if(id < Ntotal){
+         OUT[id + 0*offset] =  A[id]*B[id];
+       }
+     }
+   }
+ }
 
-Memory
-""""""
+The syntax is similar to C, with additional qualifiers. ``@kernel`` is used to define a compute kernel (return type must be ``void``) with an ``@outer`` and ``@inner`` loop. Threads can be synchronized with ``@barrier()``.
+On the host, this kernel is launched by:
 
-Memory management is done through the C++ API which allows the user to make data
-available on the compute backend device (sometimes referred to as the device) and
-copy data into this for future use. 
+.. code-block:: cpp
 
-**TODO** - explanation of any automatic copying??
+ const dlong Nlocal = mesh->Nlocal;
+ const dlong offset = 0;
+ deviceMemory<dfloat> d_out(Nlocal);
+ foo(Ntotal, offset, d_a, d_b, d_out);
 
-Typically, relevant fields should be created and initialised in the 
-`UDF_loadKernels` function:
-
-.. code-block::
-
-  void UDF_LoadKernels(deviceKernelProperties& kernelInfo)
-  { 
-    kernelInfo.define("<p_VARIABLE>") = <VALUE>;
-  }
-
-.. tip::
-  p_ and o_ prefixing
-
-.. _occa_functions:
-
-Functions
-"""""""""
-
-The :term:`OKL` language extends C with keywords allowing functions to be written 
-in a consistent language which are translated to device specific code (E.G. CUDA).
-These functions should typically be in the ``.udf`` file within a ``#ifdef __okl__``
-block, and are preceded with a ``@kernel`` keyword. This block would also have
-any standard functions that would be required for relevant boundary conditions
-(see :ref:`boundary_conditions`). Below is an example showing both of these 
-types of function.
-
-.. code-block::
-
-  #ifdef __okl__
-  @kernel void sample_function()
-  {
-    // some code
-  }
-
-  void velocityDirichletConditions(bcData *bc)
-  {
-    // some code
-    bc->u = u;
-    bc->v = v;
-    bc->w = w;
-  }
-  #endif // __okl__
+Kernel launches look like regular function calls, but arrays must be passed as ``deviceMemory`` objects, and scalar value arguments must have exact type matches, as no implicit type conversion is performed. Execution will occur in order, but may be (depending on the backend) asynchronous with respect to the host.
 
 .. _data_structures:
 
