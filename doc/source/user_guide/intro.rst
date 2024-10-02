@@ -112,7 +112,7 @@ information on the kernel setup.
 Compute Backend Abstraction (OCCA)
 ----------------------------------
 
-To support different accelerator architectures, a compute backend abstraction known as OCCA is used. OCCA provides a host abstraction layer for efficient memory management and kernel execution. Additionally, it defines a unified low-level kernel source code language, OKL. To offload a compute-intensive task to an accelerator (device), you need to implement an `occa::kernel` and invoke it from the host. Below is an example:
+To support different accelerator architectures, a compute backend abstraction known as OCCA is used. OCCA provides a host abstraction layer for efficient memory management and kernel execution. Additionally, it defines a unified low-level kernel source code language. The ``okl`` s yntax is similar to C, with additional qualifiers. ``@kernel`` is used to define a compute kernel (return type must be ``void``) and contains both an ``@outer`` and ``@inner``. The ``@inner`` loop bounds must be known at compile time. Registers have to be defined as ``@exclusive`` or ``@shared``. Threads are synchronized with ``@barrier()``. Note that a kernel cannot call any other kernels. What follows is an example:
 
 .. code-block:: cpp
 
@@ -132,7 +132,6 @@ To support different accelerator architectures, a compute backend abstraction kn
    }
  }
 
-The syntax is similar to C, with additional qualifiers. ``@kernel`` is used to define a compute kernel (return type must be ``void``) with an ``@outer`` and ``@inner`` loop. Threads can be synchronized with ``@barrier()``.
 On the host, this kernel is launched by:
 
 .. code-block:: cpp
@@ -142,38 +141,14 @@ On the host, this kernel is launched by:
  deviceMemory<dfloat> d_out(Nlocal);
  foo(Ntotal, offset, d_a, d_b, d_out);
 
-Kernel launches look like regular function calls, but arrays must be passed as ``deviceMemory`` objects, and scalar value arguments must have exact type matches, as no implicit type conversion is performed. Execution will occur in order, but may be (depending on the backend) asynchronous with respect to the host.
+Kernel launches look like regular function calls, but arrays must be passed as ``deviceMemory`` objects, and scalar value arguments (integer or floating point numbers) must have exact type matches, as no implicit type conversion is performed. Passing structs or pointers of any sort is currently not supported. Execution of kernels will occur in order, but may be (depending on the backend) asynchronous with respect to the host.
 
 .. _data_structures:
 
 Data Structures
 ---------------
 
-UDF Only??
-
-To become a proficient user of nekRS requires some knowledge of the data structures
-used to store the mesh, solution fields, and simulation settings. While many
-commercial :term:`CFD<CFD>` codes have developed user interfaces that allow most user
-code interactions to occur through a :term:`GUI<GUI>` or even a text-based format, nekRS
-very much remains a research tool. As such, even "routine" actions such as setting
-boundary and initial conditions requires an understanding of the source code structure in
-nekRS. This requirement is advantageous from a flexibility perspective, however, because
-almost any user action that can be written in C++ ``.udf`` or :term:`OKL<OKL>` in ``.oudf``
-files can be incorporated into a nekRS simulation.
-
-This page contains a summary of some of the most commonly-used variables and structures
-used to interact with nekRS. For array-type variables, the size of the array is also listed
-in terms of the length of each dimension of that array. For instance, if the size of an array
-is ``Nelements * Np``, then the data is stored first by each element, and second by each
-quadrature point. If the variable is not an array type, the size is shown as ``1``.
-
-Some variables have an equivalent form that is stored on the device that can be accessed
-in device kernels. All such device variables and
-arrays that live on the device by convention are prefixed with ``o_``. That is, ``mesh->x``
-represents all the :math:`x`-coordinates of the quadrature points, and is stored on the host.
-The same data, but accessible on the device, is ``mesh->o_x``. Not all variables and arrays
-are automatically available on both the host and device, but those that are available are
-indicated with a :math:`\checkmark` in the "Device?" table column.
+TODO
 
 Platform
 """"""""
@@ -218,8 +193,6 @@ Some notable points of interest that require additional comment:
 ================== ============================ ================== =================================================
 Variable Name      Size                         Device?            Meaning
 ================== ============================ ================== =================================================
-``comm``           1                                               MPI communicator
-``device``         1                                               backend device
 ``dim``            1                                               spatial dimension of mesh
 ``elementInfo``    ``Nelements``                                   phase of element (0 = fluid, 1 = solid)
 ``EToB``           ``Nelements * Nfaces``       :math:`\checkmark` boundary ID for each face
