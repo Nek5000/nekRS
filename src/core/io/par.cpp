@@ -1548,7 +1548,7 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
         }
 
         if (options.getArgs(parPrefix + "REGULARIZATION AVM ABSOLUTE TOL").empty()) {
-          append_error("absoluteTol qualifier required for avm!\n");
+          append_error("noiseThreshold qualifier required for avm!\n");
         }
 
       }
