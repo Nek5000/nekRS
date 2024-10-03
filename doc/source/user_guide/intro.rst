@@ -112,102 +112,74 @@ information on the kernel setup.
 Compute Backend Abstraction (OCCA)
 ----------------------------------
 
-One important overarching feature of nekRS is the use of :term:`OCCA` to provide a layer
-of abstraction of the potential compute backends (E.G. CPU, GPU's and Intel XPU's)
-so a universal language can be used to program the compute intensive areas of a case.
-The two main elements of this abstraction is to provide mechanisms to transfer 
-relevant data into the memory of the compute target, and a way to write functions 
-that can be executed on the compute target.
+To support different accelerator architectures, a compute backend abstraction
+known as OCCA is used. OCCA provides a host abstraction layer for efficient
+memory management and kernel execution. Additionally, it defines a unified
+low-level kernel source code language. The ``okl`` syntax is similar to C, with
+additional qualifiers. ``@kernel`` is used to define a compute kernel (return
+type must be ``void``) and contains both an ``@outer`` and ``@inner``. The
+``@inner`` loop bounds must be known at compile time. Registers have to be
+defined as ``@exclusive`` or ``@shared``. Threads are synchronized with 
+``@barrier()``. Note that a kernel cannot call any other kernels. What follows 
+is an example:
 
-Here we introduce these elements in the most relevant way to nekRS, but further
-information can be found in the `OCCA documentation <https://libocca.org/>`_. The
-sections below all refer to code that will be present within the ``.udf`` file 
-(see :ref:`udf_functions` for more details)
+.. code-block:: cpp
 
-.. _occa_memory:
+ @kernel void foo(const dlong Ntotal,
+                  const dlong offset,
+                  @restrict const dfloat* A,
+                  @restrict const dfloat* B,
+                  @restrict dfloat* OUT)
+ {
+   for(dlong b=0; b<(Ntotal+p_blockSize -1)/p_blockSize; ++b; @outer){
+     for(dlong n=0; n< p_blockSize; ++n; @inner){
+       const dlong id = b*p_blockSize + n;
+       if(id < Ntotal){
+         OUT[id + 0*offset] =  A[id]*B[id];
+       }
+     }
+   }
+ }
 
-Memory
-""""""
+On the host, this kernel is launched by:
 
-Memory management is done through the C++ API which allows the user to make data
-available on the compute backend device (sometimes referred to as the device) and
-copy data into this for future use. 
+.. code-block:: cpp
 
-**TODO** - explanation of any automatic copying??
+ const dlong Nlocal = mesh->Nlocal;
+ const dlong offset = 0;
+ deviceMemory<dfloat> d_out(Nlocal);
+ foo(Ntotal, offset, d_a, d_b, d_out);
 
-Typically, relevant fields should be created and initialised in the 
-`UDF_loadKernels` function:
+Kernel launches look like regular function calls, but arrays must be passed as
+``deviceMemory`` objects, and scalar value arguments (integer or floating point
+numbers) must have exact type matches, as no implicit type conversion is
+performed. Passing structs or pointers of any sort is currently not supported.
+Execution of kernels will occur in order, but may be (depending on the backend)
+asynchronous with respect to the host.
 
-.. code-block::
+To transfer data between the device (abraction layer) and the host, 
+``deviceMemory`` implements ``copyTo`` and ``copyFrom``. 
 
-  void UDF_LoadKernels(deviceKernelProperties& kernelInfo)
-  { 
-    kernelInfo.define("<p_VARIABLE>") = <VALUE>;
-  }
+.. code-block:: cpp
 
-.. tip::
-  p_ and o_ prefixing
+ deviceMemory<dfloat> d_foo(Nlocal); 
+ ...
 
-.. _occa_functions:
+ // copy device to host
+ std::vector<dfloat> foo(d_size());
+ d_foo.copyTo(foo);
 
-Functions
-"""""""""
+ ....
 
-The :term:`OKL` language extends C with keywords allowing functions to be written 
-in a consistent language which are translated to device specific code (E.G. CUDA).
-These functions should typically be in the ``.udf`` file within a ``#ifdef __okl__``
-block, and are preceded with a ``@kernel`` keyword. This block would also have
-any standard functions that would be required for relevant boundary conditions
-(see :ref:`boundary_conditions`). Below is an example showing both of these 
-types of function.
-
-.. code-block::
-
-  #ifdef __okl__
-  @kernel void sample_function()
-  {
-    // some code
-  }
-
-  void velocityDirichletConditions(bcData *bc)
-  {
-    // some code
-    bc->u = u;
-    bc->v = v;
-    bc->w = w;
-  }
-  #endif // __okl__
+ // copy host to device
+ d.foo.copyFrom(foo);
 
 .. _data_structures:
 
 Data Structures
 ---------------
 
-UDF Only??
-
-To become a proficient user of nekRS requires some knowledge of the data structures
-used to store the mesh, solution fields, and simulation settings. While many
-commercial :term:`CFD<CFD>` codes have developed user interfaces that allow most user
-code interactions to occur through a :term:`GUI<GUI>` or even a text-based format, nekRS
-very much remains a research tool. As such, even "routine" actions such as setting
-boundary and initial conditions requires an understanding of the source code structure in
-nekRS. This requirement is advantageous from a flexibility perspective, however, because
-almost any user action that can be written in C++ ``.udf`` or :term:`OKL<OKL>` in ``.oudf``
-files can be incorporated into a nekRS simulation.
-
-This page contains a summary of some of the most commonly-used variables and structures
-used to interact with nekRS. For array-type variables, the size of the array is also listed
-in terms of the length of each dimension of that array. For instance, if the size of an array
-is ``Nelements * Np``, then the data is stored first by each element, and second by each
-quadrature point. If the variable is not an array type, the size is shown as ``1``.
-
-Some variables have an equivalent form that is stored on the device that can be accessed
-in device kernels. All such device variables and
-arrays that live on the device by convention are prefixed with ``o_``. That is, ``mesh->x``
-represents all the :math:`x`-coordinates of the quadrature points, and is stored on the host.
-The same data, but accessible on the device, is ``mesh->o_x``. Not all variables and arrays
-are automatically available on both the host and device, but those that are available are
-indicated with a :math:`\checkmark` in the "Device?" table column.
+TODO
 
 Platform
 """"""""
@@ -252,8 +224,6 @@ Some notable points of interest that require additional comment:
 ================== ============================ ================== =================================================
 Variable Name      Size                         Device?            Meaning
 ================== ============================ ================== =================================================
-``comm``           1                                               MPI communicator
-``device``         1                                               backend device
 ``dim``            1                                               spatial dimension of mesh
 ``elementInfo``    ``Nelements``                                   phase of element (0 = fluid, 1 = solid)
 ``EToB``           ``Nelements * Nfaces``       :math:`\checkmark` boundary ID for each face
