@@ -112,7 +112,16 @@ information on the kernel setup.
 Compute Backend Abstraction (OCCA)
 ----------------------------------
 
-To support different accelerator architectures, a compute backend abstraction known as OCCA is used. OCCA provides a host abstraction layer for efficient memory management and kernel execution. Additionally, it defines a unified low-level kernel source code language. The ``okl`` s yntax is similar to C, with additional qualifiers. ``@kernel`` is used to define a compute kernel (return type must be ``void``) and contains both an ``@outer`` and ``@inner``. The ``@inner`` loop bounds must be known at compile time. Registers have to be defined as ``@exclusive`` or ``@shared``. Threads are synchronized with ``@barrier()``. Note that a kernel cannot call any other kernels. What follows is an example:
+To support different accelerator architectures, a compute backend abstraction
+known as OCCA is used. OCCA provides a host abstraction layer for efficient
+memory management and kernel execution. Additionally, it defines a unified
+low-level kernel source code language. The ``okl`` syntax is similar to C, with
+additional qualifiers. ``@kernel`` is used to define a compute kernel (return
+type must be ``void``) and contains both an ``@outer`` and ``@inner``. The
+``@inner`` loop bounds must be known at compile time. Registers have to be
+defined as ``@exclusive`` or ``@shared``. Threads are synchronized with 
+``@barrier()``. Note that a kernel cannot call any other kernels. What follows 
+is an example:
 
 .. code-block:: cpp
 
@@ -141,9 +150,15 @@ On the host, this kernel is launched by:
  deviceMemory<dfloat> d_out(Nlocal);
  foo(Ntotal, offset, d_a, d_b, d_out);
 
-Kernel launches look like regular function calls, but arrays must be passed as ``deviceMemory`` objects, and scalar value arguments (integer or floating point numbers) must have exact type matches, as no implicit type conversion is performed. Passing structs or pointers of any sort is currently not supported. Execution of kernels will occur in order, but may be (depending on the backend) asynchronous with respect to the host.
+Kernel launches look like regular function calls, but arrays must be passed as
+``deviceMemory`` objects, and scalar value arguments (integer or floating point
+numbers) must have exact type matches, as no implicit type conversion is
+performed. Passing structs or pointers of any sort is currently not supported.
+Execution of kernels will occur in order, but may be (depending on the backend)
+asynchronous with respect to the host.
 
-To transfer data between the device (abraction layer) and the host, ``deviceMemory`` implements ``copyTo`` and ``copyFrom``. 
+To transfer data between the device (abraction layer) and the host, 
+``deviceMemory`` implements ``copyTo`` and ``copyFrom``. 
 
 .. code-block:: cpp
 
