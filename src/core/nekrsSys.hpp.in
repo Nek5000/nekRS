@@ -83,6 +83,7 @@ using dlong = long long int;
 #include <cstdint>
 #include <sys/stat.h>
 #include <cfenv>
+#include <csignal>
 
 #ifdef CPPTRACE_ENABLED
 #include <cpptrace/cpptrace.hpp>
@@ -248,6 +249,18 @@ template <typename T = dfloat> void o_print(const occa::memory &o_u, const std::
     msg << i << ", ";
   }
   std::cerr << msg.str() << std::endl;
+}
+
+sigset_t oldSigSet, newSigSet;
+
+void blockSignal(int signal) {
+    sigemptyset(&newSigSet);
+    sigaddset(&newSigSet, signal);
+    sigprocmask(SIG_BLOCK, &newSigSet, &oldSigSet);
+}
+
+void unblockSignal(int signal) {
+    sigprocmask(SIG_SETMASK, &oldSigSet, nullptr);
 }
 
 } // namespace

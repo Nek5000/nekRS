@@ -57,7 +57,7 @@ auto generateInflowPoints(nrs_t *nrs)
 
   std::vector<dfloat> xPart, yPart, zPart;
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   const auto py = static_cast<int>(std::round(std::sqrt(nParticlesInject)));
   const auto pz = py;
@@ -81,7 +81,21 @@ auto generateInflowPoints(nrs_t *nrs)
 
 void UDF_Setup()
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto [x, y, z] = mesh->xyzHost();
+
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    const auto c1 = M_PI * 0.5/0.6;
+    for(int n = 0; n < mesh->Nlocal; n++) {
+      const auto arg = c1 * z[n];
+      U[n + 0 * nrs->fieldOffset] = (arg > 0.5*M_PI) ? 1.0 : sin(arg);
+      U[n + 1 * nrs->fieldOffset] = 0;
+      U[n + 2 * nrs->fieldOffset] = 0;
+    }
+    nrs->o_U.copyFrom(U.data(), U.size());
+  }
 
   xMin = platform->linAlg->min(mesh->Nlocal, mesh->o_x, platform->comm.mpiComm);
   yMin = platform->linAlg->min(mesh->Nlocal, mesh->o_y, platform->comm.mpiComm);
@@ -117,7 +131,8 @@ void UDF_Setup()
   interpolator.setPoints(xPart, yPart, zPart);
   interpolator.find();
 
-  std::vector<dfloat> U(nrs->U, nrs->U + mesh->dim * nrs->fieldOffset);
+  std::vector<dfloat> U(mesh->dim * nrs->fieldOffset);
+  nrs->o_U.copyTo(U.data(), U.size());
   interpolator.eval(nrs->NVfields, nrs->fieldOffset, U, nParticles, particleU0);
 
   // set particle initial positions and velocities
@@ -187,7 +202,7 @@ void addNewParticles(nrs_t *nrs, double time, int tstep)
   platform->linAlg->fill(nPartAdd, Stk, o_propNewPart);
 
   // interpolate fluid velocity onto new particle positions (set initial velocity as fluid velocity)
-  auto interpolator = pointInterpolation_t(nrs->meshV);
+  auto interpolator = pointInterpolation_t(nrs->mesh, platform->comm.mpiComm);
   interpolator.setPoints(xPart, yPart, zPart);
   interpolator.find();
 
@@ -233,10 +248,10 @@ void UDF_ExecuteStep(double time, int tstep)
     particles->migrate();
   }
 
-  if (nrs->isCheckpointStep) {
-    nrs->ocopyToNek(time, tstep);
+  if (nrs->checkpointStep) {
+    nrs->copyToNek(time, tstep);
     nek::userchk(); // compute lambda2
-    nrs->ocopyFromNek(time);
+    nrs->copyFromNek(time);
 
     particles->writeFld();
   }

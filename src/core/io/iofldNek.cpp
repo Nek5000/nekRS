@@ -78,7 +78,7 @@ size_t iofldNek::write()
     if (auto buf = inquireVariable<double>("time")) {
       data.time = buf->get();
     }
-    if (auto buf = inquireVariable<double>("p0th")) {
+    if (auto buf = inquireVariable<dfloat>("p0th")) {
       data.p0th = buf->get();
     }
 
@@ -143,7 +143,7 @@ size_t iofldNek::read()
   if (auto time = inquireVariable<double>("time")) {
     time->get() = fldData.time;
   }
-  if (auto p0th = inquireVariable<double>("p0th")) {
+  if (auto p0th = inquireVariable<dfloat>("p0th")) {
     p0th->get() = fldData.p0th;
   }
 

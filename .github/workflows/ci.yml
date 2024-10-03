@@ -41,6 +41,10 @@ jobs:
         CC=mpicc CXX=mpic++ FC=mpif77 ./build.sh -DENABLE_CVODE=OFF -DNEKRS_CXX_FLAGS=${{ env.NEKRS_COMPILER_FLAGS }} -DNEKRS_C_FLAGS=${{ env.NEKRS_COMPILER_FLAGS }} -DNEKRS_Fortran_FLAGS=${{ env.NEKRS_COMPILER_FLAGS }} -DCMAKE_INSTALL_PREFIX=${{ env.NEKRS_HOME }} -DOCCA_CXXFLAGS=${{ env.NEKRS_COMPILER_FLAGS }}
         cmake --build build --target install -j 4
 
+    - name: config tests 
+      working-directory: ${{ env.NEKRS_EXAMPLES }}
+      run: cmake -S . -B build
+
     - name: Upload install dir
       uses: actions/upload-artifact@v4
       with:
@@ -78,96 +82,12 @@ jobs:
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'ethier build-only'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: |
-        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --build-only
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest --output-on-failure -R ethier-buildOnly 
 
-    - name: 'ethier default'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: |
-        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 1
-
-    - name: 'ethier subcycle'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 2
-
-    - name: 'ethier velocity and pressure using SEMFEM with projection'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 3
-
-    - name: 'ethier (block) velocity and pressure and projection with subcycling'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 4
-
-    - name: 'ethier default + moving mesh'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 --cimode 5
-
-    - name: 'ethier subcycle + moving mesh + subcycling'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_ethier 2 --cimode 6
-
-    - name: 'ethier gmres + jacobi'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 7
-
-    - name: 'ethier variable dt'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 8
-
-    - name: 'ethier no dealiasing and subcycling'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 9
-
-    - name: 'ethier no dealiasing'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 10
-
-    - name: 'ethier Chebyshev+Jacobi'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 11
-
-    - name: 'ethier skip solving temperature'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 12
-
-    - name: 'ethier solve single scalar only'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethierScalar 2 --cimode 13
-
-    - name: 'ethier additive V-cycle'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 2 --cimode 14
-
-    - name: 'ethier linAlg + point interp + surface integral'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: |
-        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 15
-
-#    - name: 'ethier cvode, both scalars'
-#      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-#      run: |
-#        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 16
-
-#    - name: 'ethier mixed elliptic/cvode'
-#      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-#      run: |
-#        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 17
-    
-#    - name: 'ethier cvode, both scalars, no dealiasing, hpfrt'
-#      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-#      run: |
-#        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 18
-    
-    - name: 'ethier sub-stepping'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: |
-        NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 19
-
-    - name: 'ethier FP32 cimode 2'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ethier
-      run: |
-        FP32=1 NEKRS_CACHE_DIR=${{ env.NEKRS_EXAMPLES }}/ethier/custom-cache-dir ${{ env.NEKRS_HOME }}/bin/nrsmpi ethier 1 --cimode 22 
+    - name: 'ethier'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest --output-on-failure -R ethier 
 
   lowMach:
     needs: install
@@ -192,14 +112,9 @@ jobs:
     - name: Set install dir permissions
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
-    - name: 'lowMach default single rank'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 1 --cimode 1
-
-#    - name: 'lowMach + CVODE'
-#      working-directory: ${{ env.NEKRS_EXAMPLES }}/lowMach
-#      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi lowMach 2 --cimode 3
-
+    - name: 'lowMach'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest --output-on-failure -R lowMach 
 
   mv_cyl:
     needs: install
@@ -225,53 +140,12 @@ jobs:
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'mv_cyl'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 1
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest --output-on-failure -R "^mv_cyl$"
 
-    - name: 'mv_cyl + subcycling'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 2
-
-    - name: 'mv_cyl + subcycling + elasticity solve + projection'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 3
-
-    - name: 'mv_cyl + unaligned SYM'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 5
-
-    - name: 'mv_cyl + unaligned SYM + mesh solver'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 6
-
-#    - name: 'mv_cyl + CVODE'
-#      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-#      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 7
-
-#    - name: 'mv_cyl + CVODE + unaligned SYM + mesh solver'
-#      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-#      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl 2 --cimode 8
-
-    - name: 'mv_cyl, derived bc'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 1
-
-    - name: 'mv_cyl + subcycling, derived bc'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 2
-
-    - name: 'mv_cyl + subcycling + elasticity solve, derived bc'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 3
-
-    - name: 'mv_cyl + unaligned SYM, derived bc'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 5
-
-    - name: 'mv_cyl + unaligned SYM + mesh solver, derived bc'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/mv_cyl
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi mv_cyl_derived_bc 2 --cimode 6
-
+    - name: 'mv_cyl_derived_bc'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest --output-on-failure -R mv_cyl_derived_bc 
 
   conj_ht:
     needs: install
@@ -297,19 +171,10 @@ jobs:
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'conj_ht'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 1
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest --output-on-failure -R conj_ht 
 
-    - name: 'conj_ht + subcycling'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 2
-
-#    - name: 'conj_ht + CVODE'
-#      working-directory: ${{ env.NEKRS_EXAMPLES }}/conj_ht
-#      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi conj_ht 2 --cimode 3
-
-
-  channelStress:
+  channel:
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -332,15 +197,11 @@ jobs:
     - name: Set install dir permissions
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
-    - name: 'channelStress (no rotation)'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 1
+    - name: 'channel'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest --output-on-failure -R channel 
 
-    - name: 'channelStress (45 degree rotation)'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/channel
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 2
-
-  tractionBoundary:
+  shlChannel:
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -363,13 +224,9 @@ jobs:
     - name: Set install dir permissions
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
-    - name: 'traction channel (no rotation)'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 1
-
-    - name: 'traction channel (45 degree rotation)'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/shlChannel
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 2
+    - name: 'shlChannel'
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest --output-on-failure -R shlChannel 
 
   eddyNekNek:
     needs: install
@@ -395,31 +252,12 @@ jobs:
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'eddyNekNek'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
-      run: |
-        ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNek.sess 2 --cimode 1
-        cat inside/logfile
-        cat outside/logfile
-
-    - name: 'eddyNekNekMv'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNekMv.sess 2 --cimode 2
-    
-    - name: 'eddyNekNek, velocity:solver = none'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNek.sess 2 --cimode 3
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest -R "^eddyNekNek$" || (cat ${{ env.NEKRS_EXAMPLES }}/eddyNekNek/inside/logfile; exit 1) 
 
     - name: 'eddyNekNekNek'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNekNek.sess 3 --cimode 1
-
-    - name: 'eddyNekNekNekMv'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNekNekMv.sess 3 --cimode 2
-
-    - name: 'eddyNekNek, multirate timestepping'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/eddyNekNek
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi eddyNekNek.sess 2 --cimode 4
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest -R eddyNekNekNek || (cat ${{ env.NEKRS_EXAMPLES }}/eddyNekNek/middle/logfile; exit 1) 
 
   ktauChannel:
     needs: install
@@ -445,5 +283,5 @@ jobs:
       run: chmod -R 755 ${{ env.NEKRS_HOME }}
 
     - name: 'ktauChannel'
-      working-directory: ${{ env.NEKRS_EXAMPLES }}/ktauChannel
-      run: ${{ env.NEKRS_HOME }}/bin/nrsmpi channel 2 --cimode 1
+      working-directory: ${{ env.NEKRS_EXAMPLES }}/build
+      run: ctest -R ktauChannel 

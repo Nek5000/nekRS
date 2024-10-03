@@ -1167,13 +1167,7 @@ C----------------------------------------------------------------------
       ifield = 1
 
       CALL LAGMASS
-      CALL GEOM1 (XM3,YM3,ZM3)
-      CALL GEOM2
-      CALL UPDMSYS (1)
-      CALL VOLUME
-      CALL SETINVM
-      CALL SETDEF
-      CALL SFASTAX
+      call geom_reset(1)    ! recompute Jacobians, etc.
 
       ifield = ifld_save
 
@@ -1273,7 +1267,7 @@ c-----------------------------------------------------------------------
                                     ! read hdr + element mapping 
 
       time_ = timer
-      p0th_ = p0thr
+      p0th_ = p0th
 
       ! what fields exist in file
       getxr = 1

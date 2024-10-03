@@ -56,23 +56,6 @@ void meshConnectFaceNodes3D(mesh_t *mesh);
 
 void meshParallelConnectNodesHex3D(mesh_t *mesh);
 
-// halo connectivity information
-void meshHaloSetup3D(mesh_t *mesh);
-
-// perform halo exchange
-void meshHaloExchange3D(mesh_t *mesh,
-                        size_t Nbytes, // number of bytes per element
-                        void *sourceBuffer,
-                        void *sendBuffer,
-                        void *recvBuffer);
-
-void meshHaloExchangeStart3D(mesh_t *mesh,
-                             size_t Nbytes,    // message size per element
-                             void *sendBuffer, // temporary buffer
-                             void *recvBuffer);
-
-void meshHaloExchangeFinish3D(mesh_t *mesh);
-
 // build list of nodes on each face of the reference element
 void meshBuildFaceNodes3D(mesh_t *mesh);
 void meshBuildFaceNodesHex3D(mesh_t *mesh);

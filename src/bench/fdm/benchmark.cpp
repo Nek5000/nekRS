@@ -85,15 +85,11 @@ occa::kernel benchmarkFDM(int Nelements,
     using FPType = decltype(sampleWord);
     const auto wordSize = sizeof(FPType);
 
-    constexpr int Nkernels = 5;
     std::vector<int> kernelVariants;
     if (platform->serial) {
-      kernelVariants.push_back(0);
-    }
-    else {
-      for (int knl = 0; knl < Nkernels; ++knl) {
-        kernelVariants.push_back(knl);
-      }
+     kernelVariants = {0};
+    } else {
+      kernelVariants = {0,1,2,3,4,11};
     }
 
     auto buildKernel = [&props, &fileName, &ext, &kernelName, &suffix](int ver)

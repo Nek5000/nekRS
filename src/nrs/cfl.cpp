@@ -8,7 +8,7 @@ static occa::memory o_dx;
 
 void setup(nrs_t *nrs)
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   h_scratch = platform->device.mallocHost<dfloat>(mesh->Nelements);
 
   if (nrs->elementType == QUADRILATERALS || nrs->elementType == HEXAHEDRA) {
@@ -41,8 +41,6 @@ dfloat nrs_t::computeCFL()
 
 dfloat nrs_t::computeCFL(dfloat dt)
 {
-  mesh_t *mesh = this->meshV;
-
   if (firstTime) setup(this);
 
   auto o_cfl = platform->o_memPool.reserve<dfloat>(mesh->Nelements);

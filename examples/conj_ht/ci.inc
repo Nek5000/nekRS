@@ -113,7 +113,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
 
   const int rank = platform->comm.mpiRank;
 
-  nrs->ocopyToNek(time, tstep);
+  nrs->copyToNek(time, tstep);
   nek::userchk();
 
   auto err = nek::ptr<double>("errors");

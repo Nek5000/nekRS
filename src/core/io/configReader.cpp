@@ -101,7 +101,7 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "nekrs_udf_includes", buf);
   if (getenv("NEKRS_UDF_INCLUDES")) {
     if (!buf.empty()) {
-      buf = std::string(getenv("NEKRS_UDF_INCLUDES")) + " " + buf;
+      buf = std::string(getenv("NEKRS_UDF_INCLUDES")) + ";" + buf;
     }
   }
   if (!buf.empty()) {
@@ -111,7 +111,7 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "nekrs_udf_rpath", buf);
   if (getenv("NEKRS_UDF_RPATH")) {
     if (!buf.empty()) {
-      buf = std::string(getenv("NEKRS_UDF_RPATH")) + " " + buf;
+      buf = std::string(getenv("NEKRS_UDF_RPATH")) + ";" + buf;
     }
   }
   if (!buf.empty()) {
@@ -121,7 +121,7 @@ void configRead(MPI_Comm comm)
   ini.extract("general", "nekrs_udf_libs", buf);
   if (getenv("NEKRS_UDF_LIBS")) {
     if (!buf.empty()) {
-      buf = std::string(getenv("NEKRS_UDF_LIBS")) + " " + buf;
+      buf = std::string(getenv("NEKRS_UDF_LIBS")) + ";" + buf;
     }
   }
   if (!buf.empty()) {

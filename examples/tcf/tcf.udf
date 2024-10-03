@@ -27,22 +27,15 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options) {}
 
 void UDF_Setup()
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
-  dfloat eta;
-  dfloat Ri;
+  auto [x, y, z] = mesh->xyzHost();
 
   dfloat rMin = 1000.0;
   dfloat rMax = -1.0;
-
   for (int n = 0; n < mesh->Nlocal; n++) {
-    auto x = mesh->x[n];
-    auto y = mesh->y[n];
-    auto z = mesh->z[n];
-
-    const auto r = sqrt(x * x + y * y);
-
-    if (x > 0) {
+    const auto r = sqrt(x[n] * x[n] + y[n] * y[n]);
+    if (x[n] > 0) {
       rMin = std::min(rMin, r);
       rMax = std::max(rMax, r);
     }
@@ -50,8 +43,8 @@ void UDF_Setup()
   MPI_Allreduce(MPI_IN_PLACE, &rMin, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
   MPI_Allreduce(MPI_IN_PLACE, &rMax, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
 
-  eta = rMin / rMax;
-  Ri = eta / (1 - eta);
+  const auto eta = rMin / rMax;
+  const auto Ri = eta / (1 - eta);
 
   if (platform->comm.mpiRank == 0) {
     std::cout << "eta: " << std::setprecision(4) << eta << std::endl;
@@ -59,29 +52,25 @@ void UDF_Setup()
 
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
     const auto U0 = 1.0;
-
     const auto A = -eta * eta / (1 - eta * eta);
     const auto B = Ri * Ri / (1 - eta * eta);
-
     const auto eps = 0.1;
 
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
     for (int n = 0; n < mesh->Nlocal; n++) {
-      dfloat x = mesh->x[n];
-      dfloat y = mesh->y[n];
-      dfloat z = mesh->z[n];
-
-      const auto r = sqrt(x * x + y * y);
-      const auto theta = atan(y / x);
+      const auto r = sqrt(x[n] * x[n] + y[n] * y[n]);
+      const auto theta = atan(y[n] / x[n]);
 
       const auto uThetaLam = A * r + B / r;
 
-      const auto uTheta = U0 * (uThetaLam + eps * sin(theta) * sin((r - Ri) * M_PI / Ri) * sin(z));
-      const auto uR = U0 * (eps * cos(theta) * sin((r - Ri) * M_PI / Ri) * sin(z));
+      const auto uTheta = U0 * (uThetaLam + eps * sin(theta) * sin((r - Ri) * M_PI / Ri) * sin(z[n]));
+      const auto uR = U0 * (eps * cos(theta) * sin((r - Ri) * M_PI / Ri) * sin(z[n]));
 
-      nrs->U[n + 0 * nrs->fieldOffset] = uR * cos(theta) - uTheta * sin(theta);
-      nrs->U[n + 1 * nrs->fieldOffset] = uR * sin(theta) + uTheta * cos(theta);
-      nrs->U[n + 2 * nrs->fieldOffset] = 0.0;
+      U[n + 0 * nrs->fieldOffset] = uR * cos(theta) - uTheta * sin(theta);
+      U[n + 1 * nrs->fieldOffset] = uR * sin(theta) + uTheta * cos(theta);
+      U[n + 2 * nrs->fieldOffset] = 0.0;
     }
+    nrs->o_U.copyFrom(U.data(), U.size());
   }
 
   o_qcriterion.resize(mesh->Nlocal);
@@ -90,7 +79,7 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     nrs->Qcriterion(o_qcriterion);
   }
 }

@@ -42,7 +42,7 @@ void qtl(double time)
 
 void uservp(double time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   auto cds = nrs->cds;
 
   fillProp(mesh->Nelements,
@@ -59,7 +59,7 @@ void uservp(double time)
     // moving mesh parameters
     const dfloat nu = 1.0;
     auto o_mesh_diff = nrs->o_prop + 2 * nrs->fieldOffset;
-    platform->linAlg->fill(nrs->meshV->Nlocal, nu, o_mesh_diff);
+    platform->linAlg->fill(nrs->mesh->Nlocal, nu, o_mesh_diff);
   }
 }
 
@@ -103,6 +103,11 @@ void UDF_Setup()
   nrs->userProperties = &uservp;
   nrs->userScalarSource = &userq;
 
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    nek::getIC();
+    nrs->copyFromNek();
+  }
+
   o_beta.resize(nrs->fieldOffset);
   o_kappa.resize(nrs->fieldOffset);
 
@@ -116,7 +121,7 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   auto cds = nrs->cds;
 
   *nek::ptr<double>("dp0thdt") = nrs->dp0thdt; // required for CI testing, not copied by default
@@ -143,8 +148,8 @@ void UDF_ExecuteStep(double time, int tstep)
                      mesh->o_U);
   }
 
-  if (nrs->isCheckpointStep) {
-    nrs->ocopyToNek(time, tstep);
+  if (nrs->checkpointStep) {
+    nrs->copyToNek(time, tstep);
     nek::userchk();
   }
   if (ciMode) {

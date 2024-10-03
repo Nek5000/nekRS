@@ -1,90 +1,8 @@
 c-----------------------------------------------------------------------
-      subroutine userchk
-
-      include 'SIZE'
-      include 'TOTAL'
-
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine useric (ix,iy,iz,ieg)
-
-      include 'SIZE'
-      include 'TOTAL'
-      include 'NEKUSE'
-
-      real zlen
-      common /cbcase / zlen
-
-      xr = x/0.5
-      yr = y/0.5
-      rr = xr*xr + yr*yr
-      if (rr.gt.0) rr=sqrt(rr)
-      th = atan2(y,x)
-      zo = 2*pi*z/zlen
-
-      uz = 6.*(1-rr**6)/5.
-
-c     Assign a wiggly shear layer near the wall
-      amp_z    = 0.35  ! Fraction of 2pi for z-based phase modification
-      freq_z   = 4     ! Number of wiggles in axial- (z-) direction
-      freq_t   = 9     ! Frequency of wiggles in azimuthal-direction
-
-      amp_tht  = 5     ! Amplification factor for clipped sine function
-      amp_clip = 0.2   ! Clipped amplitude
-
-      blt      = 0.07  ! Fraction of boundary layer with momentum deficit
-
-      phase_z = amp_z*(2*pi)*sin(freq_z*zo)
-
-      arg_tht = freq_t*th + phase_z
-      amp_sin = 5*sin(arg_tht)
-      if (amp_sin.gt. amp_clip) amp_sin =  amp_clip
-      if (amp_sin.lt.-amp_clip) amp_sin = -amp_clip
-
-      if (rr.gt.(1-blt)) uz = uz + amp_sin
-
-c     Quick P-independent randomizer
-      big  = 1.e3*ieg + 1.e2*ix + 1.e1*iy + 1.e0*iz
-      rand = sin(big)
-
-      ux   = .05*rand*rand
-      uy   = .10*rand*rand*rand
-      uz   = uz + .01*rand
-
-      temp = 0.
-
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine usrdat0
-
-      include 'SIZE'
-      real zlen
-      common /cbcase / zlen
-
-      call nekrs_registerPtr('zlen', zlen)
-
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine usrdat 
-
-      return
-      end
-c-----------------------------------------------------------------------
       subroutine usrdat2
 
       include 'SIZE'
       include 'TOTAL'
-
-      real zlen
-      common /cbcase / zlen
-
-      z0 = 0.0
-      z1 = zlen
-
-      call rescale_x(zm1,z0,z1)
 
       do iel=1,nelt
       do ifc=1,2*ndim
@@ -95,10 +13,3 @@ c-----------------------------------------------------------------------
       return
       end
 c-----------------------------------------------------------------------
-      subroutine usrdat3
-
-      include 'SIZE'
-      include 'TOTAL'
-
-      return
-      end

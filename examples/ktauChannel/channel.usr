@@ -1,48 +1,3 @@
-C
-C  USER SPECIFIED ROUTINES: 
-C
-C     - boundary conditions 
-C     - initial conditions  
-C     - variable properties 
-C     - forcing function for fluid (f)
-C     - forcing function for passive scalar (q)
-C     - general purpose routine for checking errors etc.        
-C
-c-----------------------------------------------------------------------
-      subroutine useric (ix,iy,iz,ieg)
-      include 'SIZE'
-      include 'TOTAL'
-      include 'NEKUSE'
-
-      ux   = 1.0  
-      uy   = 0.0 
-      uz   = 0.0
-
-      if (ifield.eq.2) then
-         temp = 1.0
-      elseif (ifield.eq.3) then
-         temp = 0.01
-      elseif (ifield.eq.4) then
-         temp = 0.1
-      endif
-      
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine userchk
-      include 'SIZE'
-      include 'TOTAL'
-      
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine usrdat   ! This routine to modify element vertices
-      include 'SIZE'      ! _before_ mesh is generated, which 
-      include 'TOTAL'     ! guarantees GLL mapping of mesh.
-
-      return
-      end
-c-----------------------------------------------------------------------
       subroutine usrdat2()  ! This routine to modify mesh coordinates
       include 'SIZE'
       include 'TOTAL'
@@ -71,13 +26,6 @@ c-----------------------------------------------------------------------
       enddo
       enddo
 
-      return
-      end
-c-----------------------------------------------------------------------
-      subroutine usrdat3
-      include 'SIZE'
-      include 'TOTAL'
-            
       return
       end
 c-----------------------------------------------------------------------

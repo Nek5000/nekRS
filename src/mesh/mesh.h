@@ -56,12 +56,10 @@ struct mesh_t {
   std::vector<dfloat> minDistance(const std::vector<dlong> &bID, std::string type, int maxIter = 10000);
 
   occa::memory intpMatrix(std::vector<dfloat> M);
-  void interpolate(const occa::memory& o_z, mesh_t *meshC, occa::memory& o_zC);
-  void map2Uniform(const occa::memory& o_z, mesh_t *meshU, occa::memory& o_zU);
-  void map2Uniform(const occa::memory& o_z, occa::memory& o_zUni);
+  void interpolate(const occa::memory& o_z, mesh_t *meshC, occa::memory& o_zC, bool uniform = false);
 
   void move();
-  void update(bool updateHost = false);
+  void update();
 
   void geometricFactors();
   void surfaceGeometricFactors();
@@ -85,6 +83,18 @@ struct mesh_t {
 
   occa::memory surfaceAreaMultiply(int nbID, const occa::memory &o_bID, const occa::memory &o_fld);
 
+  std::tuple<std::vector<dfloat>, std::vector<dfloat>, std::vector<dfloat>> xyzHost() const 
+  {
+    std::vector<dfloat> x(Nlocal);
+    std::vector<dfloat> y(Nlocal);
+    std::vector<dfloat> z(Nlocal);
+
+    o_x.copyTo(x.data(), Nlocal);
+    o_y.copyTo(y.data(), Nlocal);
+    o_z.copyTo(z.data(), Nlocal);
+
+    return {x, y, z}; 
+  };
 
   int nAB;
   dfloat *coeffAB; // coefficients for AB integration
@@ -95,8 +105,6 @@ struct mesh_t {
   int Nbid;
 
   int cht;
-
-  mesh_t *fluid;
 
   hlong Nnodes;
   dfloat *EX; // coordinates of vertices for each element
@@ -120,18 +128,6 @@ struct mesh_t {
 
   dlong *elementInfo; // type of element
   occa::memory o_elementInfo;
-
-  // MPI halo exchange info
-  dlong totalHaloPairs;   // number of elements to be sent in halo exchange
-  dlong *haloElementList; // sorted list of elements to be sent in halo exchange
-  int *NhaloPairs;        // number of elements worth of data to send/recv
-  int NhaloMessages;      // number of messages to send
-
-  dlong *haloGetNodeIds; // volume node ids of outgoing halo nodes
-  dlong *haloPutNodeIds; // volume node ids of incoming halo nodes
-
-  void *haloSendRequests;
-  void *haloRecvRequests;
 
   hlong *globalIds;
   ogs_t *ogs;
@@ -163,7 +159,6 @@ struct mesh_t {
   int N, Np;
   dfloat *r, *s, *t; // coordinates of local nodes
   dfloat *MM;
-  dfloat *x, *y, *z; // coordinates of physical nodes
 
   dfloat volume;
 
@@ -223,7 +218,6 @@ struct mesh_t {
 
   occa::memory o_U;
   occa::memory o_Ue;
-  dfloat *U = nullptr;
 
   occa::memory o_D;
 
@@ -242,12 +236,6 @@ struct mesh_t {
   occa::memory o_cubInterpT, o_cubProjectT;
 
   occa::memory o_cubvgeo;
-
-  // DG halo exchange info
-  occa::memory o_haloElementList;
-  occa::memory o_haloBuffer;
-  occa::memory o_haloGetNodeIds;
-  occa::memory o_haloPutNodeIds;
 
   occa::memory o_ggeo; // second order geometric factors
 
@@ -271,7 +259,7 @@ struct mesh_t {
   occa::kernel hlongSumKernel;
 };
 
-mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &kernelInfo);
+std::pair<mesh_t*, mesh_t*> createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &kernelInfo);
 mesh_t *createMeshMG(mesh_t *_mesh, int Nc);
 
 occa::properties meshKernelProperties(int N);
@@ -296,30 +284,6 @@ void meshParallelConnect(mesh_t *mesh);
 
 /* build global connectivity in parallel */
 void meshGlobalIds(mesh_t *mesh);
-
-void meshHaloSetup(mesh_t *mesh);
-void meshHaloPhysicalNodes(mesh_t *mesh);
-
-/* extract whole elements for the halo exchange */
-void meshHaloExtract(mesh_t *mesh, size_t Nbytes, void *sourceBuffer, void *haloBuffer);
-
-void meshHaloExchange(mesh_t *mesh,
-                      size_t Nbytes, // message size per element
-                      void *sourceBuffer,
-                      void *sendBuffer, // temporary buffer
-                      void *recvBuffer);
-
-void meshHaloExchangeStart(mesh_t *mesh,
-                           size_t Nbytes,    // message size per element
-                           void *sendBuffer, // temporary buffer
-                           void *recvBuffer);
-
-void meshHaloExchangeFinish(mesh_t *mesh);
-
-void meshHaloExchangeBlocking(mesh_t *mesh,
-                              size_t Nbytes,    // message size per element
-                              void *sendBuffer, // temporary buffer
-                              void *recvBuffer);
 
 void planarAvg(mesh_t *mesh,
                const std::string &dir,

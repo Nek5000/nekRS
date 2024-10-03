@@ -33,7 +33,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
     return;
   }
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   const int rank = platform->comm.mpiRank;
 
@@ -56,10 +56,10 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   dfloat LInfError_x = 0.0;
   dfloat LInfError_y = 0.0;
 
+  auto [x, y, z] = mesh->xyzHost();
+
   for (int i = 0; i < mesh->Nlocal; ++i) {
-    const auto x = mesh->x[i];
-    const auto y = mesh->y[i];
-    const auto h_tilde = y * cos(theta) - x * sin(theta);
+    const auto h_tilde = y[i] * cos(theta) - x[i] * sin(theta);
     const auto vx_tilde = Ux[i] * cos(theta) + Uy[i] * sin(theta);
     const auto vy_tilde = Uy[i] * cos(theta) - Ux[i] * sin(theta);
 

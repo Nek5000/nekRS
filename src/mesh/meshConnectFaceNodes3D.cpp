@@ -61,6 +61,8 @@ void meshConnectFaceNodes3D(mesh_t *mesh)
   /* volume indices of the interior and exterior face nodes for each element */
   mesh->vmapM = (dlong *)calloc(mesh->Nfp * mesh->Nfaces * mesh->Nelements, sizeof(dlong));
 
+  auto [x, y, z] = mesh->xyzHost();
+
   /* assume elements already connected */
   for(dlong e = 0; e < mesh->Nelements; ++e)
     for(int f = 0; f < mesh->Nfaces; ++f) {
@@ -73,9 +75,9 @@ void meshConnectFaceNodes3D(mesh_t *mesh)
       /* for each node on this face find the neighbor node */
       for(int n = 0; n < mesh->Nfp; ++n) {
         dlong idM = mesh->faceNodes[f * mesh->Nfp + n] + e * mesh->Np;
-        dfloat xM = mesh->x[idM];
-        dfloat yM = mesh->y[idM];
-        dfloat zM = mesh->z[idM];
+        dfloat xM = x[idM];
+        dfloat yM = y[idM];
+        dfloat zM = z[idM];
 
         dlong id = mesh->Nfaces * mesh->Nfp * e + f * mesh->Nfp + n;
         mesh->vmapM[id] = idM;

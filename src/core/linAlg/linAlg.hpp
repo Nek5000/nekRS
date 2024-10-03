@@ -75,6 +75,19 @@ public:
   // o_a[n] = abs(o_a[n])
   void abs(const dlong N, occa::memory &o_a);
 
+  void rescale(const dfloat newMin, const dfloat newMax, occa::memory &o_a, MPI_Comm _comm)
+  {
+    auto mn = min(o_a.size(), o_a, _comm);
+    auto mx = max(o_a.size(), o_a, _comm);
+
+    MPI_Allreduce(MPI_IN_PLACE, &mn, 1, MPI_DFLOAT, MPI_MIN, _comm);
+    MPI_Allreduce(MPI_IN_PLACE, &mx, 1, MPI_DFLOAT, MPI_MAX, _comm);
+    const auto fac = (newMax - newMin)/(mx - mn);
+
+    add(o_a.size(), (newMin - fac*mn)/fac, o_a);
+    scale(o_a.size(), fac, o_a);
+  }; 
+
   // o_a[n] *= alpha
   void scale(const dlong N, const dfloat alpha, occa::memory &o_a);
   void scaleMany(const dlong N,

@@ -8,8 +8,6 @@ static std::vector<dfloat> tmp;
 
 AeroForce *nrs_t::aeroForces(int nbID, const occa::memory &o_bID, const occa::memory &o_Sij_)
 {
-  mesh_t *mesh = this->meshV;
-
   occa::memory o_Sij = o_Sij_;
   if (!o_Sij.isInitialized()) {
     o_Sij = this->strainRate();

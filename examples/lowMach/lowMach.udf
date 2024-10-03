@@ -30,7 +30,7 @@ void userq(double time)
 void uservp(double time)
 {
   auto cds = nrs->cds;
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   fillProp(mesh->Nelements,
            nrs->fieldOffset,
@@ -68,6 +68,11 @@ void UDF_Setup()
   nrs->userScalarSource = &userq;
   nrs->userProperties = &uservp;
 
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    nek::getIC();
+    nrs->copyFromNek();
+  }
+
   o_beta.resize(nrs->fieldOffset);
   o_kappa.resize(nrs->fieldOffset);
 
@@ -81,8 +86,8 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isCheckpointStep) {
-    nrs->ocopyToNek(time, tstep);
+  if (nrs->checkpointStep) {
+    nrs->copyToNek(time, tstep);
     nek::userchk();
   }
   if (ciMode) {

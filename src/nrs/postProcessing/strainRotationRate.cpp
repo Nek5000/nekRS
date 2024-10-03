@@ -2,7 +2,7 @@
 
 static occa::memory _strainRotationRate(nrs_t* nrs, bool rotationRate, const occa::memory &o_U, bool smooth)
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   const int nFields = (rotationRate) ? 2 * nrs->NVfields + nrs->NVfields : 2 * nrs->NVfields;
 

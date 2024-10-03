@@ -15,7 +15,7 @@ magSqr(const dlong Ntotal, const dlong offset, @ restrict const dfloat *U, @ res
 
 void printDiagnostics(nrs_t *nrs, double time, int tstep)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   dfloat mue, rho;
   platform->options.getArgs("VISCOSITY", mue);
@@ -95,23 +95,23 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup()
 {
-  // set IC
-  auto mesh = nrs->meshV;
-
-  dfloat U0, V0, W0;
-  platform->par->extract("casedata", "U0", U0);
-  platform->par->extract("casedata", "V0", V0);
-  platform->par->extract("casedata", "W0", W0);
+  auto mesh = nrs->mesh;
 
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    dfloat U0, V0, W0;
+    platform->par->extract("casedata", "U0", U0);
+    platform->par->extract("casedata", "V0", V0);
+    platform->par->extract("casedata", "W0", W0);
+
+    auto [x, y, z] = mesh->xyzHost();
+
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
     for (int n = 0; n < mesh->Nlocal; n++) {
-      const auto x = mesh->x[n];
-      const auto y = mesh->y[n];
-      const auto z = mesh->z[n];
-      nrs->U[n + 0 * nrs->fieldOffset] = sin(x) * cos(y) * cos(z) + U0;
-      nrs->U[n + 1 * nrs->fieldOffset] = -cos(x) * sin(y) * cos(z) + V0;
-      nrs->U[n + 2 * nrs->fieldOffset] = W0;
+      U[n + 0 * nrs->fieldOffset] = sin(x[n]) * cos(y[n]) * cos(z[n]) + U0;
+      U[n + 1 * nrs->fieldOffset] = -cos(x[n]) * sin(y[n]) * cos(z[n]) + V0;
+      U[n + 2 * nrs->fieldOffset] = W0;
     }
+    nrs->o_U.copyFrom(U.data(), U.size());
   }
 
   o_qcriterion.resize(mesh->Nlocal);
@@ -122,7 +122,7 @@ void UDF_ExecuteStep(double time, int tstep)
 {
   printDiagnostics(nrs, time, tstep);
 
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     nrs->Qcriterion(o_qcriterion);
   }
 }

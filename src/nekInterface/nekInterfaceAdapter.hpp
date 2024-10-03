@@ -120,7 +120,6 @@ void writeFld(const std::string& filename,
               int Nout = 0,
               bool uniform = false);
 
-void uic(int ifield);
 void finalize(void);
 void xm1N(dfloat *x, dfloat *y, dfloat *z, int Nq, dlong Nelements);
 long long int localElementIdToGlobal(int _id);
@@ -129,6 +128,8 @@ int setup(int numberActiveFields);
 void bootstrap();
 void ifoutfld(int i);
 void getIC(void);
+void getIC(int ifield);
+
 void restartFromFile(const std::string& fileName);
 void userchk(void);
 int bcmap(int bid, int ifld);

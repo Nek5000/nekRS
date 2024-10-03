@@ -112,6 +112,10 @@ else
 echo "export LD_PRELOAD=$bin_nvme_libs/libnekrs-fp32.so:$bin_nvme_libs/libocca.so:$bin_nvme_libs/libnekrs-hypre-device.so:$bin_nvme_libs/libnekrs-hypre.so" >> $SFILE
 fi
 
+# OLCFDEV-1787: sbcast requires extra patch when using GPU-aware MPI
+echo "ln -s $bin_nvme_libs/libhsa-runtime64.so.1 $bin_nvme_libs/libhsa-runtime64.so" >> $SFILE
+echo "ln -s $bin_nvme_libs/libamdhip64.so.5 $bin_nvme_libs/libamdhip64.so" >> $SFILE
+
 echo "ls -ltra $NVME_HOME" >> $SFILE
 echo "ls -ltra $bin_nvme_libs" >> $SFILE
 echo "ldd $bin_nvme" >> $SFILE

@@ -13,7 +13,6 @@ namespace
 {
 
 nrs_t *_nrs = nullptr;
-linAlg_t *the_linAlg = nullptr;
 
 int qThermal = 0;
 dfloat alpha0 = 1.0;
@@ -68,8 +67,7 @@ void lowMach::setup(dfloat alpha_, const occa::memory& o_beta_, const occa::memo
   o_beta = o_beta_;
   o_kappa = o_kappa_;
 
-  the_linAlg = platform->linAlg;
-  mesh_t *mesh = _nrs->meshV;
+  auto mesh = _nrs->mesh;
   int err = 1;
   if (platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE")) {
     err = 0;
@@ -102,9 +100,9 @@ void lowMach::qThermalSingleComponent(double time)
              "called prior to tavg::setup()!");
 
   qThermal = 1;
-  nrs_t *nrs = _nrs;
-  cds_t *cds = nrs->cds;
-  mesh_t *mesh = nrs->meshV;
+  auto nrs = _nrs;
+  auto cds = nrs->cds;
+  auto mesh = nrs->mesh;
   linAlg_t *linAlg = platform->linAlg;
 
   std::string scope = "udfDiv::";
@@ -122,7 +120,7 @@ void lowMach::qThermalSingleComponent(double time)
 
   oogs::startFinish(o_gradT, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->meshV->o_invLMM, o_gradT);
+  platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->mesh->o_invLMM, o_gradT);
 
   auto o_src = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
   platform->linAlg->fill(mesh->Nlocal, 0.0, o_src);
@@ -154,7 +152,7 @@ void lowMach::qThermalSingleComponent(double time)
 
   oogs::startFinish(o_div, 1, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-  platform->linAlg->axmy(mesh->Nlocal, 1.0, nrs->meshV->o_invLMM, o_div);
+  platform->linAlg->axmy(mesh->Nlocal, 1.0, nrs->mesh->o_invLMM, o_div);
 
   double surfaceFlops = 0.0;
 
@@ -183,7 +181,7 @@ void lowMach::qThermalSingleComponent(double time)
                      o_beta,
                      o_kappa,
                      cds->o_rho,
-                     nrs->meshV->o_LMM,
+                     nrs->mesh->o_LMM,
                      o_tmp1,
                      o_tmp2);
 
@@ -236,8 +234,8 @@ void lowMach::dpdt(occa::memory &o_FU)
              "%s\n",
              "called prior to tavg::setup()!");
 
-  nrs_t *nrs = _nrs;
-  mesh_t *mesh = nrs->meshV;
+  auto nrs = _nrs;
+  auto mesh = nrs->mesh;
 
   if (nrs->cds->cvodeSolve[0]) {
     return; // contribution is not applied here

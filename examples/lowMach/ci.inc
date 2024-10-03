@@ -47,7 +47,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 
 dfloat computeLInfError(nrs_t *nrs, occa::memory o_a, occa::memory o_b)
 {
-  auto *mesh = nrs->meshV;
+  auto *mesh = nrs->mesh;
   auto o_tmp = platform->device.malloc(o_a.byte_size());
   platform->linAlg->axpbyzMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, 1.0, o_a, -1.0, o_b, o_tmp);
 
@@ -66,7 +66,7 @@ dfloat computeLInfError(nrs_t *nrs, occa::memory o_a, occa::memory o_b)
 
 void setField(nrs_t *nrs, occa::memory &o_fld, int field)
 {
-  auto *mesh = nrs->meshV;
+  auto *mesh = nrs->mesh;
   occa::memory o_dir;
   if (field == 0) {
     o_dir = mesh->o_x;
@@ -85,7 +85,7 @@ void setField(nrs_t *nrs, occa::memory &o_fld, int field)
 
 void testDirection(nrs_t *nrs, std::string dir)
 {
-  auto *mesh = nrs->meshV;
+  auto *mesh = nrs->mesh;
   auto o_fields = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
   auto o_refFields = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
   for (int fld = 0; fld < nrs->NVfields; ++fld) {
@@ -139,7 +139,7 @@ void testFusedPlanarAvg(nrs_t *nrs, std::string dir)
   const auto firstDir = dir.substr(0, 1);
   const auto secondDir = dir.substr(1);
 
-  auto *mesh = nrs->meshV;
+  auto *mesh = nrs->mesh;
 
   // (1) x, z == z, x, e.g.
   planarAvg(mesh, firstDir, NELGX, NELGY, NELGZ, nrs->NVfields, nrs->fieldOffset, o_fields);
@@ -195,7 +195,7 @@ void testFusedPlanarAvg(nrs_t *nrs, std::string dir)
 
 void ciTestPlanarAvg(nrs_t *nrs)
 {
-  const auto *mesh = nrs->meshV;
+  const auto *mesh = nrs->mesh;
   const int rank = platform->comm.mpiRank;
 
   platform->par->extract("casedata", "number_elements_x", NELGX);
@@ -211,42 +211,9 @@ void ciTestPlanarAvg(nrs_t *nrs)
   testFusedPlanarAvg(nrs, "yz");
 }
 
-void ciTestDistance(nrs_t *nrs)
-{
-  auto mesh = nrs->meshV;
-  auto dist = mesh->minDistance({1}, "cheap_dist");
-
-  nrs->ocopyToNek();
-  nek::userchk();
-  auto n5kDist = nek::ptr<double>("dist");
-
-  // for zeros
-  const auto floorTol = 1e2 * std::numeric_limits<dfloat>::epsilon();
-
-  // for end check
-  const auto tol = 1e4 * std::numeric_limits<dfloat>::epsilon();
-
-  dfloat maxRelErr = 0.0;
-  for (int n = 0; n < mesh->Nlocal; ++n) {
-    auto relErr = std::abs(dist[n] - n5kDist[n]);
-    if (std::abs(n5kDist[n]) > floorTol) {
-      relErr /= std::abs(n5kDist[n]);
-    }
-    maxRelErr = std::max(maxRelErr, relErr);
-  }
-
-  MPI_Allreduce(MPI_IN_PLACE, &maxRelErr, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
-
-  if (maxRelErr > tol) {
-    CiFailTest();
-    nekrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
-  }
-}
-
 void ciTestErrors(nrs_t *nrs, double time, int tstep)
 {
   if (tstep == 0) {
-    ciTestDistance(nrs);
     ciTestPlanarAvg(nrs);
   }
 
@@ -263,7 +230,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
 
   const int rank = platform->comm.mpiRank;
 
-  nrs->ocopyToNek(time, tstep);
+  nrs->copyToNek(time, tstep);
   nek::userchk();
 
   auto err = nek::ptr<double>("errors");

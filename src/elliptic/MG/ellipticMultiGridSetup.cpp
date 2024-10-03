@@ -30,11 +30,11 @@
 #include "ellipticMultiGrid.h"
 #include "ellipticBuildFEM.hpp"
 
-
 void ellipticMultiGridSetup(elliptic_t *elliptic_)
 {
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     printf("building MG preconditioner ... \n");
+  }
   fflush(stdout);
 
   elliptic_->precon = new precon_t();
@@ -46,7 +46,7 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
   mesh_t *mesh = elliptic->mesh;
 
   // read all the nodes files and load them in a dummy mesh array
-  std::vector<mesh_t*> meshLevels(mesh->N + 1);
+  std::vector<mesh_t *> meshLevels(mesh->N + 1);
   for (int n = 1; n < mesh->N + 1; n++) {
     meshLevels[n] = new mesh_t();
     meshLevels[n]->Nverts = mesh->Nverts;
@@ -63,8 +63,9 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
   // set the number of MG levels and their degree
   int numMGLevels = elliptic->nLevels;
   std::vector<int> levelDegree(numMGLevels);
-  for (int i = 0; i < numMGLevels; ++i)
+  for (int i = 0; i < numMGLevels; ++i) {
     levelDegree[i] = elliptic->levels[i];
+  }
 
   int Nmax = levelDegree[0];
   int Nmin = levelDegree[numMGLevels - 1];
@@ -75,8 +76,9 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
   oogs_mode oogsMode = OOGS_AUTO;
 
   auto autoOverlap = [&](elliptic_t *elliptic) {
-    if (!options.compareArgs("MULTIGRID SMOOTHER", "CHEBYSHEV"))
+    if (!options.compareArgs("MULTIGRID SMOOTHER", "CHEBYSHEV")) {
       return;
+    }
 
     auto o_p = platform->o_memPool.reserve<pfloat>(mesh->Nlocal);
     auto o_Ap = platform->o_memPool.reserve<pfloat>(mesh->Nlocal);
@@ -89,8 +91,9 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
       MPI_Barrier(platform->comm.mpiComm);
       const double start = MPI_Wtime();
 
-      for (int test = 0; test < Nsamples; ++test)
+      for (int test = 0; test < Nsamples; ++test) {
         ellipticOperator(elliptic, o_p, o_Ap, pfloatString);
+      }
 
       platform->device.finish();
       double elapsed = (MPI_Wtime() - start) / Nsamples;
@@ -113,13 +116,15 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
       elliptic->oogsAx = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, callback, oogsMode);
 
       auto overlappedTime = timeOperator();
-      if (overlappedTime > nonOverlappedTime)
+      if (overlappedTime > nonOverlappedTime) {
         elliptic->oogsAx = elliptic->oogs;
+      }
 
       if (platform->comm.mpiRank == 0) {
         printf("testing overlap in ellipticOperator: %.2es %.2es ", nonOverlappedTime, overlappedTime);
-        if (elliptic->oogsAx != elliptic->oogs)
+        if (elliptic->oogsAx != elliptic->oogs) {
           printf("(overlap enabled)");
+        }
 
         printf("\n");
       }
@@ -128,8 +133,9 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
 
   // set up the finest level 0
   if (Nmax > Nmin) {
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("============= BUILDING pMG%d ==================\n", Nmax);
+    }
 
     elliptic->oogs = oogs::setup(elliptic->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
     elliptic->oogsAx = elliptic->oogs;
@@ -145,16 +151,23 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
     int Nc = levelDegree[n];
     int Nf = levelDegree[n - 1];
     elliptic_t *ellipticFine = ((pMGLevel *)levels[n - 1])->elliptic;
-    if (platform->comm.mpiRank == 0)
+    if (platform->comm.mpiRank == 0) {
       printf("============= BUILDING pMG%d ==================\n", Nc);
+    }
 
     elliptic_t *ellipticC = ellipticBuildMultigridLevel(ellipticFine, Nc, Nf);
 
     ellipticC->oogs = oogs::setup(ellipticC->ogs, 1, 0, ogsPfloat, NULL, oogsMode);
     ellipticC->oogsAx = ellipticC->oogs;
 
-    levels[n] =
-        new pMGLevel(elliptic, meshLevels.data(), ellipticFine, ellipticC, Nf, Nc, options, platform->comm.mpiComm);
+    levels[n] = new pMGLevel(elliptic,
+                             meshLevels.data(),
+                             ellipticFine,
+                             ellipticC,
+                             Nf,
+                             Nc,
+                             options,
+                             platform->comm.mpiComm);
     precon->MGSolver->numLevels++;
 
     autoOverlap(ellipticC);
@@ -162,8 +175,9 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
 
   // set up coarse level numMGLevels - 1
   elliptic_t *ellipticCoarse;
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     printf("============= BUILDING COARSE pMG%d ==================\n", Nmin);
+  }
 
   if (Nmax > Nmin) {
     int Nc = levelDegree[numMGLevels - 1];
@@ -186,10 +200,10 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
                                            true);
 
     if (options.compareArgs("MULTIGRID COARSE SOLVE", "FALSE") ||
-        options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE"))
+        options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE")) {
       autoOverlap(ellipticCoarse);
-  }
-  else {
+    }
+  } else {
     ellipticCoarse = elliptic;
     levels[numMGLevels - 1] = new pMGLevel(ellipticCoarse, Nmin, options, platform->comm.mpiComm, true);
   }
@@ -203,40 +217,36 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
         auto baseLevel = (pMGLevel *)levels[numMGLevels - 1];
 
         precon->MGSolver->coarseLevel->solvePtr =
-            [elliptic, baseLevel](MGSolver_t::coarseLevel_t *coarseLevel,
-                                  occa::memory &o_rhs,
-                                  occa::memory &o_x) 
-            {
-              auto& o_res = baseLevel->o_res;
+            [elliptic,
+             baseLevel](MGSolver_t::coarseLevel_t *coarseLevel, occa::memory &o_rhs, occa::memory &o_x) {
+              auto &o_res = baseLevel->o_res;
               baseLevel->smooth(o_rhs, o_x, true);
               baseLevel->residual(o_rhs, o_x, o_res);
-              
-              auto o_tmp = platform->o_memPool.reserve<pfloat>(o_x.size()); 
+
+              auto o_tmp = platform->o_memPool.reserve<pfloat>(o_x.size());
               elliptic->precon->SEMFEMSolver->run(o_res, o_tmp);
 
               platform->linAlg->paxpby(o_x.size(), 1.0, o_tmp, 1.0, o_x);
               baseLevel->smooth(o_rhs, o_x, false);
             };
-      }
-      else {
+      } else {
         precon->MGSolver->coarseLevel->solvePtr =
-            [elliptic](MGSolver_t::coarseLevel_t *, occa::memory &o_rhs, occa::memory &o_x) 
-            {
+            [elliptic](MGSolver_t::coarseLevel_t *, occa::memory &o_rhs, occa::memory &o_x) {
               elliptic->precon->SEMFEMSolver->run(o_rhs, o_x);
             };
       }
-    }
-    else {
+    } else {
 
       hlong *coarseGlobalStarts = (hlong *)calloc(platform->comm.mpiCommSize + 1, sizeof(hlong));
 
       nonZero_t *coarseA;
       dlong nnzCoarseA;
 
-      if (options.compareArgs("GALERKIN COARSE OPERATOR", "TRUE"))
+      if (options.compareArgs("GALERKIN COARSE OPERATOR", "TRUE")) {
         ellipticBuildFEMGalerkinHex3D(ellipticCoarse, elliptic, &coarseA, &nnzCoarseA, coarseGlobalStarts);
-      else
+      } else {
         ellipticBuildFEM(ellipticCoarse, &coarseA, &nnzCoarseA, coarseGlobalStarts);
+      }
 
       hlong *Rows = (hlong *)calloc(nnzCoarseA, sizeof(hlong));
       hlong *Cols = (hlong *)calloc(nnzCoarseA, sizeof(hlong));
@@ -248,14 +258,17 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
         Vals[i] = coarseA[i].val;
 
         nekrsCheck(Rows[i] < 0 || Cols[i] < 0 || std::isnan(Vals[i]),
-                   MPI_COMM_SELF, EXIT_FAILURE,
-                   "invalid {row %d, col %d , val %g}\n",
-                   Rows[i], Cols[i], Vals[i]);
+                   MPI_COMM_SELF,
+                   EXIT_FAILURE,
+                   "invalid {row %lld, col %lld , val %g}\n",
+                   Rows[i],
+                   Cols[i],
+                   Vals[i]);
       }
       free(coarseA);
 
       precon->MGSolver->coarseLevel
-          ->setupSolver(coarseGlobalStarts, nnzCoarseA, Rows, Cols, Vals, elliptic->allNeumann);
+          ->setupSolver(coarseGlobalStarts, nnzCoarseA, Rows, Cols, Vals, elliptic->nullspace);
 
       free(coarseGlobalStarts);
       free(Rows);
@@ -280,23 +293,21 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
       if (options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE")) {
         auto baseLevel = (pMGLevel *)levels[numMGLevels - 1];
 
-        precon->MGSolver->coarseLevel->solvePtr = [baseLevel](MGSolver_t::coarseLevel_t *coarseLevel,
-                                                              occa::memory &o_rhs,
-                                                              occa::memory &o_x) {
-          occa::memory o_res = baseLevel->o_res;
-          baseLevel->smooth(o_rhs, o_x, true);
-          baseLevel->residual(o_rhs, o_x, o_res);
+        precon->MGSolver->coarseLevel->solvePtr =
+            [baseLevel](MGSolver_t::coarseLevel_t *coarseLevel, occa::memory &o_rhs, occa::memory &o_x) {
+              occa::memory o_res = baseLevel->o_res;
+              baseLevel->smooth(o_rhs, o_x, true);
+              baseLevel->residual(o_rhs, o_x, o_res);
 
-          auto o_tmp = platform->o_memPool.reserve<pfloat>(baseLevel->Nrows); 
-          coarseLevel->solve(o_res, o_tmp);
+              auto o_tmp = platform->o_memPool.reserve<pfloat>(baseLevel->Nrows);
+              coarseLevel->solve(o_res, o_tmp);
 
-          platform->linAlg->paxpby(baseLevel->Nrows, 1.0, o_tmp, 1.0, o_x);
-          baseLevel->smooth(o_rhs, o_x, false);
-        };
+              platform->linAlg->paxpby(baseLevel->Nrows, 1.0, o_tmp, 1.0, o_x);
+              baseLevel->smooth(o_rhs, o_x, false);
+            };
       }
     }
-  }
-  else {
+  } else {
     auto baseLevel = (pMGLevel *)levels[numMGLevels - 1];
     precon->MGSolver->coarseLevel->solvePtr =
         [baseLevel](MGSolver_t::coarseLevel_t *, occa::memory &o_rhs, occa::memory &o_x) {
@@ -318,8 +329,9 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
     levels[lev]->Report();
   }
 
-  if (platform->comm.mpiRank == 0)
+  if (platform->comm.mpiRank == 0) {
     printf("-----------------------------------------------------------------------\n");
+  }
 
   fflush(stdout);
 }

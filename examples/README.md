@@ -36,12 +36,13 @@
 | nek data exchange        |  x  |     |     |     |     |     |     |     |     |
 | hpf-RT                   |  x  |     |     |  x  |     |  x  |     |     |     |
 | avm (scalar)             |     |     |     |  x  |     |     |     |     |     |
+| nek useric               |     |     |  x  |     |     |     |     |     |     |
 | predictor-corrector iter |     |     |     |     |     |     |  x  |     |     |
 | usrchk postprocessing    |     |     |  x  |     |     |     |     |     |     |
-| opSEM                    |     |     |  x  |     |     |     |     |     |  x  |
-| Q-criterion              |     |     |  x  |     |     |     |     |     |  x  |
-| user checkpoint variable |     |     |  x  |     |     |     |     |     |  x  |
-
+| opSEM                    |     |     |     |     |     |     |     |     |  x  |
+| Q-criterion              |     |     |     |  x  |     |     |     |     |  x  |
+| user checkpoint variable |     |     |     |  x  |     |     |     |     |     |
+| user output              |     |     |     |  x  |     |     |     |     |     |
 
 ### Ledgend
 `GAB`: gabls1

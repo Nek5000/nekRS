@@ -4,7 +4,7 @@ namespace tombo
 {
 occa::memory pressureSolve(nrs_t *nrs, double time, int stage)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   double flopCount = 0.0;
   platform->timer.tic("pressure rhs", 1);
@@ -25,7 +25,7 @@ occa::memory pressureSolve(nrs_t *nrs, double time, int stage)
 
     oogs::startFinish(o_curl, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
 
-    platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->meshV->o_invLMM, o_curl);
+    platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->mesh->o_invLMM, o_curl);
     flopCount += mesh->Nlocal;
 
     auto o_stressTerm = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
@@ -74,7 +74,7 @@ occa::memory pressureSolve(nrs_t *nrs, double time, int stage)
     }
 
     oogs::startFinish(o_rhs, nrs->NVfields, nrs->fieldOffset, ogsDfloat, ogsAdd, nrs->gsh);
-    platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->meshV->o_invLMM, o_rhs);
+    platform->linAlg->axmyVector(mesh->Nlocal, nrs->fieldOffset, 0, 1.0, nrs->mesh->o_invLMM, o_rhs);
 
     return o_rhs;
   }();
@@ -106,29 +106,29 @@ occa::memory pressureSolve(nrs_t *nrs, double time, int stage)
   platform->timer.toc("pressure rhs");
   platform->flopCounter->add("pressure RHS", flopCount);
 
-  occa::memory o_p = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
-  o_p.copyFrom(nrs->o_P);
+  occa::memory o_P = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  o_P.copyFrom(nrs->o_P);
 
-  nrs->pSolver->solve(o_lambda0, o_NULL, o_pRhs, o_p);
+  nrs->pSolver->solve(o_lambda0, o_NULL, o_pRhs, o_P);
 
   if (platform->verbose) {
     const dfloat debugNorm = platform->linAlg->weightedNorm2Many(mesh->Nlocal,
                                                                  1,
                                                                  nrs->fieldOffset,
                                                                  mesh->ogs->o_invDegree,
-                                                                 o_p,
+                                                                 o_P,
                                                                  platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0) {
       printf("p norm: %.15e\n", debugNorm);
     }
   }
 
-  return o_p;
+  return o_P;
 }
 
 occa::memory velocitySolve(nrs_t *nrs, double time, int stage)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   double flopCount = 0.0;
   platform->timer.tic("velocity rhs", 1);
@@ -223,9 +223,9 @@ occa::memory velocitySolve(nrs_t *nrs, double time, int stage)
       const auto o_rhsX = o_rhs.slice(0 * nrs->fieldOffset);
       const auto o_rhsY = o_rhs.slice(1 * nrs->fieldOffset);
       const auto o_rhsZ = o_rhs.slice(2 * nrs->fieldOffset);
-      nrs->uSolver->solve(o_lambda0, o_lambda1, o_rhsX, o_U.slice(0 * nrs->fieldOffset));
-      nrs->vSolver->solve(o_lambda0, o_lambda1, o_rhsY, o_U.slice(1 * nrs->fieldOffset));
-      nrs->wSolver->solve(o_lambda0, o_lambda1, o_rhsZ, o_U.slice(2 * nrs->fieldOffset));
+      nrs->uSolver->solve(o_lambda0, o_lambda1, o_rhsX, o_U.slice(0 * nrs->fieldOffset, mesh->Nlocal));
+      nrs->vSolver->solve(o_lambda0, o_lambda1, o_rhsY, o_U.slice(1 * nrs->fieldOffset, mesh->Nlocal));
+      nrs->wSolver->solve(o_lambda0, o_lambda1, o_rhsZ, o_U.slice(2 * nrs->fieldOffset, mesh->Nlocal));
     }
 
     return o_U;

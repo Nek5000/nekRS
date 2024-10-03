@@ -28,12 +28,12 @@ void elliptic::solve(const occa::memory &o_lambda0,
   ellipticSolve(solver, o_lambda0, o_lambda1, RHS, x);
 };
 
-std::string& elliptic::name() const 
+std::string &elliptic::name() const
 {
-  return solver->name; 
+  return solver->name;
 }
 
-setupAide& elliptic::options() 
+setupAide &elliptic::options()
 {
   return solver->options;
 }
@@ -55,7 +55,7 @@ dlong elliptic::fieldOffset() const
 
 bool elliptic::nullSpace() const
 {
-  return solver->allNeumann;
+  return solver->nullspace;
 };
 
 dfloat elliptic::initialResidual() const

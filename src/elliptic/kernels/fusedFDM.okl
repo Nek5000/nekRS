@@ -14,7 +14,8 @@
 #if defined(XeHPC) && (p_Nq < 5)
   @simd_length(16)
 #endif
-  for (dlong my_elem = 0; my_elem < Nelements; ++my_elem; @outer) {
+      for (dlong my_elem = 0; my_elem < Nelements; ++my_elem; @outer)
+  {
     @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
     @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
     @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
@@ -88,8 +89,9 @@
         for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
 #pragma unroll
-          for (int l = 0; l < p_Nq_e; l++)
+          for (int l = 0; l < p_Nq_e; l++) {
             value += S_x_eT[j][l] * work1[k][i][l];
+          }
           work2[k][j][i] = value;
         }
       }
@@ -101,8 +103,9 @@
         for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
 #pragma unroll
-          for (int l = 0; l < p_Nq_e; l++)
+          for (int l = 0; l < p_Nq_e; l++) {
             value += S_y_eT[j][l] * work2[k][i][l];
+          }
           work1[j][i][k] = value;
         }
       }
@@ -115,8 +118,9 @@
           const int v = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
           pfloat value = 0.0;
 #pragma unroll
-          for (int l = 0; l < p_Nq_e; l++)
+          for (int l = 0; l < p_Nq_e; l++) {
             value += S_z_eT[k][l] * work1[j][i][l];
+          }
           work2[k][j][i] = value * inv_L[v + element * p_Nq_e * p_Nq_e * p_Nq_e];
         }
       }
@@ -128,8 +132,9 @@
         for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
 #pragma unroll
-          for (int l = 0; l < p_Nq_e; l++)
+          for (int l = 0; l < p_Nq_e; l++) {
             value += S_x_e[i][l] * work2[k][j][l];
+          }
           work1[k][i][j] = value;
         }
       }
@@ -141,8 +146,9 @@
         for (int i = 0; i < p_Nq_e; i++) {
           pfloat value = 0.0;
 #pragma unroll
-          for (int l = 0; l < p_Nq_e; l++)
+          for (int l = 0; l < p_Nq_e; l++) {
             value += S_y_e[j][l] * work1[k][i][l];
+          }
           work2[j][i][k] = value;
         }
       }
@@ -154,8 +160,9 @@
         for (int i = 0; i < p_Nq_e; i++; @inner) {
           pfloat value = 0.0;
 #pragma unroll
-          for (int l = 0; l < p_Nq_e; l++)
+          for (int l = 0; l < p_Nq_e; l++) {
             value += S_z_e[k][l] * work2[j][i][l];
+          }
 
 #if (!p_restrict)
           const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
@@ -343,8 +350,9 @@
             pfloat value = 0.0;
             // #pragma unroll p_Nq_e
 #pragma unroll
-            for (int l = 0; l < p_Nq_e; l++)
+            for (int l = 0; l < p_Nq_e; l++) {
               value += S_x_eT[es][i][l] * work1[es][k][j][l];
+            }
 
             work2[es][k][j][i] = value;
           }
@@ -365,8 +373,9 @@
             pfloat value = 0.0;
             // #pragma unroll p_Nq_e
 #pragma unroll
-            for (int l = 0; l < p_Nq_e; l++)
+            for (int l = 0; l < p_Nq_e; l++) {
               value += S_y_eT[es][j][l] * work2[es][k][l][i];
+            }
 
             work1[es][k][j][i] = value;
           }
@@ -390,12 +399,14 @@
             pfloat value = 0.0;
             // #pragma unroll p_Nq_e
 #pragma unroll
-            for (int l = 0; l < p_Nq_e; l++)
+            for (int l = 0; l < p_Nq_e; l++) {
               value += S_z_eT[es][k][l] * work1[es][l][j][i];
+            }
 
             const int v = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
-            if (element != -1)
+            if (element != -1) {
               work2[es][k][j][i] = value * inv_L[v + element * p_Nq_e * p_Nq_e * p_Nq_e];
+            }
           }
         }
       }
@@ -415,8 +426,9 @@
             pfloat value = 0.0;
             // #pragma unroll p_Nq_e
 #pragma unroll
-            for (int l = 0; l < p_Nq_e; l++)
+            for (int l = 0; l < p_Nq_e; l++) {
               value += S_x_e[es][i][l] * work2[es][k][j][l];
+            }
 
             work1[es][k][j][i] = value;
           }
@@ -439,8 +451,9 @@
             pfloat value = 0.0;
             // #pragma unroll p_Nq_e
 #pragma unroll
-            for (int l = 0; l < p_Nq_e; l++)
+            for (int l = 0; l < p_Nq_e; l++) {
               value += S_y_e[es][j][l] * work1[es][k][l][i];
+            }
             work2[es][k][j][i] = value;
           }
         }
@@ -462,8 +475,9 @@
 
             pfloat value = 0.0;
 #pragma unroll
-            for (int l = 0; l < p_Nq_e; l++)
+            for (int l = 0; l < p_Nq_e; l++) {
               value += S_z_e[es][k][l] * work2[es][l][j][i];
+            }
 
 #if (!p_restrict)
             if (element != -1) {
@@ -473,12 +487,13 @@
             }
             work1[es][k][j][i] = value;
 #else
-            if (element != -1)
+            if (element != -1) {
               if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1 && k >= 1 && k < p_Nq_e - 1) {
                 const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
                 const dlong idx = i - 1 + (j - 1) * p_Nq + (k - 1) * p_Nq * p_Nq + elem_offset;
                 Su[idx] = value * wts[idx];
               }
+            }
 #endif
           }
         }
@@ -637,8 +652,9 @@
         for (int j = 0; j < p_Nq_e; j++; @inner) {
           pfloat values[p_Nq_e];
 
-          for (int i = 0; i < p_Nq_e; i++)
+          for (int i = 0; i < p_Nq_e; i++) {
             values[i] = 0;
+          }
 
 #pragma unroll
           for (int l = 0; l < p_Nq_e; l++) {
@@ -648,8 +664,9 @@
               values[i] += S_x_e[l][i][es] * tmp;
             }
           }
-          for (int i = 0; i < p_Nq_e; i++)
+          for (int i = 0; i < p_Nq_e; i++) {
             work2[k][j][i][es] = values[i];
+          }
         }
       }
     }
@@ -661,8 +678,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int j = 0; j < p_Nq_e; j++)
+          for (int j = 0; j < p_Nq_e; j++) {
             values[j] = 0;
+          }
 
 #pragma unroll
           for (int l = 0; l < p_Nq_e; l++) {
@@ -672,8 +690,9 @@
               values[j] += S_y_e[l][j][es] * tmp;
             }
           }
-          for (int j = 0; j < p_Nq_e; j++)
+          for (int j = 0; j < p_Nq_e; j++) {
             work1[k][j][i][es] = values[j];
+          }
         }
       }
     }
@@ -685,8 +704,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int k = 0; k < p_Nq_e; k++)
+          for (int k = 0; k < p_Nq_e; k++) {
             values[k] = 0;
+          }
 
 #pragma unroll
           for (int l = 0; l < p_Nq_e; l++) {
@@ -716,8 +736,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int i = 0; i < p_Nq_e; i++)
+          for (int i = 0; i < p_Nq_e; i++) {
             values[i] = 0;
+          }
 
 #pragma unroll
           for (int l = 0; l < p_Nq_e; l++) {
@@ -727,8 +748,9 @@
               values[i] += S_x_e[i][l][es] * tmp;
             }
           }
-          for (int i = 0; i < p_Nq_e; i++)
+          for (int i = 0; i < p_Nq_e; i++) {
             work1[k][j][i][es] = values[i];
+          }
         }
       }
     }
@@ -740,8 +762,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int j = 0; j < p_Nq_e; j++)
+          for (int j = 0; j < p_Nq_e; j++) {
             values[j] = 0;
+          }
 
 #pragma unroll
           for (int l = 0; l < p_Nq_e; l++) {
@@ -751,8 +774,9 @@
               values[j] += S_y_e[j][l][es] * tmp;
             }
           }
-          for (int j = 0; j < p_Nq_e; j++)
+          for (int j = 0; j < p_Nq_e; j++) {
             work2[k][j][i][es] = values[j];
+          }
         }
       }
     }
@@ -764,8 +788,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int k = 0; k < p_Nq_e; k++)
+          for (int k = 0; k < p_Nq_e; k++) {
             values[k] = 0;
+          }
 
 #pragma unroll
           for (int l = 0; l < p_Nq_e; l++) {
@@ -951,8 +976,9 @@
         for (int j = 0; j < p_Nq_e; j++; @inner) {
           pfloat values[p_Nq_e];
 
-          for (int i = 0; i < p_Nq_e; i++)
+          for (int i = 0; i < p_Nq_e; i++) {
             values[i] = 0;
+          }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -968,8 +994,9 @@
             }
           }
 
-          for (int i = 0; i < p_Nq_e; i++)
+          for (int i = 0; i < p_Nq_e; i++) {
             work1[k][j][i][es] = values[i];
+          }
         }
       }
     }
@@ -982,8 +1009,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int j = 0; j < p_Nq_e; j++)
+          for (int j = 0; j < p_Nq_e; j++) {
             values[j] = 0;
+          }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -999,8 +1027,9 @@
             }
           }
 
-          for (int j = 0; j < p_Nq_e; j++)
+          for (int j = 0; j < p_Nq_e; j++) {
             work1[k][j][i][es] = values[j];
+          }
         }
       }
     }
@@ -1013,8 +1042,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int k = 0; k < p_Nq_e; k++)
+          for (int k = 0; k < p_Nq_e; k++) {
             values[k] = 0;
+          }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1050,8 +1080,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int i = 0; i < p_Nq_e; i++)
+          for (int i = 0; i < p_Nq_e; i++) {
             values[i] = 0;
+          }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1067,8 +1098,9 @@
             }
           }
 
-          for (int i = 0; i < p_Nq_e; i++)
+          for (int i = 0; i < p_Nq_e; i++) {
             work1[k][j][i][es] = values[i];
+          }
         }
       }
     }
@@ -1081,8 +1113,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int j = 0; j < p_Nq_e; j++)
+          for (int j = 0; j < p_Nq_e; j++) {
             values[j] = 0;
+          }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1097,8 +1130,9 @@
               values[j] += S_y_e[j][l][es] * tmp;
             }
           }
-          for (int j = 0; j < p_Nq_e; j++)
+          for (int j = 0; j < p_Nq_e; j++) {
             work1[k][j][i][es] = values[j];
+          }
         }
       }
     }
@@ -1111,8 +1145,9 @@
 
           pfloat values[p_Nq_e];
 
-          for (int k = 0; k < p_Nq_e; k++)
+          for (int k = 0; k < p_Nq_e; k++) {
             values[k] = 0;
+          }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1154,7 +1189,7 @@
 #if (!p_restrict)
     @barrier();
 
-    for (int es = 0; es < p_Nblk; ++es; @inner)
+    for (int es = 0; es < p_Nblk; ++es; @inner) {
       for (int j = 0; j < p_Nq_e; ++j; @inner) {
         for (int i = 0; i < p_Nq_e; ++i; @inner) {
           if (element != -1) {
@@ -1166,6 +1201,7 @@
           }
         }
       }
+    }
 #endif /* if (!p_restrict) */
   }
 }
@@ -1242,8 +1278,9 @@
       for (int j = 0; j < p_Nq_e; j++; @inner) {
         pfloat values[p_Nq_e];
 
-        for (int i = 0; i < p_Nq_e; i++)
+        for (int i = 0; i < p_Nq_e; i++) {
           values[i] = 0;
+        }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1259,8 +1296,9 @@
           }
         }
 
-        for (int i = 0; i < p_Nq_e; i++)
+        for (int i = 0; i < p_Nq_e; i++) {
           work1[k][j][i] = values[i];
+        }
       }
     }
 
@@ -1271,8 +1309,9 @@
 
         pfloat values[p_Nq_e];
 
-        for (int j = 0; j < p_Nq_e; j++)
+        for (int j = 0; j < p_Nq_e; j++) {
           values[j] = 0;
+        }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1288,8 +1327,9 @@
           }
         }
 
-        for (int j = 0; j < p_Nq_e; j++)
+        for (int j = 0; j < p_Nq_e; j++) {
           work1[k][j][i] = values[j];
+        }
       }
     }
 
@@ -1300,8 +1340,9 @@
 
         pfloat values[p_Nq_e];
 
-        for (int k = 0; k < p_Nq_e; k++)
+        for (int k = 0; k < p_Nq_e; k++) {
           values[k] = 0;
+        }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1335,8 +1376,9 @@
 
         pfloat values[p_Nq_e];
 
-        for (int i = 0; i < p_Nq_e; i++)
+        for (int i = 0; i < p_Nq_e; i++) {
           values[i] = 0;
+        }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1352,8 +1394,9 @@
           }
         }
 
-        for (int i = 0; i < p_Nq_e; i++)
+        for (int i = 0; i < p_Nq_e; i++) {
           work1[k][j][i] = values[i];
+        }
       }
     }
 
@@ -1364,8 +1407,9 @@
 
         pfloat values[p_Nq_e];
 
-        for (int j = 0; j < p_Nq_e; j++)
+        for (int j = 0; j < p_Nq_e; j++) {
           values[j] = 0;
+        }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1380,8 +1424,9 @@
             values[j] += S_y_e[j][l] * tmp;
           }
         }
-        for (int j = 0; j < p_Nq_e; j++)
+        for (int j = 0; j < p_Nq_e; j++) {
           work1[k][j][i] = values[j];
+        }
       }
     }
 
@@ -1392,8 +1437,9 @@
 
         pfloat values[p_Nq_e];
 
-        for (int k = 0; k < p_Nq_e; k++)
+        for (int k = 0; k < p_Nq_e; k++) {
           values[k] = 0;
+        }
 
 #ifdef gfxXX
 #pragma nounroll
@@ -1446,6 +1492,1623 @@
       }
     }
 #endif /* if (!p_restrict) */
+  }
+}
+#endif
+
+#if p_knl == 5
+// was 11
+@kernel void fusedFDM_v5(const dlong Nelements,
+                         @ restrict const dlong *elementList,
+                         @ restrict pfloat *Su,
+                         @ restrict const pfloat *S_x,
+                         @ restrict const pfloat *S_y,
+                         @ restrict const pfloat *S_z,
+                         @ restrict const pfloat *inv_L,
+#if p_restrict
+                         @ restrict const pfloat *wts,
+#endif
+                         @ restrict pfloat *u)
+{
+
+  for (dlong e = 0; e < Nelements; ++e; @outer) {
+
+    @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
+    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+
+#if 0
+    @shared pfloat s_inv_L[p_Nq_e][p_Nq_e][p_Nq_e];
+#endif
+
+    @exclusive dlong element;
+    @exclusive pfloat r_S_x_e[p_Nq_e][p_Nq_e];
+    @exclusive pfloat r_S_y_e[p_Nq_e][p_Nq_e];
+    @exclusive pfloat r_S_z_e[p_Nq_e][p_Nq_e];
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        dlong my_elem = e;
+
+        element = (my_elem < Nelements) ? elementList[my_elem] : -1;
+
+        const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+
+        if (element != -1) {
+
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            work1[k][j][i] = u[idx];
+          }
+
+#if 0
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + element*p_Nq_e*p_Nq_e*p_Nq_e;
+            s_inv_L[k][j][i] = inv_L[idx];
+          }
+#endif
+
+          //          const int ij = j + i * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          const int ij = i + j * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          S_x_e[j][i] = S_x[ij]; // swapped j,i
+          S_y_e[j][i] = S_y[ij];
+          S_z_e[j][i] = S_z[ij];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        for (int m = 0; m < p_Nq_e; ++m) {
+          for (int n = 0; n < p_Nq_e; ++n) {
+            r_S_x_e[m][n] = S_x_e[m][n];
+            r_S_y_e[m][n] = S_y_e[m][n];
+            r_S_z_e[m][n] = S_z_e[m][n];
+          }
+        }
+      }
+    }
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+          const int l1 = 0;
+          const int l2 = 2;
+          work1[i][j][l1] -= work1[i][j][l2];
+          work1[i][j][p_Nq_e - l1 - 1] -= work1[i][j][p_Nq_e - l2 - 1];
+          work1[i][l1][j] -= work1[i][l2][j];
+          work1[i][p_Nq_e - l1 - 1][j] -= work1[i][p_Nq_e - l2 - 1][j];
+          work1[l1][i][j] -= work1[l2][i][j];
+          work1[p_Nq_e - l1 - 1][i][j] -= work1[p_Nq_e - l2 - 1][i][j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += r_S_x_e[l][i] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += r_S_y_e[l][j] * tmp;
+          }
+        }
+
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += r_S_z_e[l][k] * tmp; // broadcast
+          }
+        }
+
+        if (element != -1) {
+          // any advantage to prefetching ?
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+#if 1
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
+            const pfloat tmp = inv_L[v1 + element * p_Nq_e * p_Nq_e * p_Nq_e];
+            work1[k][j][i] = values[k] * tmp;
+#else
+            work1[k][j][i] *= values[k] * s_inv_L[k][j][i];
+#endif
+          }
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += r_S_x_e[i][l] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += r_S_y_e[j][l] * tmp; // broadcast
+          }
+        }
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += r_S_z_e[k][l] * tmp; // broadcast
+          }
+        }
+
+#if (!p_restrict)
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            Su[v1] = values[k]; // why are we writing this twice ???
+          }
+
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            u[v1] = values[k];
+          }
+        }
+#else
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1 && k >= 1 && k < p_Nq_e - 1) {
+              const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
+              const dlong idx1 = i - 1 + (j - 1) * p_Nq + (k - 1) * p_Nq * p_Nq + elem_offset;
+              Su[idx1] = values[k] * wts[idx1];
+            }
+          }
+        }
+#endif
+      }
+    }
+  }
+}
+#endif
+
+#if p_knl == 6
+@kernel void fusedFDM_v6(const dlong Nelements,
+                         @ restrict const dlong *elementList,
+                         @ restrict pfloat *Su,
+                         @ restrict const pfloat *S_x,
+                         @ restrict const pfloat *S_y,
+                         @ restrict const pfloat *S_z,
+                         @ restrict const pfloat *inv_L,
+#if p_restrict
+                         @ restrict const pfloat *wts,
+#endif
+                         @ restrict pfloat *u)
+{
+
+  for (dlong e = 0; e < Nelements; ++e; @outer) {
+
+    @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
+    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+
+    @exclusive dlong element;
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        dlong my_elem = e;
+
+        element = (my_elem < Nelements) ? elementList[my_elem] : -1;
+
+        const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            work1[k][j][i] = u[idx];
+          }
+
+          //          const int ij = j + i * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          const int ij = i + j * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          S_x_e[j][i] = S_x[ij]; // swapped j,i
+          S_y_e[j][i] = S_y[ij];
+          S_z_e[j][i] = S_z[ij];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+          const int l1 = 0;
+          const int l2 = 2;
+          work1[i][j][l1] -= work1[i][j][l2];
+          work1[i][j][p_Nq_e - l1 - 1] -= work1[i][j][p_Nq_e - l2 - 1];
+          work1[i][l1][j] -= work1[i][l2][j];
+          work1[i][p_Nq_e - l1 - 1][j] -= work1[i][p_Nq_e - l2 - 1][j];
+          work1[l1][i][j] -= work1[l2][i][j];
+          work1[p_Nq_e - l1 - 1][i][j] -= work1[p_Nq_e - l2 - 1][i][j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += S_x_e[l][i] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += S_y_e[l][j] * tmp;
+          }
+        }
+
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += S_z_e[l][k] * tmp; // broadcast
+          }
+        }
+
+        if (element != -1) {
+          // any advantage to prefetching ?
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
+            const pfloat tmp = inv_L[v1 + element * p_Nq_e * p_Nq_e * p_Nq_e];
+
+            work1[k][j][i] = values[k] * tmp;
+          }
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += S_x_e[i][l] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += S_y_e[j][l] * tmp; // broadcast
+          }
+        }
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += S_z_e[k][l] * tmp; // broadcast
+          }
+        }
+
+#if (!p_restrict)
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            Su[v1] = values[k]; // why are we writing this twice ???
+            u[v1] = values[k];
+          }
+        }
+#else
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1 && k >= 1 && k < p_Nq_e - 1) {
+              const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
+              const dlong idx1 = i - 1 + (j - 1) * p_Nq + (k - 1) * p_Nq * p_Nq + elem_offset;
+              Su[idx1] = values[k] * wts[idx1];
+            }
+          }
+        }
+#endif
+      }
+    }
+  }
+}
+#endif
+
+#if p_knl == 7
+@kernel void fusedFDM_v7(const dlong Nelements,
+                         @ restrict const dlong *elementList,
+                         @ restrict pfloat *Su,
+                         @ restrict const pfloat *S_x,
+                         @ restrict const pfloat *S_y,
+                         @ restrict const pfloat *S_z,
+                         @ restrict const pfloat *inv_L,
+#if p_restrict
+                         @ restrict const pfloat *wts,
+#endif
+                         @ restrict pfloat *u)
+{
+
+  for (dlong e = 0; e < Nelements; ++e; @outer) {
+
+    @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
+    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+    @shared pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+
+    @exclusive dlong element;
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        dlong my_elem = e;
+
+        element = (my_elem < Nelements) ? elementList[my_elem] : -1;
+
+        const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            work1[k][j][i] = u[idx];
+          }
+
+          //          const int ij = j + i * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          const int ij = i + j * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          S_x_e[j][i] = S_x[ij]; // swapped j,i
+          S_y_e[j][i] = S_y[ij];
+          S_z_e[j][i] = S_z[ij];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+          const int l1 = 0;
+          const int l2 = 2;
+          work1[i][j][l1] -= work1[i][j][l2];
+          work1[i][j][p_Nq_e - l1 - 1] -= work1[i][j][p_Nq_e - l2 - 1];
+          work1[i][l1][j] -= work1[i][l2][j];
+          work1[i][p_Nq_e - l1 - 1][j] -= work1[i][p_Nq_e - l2 - 1][j];
+          work1[l1][i][j] -= work1[l2][i][j];
+          work1[p_Nq_e - l1 - 1][i][j] -= work1[p_Nq_e - l2 - 1][i][j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += S_x_e[l][i] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work2[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work2[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += S_y_e[l][j] * tmp;
+          }
+        }
+
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    // TW
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += S_z_e[l][k] * tmp; // broadcast
+          }
+        }
+
+        if (element != -1) {
+          // any advantage to prefetching ?
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
+            const pfloat tmp = inv_L[v1 + element * p_Nq_e * p_Nq_e * p_Nq_e];
+
+            work2[k][j][i] = values[k] * tmp;
+          }
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work2[k][j][l];
+
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += S_x_e[i][l] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += S_y_e[j][l] * tmp; // broadcast
+          }
+        }
+        for (int j = 0; j < p_Nq_e; j++) {
+          work2[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work2[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += S_z_e[k][l] * tmp; // broadcast
+          }
+        }
+
+#if (!p_restrict)
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            Su[v1] = values[k]; // why are we writing this twice ???
+            u[v1] = values[k];
+          }
+        }
+#else
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1 && k >= 1 && k < p_Nq_e - 1) {
+              const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
+              const dlong idx1 = i - 1 + (j - 1) * p_Nq + (k - 1) * p_Nq * p_Nq + elem_offset;
+              Su[idx1] = values[k] * wts[idx1];
+            }
+          }
+        }
+#endif
+      }
+    }
+  }
+}
+#endif
+
+#if p_knl == 8
+@kernel void fusedFDM_v8(const dlong Nelements,
+                         @ restrict const dlong *elementList,
+                         @ restrict pfloat *Su,
+                         @ restrict const pfloat *S_x,
+                         @ restrict const pfloat *S_y,
+                         @ restrict const pfloat *S_z,
+                         @ restrict const pfloat *inv_L,
+#if p_restrict
+                         @ restrict const pfloat *wts,
+#endif
+                         @ restrict pfloat *u)
+{
+
+  for (dlong e = 0; e < Nelements; ++e; @outer) {
+
+    @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
+    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+    @shared pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+
+    @exclusive dlong element;
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        dlong my_elem = e;
+
+        element = (my_elem < Nelements) ? elementList[my_elem] : -1;
+
+        const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            work1[k][j][i] = u[idx];
+          }
+
+          //          const int ij = j + i * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          const int ij = i + j * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          S_x_e[j][i] = S_x[ij]; // swapped j,i
+          S_y_e[j][i] = S_y[ij];
+          S_z_e[j][i] = S_z[ij];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+          const int l1 = 0;
+          const int l2 = 2;
+          work1[i][j][l1] -= work1[i][j][l2];
+          work1[i][j][p_Nq_e - l1 - 1] -= work1[i][j][p_Nq_e - l2 - 1];
+          work1[i][l1][j] -= work1[i][l2][j];
+          work1[i][p_Nq_e - l1 - 1][j] -= work1[i][p_Nq_e - l2 - 1][j];
+          work1[l1][i][j] -= work1[l2][i][j];
+          work1[p_Nq_e - l1 - 1][i][j] -= work1[p_Nq_e - l2 - 1][i][j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += S_x_e[l][i] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work2[j][k][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work2[l][k][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += S_y_e[l][j] * tmp;
+          }
+        }
+
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    // TW
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += S_z_e[l][k] * tmp; // broadcast
+          }
+        }
+
+        if (element != -1) {
+          // any advantage to prefetching ?
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
+            const pfloat tmp = inv_L[v1 + element * p_Nq_e * p_Nq_e * p_Nq_e];
+
+            work2[i][k][j] = values[k] * tmp;
+          }
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work2[l][k][j];
+
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += S_x_e[i][l] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[j][k][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][k][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += S_y_e[j][l] * tmp; // broadcast
+          }
+        }
+        for (int j = 0; j < p_Nq_e; j++) {
+          work2[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work2[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += S_z_e[k][l] * tmp; // broadcast
+          }
+        }
+
+#if (!p_restrict)
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            Su[v1] = values[k]; // why are we writing this twice ???
+            u[v1] = values[k];
+          }
+        }
+#else
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1 && k >= 1 && k < p_Nq_e - 1) {
+              const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
+              const dlong idx1 = i - 1 + (j - 1) * p_Nq + (k - 1) * p_Nq * p_Nq + elem_offset;
+              Su[idx1] = values[k] * wts[idx1];
+            }
+          }
+        }
+#endif
+      }
+    }
+  }
+}
+#endif
+
+#if p_knl == 9
+@kernel void fusedFDM_v9(const dlong Nelements,
+                         @ restrict const dlong *elementList,
+                         @ restrict pfloat *Su,
+                         @ restrict const pfloat *S_x,
+                         @ restrict const pfloat *S_y,
+                         @ restrict const pfloat *S_z,
+                         @ restrict const pfloat *inv_L,
+#if p_restrict
+                         @ restrict const pfloat *wts,
+#endif
+                         @ restrict pfloat *u)
+{
+
+  for (dlong e = 0; e < Nelements; ++e; @outer) {
+
+    @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
+    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+    @shared pfloat work2[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+
+    @exclusive dlong element;
+
+    for (int k = 0; k < p_Nq_e; ++k; @inner) {
+      for (int j = 0; j < p_Nq_e; ++j; @inner) {
+        for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+          dlong my_elem = e;
+
+          element = (my_elem < Nelements) ? elementList[my_elem] : -1;
+
+          const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+
+          if (element != -1) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            work1[k][j][i] = u[idx];
+          }
+
+          if (k == 0) {
+            const int ij = i + j * p_Nq_e + element * p_Nq_e * p_Nq_e;
+            S_x_e[j][i] = S_x[ij]; // swapped j,i
+            S_y_e[j][i] = S_y[ij];
+            S_z_e[j][i] = S_z[ij];
+          }
+
+          @barrier();
+
+          if (k == 0) {
+            if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+              const int l1 = 0;
+              const int l2 = 2;
+              work1[i][j][l1] -= work1[i][j][l2];
+              work1[i][j][p_Nq_e - l1 - 1] -= work1[i][j][p_Nq_e - l2 - 1];
+              work1[i][l1][j] -= work1[i][l2][j];
+              work1[i][p_Nq_e - l1 - 1][j] -= work1[i][p_Nq_e - l2 - 1][j];
+              work1[l1][i][j] -= work1[l2][i][j];
+              work1[p_Nq_e - l1 - 1][i][j] -= work1[p_Nq_e - l2 - 1][i][j];
+            }
+          }
+
+          @barrier();
+
+          {
+            pfloat value = {0.};
+
+#pragma unroll p_Nq_e
+            for (int l = 0; l < p_Nq_e; l++) {
+              pfloat tmp = work1[k][j][l];
+              value += S_x_e[l][i] * tmp; // broadcast
+            }
+
+            work2[k][j][i] = value;
+          }
+
+          @barrier();
+
+          {
+
+            pfloat value = 0.;
+
+#pragma unroll p_Nq_e
+            for (int l = 0; l < p_Nq_e; l++) {
+              pfloat tmp = work2[k][l][i];
+              value += S_y_e[l][j] * tmp;
+            }
+
+            work1[k][j][i] = value;
+          }
+
+          @barrier();
+
+          {
+            pfloat value = 0.;
+
+#pragma unroll p_Nq_e
+            for (int l = 0; l < p_Nq_e; l++) {
+              pfloat tmp = work1[l][j][i];
+              value += S_z_e[l][k] * tmp; // broadcast
+            }
+
+            if (element != -1) {
+              // any advantage to prefetching ?
+              const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
+              const pfloat tmp = inv_L[v1 + element * p_Nq_e * p_Nq_e * p_Nq_e];
+
+              work2[k][j][i] = value * tmp;
+            }
+          }
+
+          @barrier();
+
+          {
+            pfloat value = 0.;
+
+#pragma unroll p_Nq_e
+            for (int l = 0; l < p_Nq_e; l++) {
+              pfloat tmp = work2[k][j][l];
+              value += S_x_e[i][l] * tmp; // broadcast
+            }
+
+            work1[k][j][i] = value;
+          }
+
+          @barrier();
+
+          {
+            pfloat value = 0;
+
+#pragma unroll p_Nq_e
+            for (int l = 0; l < p_Nq_e; l++) {
+              pfloat tmp = work1[k][l][i];
+              value += S_y_e[j][l] * tmp; // broadcast
+            }
+
+            work2[k][j][i] = value;
+          }
+
+          @barrier();
+
+          {
+
+            pfloat value = 0;
+
+#pragma unroll p_Nq_e
+            for (int l = 0; l < p_Nq_e; l++) {
+              pfloat tmp = work2[l][j][i];
+              value += S_z_e[k][l] * tmp; // broadcast
+            }
+
+#if (!p_restrict)
+            if (element != -1) {
+              const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+              const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+              Su[v1] = value; // why are we writing this twice ???
+              u[v1] = value;
+            }
+#else
+            if (element != -1) {
+              if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1 && k >= 1 && k < p_Nq_e - 1) {
+                const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
+                const dlong idx1 = i - 1 + (j - 1) * p_Nq + (k - 1) * p_Nq * p_Nq + elem_offset;
+                Su[idx1] = value * wts[idx1];
+              }
+            }
+#endif
+          }
+        }
+      }
+    }
+  }
+}
+#endif
+
+#if p_knl == 10
+@kernel void fusedFDM_v10(const dlong Nelements,
+                          @ restrict const dlong *elementList,
+                          @ restrict pfloat *Su,
+                          @ restrict const pfloat *S_x,
+                          @ restrict const pfloat *S_y,
+                          @ restrict const pfloat *S_z,
+                          @ restrict const pfloat *inv_L,
+#if p_restrict
+                          @ restrict const pfloat *wts,
+#endif
+                          @ restrict pfloat *u)
+{
+
+  for (dlong e = 0; e < Nelements; ++e; @outer) {
+
+    @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
+    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+
+    @exclusive dlong element;
+    @exclusive dfloat r_inv_L[p_Nq_e];
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        dlong my_elem = e;
+
+        element = (my_elem < Nelements) ? elementList[my_elem] : -1;
+
+        const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+
+        if (element != -1) {
+
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
+            r_inv_L[k] = inv_L[v1 + element * p_Nq_e * p_Nq_e * p_Nq_e];
+          }
+
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            work1[k][j][i] = u[idx];
+          }
+
+          //          const int ij = j + i * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          const int ij = i + j * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          S_x_e[j][i] = S_x[ij]; // swapped j,i
+          S_y_e[j][i] = S_y[ij];
+          S_z_e[j][i] = S_z[ij];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+          const int l1 = 0;
+          const int l2 = 2;
+          work1[i][j][l1] -= work1[i][j][l2];
+          work1[i][j][p_Nq_e - l1 - 1] -= work1[i][j][p_Nq_e - l2 - 1];
+          work1[i][l1][j] -= work1[i][l2][j];
+          work1[i][p_Nq_e - l1 - 1][j] -= work1[i][p_Nq_e - l2 - 1][j];
+          work1[l1][i][j] -= work1[l2][i][j];
+          work1[p_Nq_e - l1 - 1][i][j] -= work1[p_Nq_e - l2 - 1][i][j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += S_x_e[l][i] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += S_y_e[l][j] * tmp;
+          }
+        }
+
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += S_z_e[l][k] * tmp; // broadcast
+          }
+        }
+
+        if (element != -1) {
+          // any advantage to prefetching ?
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            work1[k][j][i] = values[k] * r_inv_L[k];
+          }
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += S_x_e[i][l] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += S_y_e[j][l] * tmp; // broadcast
+          }
+        }
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += S_z_e[k][l] * tmp; // broadcast
+          }
+        }
+
+#if (!p_restrict)
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            Su[v1] = values[k]; // why are we writing this twice ???
+            u[v1] = values[k];
+          }
+        }
+#else
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1 && k >= 1 && k < p_Nq_e - 1) {
+              const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
+              const dlong idx1 = i - 1 + (j - 1) * p_Nq + (k - 1) * p_Nq * p_Nq + elem_offset;
+              Su[idx1] = values[k] * wts[idx1];
+            }
+          }
+        }
+#endif
+      }
+    }
+  }
+}
+#endif
+
+#if p_knl == 11
+@kernel void fusedFDM_v11(const dlong Nelements,
+                          @ restrict const dlong *elementList,
+                          @ restrict pfloat *Su,
+                          @ restrict const pfloat *S_x,
+                          @ restrict const pfloat *S_y,
+                          @ restrict const pfloat *S_z,
+                          @ restrict const pfloat *inv_L,
+#if p_restrict
+                          @ restrict const pfloat *wts,
+#endif
+                          @ restrict pfloat *u)
+{
+
+  for (dlong e = 0; e < Nelements; ++e; @outer) {
+
+    @shared pfloat S_x_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_y_e[p_Nq_e][p_Nq_e];
+    @shared pfloat S_z_e[p_Nq_e][p_Nq_e];
+    @shared pfloat work1[p_Nq_e][p_Nq_e][p_Nq_e]; // pad fastest index by 1 for very minor bump in FP64
+
+#if 0
+    @shared pfloat s_inv_L[p_Nq_e][p_Nq_e][p_Nq_e];
+#endif
+
+    @exclusive dlong element;
+    @exclusive pfloat r_S_x_e[p_Nq_e][p_Nq_e];
+    @exclusive pfloat r_S_y_e[p_Nq_e][p_Nq_e];
+    @exclusive pfloat r_S_z_e[p_Nq_e][p_Nq_e];
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        dlong my_elem = e;
+
+        element = (my_elem < Nelements) ? elementList[my_elem] : -1;
+
+        const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+
+        if (element != -1) {
+
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            work1[k][j][i] = u[idx];
+          }
+
+#if 0
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; ++k) {
+            const dlong idx = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + element*p_Nq_e*p_Nq_e*p_Nq_e;
+            s_inv_L[k][j][i] = inv_L[idx];
+          }
+#endif
+
+          //          const int ij = j + i * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          const int ij = i + j * p_Nq_e + element * p_Nq_e * p_Nq_e;
+          S_x_e[j][i] = S_x[ij]; // swapped j,i
+          S_y_e[j][i] = S_y[ij];
+          S_z_e[j][i] = S_z[ij];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        for (int m = 0; m < p_Nq_e; ++m) {
+          for (int n = 0; n < p_Nq_e; ++n) {
+            r_S_x_e[m][n] = S_x_e[m][n];
+            r_S_y_e[m][n] = S_y_e[m][n];
+            r_S_z_e[m][n] = S_z_e[m][n];
+          }
+        }
+      }
+    }
+
+    for (int j = 0; j < p_Nq_e; ++j; @inner) {
+      for (int i = 0; i < p_Nq_e; ++i; @inner) {
+
+        if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1) {
+          const int l1 = 0;
+          const int l2 = 2;
+          work1[i][j][l1] -= work1[i][j][l2];
+          work1[i][j][p_Nq_e - l1 - 1] -= work1[i][j][p_Nq_e - l2 - 1];
+          work1[i][l1][j] -= work1[i][l2][j];
+          work1[i][p_Nq_e - l1 - 1][j] -= work1[i][p_Nq_e - l2 - 1][j];
+          work1[l1][i][j] -= work1[l2][i][j];
+          work1[p_Nq_e - l1 - 1][i][j] -= work1[p_Nq_e - l2 - 1][i][j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += r_S_x_e[l][i] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += r_S_y_e[l][j] * tmp;
+          }
+        }
+
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += r_S_z_e[l][k] * tmp; // broadcast
+          }
+        }
+
+        if (element != -1) {
+          // any advantage to prefetching ?
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+#if 1
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e;
+            const pfloat tmp = inv_L[v1 + element * p_Nq_e * p_Nq_e * p_Nq_e];
+            work1[k][j][i] = values[k] * tmp;
+#else
+            work1[k][j][i] *= values[k] * s_inv_L[k][j][i];
+#endif
+          }
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int j = 0; j < p_Nq_e; j++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][j][l];
+
+#pragma unroll p_Nq_e
+          for (int i = 0; i < p_Nq_e; i++) {
+            values[i] += r_S_x_e[i][l] * tmp; // broadcast
+          }
+        }
+
+        for (int i = 0; i < p_Nq_e; i++) {
+          work1[k][j][i] = values[i];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int k = 0; k < p_Nq_e; k++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[k][l][i];
+#pragma unroll p_Nq_e
+          for (int j = 0; j < p_Nq_e; j++) {
+            values[j] += r_S_y_e[j][l] * tmp; // broadcast
+          }
+        }
+        for (int j = 0; j < p_Nq_e; j++) {
+          work1[k][j][i] = values[j];
+        }
+      }
+    }
+
+    @barrier();
+
+    for (int j = 0; j < p_Nq_e; j++; @inner) {
+      for (int i = 0; i < p_Nq_e; i++; @inner) {
+
+        pfloat values[p_Nq_e] = {0.};
+
+#pragma unroll p_Nq_e
+        for (int l = 0; l < p_Nq_e; l++) {
+          pfloat tmp = work1[l][j][i];
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            values[k] += r_S_z_e[k][l] * tmp; // broadcast
+          }
+        }
+
+#if (!p_restrict)
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            Su[v1] = values[k]; // why are we writing this twice ???
+          }
+
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            const dlong elem_offset = element * p_Nq_e * p_Nq_e * p_Nq_e;
+            const int v1 = i + j * p_Nq_e + k * p_Nq_e * p_Nq_e + elem_offset;
+            u[v1] = values[k];
+          }
+        }
+#else
+        if (element != -1) {
+#pragma unroll p_Nq_e
+          for (int k = 0; k < p_Nq_e; k++) {
+            if (i >= 1 && i < p_Nq_e - 1 && j >= 1 && j < p_Nq_e - 1 && k >= 1 && k < p_Nq_e - 1) {
+              const dlong elem_offset = element * p_Nq * p_Nq * p_Nq;
+              const dlong idx1 = i - 1 + (j - 1) * p_Nq + (k - 1) * p_Nq * p_Nq + elem_offset;
+              Su[idx1] = values[k] * wts[idx1];
+            }
+          }
+        }
+#endif
+      }
+    }
   }
 }
 #endif

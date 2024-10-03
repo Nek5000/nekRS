@@ -15,13 +15,9 @@ set(MESH_SOURCES
     ${MESH_SOURCE_DIR}/meshMetrics.cpp
     ${MESH_SOURCE_DIR}/meshConnect.cpp
     ${MESH_SOURCE_DIR}/meshConnectFaceNodes3D.cpp
-    ${MESH_SOURCE_DIR}/meshConnectPeriodicFaceNodes3D.cpp
     ${MESH_SOURCE_DIR}/meshFree.cpp
     ${MESH_SOURCE_DIR}/meshMove.cpp
     ${MESH_SOURCE_DIR}/meshGeometricFactorsHex3D.cpp
-    ${MESH_SOURCE_DIR}/meshHaloExchange.cpp
-    ${MESH_SOURCE_DIR}/meshHaloExtract.cpp
-    ${MESH_SOURCE_DIR}/meshHaloSetup.cpp
     ${MESH_SOURCE_DIR}/meshLoadReferenceNodesHex3D.cpp
     ${MESH_SOURCE_DIR}/meshOccaSetup3D.cpp
     ${MESH_SOURCE_DIR}/meshParallelConsecutiveGlobalNumbering.cpp

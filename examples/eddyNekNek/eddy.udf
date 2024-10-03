@@ -218,7 +218,7 @@ bool timeStepConverged(int stage)
 
 void userq(double time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   dpdx(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->cds->o_NLT);
 }
 
@@ -226,11 +226,16 @@ void UDF_Setup()
 {
   nrs->userConvergenceCheck = timeStepConverged;
   nrs->userScalarSource = &userq;
+
+  if (!platform->options.getArgs("RESTART FILE NAME").empty()) {
+    nek::getIC();
+    nrs->copyFromNek();
+  }
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     userMeshVelocity(mesh->Nlocal, nrs->fieldOffset, mesh->o_x, mesh->o_y, mesh->o_z, mesh->o_U);
   }

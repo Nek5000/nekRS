@@ -57,7 +57,7 @@ ChebyshevSmootherType convertSmootherType(SmootherType s)
 
 pMGLevel::pMGLevel(elliptic_t *ellipticBase, int Nc, setupAide options_, MPI_Comm comm_, bool _isCoarse)
     : multigridLevel(ellipticBase->mesh->Nelements * ellipticBase->mesh->Np,
-                     (ellipticBase->mesh->Nelements + ellipticBase->mesh->totalHaloPairs) *
+                     (ellipticBase->mesh->Nelements) *
                          ellipticBase->mesh->Np,
                      comm_)
 {
@@ -83,7 +83,7 @@ pMGLevel::pMGLevel(elliptic_t *ellipticBase, // finest level
                    bool _isCoarse)
     : multigridLevel(ellipticCoarse->mesh->Nelements * ellipticCoarse->mesh->Np,
                      ellipticCoarse->mesh->Np *
-                         (ellipticCoarse->mesh->Nelements + ellipticCoarse->mesh->totalHaloPairs),
+                         (ellipticCoarse->mesh->Nelements),
                      comm_)
 {
 

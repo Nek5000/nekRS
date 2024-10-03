@@ -2,7 +2,7 @@
 #define nekrs_nrs_hpp_
 
 #include <mpi.h>
-#include <functional> 
+#include <functional>
 #include <string>
 
 /*
@@ -16,15 +16,14 @@ void setup(MPI_Comm commg_in,
            int buildOnly,
            int commSizeTarget,
            int ciMode,
-           const std::map<std::string, std::map<std::string, std::string>>& parKeyValuePairs,
+           const std::map<std::string, std::map<std::string, std::string>> &parKeyValuePairs,
            std::string casename,
            std::string _backend,
            std::string _deviceID,
            int nSessions,
            int sessionID,
            int debug);
-void copyFromNek(double time, int tstep);
-void udfExecuteStep(double time, int tstep, int isCheckpointStep);
+void udfExecuteStep(double time, int tstep, int checkpointStep);
 void writeCheckpoint(double time, int step);
 int checkpointStep(double time, int tStep);
 void checkpointStep(int val);
@@ -46,7 +45,6 @@ int exitValue(void);
 bool stepConverged(void);
 void processUpdFile();
 void printStepInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo);
-void verboseStepInfo(bool enabled);
 void updateTimer(const std::string &key, double time);
 void resetTimer(const std::string &key);
 
@@ -57,6 +55,6 @@ void finishStep();
 bool stepConverged();
 int timeStep();
 double finalTimeStepSize(double time);
-}
+} // namespace nekrs
 
 #endif

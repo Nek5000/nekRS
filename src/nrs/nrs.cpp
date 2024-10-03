@@ -14,7 +14,7 @@
 
 static void computeDivUErr(nrs_t *nrs, dfloat &divUErrVolAvg, dfloat &divUErrL2)
 {
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   auto o_divErr = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
 
@@ -199,7 +199,7 @@ static void setupEllipticSolvers(nrs_t *nrs)
         continue;
       }
 
-      auto mesh = (is) ? cds->meshV : cds->mesh[0]; // only first scalar can be a CHT mesh
+      auto mesh = cds->mesh[is];
 
       const auto solverName = cds->cvodeSolve[is] ? "CVODE" : "ELLIPTIC";
       if (platform->comm.mpiRank == 0) {
@@ -230,7 +230,7 @@ static void setupEllipticSolvers(nrs_t *nrs)
   }
 
   if (nrs->flow) {
-    auto mesh = nrs->meshV;
+    auto mesh = nrs->mesh;
 
     if (platform->comm.mpiRank == 0) {
       printf("================ ELLIPTIC SETUP VELOCITY ================\n");
@@ -273,8 +273,8 @@ static void setupEllipticSolvers(nrs_t *nrs)
       if (unalignedBoundary) {
         nrs->o_zeroNormalMaskVelocity =
             platform->device.malloc<dfloat>(nrs->uvwSolver->Nfields() * nrs->uvwSolver->fieldOffset());
-        nrs->o_EToBVVelocity = platform->device.malloc<int>(nrs->meshV->Nlocal);
-        createEToBV(nrs->meshV, nrs->uvwSolver->EToB(), nrs->o_EToBVVelocity);
+        nrs->o_EToBVVelocity = platform->device.malloc<int>(nrs->mesh->Nlocal);
+        createEToBV(nrs->mesh, nrs->uvwSolver->EToB(), nrs->o_EToBVVelocity);
         auto o_EToB = platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces * nrs->uvwSolver->Nfields(),
                                                    nrs->uvwSolver->EToB().data());
         createZeroNormalMask(nrs, mesh, o_EToB, nrs->o_EToBVVelocity, nrs->o_zeroNormalMaskVelocity);
@@ -296,10 +296,10 @@ static void setupEllipticSolvers(nrs_t *nrs)
       nrs->vSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBy, o_lambda0, o_lambda1);
       nrs->wSolver = new elliptic("velocity", mesh, nrs->fieldOffset, EToBz, o_lambda0, o_lambda1);
     }
-  } // flow
+  }
 
   if (nrs->flow) {
-    auto mesh = nrs->meshV;
+    auto mesh = nrs->mesh;
 
     if (platform->comm.mpiRank == 0) {
       printf("================ ELLIPTIC SETUP PRESSURE ================\n");
@@ -315,10 +315,10 @@ static void setupEllipticSolvers(nrs_t *nrs)
       nrs->cds->dpdt = nrs->pSolver->nullSpace();
     }
 
-  } // flow
+  }
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
-    auto mesh = nrs->_mesh;
+    auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
 
     if (platform->comm.mpiRank == 0) {
       printf("================ ELLIPTIC SETUP MESH ================\n");
@@ -386,7 +386,6 @@ occa::memory nrs_t::advectionSubcycling(int nEXT, double time)
 {
   const auto movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
-  const auto mesh = this->meshV;
   const auto gsh = this->gsh;
 
   const auto nFields = this->NVfields;
@@ -427,7 +426,7 @@ void nrs_t::printMinMax()
   }
 
   {
-    auto mesh = this->_mesh;
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
     auto o_x = mesh->o_x;
     auto o_y = mesh->o_y;
     auto o_z = mesh->o_z;
@@ -444,7 +443,7 @@ void nrs_t::printMinMax()
   }
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    auto mesh = this->_mesh;
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
     auto o_ux = mesh->o_U + 0 * this->fieldOffset;
     auto o_uy = mesh->o_U + 1 * this->fieldOffset;
     auto o_uz = mesh->o_U + 2 * this->fieldOffset;
@@ -460,7 +459,6 @@ void nrs_t::printMinMax()
   }
 
   {
-    auto mesh = this->meshV;
     auto o_ux = this->o_U + 0 * this->fieldOffset;
     auto o_uy = this->o_U + 1 * this->fieldOffset;
     auto o_uz = this->o_U + 2 * this->fieldOffset;
@@ -476,7 +474,6 @@ void nrs_t::printMinMax()
   }
 
   {
-    auto mesh = this->meshV;
     const auto prMin = platform->linAlg->min(mesh->Nlocal, this->o_P, platform->comm.mpiComm);
     const auto prMax = platform->linAlg->max(mesh->Nlocal, this->o_P, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0) {
@@ -494,8 +491,7 @@ void nrs_t::printMinMax()
     for (int is = 0; is < cds->NSfields; is++) {
       cnt++;
 
-      mesh_t *mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->mesh[0]; // only first scalar can be a CHT mesh
+      auto mesh = cds->mesh[is];
 
       auto o_si = this->cds->o_S + this->cds->fieldOffsetScan[is];
       const auto siMin = platform->linAlg->min(mesh->Nlocal, o_si, platform->comm.mpiComm);
@@ -566,6 +562,7 @@ void nrs_t::init()
     }
   }
 
+  this->cht = [&] ()
   {
     int nelgt, nelgv;
     const std::string meshFile = platform->options.getArgs("MESH FILE");
@@ -582,7 +579,15 @@ void nrs_t::init()
                EXIT_FAILURE,
                "%s\n",
                "Conjugate heat transfer requires a temperature field!");
-  }
+
+    return (nelgt > nelgv) ? 1 : 0;
+  }();
+
+  nekrsCheck(platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE") &&
+             (!cht && !platform->options.compareArgs("LOWMACH", "TRUE")),
+             platform->comm.mpiComm, EXIT_FAILURE,
+             "%s\n",
+             "TEMPERATURE field requires conjugate heat transfer or lowMach");
 
   platform->options.getArgs("SUBCYCLING STEPS", this->Nsubsteps);
 
@@ -611,56 +616,39 @@ void nrs_t::init()
 
   nek::setup(numberActiveFields());
 
-  this->cht = 0;
-  {
-    hlong NelementsV = nekData.nelv;
-    hlong NelementsT = nekData.nelt;
-    MPI_Allreduce(MPI_IN_PLACE, &NelementsV, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-    MPI_Allreduce(MPI_IN_PLACE, &NelementsT, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-    if ((NelementsT > NelementsV) && this->Nscalar) {
-      this->cht = 1;
-    }
-
-    nekrsCheck(this->cht && (NelementsT <= NelementsV),
-               MPI_COMM_SELF,
-               EXIT_FAILURE,
-               "%s\n",
-               "Invalid solid element partitioning");
-  }
-
-  nekrsCheck(platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE") &&
-             (!this->cht && !platform->options.compareArgs("LOWMACH", "TRUE")),
-             platform->comm.mpiComm, EXIT_FAILURE,
-             "%s\n",
-             "TEMPERATURE field requires conjugate heat transfer or lowMach");
-
-  this->_mesh = createMesh(platform->comm.mpiComm, N, cubN, this->cht, platform->kernelInfo);
-  this->meshV = (mesh_t *)this->_mesh->fluid;
-  auto mesh = this->meshV;
-
-  const auto [fieldOffset, cubatureOffset] = [&]() {
-    auto offset = mesh->Np * (mesh->Nelements + mesh->totalHaloPairs);
-    auto meshT = this->_mesh;
-    offset = std::max(offset, meshT->Np * (meshT->Nelements + meshT->totalHaloPairs));
-
+  auto getMesh = [&]() 
+  {  
+    auto [meshT, meshV] = createMesh(platform->comm.mpiComm, N, cubN, this->cht, platform->kernelInfo);
+    if (!cht) meshV = meshT;
+ 
+    auto offset = meshV->Np * (meshV->Nelements);
+    offset = std::max(offset, meshT->Np * (meshT->Nelements));
+ 
     auto cubOffset = offset;
     if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
-      cubOffset = std::max(offset, mesh->Nelements * mesh->cubNp);
+      cubOffset = std::max(cubOffset, meshV->Nelements * meshV->cubNp);
     }
 
-    return std::tuple(alignStride<dfloat>(offset), alignStride<dfloat>(cubOffset));
+    offset = alignStride<dfloat>(offset);
+    cubOffset = alignStride<dfloat>(cubOffset);
+ 
+    this->fieldOffset = offset;
+    this->cubatureOffset = cubOffset;
+
+    meshT->fieldOffset = this->fieldOffset;
+    meshV->fieldOffset = this->fieldOffset;
+
+    return std::pair{meshT, meshV};
   }();
 
-  this->fieldOffset = fieldOffset;
-  this->cubatureOffset = cubatureOffset;
-  this->_mesh->fieldOffset = this->fieldOffset;
-
+  this->mesh = getMesh.second;
+  auto meshT = getMesh.first;
 
   auto verifyBC = [&]() {
     auto fields = nrsFieldsToSolve(platform->options);
 
     for (const auto &field : fields) {
-      auto msh = (this->cht && (field == "scalar00" || field == "mesh")) ? this->_mesh : mesh;
+      auto msh = (this->cht && (field == "scalar00" || field == "mesh")) ? meshT : mesh;
       nekrsCheck(msh->Nbid != bcMap::size(field),
                  platform->comm.mpiComm,
                  EXIT_FAILURE,
@@ -670,7 +658,7 @@ void nrs_t::init()
                  msh->Nbid);
     }
 
-    bcMap::checkBoundaryAlignment(this->meshV);
+    bcMap::checkBoundaryAlignment(mesh);
   };
 
   verifyBC();
@@ -678,12 +666,8 @@ void nrs_t::init()
   this->coeffEXT = (dfloat *)calloc(this->nEXT, sizeof(dfloat));
   this->coeffBDF = (dfloat *)calloc(this->nBDF, sizeof(dfloat));
 
-  dfloat mue = 1;
-  dfloat rho = 1;
-  platform->options.getArgs("VISCOSITY", mue);
-  platform->options.getArgs("DENSITY", rho);
-
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
+    auto mesh = meshT;
     const int nBDF = std::max(this->nBDF, this->nEXT);
     auto o_tmp = platform->device.malloc<dfloat>(mesh->Nlocal);
     o_tmp.copyFrom(mesh->o_LMM, mesh->Nlocal);
@@ -697,8 +681,7 @@ void nrs_t::init()
     mesh->o_invLMM.copyFrom(o_tmp, mesh->Nlocal);
 
     const int nAB = std::max(this->nEXT, mesh->nAB);
-    mesh->U = (dfloat *)calloc(this->NVfields * this->fieldOffset * nAB, sizeof(dfloat));
-    mesh->o_U = platform->device.malloc<dfloat>(this->NVfields * nAB * this->fieldOffset, mesh->U);
+    mesh->o_U = platform->device.malloc<dfloat>(this->NVfields * nAB * this->fieldOffset);
     mesh->o_Ue = platform->device.malloc<dfloat>(this->NVfields * nAB * this->fieldOffset);
     if (this->Nsubsteps) {
       mesh->o_divU = platform->device.malloc<dfloat>(this->fieldOffset * nAB);
@@ -716,16 +699,12 @@ void nrs_t::init()
     }
   }
 
-  this->U =
-      (dfloat *)calloc(this->NVfields * std::max(this->nBDF, this->nEXT) * this->fieldOffset, sizeof(dfloat));
   this->o_U =
-      platform->device.malloc<dfloat>(this->NVfields * std::max(this->nBDF, this->nEXT) * this->fieldOffset,
-                                      this->U);
+      platform->device.malloc<dfloat>(this->NVfields * std::max(this->nBDF, this->nEXT) * this->fieldOffset);
 
   this->o_Ue = platform->device.malloc<dfloat>(this->NVfields * this->fieldOffset);
 
-  this->P = (dfloat *)calloc(this->fieldOffset, sizeof(dfloat));
-  this->o_P = platform->device.malloc<dfloat>(this->fieldOffset, this->P);
+  this->o_P = platform->device.malloc<dfloat>(this->fieldOffset);
 
   this->o_JwF = platform->device.malloc<dfloat>(this->NVfields * this->fieldOffset);
   this->o_NLT = platform->device.malloc<dfloat>(this->NVfields * this->nEXT * this->fieldOffset);
@@ -743,18 +722,23 @@ void nrs_t::init()
     this->o_meshRho = this->o_prop.slice(3 * this->fieldOffset);
   }
 
+  dfloat mue = 1;
+  dfloat rho = 1;
+  platform->options.getArgs("VISCOSITY", mue);
+  platform->options.getArgs("DENSITY", rho);
+
   platform->linAlg->fill(mesh->Nlocal, mue, this->o_mue);
   platform->linAlg->fill(mesh->Nlocal, rho, this->o_rho);
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
     auto o_mue = this->o_prop + 2 * this->fieldOffset;
     auto o_rho = this->o_prop + 3 * this->fieldOffset;
-    platform->linAlg->fill(mesh->Nlocal, 1.0, o_mue);
-    platform->linAlg->fill(mesh->Nlocal, 0.0, o_rho);
+    platform->linAlg->fill(meshT->Nlocal, 1.0, o_mue);
+    platform->linAlg->fill(meshT->Nlocal, 0.0, o_rho);
   }
 
   if (platform->options.compareArgs("CONSTANT FLOW RATE", "TRUE")) {
     this->o_Uc = platform->device.malloc<dfloat>(this->NVfields * this->fieldOffset);
-    this->o_Pc = platform->device.malloc<dfloat>(this->fieldOffset);
+    this->o_Pc = platform->device.malloc<dfloat>(mesh->Nlocal);
     this->o_prevProp = platform->device.malloc<dfloat>(2 * this->fieldOffset);
     this->o_prevProp.copyFrom(this->o_prop, this->o_prevProp.length());
   }
@@ -769,11 +753,10 @@ void nrs_t::init()
   this->qqtT = this->qqt;
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
-    auto meshT = this->_mesh;
     this->gshMesh = oogs::setup(meshT->ogs, this->NVfields, this->fieldOffset, ogsDfloat, NULL, OOGS_AUTO);
   }
 
-  auto EToB = [&](const std::string &field) {
+  auto EToB = [&](const std::string &field, mesh_t *mesh) {
     std::vector<int> EToB(mesh->Nelements * mesh->Nfaces);
     int cnt = 0;
     for (int e = 0; e < mesh->Nelements; e++) {
@@ -788,11 +771,11 @@ void nrs_t::init()
   };
 
   if (this->flow) {
-    this->o_EToB = EToB("velocity");
+    this->o_EToB = EToB("velocity", mesh);
   }
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
-    this->o_EToBMeshVelocity = EToB("mesh");
+    this->o_EToBMeshVelocity = EToB("mesh", meshT);
   }
 
   if (platform->options.compareArgs("VELOCITY REGULARIZATION METHOD", "HPFRT")) {
@@ -801,7 +784,7 @@ void nrs_t::init()
     platform->options.getArgs("VELOCITY HPFRT STRENGTH", strength);
     platform->options.getArgs("VELOCITY HPFRT MODES", nModes);
     this->filterS = -std::abs(strength);
-    this->o_filterRT = lowPassFilterSetup(this->meshV, nModes);
+    this->o_filterRT = lowPassFilterSetup(mesh, nModes);
   }
 
   assignKernels(this);
@@ -828,8 +811,8 @@ void nrs_t::init()
     cfg.o_Ue = this->o_Ue;
     cfg.o_Urst = this->o_Urst;
     cfg.o_relUrst = this->o_relUrst;
-    cfg.mesh = this->_mesh;
-    cfg.meshV = this->meshV;
+    cfg.meshT = meshT;
+    cfg.meshV = mesh;
     cfg.dp0thdt = &this->dp0thdt;
     cfg.alpha0Ref = &this->alpha0Ref;
 
@@ -870,240 +853,210 @@ void nrs_t::init()
     }
   }
 
-  if (platform->comm.mpiRank == 0) {
-    std::cout << std::endl;
-  }
-  printMeshMetrics(this->_mesh);
+
+  printMeshMetrics(meshT);
+  if (mesh != meshT) printMeshMetrics(mesh);
 
   setupEllipticSolvers(this);
 }
 
-void nrs_t::setIC()
+void nrs_t::restartFromFile(const std::string& restartStr)
 {
-  auto copyTo = [&](bool occa)
+  auto options = serializeString(restartStr, '+');
+  const auto fileName = options[0];
+  options.erase(options.begin());
+
+  if (platform->comm.mpiRank == 0) {
+    if (options.size()) std::cout << "restart options: "; 
+    for (const auto& element : options) std::cout << element << "  "; 
+    std::cout << std::endl;
+  }
+
+  auto requestedStep = [&]()
   {
-    if (occa) {
-      _mesh->o_x.copyFrom(_mesh->x);
-      _mesh->o_y.copyFrom(_mesh->y);
-      _mesh->o_z.copyFrom(_mesh->z);
-  
-      o_U.copyFrom(U);
-  
-      o_P.copyFrom(P);
-  
-      if (Nscalar) cds->o_S.copyFrom(cds->S);
-    } else {
-      _mesh->o_x.copyTo(_mesh->x);
-      _mesh->o_y.copyTo(_mesh->y);
-      _mesh->o_z.copyTo(_mesh->z);
-  
-      o_U.copyTo(U);
-  
-      o_P.copyTo(P);
-  
-      if (Nscalar) cds->o_S.copyTo(cds->S);
+    auto it = std::find_if(options.begin(), options.end(), 
+      [](const std::string& s) 
+      {
+        return s.find("step") != std::string::npos;
+      }
+    );
+
+    std::string val;
+    if (it != options.end()) { 
+      val = serializeString(*it, '=').at(1);
+      options.erase(it);
     }
+    return (val.empty()) ? -1 : std::stoi(val);
+  }();
+
+
+  auto requestedTime = [&]()
+  {
+    auto it = std::find_if(options.begin(), options.end(), 
+      [](const std::string& s) 
+      {
+        return s.find("time") != std::string::npos;
+      }
+    );
+
+    std::string val;
+    if (it != options.end()) { 
+      val = serializeString(*it, '=').at(1);
+      options.erase(it);
+    }
+    return val;
+  }();
+
+  const auto requestedFields = [&]()
+  { 
+    std::vector<std::string> flds;
+    for (const auto& entry : {"x", "u", "p", "t", "s"}) {
+      auto it = std::find_if(options.begin(), options.end(), 
+        [entry](const std::string& s) 
+        {
+          std::string ss = s;
+          lowerCase(ss);
+          return ss.find(entry) != std::string::npos;
+        }
+      );
+      if (it != options.end()) {
+        std::string s = *it;
+        lowerCase(s);
+        std::cout << "requested field: " << s << std::endl; 
+        flds.push_back(s);
+      }
+    }
+    return flds;
+  }();
+
+
+  auto fileNameEndsWithBp = [&]() 
+  {
+    const std::string suffix = ".bp";
+    if (fileName.size() >= suffix.size()) {
+        return fileName.compare(fileName.size() - suffix.size(), suffix.size(), suffix) == 0;
+    }
+    return false;
+  }();
+  auto iofld = iofldFactory::create((fileNameEndsWithBp) ? "adios" : "");
+  iofld->open((cht) ? cds->mesh[0] : mesh, iofld::mode::read, fileName, requestedStep);
+
+  const auto avaiableFields = iofld->availableVariables();
+  if (platform->comm.mpiRank == 0 && platform->verbose)  {
+    for(const auto& entry : avaiableFields) {
+      std::cout << " found variable " << entry << std::endl;
+    } 
+  }
+
+  double time = -1;
+  iofld->addVariable("time", time);
+  if (platform->options.compareArgs("LOWMACH", "TRUE")) {
+    iofld->addVariable("p0th", p0th[0]);
+  } 
+
+  auto checkOption = [&](const std::string& name)
+  {
+    if (requestedFields.size() == 0) return true; // nothing specfied -> assign all
+    if (std::find(requestedFields.begin(), requestedFields.end(), name) != requestedFields.end()) {
+      return true; 
+    }
+    return false;
+  }; 
+
+  auto isAvailable = [&](const std::string& name)
+  {
+    return std::find(avaiableFields.begin(), avaiableFields.end(), name) != avaiableFields.end();
   };
 
+  if (checkOption("x") && isAvailable("mesh")) {
+    std::vector<occa::memory> o_iofldX;
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
+    o_iofldX.push_back(mesh->o_x);
+    o_iofldX.push_back(mesh->o_y);
+    o_iofldX.push_back(mesh->o_z);
+    iofld->addVariable("mesh", o_iofldX);
+  }
+
+  if (checkOption("u") && isAvailable("velocity")) {
+    std::vector<occa::memory> o_iofldU;
+    o_iofldU.push_back(o_U.slice(0*fieldOffset, mesh->Nlocal));
+    o_iofldU.push_back(o_U.slice(1*fieldOffset, mesh->Nlocal));
+    o_iofldU.push_back(o_U.slice(2*fieldOffset, mesh->Nlocal));
+    iofld->addVariable("velocity", o_iofldU);
+  }
+
+  if (checkOption("p") && isAvailable("pressure")) {
+    std::vector<occa::memory> o_iofldP = {o_P.slice(0, mesh->Nlocal)};
+    iofld->addVariable("pressure", o_iofldP);
+  }
+
+  if (Nscalar) {
+    std::vector<occa::memory> o_iofldT; 
+    if (checkOption("t") && isAvailable("temperature")) {
+      auto mesh = (cht) ? cds->mesh[0] : this->mesh;
+      o_iofldT.push_back(cds->o_S.slice(0, mesh->Nlocal));
+      iofld->addVariable("temperature", o_iofldT);
+    }
+
+    const auto scalarStart = (o_iofldT.size()) ? 1 : 0;
+    for(int i = scalarStart; i < Nscalar; i++) {
+      const auto sid = scalarDigitStr(i - scalarStart);
+      if (checkOption("s" + sid) && isAvailable("scalar" + sid)) {
+        auto o_Si = cds->o_S.slice(cds->fieldOffsetScan[i], mesh->Nlocal); 
+        std::vector<occa::memory> o_iofldSi = {o_Si};
+        iofld->addVariable("scalar" + sid, o_iofldSi);
+      }
+    }
+  }
+
+  iofld->process();
+
+  platform->options.setArgs("START TIME", (requestedTime.size()) ? requestedTime : to_string_f(time));
+} 
+
+void nrs_t::setIC()
+{
   if (!platform->options.getArgs("RESTART FILE NAME").empty()) {
-    auto options = serializeString(platform->options.getArgs("RESTART FILE NAME"), '+');
-    const auto fileName = options[0];
-    options.erase(options.begin());
-
-    if (platform->comm.mpiRank == 0) {
-      if (options.size()) std::cout << "restart options: "; 
-      for (const auto& element : options) std::cout << element << "  "; 
-      std::cout << std::endl;
-    }
-
-    auto requestedStep = [&]()
-    {
-      auto it = std::find_if(options.begin(), options.end(), 
-        [](const std::string& s) 
-        {
-          return s.find("step") != std::string::npos;
-        }
-      );
-
-      std::string val;
-      if (it != options.end()) { 
-        val = serializeString(*it, '=').at(1);
-        options.erase(it);
-      }
-      return (val.empty()) ? -1 : std::stoi(val);
-    }();
-
-
-    auto requestedTime = [&]()
-    {
-      auto it = std::find_if(options.begin(), options.end(), 
-        [](const std::string& s) 
-        {
-          return s.find("time") != std::string::npos;
-        }
-      );
-
-      std::string val;
-      if (it != options.end()) { 
-        val = serializeString(*it, '=').at(1);
-        options.erase(it);
-      }
-      return val;
-    }();
-
-    const auto requestedFields = [&]()
-    { 
-      std::vector<std::string> flds;
-      for (const auto& entry : {"x", "u", "p", "t", "s"}) {
-        auto it = std::find_if(options.begin(), options.end(), 
-          [entry](const std::string& s) 
-          {
-            std::string ss = s;
-            lowerCase(ss);
-            return ss.find(entry) != std::string::npos;
-          }
-        );
-        if (it != options.end()) {
-          std::string s = *it;
-          lowerCase(s);
-          std::cout << "requested field: " << s << std::endl; 
-          flds.push_back(s);
-        }
-      }
-      return flds;
-    }();
-
-
-    auto fileNameEndsWithBp = [&]() 
-    {
-      const std::string suffix = ".bp";
-      if (fileName.size() >= suffix.size()) {
-          return fileName.compare(fileName.size() - suffix.size(), suffix.size(), suffix) == 0;
-      }
-      return false;
-    }();
-    auto iofld = iofldFactory::create((fileNameEndsWithBp) ? "adios" : "");
-    iofld->open(_mesh, iofld::mode::read, fileName, requestedStep);
-
-    const auto avaiableFields = iofld->availableVariables();
-    if (platform->comm.mpiRank == 0 && platform->verbose)  {
-      for(const auto& entry : avaiableFields) {
-        std::cout << " found variable " << entry << std::endl;
-      } 
-    }
- 
-    double time = -1;
-    iofld->addVariable("time", time);
-    if (platform->options.compareArgs("LOWMACH", "TRUE")) {
-      iofld->addVariable("p0th", p0th[0]);
-    } 
-
-    auto checkOption = [&](const std::string& name)
-    {
-      if (requestedFields.size() == 0) return true; // nothing specfied -> assign all
-      if (std::find(requestedFields.begin(), requestedFields.end(), name) != requestedFields.end()) {
-        return true; 
-      }
-      return false;
-    }; 
-
-    auto isAvailable = [&](const std::string& name)
-    {
-      return std::find(avaiableFields.begin(), avaiableFields.end(), name) != avaiableFields.end();
-    };
-
-    if (checkOption("x") && isAvailable("mesh")) {
-      std::vector<occa::memory> o_iofldX;
-      o_iofldX.push_back(_mesh->o_x);
-      o_iofldX.push_back(_mesh->o_y);
-      o_iofldX.push_back(_mesh->o_z);
-      iofld->addVariable("mesh", o_iofldX);
-    }
-
-    if (checkOption("u") && isAvailable("velocity")) {
-      std::vector<occa::memory> o_iofldU;
-      o_iofldU.push_back(o_U.slice(0*fieldOffset, meshV->Nlocal));
-      o_iofldU.push_back(o_U.slice(1*fieldOffset, meshV->Nlocal));
-      o_iofldU.push_back(o_U.slice(2*fieldOffset, meshV->Nlocal));
-      iofld->addVariable("velocity", o_iofldU);
-    }
-
-    if (checkOption("p") && isAvailable("pressure")) {
-      std::vector<occa::memory> o_iofldP = {o_P.slice(0, meshV->Nlocal)};
-      iofld->addVariable("pressure", o_iofldP);
-    }
-
-    if (Nscalar) {
-      std::vector<occa::memory> o_iofldT; 
-      if (checkOption("t") && isAvailable("temperature")) {
-        o_iofldT.push_back(cds->o_S.slice(0, _mesh->Nlocal));
-        iofld->addVariable("temperature", o_iofldT);
-      }
-
-      const auto scalarStart = (o_iofldT.size()) ? 1 : 0;
-      for(int i = scalarStart; i < Nscalar; i++) {
-        const auto sid = scalarDigitStr(i - scalarStart);
-        if (checkOption("s" + sid) && isAvailable("scalar" + sid)) {
-          auto o_Si = cds->o_S.slice(cds->fieldOffsetScan[i], meshV->Nlocal); 
-          std::vector<occa::memory> o_iofldSi = {o_Si};
-          iofld->addVariable("scalar" + sid, o_iofldSi);
-        }
-      }
-    }
-
-    iofld->process();
-
-    copyTo(/* occa */ false);
-
-    platform->options.setArgs("START TIME", (requestedTime.size()) ? requestedTime : to_string_f(time));
-  } else {
-    nek::getIC();
-    double startTime;
-    copyFromNek(startTime);
-    platform->options.setArgs("START TIME", to_string_f(startTime));
+    restartFromFile(platform->options.getArgs("RESTART FILE NAME"));
   }
 
   if (platform->comm.mpiRank == 0) std::cout << "calling UDF_Setup ... \n" << std::flush; 
   udf.setup();
   if (platform->comm.mpiRank == 0) std::cout << "done\n" << std::flush; 
 
-  {
-    copyTo(/* occa */ true);
+  if (cht) cds->mesh[0]->update(); 
+  mesh->update();
 
-    _mesh->update();
-    if (meshV != _mesh) meshV->update(); 
- 
-    auto projC0 = [&](oogs_t *gsh, mesh_t *mesh, int nFields, dlong fieldOffset, occa::memory &o_in) {
-      platform->linAlg->axmyMany(mesh->Nlocal, nFields, fieldOffset, 0, 1.0, mesh->o_LMM, o_in);
-      oogs::startFinish(o_in, nFields, fieldOffset, ogsDfloat, ogsAdd, gsh);
-      platform->linAlg->axmyMany(mesh->Nlocal, nFields, fieldOffset, 0, 1.0, mesh->o_invLMM, o_in);
-    };
- 
-    projC0(gsh, meshV, NVfields, fieldOffset, o_U);
- 
-    projC0(gsh, meshV, 1, fieldOffset, o_P);
- 
-    if (Nscalar) {
-      for (int s = 0; s < Nscalar; ++s) {
-        const std::string sid = scalarDigitStr(s);
-        if (platform->options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) {
-          continue;
-        }
-        auto gsh = (s == 0) ? cds->gshT : cds->gsh;
-        auto o_Si = cds->o_S + cds->fieldOffsetScan[s];
-        projC0(gsh, cds->mesh[s], 1, cds->fieldOffset[s], o_Si);
+  auto projC0 = [&](oogs_t *gsh, mesh_t *mesh, int nFields, dlong fieldOffset, occa::memory &o_in) {
+    platform->linAlg->axmyMany(mesh->Nlocal, nFields, fieldOffset, 0, 1.0, mesh->o_LMM, o_in);
+    oogs::startFinish(o_in, nFields, fieldOffset, ogsDfloat, ogsAdd, gsh);
+    platform->linAlg->axmyMany(mesh->Nlocal, nFields, fieldOffset, 0, 1.0, mesh->o_invLMM, o_in);
+  };
+
+  projC0(gsh, mesh, NVfields, fieldOffset, o_U);
+
+  projC0(gsh, mesh, 1, fieldOffset, o_P);
+
+  if (Nscalar) {
+    for (int s = 0; s < Nscalar; ++s) {
+      const std::string sid = scalarDigitStr(s);
+      if (platform->options.compareArgs("SCALAR" + sid + " SOLVER", "NONE")) {
+        continue;
       }
-    }
- 
-    if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-      _mesh->o_U.copyFrom(_mesh->U);
+      auto gsh = (s == 0) ? cds->gshT : cds->gsh;
+      auto o_Si = cds->o_S + cds->fieldOffsetScan[s];
+      projC0(gsh, cds->mesh[s], 1, cds->fieldOffset[s], o_Si);
     }
   }
 
   double startTime;
   platform->options.getArgs("START TIME", startTime);
+  copyToNek(startTime, 0, true); // ensure both codes are in sync 
 
-  ocopyToNek(startTime, 0); // ensure both codes see the same mesh + IC
+  nekrsCheck(platform->options.compareArgs("LOWMACH", "TRUE") && p0th[0] <= 1e-6,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "Unreasonable p0th value %g!", p0th[0]);
 }
 
 void nrs_t::printRunStat(int step)
@@ -1413,7 +1366,6 @@ void nrs_t::finalize()
 
 void nrs_t::makeNLT(double time, int tstep, occa::memory &o_Usubcycling)
 {
-  mesh_t *mesh = this->meshV;
   const int verbose = platform->options.compareArgs("VERBOSE", "TRUE");
   const int movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
@@ -1471,7 +1423,7 @@ void nrs_t::makeNLT(double time, int tstep, occa::memory &o_Usubcycling)
 
       platform->linAlg->axpby(this->NVfields * this->fieldOffset, -1.0, o_adv, 1.0, this->o_NLT);
 
-      advectionFlops(this->meshV, this->NVfields);
+      advectionFlops(this->mesh, this->NVfields);
     }
   }
 }
@@ -1557,33 +1509,6 @@ void nrs_t::printStepInfo(double time, int tstep, bool printStepInfo, bool print
       if (!printTimers) std::cout << std::endl;
     }
 
-    if (!verboseInfo) { // print basic solver stats
-      bool cvodePrinted = false;
-      for (int is = 0; is < this->Nscalar; is++) {
-        if (cds->compute[is] && !cds->cvodeSolve[is]) {
-          printf("  S: %d", cds->solver[is]->Niter());
-        } else if (cds->cvodeSolve[is] && !cvodePrinted) {
-          this->cds->cvode->printInfo(false);
-          cvodePrinted = true;
-        }
-      }
-
-      if (this->flow) {
-        printf("  P: %d", this->pSolver->Niter());
-        if (this->uvwSolver) {
-          printf("  UVW: %d", this->uvwSolver->Niter());
-        } else {
-          printf("  U: %d  V: %d  W: %d",
-                 this->uSolver->Niter(),
-                 this->vSolver->Niter(),
-                 this->wSolver->Niter());
-        }
-      }
-      if (this->meshSolver) {
-        printf("  MSH: %d", this->meshSolver->Niter());
-      }
-    }
-
     if (printTimers) {
       printf("  elapsedStep= %.2es  elapsedStepSum= %.5es\n", elapsedStep, elapsedStepSum);
     }
@@ -1606,17 +1531,10 @@ void nrs_t::printStepInfo(double time, int tstep, bool printStepInfo, bool print
 
 void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforceFP64, int N_, bool uniform)
 {
-  std::string outputMeshSave;
-  static bool firstTime = true;
-  if (firstTime) {
-    platform->options.getArgs("CHECKPOINT OUTPUT MESH", outputMeshSave);
-    platform->options.setArgs("CHECKPOINT OUTPUT MESH", "TRUE");
-  }
-
   const auto outXYZ = (enforceOutXYZ) ? true : platform->options.compareArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
   if (!checkpointWriter->isInitialized()) {
-    const auto visMesh = _mesh;
+    auto visMesh = (cht) ? cds->mesh[0] : mesh;
     checkpointWriter->open(visMesh, iofld::mode::write, platform->options.getArgs("CASENAME"));
 
     if (platform->options.compareArgs("LOWMACH", "TRUE"))
@@ -1624,7 +1542,7 @@ void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforce
 
     if (platform->options.compareArgs("VELOCITY CHECKPOINTING", "TRUE")) {
       std::vector<occa::memory> o_V;
-      for (int i = 0; i < meshV->dim; i++) {
+      for (int i = 0; i < mesh->dim; i++) {
         o_V.push_back(o_U.slice(i * fieldOffset, visMesh->Nlocal));
       }
       checkpointWriter->addVariable("velocity", o_V);
@@ -1670,11 +1588,6 @@ void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforce
   }
 
   checkpointWriter->process();
-
-  if (firstTime) {
-    platform->options.setArgs("CHECKPOINT OUTPUT MESH", outputMeshSave);
-    firstTime = false;
-  }
 }
 
 int nrs_t::lastStepLocalSession(double timeNew, int tstep, double elapsedTime)
@@ -1705,157 +1618,100 @@ int nrs_t::setLastStep(double timeNew, int tstep, double elapsedTime)
 {
   int last = lastStepLocalSession(timeNew, tstep, elapsedTime);
 
-  // disable for now as it breaks the neknek sync timer
-#if 0 
-  if (platform->options.compareArgs("NEKNEK MULTIRATE TIMESTEPPER", "TRUE")) {
-    MPI_Allreduce(MPI_IN_PLACE, &last, 1, MPI_INT, MPI_MAX, platform->comm.mpiCommParent);
-  }
-#endif
-
   lastStep = last;
   return last;
 }
 
-void nrs_t::copyToNek(double time)
+void nrs_t::copyToNek(double time, int tstep, bool updateMesh)
+{
+  *(nekData.istep) = tstep;
+  copyToNek(time, updateMesh);
+}
+
+void nrs_t::copyToNek(double time, bool updateMesh_)
 {
   if (platform->comm.mpiRank == 0) {
     printf("copying solution to nek\n");
     fflush(stdout);
   }
 
-  auto updateMesh = [&]()
-  {
-    for (int i = 0; i < _mesh->Nlocal; i++) {
-      nekData.xm1[i] = _mesh->x[i];
-      nekData.ym1[i] = _mesh->y[i];
-      nekData.zm1[i] = _mesh->z[i];
-    }
-    nek::recomputeGeometry();
-  };
-
-  if (*(nekData.istep) == 0) {
-    updateMesh();
-  }
-
-  auto mesh = meshV;
-  const dlong Nlocal = mesh->Nelements * mesh->Np;
-
-  auto vx = U + 0 * fieldOffset;
-  auto vy = U + 1 * fieldOffset;
-  auto vz = U + 2 * fieldOffset;
-
   *(nekData.time) = time;
   *(nekData.p0th) = p0th[0];
 
-  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    auto mesh = meshV;
-    if (cht) {
-      mesh = cds->mesh[0];
+  auto updateMesh = [&]()
+  {
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
+
+    auto [x, y, z] = mesh->xyzHost();
+    for (int i = 0; i < mesh->Nlocal; i++) {
+      nekData.xm1[i] = x[i];
+      nekData.ym1[i] = y[i];
+      nekData.zm1[i] = z[i];
     }
-    const dlong Nlocal = mesh->Nelements * mesh->Np;
-    auto wx = mesh->U + 0 * fieldOffset;
-    auto wy = mesh->U + 1 * fieldOffset;
-    auto wz = mesh->U + 2 * fieldOffset;
-    for (int i = 0; i < Nlocal; i++) {
+    nek::recomputeGeometry(); 
+  };
+
+  {
+    auto U = platform->memPool.reserve<dfloat>(mesh->dim * fieldOffset);
+    o_U.copyTo(U, U.size());
+    auto vx = U.ptr<dfloat>() + 0 * fieldOffset;
+    auto vy = U.ptr<dfloat>() + 1 * fieldOffset;
+    auto vz = U.ptr<dfloat>() + 2 * fieldOffset;
+    for (int i = 0; i < mesh->Nlocal; i++) {
+      nekData.vx[i] = vx[i];
+      nekData.vy[i] = vy[i];
+      nekData.vz[i] = vz[i];
+    }
+  }
+
+  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
+
+    auto U = platform->memPool.reserve<dfloat>(mesh->dim * fieldOffset);
+    mesh->o_U.copyTo(U, U.size());
+    auto wx = U.ptr<dfloat>() + 0 * fieldOffset;
+    auto wy = U.ptr<dfloat>() + 1 * fieldOffset;
+    auto wz = U.ptr<dfloat>() + 2 * fieldOffset;
+    for (int i = 0; i < mesh->Nlocal; i++) {
       nekData.wx[i] = wx[i];
       nekData.wy[i] = wy[i];
       nekData.wz[i] = wz[i];
     }
-    updateMesh();
+    updateMesh_ = true;
   }
 
-  for (int i = 0; i < Nlocal; i++) {
-    nekData.vx[i] = vx[i];
-    nekData.vy[i] = vy[i];
-    nekData.vz[i] = vz[i];
-    nekData.pr[i] = P[i];
+  if (updateMesh_) updateMesh();
+
+  {
+    auto P = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+    o_P.copyTo(P, P.size());
+    auto Pptr = P.ptr<dfloat>(); 
+    for (int i = 0; i < mesh->Nlocal; i++) {
+      nekData.pr[i] = Pptr[i];
+    }
   }
+
   if (Nscalar) {
-    const dlong nekFieldOffset = nekData.lelt * mesh->Np;
+    const dlong nekFieldOffset = nekData.lelt * std::pow(nekData.nx1, nekData.ndim);
     for (int is = 0; is < Nscalar; is++) {
-      mesh_t *mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
-      const dlong Nlocal = mesh->Nelements * mesh->Np;
+      auto mesh = cds->mesh[is];
+
+      auto S = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+      cds->o_S.copyTo(S, S.size(), 0, cds->fieldOffsetScan[is]);
+
+      auto Sptr = S.ptr<dfloat>(); 
       auto Ti = nekData.t + is * nekFieldOffset;
-      auto Si = cds->S + cds->fieldOffsetScan[is];
-      for (int i = 0; i < Nlocal; i++) {
-        Ti[i] = Si[i];
+      for (int i = 0; i < mesh->Nlocal; i++) {
+        Ti[i] = Sptr[i];
       }
     }
   }
 }
 
-void nrs_t::ocopyToNek()
+void nrs_t::copyFromNek()
 {
-  o_U.copyTo(U);
-  o_P.copyTo(P);
-  if (Nscalar) {
-    cds->o_S.copyTo(cds->S);
-  }
-  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    auto mesh = meshV;
-    if (cht) {
-      mesh = cds->mesh[0];
-    }
-    mesh->o_U.copyTo(mesh->U);
-    mesh->o_x.copyTo(mesh->x);
-    mesh->o_y.copyTo(mesh->y);
-    mesh->o_z.copyTo(mesh->z);
-  }
-  copyToNek(0.0);
-}
-
-void nrs_t::ocopyToNek(double time, int tstep)
-{
-  if (tstep == 0) {
-    auto mesh = _mesh;
-    mesh->o_x.copyTo(mesh->x);
-    mesh->o_y.copyTo(mesh->y);
-    mesh->o_z.copyTo(mesh->z);
-  }
-
-  o_U.copyTo(U);
-  o_P.copyTo(P);
-  if (Nscalar) {
-    cds->o_S.copyTo(cds->S);
-  }
-  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    auto mesh = meshV;
-    if (cht) {
-      mesh = cds->mesh[0];
-    }
-    mesh->o_U.copyTo(mesh->U);
-    mesh->o_x.copyTo(mesh->x);
-    mesh->o_y.copyTo(mesh->y);
-    mesh->o_z.copyTo(mesh->z);
-  }
-  copyToNek(time, tstep);
-}
-
-void nrs_t::copyToNek(double time, int tstep)
-{
-  *(nekData.istep) = tstep;
-  copyToNek(time);
-}
-
-void nrs_t::ocopyFromNek(double &time)
-{
+  double time; // dummy
   copyFromNek(time);
-  o_P.copyFrom(P);
-  o_U.copyFrom(U);
-  if (Nscalar) {
-    cds->o_S.copyFrom(cds->S);
-  }
-  if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    auto mesh = meshV;
-    if (cht) {
-      mesh = cds->mesh[0];
-    }
-    mesh->o_x.copyFrom(mesh->x);
-    mesh->o_y.copyFrom(mesh->y);
-    mesh->o_z.copyFrom(mesh->z);
-    mesh->o_U.copyFrom(mesh->U);
-  }
 }
 
 void nrs_t::copyFromNek(double &time)
@@ -1865,61 +1721,59 @@ void nrs_t::copyFromNek(double &time)
     fflush(stdout);
   }
 
-  auto mesh = meshV;
-  dlong Nlocal = mesh->Nelements * mesh->Np;
-
   time = *(nekData.time);
   p0th[0] = *(nekData.p0th);
 
-  auto vx = U + 0 * fieldOffset;
-  auto vy = U + 1 * fieldOffset;
-  auto vz = U + 2 * fieldOffset;
-
-  for (int i = 0; i < Nlocal; i++) {
-    vx[i] = nekData.vx[i];
-    vy[i] = nekData.vy[i];
-    vz[i] = nekData.vz[i];
+  {
+    auto U = platform->memPool.reserve<dfloat>(mesh->dim * fieldOffset);
+    auto vx = U.ptr<dfloat>() + 0 * fieldOffset;
+    auto vy = U.ptr<dfloat>() + 1 * fieldOffset;
+    auto vz = U.ptr<dfloat>() + 2 * fieldOffset;
+    for (int i = 0; i < mesh->Nlocal; i++) {
+      vx[i] = nekData.vx[i];
+      vy[i] = nekData.vy[i];
+      vz[i] = nekData.vz[i];
+    }
+    o_U.copyFrom(U, U.size());
   }
 
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
-    auto mesh = meshV;
-    if (cht) {
-      mesh = cds->mesh[0];
-    }
+    auto mesh = (cht) ? cds->mesh[0] : this->mesh;
 
-    const dlong Nlocal = mesh->Nelements * mesh->Np;
-
-    auto wx = mesh->U + 0 * fieldOffset;
-    auto wy = mesh->U + 1 * fieldOffset;
-    auto wz = mesh->U + 2 * fieldOffset;
-
-    for (int i = 0; i < Nlocal; i++) {
+    auto U = platform->memPool.reserve<dfloat>(mesh->dim * fieldOffset);
+    auto wx = U.ptr<dfloat>() + 0 * fieldOffset;
+    auto wy = U.ptr<dfloat>() + 1 * fieldOffset;
+    auto wz = U.ptr<dfloat>() + 2 * fieldOffset;
+    for (int i = 0; i < mesh->Nlocal; i++) {
       wx[i] = nekData.wx[i];
       wy[i] = nekData.wy[i];
       wz[i] = nekData.wz[i];
-
-      nekData.xm1[i] = mesh->x[i];
-      nekData.ym1[i] = mesh->y[i];
-      nekData.zm1[i] = mesh->z[i];
     }
-    nek::recomputeGeometry();
+    mesh->o_U.copyFrom(U, U.size());
   }
 
-  for (int i = 0; i < Nlocal; i++) {
-    P[i] = nekData.pr[i];
+  {
+    auto P = platform->memPool.reserve<dfloat>(o_P.size());
+    auto Pptr = P.ptr<dfloat>(); 
+    for (int i = 0; i < mesh->Nlocal; i++) {
+      Pptr[i] = nekData.pr[i];
+    }
+    o_P.copyFrom(P, P.size());
   }
 
   if (Nscalar) {
-    const dlong nekFieldOffset = nekData.lelt * mesh->Np;
+    const dlong nekFieldOffset = nekData.lelt * std::pow(nekData.nx1, nekData.ndim);
     for (int is = 0; is < Nscalar; is++) {
-      mesh_t *mesh;
-      (is) ? mesh = cds->meshV : mesh = cds->mesh[0];
-      const dlong Nlocal = mesh->Nelements * mesh->Np;
+      auto mesh = cds->mesh[is];
       auto Ti = nekData.t + is * nekFieldOffset;
-      auto Si = cds->S + cds->fieldOffsetScan[is];
-      for (int i = 0; i < Nlocal; i++) {
-        Si[i] = Ti[i];
+
+      auto S = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+
+      auto Sptr = S.ptr<dfloat>(); 
+      for (int i = 0; i < mesh->Nlocal; i++) {
+        Sptr[i] = Ti[i];
       }
+      cds->o_S.copyFrom(S, S.size(), cds->fieldOffsetScan[is], 0);
     }
   }
 }

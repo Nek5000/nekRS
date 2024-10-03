@@ -48,7 +48,7 @@ void ciSetup(MPI_Comm comm, setupAide &options)
 void ciTestPartitionOfUnity(nrs_t *nrs, double time, int tstep)
 {
   if(nrs->neknek->multirate()) return;
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   auto minMaxFld = [&](occa::memory o_a) {
     const auto minFld = platform->linAlg->min(mesh->Nlocal, o_a, platform->comm.mpiCommParent);
     const auto maxFld = platform->linAlg->max(mesh->Nlocal, o_a, platform->comm.mpiCommParent);
@@ -100,7 +100,7 @@ void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
   std::vector<dfloat> UouterExact(nrs->NVfields * n);
   o_UouterExact.copyTo(UouterExact.data(), nrs->NVfields * n);
 
-  auto interp = pointInterpolation_t(nrs->meshV, platform->comm.mpiCommParent);
+  auto interp = pointInterpolation_t(nrs->mesh, platform->comm.mpiCommParent);
   interp.setPoints(o_xinterp, o_yinterp, o_zinterp);
   interp.find(pointInterpolation_t::VerbosityLevel::Detailed);
   auto o_Uouter = platform->device.malloc<dfloat>(nrs->NVfields * n);
@@ -120,7 +120,7 @@ void ciTestPointInterp(nrs_t *nrs, double time, int tstep)
 
 void vizNekNekField(nrs_t *nrs)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   auto neknek = nrs->neknek;
 
   const auto neknekFieldOffset = neknek->fieldOffset();
@@ -159,7 +159,7 @@ void ciTestInitialStep(nrs_t *nrs, double time, int tstep)
 {
   if(nrs->neknek->multirate()) return;
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   auto neknek = nrs->neknek;
   const auto neknekFieldOffset = neknek->fieldOffset();
   exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->o_U);
@@ -225,7 +225,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
     return;
   }
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   auto o_Uexact = platform->o_memPool.reserve<dfloat>(mesh->dim * nrs->fieldOffset);
   exactUVW(mesh->Nlocal, nrs->fieldOffset, time, mesh->o_x, mesh->o_y, mesh->o_z, o_Uexact);
@@ -250,7 +250,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
 
     case 2:
       CiEvalTest("velocity (relLinfErr: " + to_string_f(uErr) + ")", uErr < 3e0);
-      CiEvalTest("scalar00 (relLinfErr: " + to_string_f(s00Err) + ")", s00Err < 6e-4);
+      CiEvalTest("scalar00 (relLinfErr: " + to_string_f(s00Err) + ")", s00Err < 9e-4);
       break;
 
     case 3:

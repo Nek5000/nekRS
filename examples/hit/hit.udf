@@ -26,7 +26,7 @@ static dfloat A;
 
 deviceMemory<dfloat> implicitForcing(dfloat time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   poolDeviceMemory<dfloat> o_F(mesh->Nlocal);
   platform->linAlg->fill(o_F.size(), -A, o_F);
@@ -41,7 +41,7 @@ void linearForcing(dfloat time)
   const auto invTau0 = uPrime / l;
   const auto k0 = 1.5 * uPrime * uPrime;
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   auto avg = [&](auto o_u)
   { 
@@ -129,61 +129,38 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup()
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   nrs->userVelocitySource = &linearForcing;
   nrs->userVelocityImplicitLinearTerm = &implicitForcing;
 
-  auto rescaleMesh = [&](dfloat x0, dfloat x1, mesh_t *mesh) 
-  {
-    const auto Nlocal = mesh->Nlocal;
+  platform->linAlg->rescale(-L/2, L/2, mesh->o_x, platform->comm.mpiComm);
+  platform->linAlg->rescale(-L/2, L/2, mesh->o_y, platform->comm.mpiComm);
+  platform->linAlg->rescale(-L/2, L/2, mesh->o_z, platform->comm.mpiComm);
 
-    auto xMin = platform->linAlg->min(Nlocal, mesh->o_x, platform->comm.mpiComm);
-    auto xMax = platform->linAlg->max(Nlocal, mesh->o_x, platform->comm.mpiComm);
-    auto scaleX = (x1 - x0) / (xMax - xMin);
-
-    auto yMin = platform->linAlg->min(Nlocal, mesh->o_y, platform->comm.mpiComm);
-    auto yMax = platform->linAlg->max(Nlocal, mesh->o_y, platform->comm.mpiComm);
-    auto scaleY = (x1 - x0) / (yMax - yMin);
-
-    auto zMin = platform->linAlg->min(Nlocal, mesh->o_z, platform->comm.mpiComm);
-    auto zMax = platform->linAlg->max(Nlocal, mesh->o_z, platform->comm.mpiComm);
-    auto scaleZ = (x1 - x0) / (zMax - zMin);
-
-    for(int i = 0; i < Nlocal; i++) {
-      mesh->x[i] = x0 + scaleX * (mesh->x[i] - xMin);
-      mesh->y[i] = x0 + scaleY * (mesh->y[i] - yMin);
-      mesh->z[i] = x0 + scaleZ * (mesh->z[i] - zMin);
-    }
-  };
-
-  rescaleMesh(-L/2, L/2, nrs->meshV); 
-
-  // set IC
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
- 
     const auto eps = 0.1;
     const auto kx = 23.0;
     const auto kz = 13.0;
     const auto alpha = kx;
     const auto beta = kz;
 
-    for (int n = 0; n < mesh->Nlocal; n++) {
-      const auto x = mesh->x[n];
-      const auto y = mesh->y[n];
-      const auto z = mesh->z[n];
+    auto [x, y, z] = mesh->xyzHost();
 
-      nrs->U[n + 0 * nrs->fieldOffset] =  eps * beta  * sin(alpha * x) * cos(beta * z);
-      nrs->U[n + 1 * nrs->fieldOffset] =  eps         * sin(alpha * x) * sin(beta * z);
-      nrs->U[n + 2 * nrs->fieldOffset] = -eps * alpha * cos(alpha * x) * sin(beta * z);
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      U[n + 0 * nrs->fieldOffset] =  eps * beta  * sin(alpha * x[n]) * cos(beta * z[n]);
+      U[n + 1 * nrs->fieldOffset] =  eps         * sin(alpha * x[n]) * sin(beta * z[n]);
+      U[n + 2 * nrs->fieldOffset] = -eps * alpha * cos(alpha * x[n]) * sin(beta * z[n]);
     }
+    nrs->o_U.copyFrom(U.data(), U.size());
   }
   o_qcriterion.resize(mesh->Nlocal);
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-   if (nrs->isCheckpointStep) {
+   if (nrs->checkpointStep) {
      nrs->Qcriterion(o_qcriterion);
    }
 }

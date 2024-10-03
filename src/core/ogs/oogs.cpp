@@ -1022,7 +1022,7 @@ void oogs::finish(occa::memory &o_v,
     ogsHostToc();
   }
 
-  if (!gs->mode == OOGS_LOCAL)
+  if (gs->mode != OOGS_LOCAL)
     unpackBuf(gs,
               ogs->NhaloGather,
               k,

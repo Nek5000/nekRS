@@ -199,7 +199,7 @@ void meshLoadKernels(mesh_t *mesh)
   }
 }
 
-mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &kernelInfo)
+std::pair<mesh_t*, mesh_t*> createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &kernelInfo)
 {
   int rank, size;
   MPI_Comm_rank(comm, &rank);
@@ -244,17 +244,8 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
 
   meshLoadKernels(mesh);
 
-  // set up halo exchange info for MPI (do before connect face nodes)
-  meshHaloSetup(mesh);
-
-  // compute physical (x,y) locations of the element nodes
   meshPhysicalNodesHex3D(mesh);
-  meshHaloPhysicalNodes(mesh);
-  mesh->o_x.copyFrom(mesh->x);
-  mesh->o_y.copyFrom(mesh->y);
-  mesh->o_z.copyFrom(mesh->z);
 
-  // connect face nodes (vmapM)
   meshConnectFaceNodes3D(mesh);
 
   meshOccaSetup3D(mesh, platform->options, kernelInfo);
@@ -334,12 +325,12 @@ mesh_t *createMesh(MPI_Comm comm, int N, int cubN, bool cht, occa::properties &k
     }
   }
 
-  mesh->fluid = mesh;
+  mesh_t* meshV = nullptr;
   if (mesh->cht) {
-    mesh->fluid = createMeshV(comm, N, cubN, mesh, kernelInfo);
+    meshV = createMeshV(comm, N, cubN, mesh, kernelInfo);
   }
 
-  return mesh;
+  return {mesh, meshV};
 }
 
 mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
@@ -385,13 +376,7 @@ mesh_t *createMeshMG(mesh_t *_mesh, int Nc)
 
   mesh->o_ggeo = platform->device.malloc<dfloat>(mesh->Nlocal * mesh->Nggeo);
 
-  meshHaloSetup(mesh);
-
   meshPhysicalNodesHex3D(mesh);
-  meshHaloPhysicalNodes(mesh);
-  mesh->o_x = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->x);
-  mesh->o_y = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->y);
-  mesh->o_z = platform->device.malloc<dfloat>(mesh->Nlocal, mesh->z);
 
   meshConnectFaceNodes3D(mesh);
 
@@ -441,7 +426,7 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
     printf("generating v-mesh ...\n");
   }
 
-  // derive from meshT using shallow copy
+  // derive from meshT using shallow copy and adjust only what is needed
   memcpy(mesh, meshT, sizeof(*meshT));
   mesh->cht = 0;
 
@@ -461,11 +446,6 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
   // find mesh->EToP, mesh->EToE and mesh->EToF, required mesh->EToV
   meshParallelConnect(mesh);
 
-  // set up halo exchange info for MPI (do before connect face nodes)
-  meshHaloSetup(mesh);
-  meshHaloPhysicalNodes(mesh);
-
-  // connect face nodes (find trace indices)
   // find vmapM, based on EToE and EToF
   meshConnectFaceNodes3D(mesh);
 
@@ -534,21 +514,6 @@ mesh_t *createMeshV(MPI_Comm comm, int N, int cubN, mesh_t *meshT, occa::propert
 
 static void meshVOccaSetup3D(mesh_t *mesh, occa::properties &kernelInfo)
 {
-  if (mesh->totalHaloPairs > 0) {
-    // copy halo element list to DEVICE
-    mesh->o_haloElementList = platform->device.malloc<dlong>(mesh->totalHaloPairs, mesh->haloElementList);
-
-    // temporary DEVICE buffer for halo (maximum size Nfields*Np for dfloat)
-    mesh->o_haloBuffer = platform->device.malloc<dfloat>(mesh->totalHaloPairs * mesh->Np * mesh->Nfields);
-
-    // node ids
-    mesh->o_haloGetNodeIds =
-        platform->device.malloc<dlong>(mesh->Nfp * mesh->totalHaloPairs, mesh->haloGetNodeIds);
-
-    mesh->o_haloPutNodeIds =
-        platform->device.malloc<dlong>(mesh->Nfp * mesh->totalHaloPairs, mesh->haloPutNodeIds);
-  }
-
   mesh->o_EToB = platform->device.malloc<int>(mesh->Nelements * mesh->Nfaces, mesh->EToB);
   mesh->o_vmapM = platform->device.malloc<dlong>(mesh->Nelements * mesh->Nfp * mesh->Nfaces, mesh->vmapM);
   mesh->o_invLMM = platform->device.malloc<dfloat>(mesh->Nelements * mesh->Np);

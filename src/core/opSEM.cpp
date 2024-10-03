@@ -90,11 +90,13 @@ occa::memory strongDivergence(mesh_t *mesh, dlong offset, const occa::memory &o_
 
 void laplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda, const occa::memory &o_in, occa::memory& o_out)
 {
+  static occa::memory o_fieldOffsetScan;
   static occa::kernel kernel;
   if (!kernel.isInitialized()) {
     kernel = platform->kernelRequests.load(section + "weakLaplacian" + suffix);
+    o_fieldOffsetScan = platform->device.malloc<dlong>(1);
   }
-  kernel(mesh->Nelements, 1, 0, mesh->o_ggeo, mesh->o_D, o_lambda, o_in, o_out);
+  kernel(mesh->Nelements, 1, o_fieldOffsetScan, mesh->o_ggeo, mesh->o_D, o_lambda, o_in, o_out);
 }
 
 occa::memory laplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda, const occa::memory &o_in)
@@ -107,10 +109,14 @@ occa::memory laplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda,
 void
 strongLaplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda, const occa::memory &o_in, occa::memory& o_out)
 {
-  auto o_tmp = strongGrad(mesh, offset, o_in);
-  oogs::startFinish(o_tmp, mesh->dim, offset, ogsDfloat, ogsAdd, mesh->oogs);
-  platform->linAlg->axmyVector(mesh->Nlocal, offset, 0, 1.0, mesh->o_invAJw, o_tmp);
-  o_out = strongDivergence(mesh, offset, o_tmp);
+  auto o_grad = strongGrad(mesh, offset, o_in);
+  oogs::startFinish(o_grad, mesh->dim, offset, ogsDfloat, ogsAdd, mesh->oogs);
+
+  auto o_tmp = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  platform->linAlg->axmyz(mesh->Nlocal, 1.0, mesh->o_invAJw, o_lambda, o_tmp);
+  platform->linAlg->axmyVector(mesh->Nlocal, offset, 0, 1.0, o_tmp, o_grad);
+  
+  o_out = strongDivergence(mesh, offset, o_grad);
 }
 
 occa::memory

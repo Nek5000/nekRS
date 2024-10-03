@@ -48,10 +48,14 @@ pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
       ? std::max(5e-13, newton_tol_)
       : std::max(1e-6, newton_tol_);
 
+  auto x = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+  auto y = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+  auto z = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+
   if (mySession) {
-    mesh->o_x.copyTo(mesh->x, mesh->Nlocal);
-    mesh->o_y.copyTo(mesh->y, mesh->Nlocal);
-    mesh->o_z.copyTo(mesh->z, mesh->Nlocal);
+    mesh->o_x.copyTo(x, mesh->Nlocal);
+    mesh->o_y.copyTo(y, mesh->Nlocal);
+    mesh->o_z.copyTo(z, mesh->Nlocal);
   }
 
   std::vector<dfloat> distanceINT;
@@ -69,10 +73,14 @@ pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
   int sessionID = 0;
   platform->options.getArgs("NEKNEK SESSION ID", sessionID);
 
+  auto xPtr = x.ptr<dfloat>();
+  auto yPtr = y.ptr<dfloat>();
+  auto zPtr = z.ptr<dfloat>();
+
   findpts_ = std::make_unique<findpts::findpts_t>(comm,
-                                                  mySession ? mesh->x : nullptr,
-                                                  mySession ? mesh->y : nullptr,
-                                                  mySession ? mesh->z : nullptr,
+                                                  mySession ? xPtr : nullptr,
+                                                  mySession ? yPtr : nullptr,
+                                                  mySession ? zPtr : nullptr,
                                                   mesh->Nq,
                                                   mySession ? mesh->Nelements : 0,
                                                   2 * mesh->Nq,

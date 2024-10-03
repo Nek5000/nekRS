@@ -1,7 +1,7 @@
 function(add_adios)
 
 if(NOT "${ADIOS2_INSTALL_DIR}" STREQUAL "")
-  find_package(adios2 HINTS ${ADIOS2_INSTALL_DIR})
+  find_package(adios2 PATHS ${ADIOS2_INSTALL_DIR} NO_DEFAULT_PATH)
 endif()
 
 if (NOT ADIOS2_FOUND) 
@@ -11,7 +11,9 @@ if (NOT ADIOS2_FOUND)
   set(ADIOS2_USE_Fortran "FALSE")
   set(ADIOS2_USE_Kokkos "FALSE")
   set(ADIOS2_USE_Python "FALSE")
+  set(ADIOS2_USE_Derived_Variable "FALSE")
   set(ADIOS2_INSTALL_GENERATE_CONFIG "FALSE")
+  set(ADIOS2_USE_Campaign "FALSE")
   set(ADIOS2_RUN_INSTALL_TEST FALSE)
   add_subdirectory(3rd_party/adios)
   set(ADIOS2_INSTALL_DIR ${CMAKE_INSTALL_PREFIX} PARENT_SCOPE)

@@ -67,6 +67,8 @@ void harmonic_mean_element_length(ElementLengths *lengths, elliptic_t *elliptic)
   const int nx = (Nq == 2) ? Nq : Nq - 1;
   const int start = (Nq == 2) ? 0 : 1;
 
+  auto [x, y, z] = mesh->xyzHost();
+
   // In Nq == 2 case, there are no element interior dofs.
   // Therefore, the lengths must be calculated using the boundary of the element.
   // Further, gllw = [0.5, 0.5] in this case, so the weights are not needed.
@@ -80,9 +82,9 @@ void harmonic_mean_element_length(ElementLengths *lengths, elliptic_t *elliptic)
         const dlong i2jk = i2 + j * Nq + k * Nq * Nq + elem_offset;
         const dlong i1jk = i1 + j * Nq + k * Nq * Nq + elem_offset;
         const double weight = (Nq == 2) ? 1.0 : w[j - 1] * w[k - 1];
-        const double dist_x = mesh->x[i2jk] - mesh->x[i1jk];
-        const double dist_y = mesh->y[i2jk] - mesh->y[i1jk];
-        const double dist_z = mesh->z[i2jk] - mesh->z[i1jk];
+        const double dist_x = x[i2jk] - x[i1jk];
+        const double dist_y = y[i2jk] - y[i1jk];
+        const double dist_z = z[i2jk] - z[i1jk];
         const double denom = dist_x * dist_x + dist_y * dist_y + dist_z * dist_z;
         lr2 += weight / denom;
         wsum += weight;
@@ -99,9 +101,9 @@ void harmonic_mean_element_length(ElementLengths *lengths, elliptic_t *elliptic)
         const dlong ij2k = i + j2 * Nq + k * Nq * Nq + elem_offset;
         const dlong ij1k = i + j1 * Nq + k * Nq * Nq + elem_offset;
         const double weight = (Nq == 2) ? 1.0 : w[i - 1] * w[k - 1];
-        const double dist_x = mesh->x[ij2k] - mesh->x[ij1k];
-        const double dist_y = mesh->y[ij2k] - mesh->y[ij1k];
-        const double dist_z = mesh->z[ij2k] - mesh->z[ij1k];
+        const double dist_x = x[ij2k] - x[ij1k];
+        const double dist_y = y[ij2k] - y[ij1k];
+        const double dist_z = z[ij2k] - z[ij1k];
         const double denom = dist_x * dist_x + dist_y * dist_y + dist_z * dist_z;
         ls2 += weight / denom;
         wsum += weight;
@@ -118,9 +120,9 @@ void harmonic_mean_element_length(ElementLengths *lengths, elliptic_t *elliptic)
         const dlong ijk2 = i + j * Nq + k2 * Nq * Nq + elem_offset;
         const dlong ijk1 = i + j * Nq + k1 * Nq * Nq + elem_offset;
         const double weight = (Nq == 2) ? 1.0 : w[i - 1] * w[j - 1];
-        const double dist_x = mesh->x[ijk2] - mesh->x[ijk1];
-        const double dist_y = mesh->y[ijk2] - mesh->y[ijk1];
-        const double dist_z = mesh->z[ijk2] - mesh->z[ijk1];
+        const double dist_x = x[ijk2] - x[ijk1];
+        const double dist_y = y[ijk2] - y[ijk1];
+        const double dist_z = z[ijk2] - z[ijk1];
         const double denom = dist_x * dist_x + dist_y * dist_y + dist_z * dist_z;
         lt2 += weight / denom;
         wsum += weight;
@@ -717,9 +719,7 @@ mesh_t *create_extended_mesh(elliptic_t *elliptic, hlong *maskedGlobalIds)
   memcpy(mesh->EToB, meshRoot->EToB, mesh->Nfaces * mesh->Nelements * sizeof(int));
 
   meshLoadReferenceNodesHex3D(mesh, mesh->N, 1);
-  meshHaloSetup(mesh);
   meshPhysicalNodesHex3D(mesh);
-  meshHaloPhysicalNodes(mesh);
   meshConnectFaceNodes3D(mesh);
   meshGlobalIds(mesh);
 

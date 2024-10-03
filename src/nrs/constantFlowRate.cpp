@@ -44,8 +44,7 @@ dfloat flowDirection[3];
 
 void compute(nrs_t *nrs, double time)
 {
-
-  mesh_t *mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   double flops = 0.0;
 
@@ -140,7 +139,7 @@ void compute(nrs_t *nrs, double time)
 bool checkIfRecompute(nrs_t *nrs, int tstep)
 {
 
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->mesh;
 
   constexpr int nPropertyFields = 2;
   const dfloat TOL = 1e-6;
@@ -191,7 +190,7 @@ bool checkIfRecomputeDirection(nrs_t *nrs, int tstep)
 
 void nrs_t::flowRatePrintInfo(bool verboseInfo)
 {
-  auto mesh = this->meshV;
+  auto mesh = this->mesh;
 
   if (platform->comm.mpiRank != 0) {
     return;
@@ -217,7 +216,7 @@ void nrs_t::flowRatePrintInfo(bool verboseInfo)
     err = std::abs(userSpecifiedFlowRate - finalFlowRate);
   }
   if (verboseInfo) {
-    printf("flowRate : %s0 %.2e  %s %.2e  err %.2e  scale %.5e\n",
+    printf("flowRate  : %s0 %.2e  %s %.2e  err %.2e  scale %.5e\n",
            flowRateType.c_str(),
            currentRate,
            flowRateType.c_str(),
@@ -231,7 +230,7 @@ bool nrs_t::adjustFlowRate(int tstep, double time)
 {
   double flops = 0.0;
 
-  mesh_t *mesh = this->meshV;
+  mesh_t *mesh = this->mesh;
   platform->options.getArgs("FLOW RATE", flowRate);
 
   const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");

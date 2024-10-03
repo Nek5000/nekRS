@@ -140,7 +140,7 @@ void iofldAdios::putVariableConvert(const std::vector<occa::memory> &o_fld, occa
   nekrsCheck(dim_fld != 1 && dim_fld != 3,
              MPI_COMM_SELF,
              EXIT_FAILURE,
-             "%s %d\n",
+             "%s %zu\n",
              "invalid field dimension=",
              dim_fld);
 
@@ -158,7 +158,7 @@ void iofldAdios::putVariableConvert(const std::vector<occa::memory> &o_fld, occa
 
       auto o_tmp = platform->o_memPool.reserve<dfloat>(mesh_vis->Nlocal);
       if (uniform) {
-        mesh->map2Uniform(o_fld[dim_i], mesh_vis, o_tmp);
+        mesh->interpolate(o_fld[dim_i], mesh_vis, o_tmp, true);
       } else {
         mesh->interpolate(o_fld[dim_i], mesh_vis, o_tmp);
       }

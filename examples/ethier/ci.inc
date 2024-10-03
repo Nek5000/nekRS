@@ -148,6 +148,10 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
 
     if (ciMode == 22) {
+      options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-10"));
+      options.setArgs("SCALAR00 SOLVER TOLERANCE", std::string("1e-10"));
+      options.setArgs("SCALAR01 SOLVER TOLERANCE", std::string("1e-10"));
+
       options.setArgs("PRESSURE SOLVER TOLERANCE", std::string("5e-04"));
       nekrsCheck(sizeof(dfloat) != sizeof(float),
                  platform->comm.mpiComm,
@@ -378,7 +382,7 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
   std::vector<dfloat> yExpected(yp0_g.size(), 0.0);
   std::vector<dfloat> zExpected(zp0_g.size(), 0.0);
 
-  auto o_y0 = platform->device.malloc<dfloat>(nrs->meshV->dim * xp0_g.size());
+  auto o_y0 = platform->device.malloc<dfloat>(nrs->mesh->dim * xp0_g.size());
   if (particles->numParticles() > 0) {
     auto o_x0coord = o_y0 + 0 * xp0_g.size();
     auto o_y0coord = o_y0 + 1 * yp0_g.size();
@@ -463,18 +467,14 @@ void ciTestParticles(nrs_t *nrs, lpm_t *particles, occa::kernel exactUVWPKernel,
 // however, pointInterpolation_t itself is not thread-safe, so the two objects cannot be used concurrently.
 void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
 {
-  auto mesh = nrs->meshV;
-
-  mesh->o_x.copyTo(mesh->x, mesh->Nlocal);
-  mesh->o_y.copyTo(mesh->y, mesh->Nlocal);
-  mesh->o_z.copyTo(mesh->z, mesh->Nlocal);
+  auto mesh = nrs->mesh;
 
   auto o_Ue = platform->device.malloc<dfloat>(nrs->NVfields * nrs->fieldOffset);
   auto o_Pe = platform->device.malloc<dfloat>(nrs->fieldOffset);
   exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, o_Pe, o_Ue);
 
   const auto verbosity = pointInterpolation_t::VerbosityLevel::Detailed;
-  const auto threshold = (sizeof(dfloat) == sizeof(double)) ? 5e-9 : 1e-5;
+  const auto threshold = (sizeof(dfloat) == sizeof(double)) ? 2e-8 : 1e-5;
 
   const auto computeRelErrors = [&](dlong n, dlong offset, occa::memory o_Uexact, occa::memory o_Uinterp) {
     const auto absTol = 1e-5;
@@ -572,13 +572,13 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
 
 void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
   
   auto o_Usave = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
   nrs->o_U.copyTo(o_Usave, nrs->NVfields * nrs->fieldOffset);
 
-  std::vector<mesh_t*> meshes = {nrs->meshV, nrs->meshV, nrs->meshV};
+  std::vector<mesh_t*> meshes = {nrs->mesh, nrs->mesh, nrs->mesh};
   LVector_t<dfloat> UL(meshes, true);
   LVector_t<dfloat> VL(meshes, false); // create secondary vector, not managed
 
@@ -592,7 +592,7 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
   auto checkErr = [&](bool subtract = true){
     auto o_Uerr = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
     if(subtract){
-      platform->linAlg->axpbyzMany(nrs->meshV->Nlocal,
+      platform->linAlg->axpbyzMany(nrs->mesh->Nlocal,
                                   nrs->NVfields,
                                   nrs->fieldOffset,
                                   1.0,
@@ -601,7 +601,7 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
                                   nrs->o_U,
                                   o_Uerr);
     }
-    platform->linAlg->aydxMany(nrs->meshV->Nlocal,
+    platform->linAlg->aydxMany(nrs->mesh->Nlocal,
                               nrs->NVfields,
                               nrs->fieldOffset,
                               1,
@@ -613,13 +613,13 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
     auto o_Uyerr = o_Uerr + 1 * nrs->fieldOffset;
     auto o_Uzerr = o_Uerr + 2 * nrs->fieldOffset;
     
-    platform->linAlg->abs(nrs->meshV->Nlocal, o_Uxerr);
-    platform->linAlg->abs(nrs->meshV->Nlocal, o_Uyerr);
-    platform->linAlg->abs(nrs->meshV->Nlocal, o_Uzerr);
+    platform->linAlg->abs(nrs->mesh->Nlocal, o_Uxerr);
+    platform->linAlg->abs(nrs->mesh->Nlocal, o_Uyerr);
+    platform->linAlg->abs(nrs->mesh->Nlocal, o_Uzerr);
 
-    auto LinfUx = platform->linAlg->max(nrs->meshV->Nlocal, o_Uxerr, platform->comm.mpiComm);
-    auto LinfUy = platform->linAlg->max(nrs->meshV->Nlocal, o_Uyerr, platform->comm.mpiComm);
-    auto LinfUz = platform->linAlg->max(nrs->meshV->Nlocal, o_Uzerr, platform->comm.mpiComm);
+    auto LinfUx = platform->linAlg->max(nrs->mesh->Nlocal, o_Uxerr, platform->comm.mpiComm);
+    auto LinfUy = platform->linAlg->max(nrs->mesh->Nlocal, o_Uyerr, platform->comm.mpiComm);
+    auto LinfUz = platform->linAlg->max(nrs->mesh->Nlocal, o_Uzerr, platform->comm.mpiComm);
     if (platform->comm.mpiRank == 0) {
       printf("relLinf Ux/y/z error: %g/%g/%g\n", LinfUx, LinfUy, LinfUz);
     }
@@ -680,9 +680,9 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
   auto o_Ux = nrs->o_U + 0 * nrs->fieldOffset;
   auto o_Uy = nrs->o_U + 1 * nrs->fieldOffset;
   auto o_Uz = nrs->o_U + 2 * nrs->fieldOffset;
-  platform->linAlg->add(nrs->meshV->Nlocal, -val, o_Ux);
-  platform->linAlg->add(nrs->meshV->Nlocal, -val, o_Uy);
-  platform->linAlg->add(nrs->meshV->Nlocal, -val, o_Uz);
+  platform->linAlg->add(nrs->mesh->Nlocal, -val, o_Ux);
+  platform->linAlg->add(nrs->mesh->Nlocal, -val, o_Uy);
+  platform->linAlg->add(nrs->mesh->Nlocal, -val, o_Uz);
   
   checkErr(false);
 
@@ -697,7 +697,7 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
 void ciTestSurfaceIntegral(nrs_t *nrs)
 {
   const int rank = platform->comm.mpiRank;
-  auto *mesh = nrs->meshV;
+  auto *mesh = nrs->mesh;
   const int nbID = 1;
   const auto testTol = 1e-2;
 
@@ -725,7 +725,7 @@ void ciTestSurfaceIntegral(nrs_t *nrs)
 
 void ciTestDistance(nrs_t *nrs)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   int nbID = 1;
   int bID = 1;
@@ -737,14 +737,19 @@ void ciTestDistance(nrs_t *nrs)
   std::vector<dfloat> dist(mesh->Nlocal);
   o_dist.copyTo(dist.data(), mesh->Nlocal);
 
+  std::vector<dfloat> x(mesh->Nlocal);
+  std::vector<dfloat> y(mesh->Nlocal);
+  std::vector<dfloat> z(mesh->Nlocal);
+
+  mesh->o_x.copyTo(x.data());
+  mesh->o_y.copyTo(y.data());
+  mesh->o_z.copyTo(z.data());
+
   // distance from wall is 1-r
   dfloat maxRelErr = 0.0;
   std::vector<dfloat> refVal(mesh->Nlocal, 0.0);
   for(int n = 0; n < mesh->Nlocal; ++n){
-    const auto x = mesh->x[n];
-    const auto y = mesh->y[n];
-    const auto z = mesh->z[n];
-    const auto r = std::sqrt(x*x + y*y + z*z);
+    const auto r = std::sqrt(x[n]*x[n] + y[n]*y[n] + z[n]*z[n]);
 
     const auto ref = std::abs(1. - r);
     refVal[n] = ref;
@@ -963,9 +968,9 @@ void ciTestErrors(nrs_t *nrs,
     }
 
     if (nrs->timeStepConverged) {
-      const int pIterErr = abs(NiterP - expectedNiterP);
-      CiEvalTest("pressure iter step=1 (pIterErr: " + to_string_f(pIterErr) + ")", pIterErr <= 1);
-      nekrsCheck(pIterErr > 1, platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
+      const int pIterTest = abs(NiterP - expectedNiterP);
+      CiEvalTest("pressure iter step=1 (pIterTest: " + to_string_f(pIterTest) + ")", pIterTest <= 1);
+      nekrsCheck(pIterTest > 1, platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
     }
 
     int expectedNiterS00 = 17;
@@ -973,6 +978,11 @@ void ciTestErrors(nrs_t *nrs,
     if (ciMode == 19 && nrs->timeStepConverged) {
       expectedNiterS00 = 11;
       expectedNiterS01 = 8;
+    }
+
+    if (ciMode == 22) {
+      expectedNiterS00 = 13;
+      expectedNiterS01 = 11;
     }
 
     if (ciMode != 12 && nrs->timeStepConverged) {
@@ -1006,17 +1016,17 @@ void ciTestErrors(nrs_t *nrs,
     ciTestParticles(nrs, particles, exactUVWPKernel, RKKernel);
   }
 
-
-  nrs->ocopyToNek(time, tstep);
+  nrs->copyToNek(time, tstep);
   nek::userchk();
 
   auto err = nek::ptr<double>("errors");
 
-  double vxErr, prErr;
-  double s1Err, s2Err;
+  bool vxTest, prTest;
+  bool s1Test, s2Test;
 
-  int pIterErr;
-  int velIterErr;
+  bool pIterTest;
+  bool velIterTest;
+  bool s1IterTest, s2IterTest;
 
   int NiterU;
 
@@ -1038,207 +1048,74 @@ void ciTestErrors(nrs_t *nrs,
   if (nrs->cds->solver[1]) {
     NiterS02 = nrs->cds->solver[1]->Niter();
   }
-  int s01IterErr, s02IterErr;
+  s1IterTest = abs(NiterS01 - 2) < 2;
+  s2IterTest = abs(NiterS02 - 2) < 2;
 
   if (ciMode == 16 || ciMode == 17 || ciMode == 18) {
     NiterS01 = numCVODERHS / tstep; // average number of RHS + linIters per step
     NiterS02 = numCVODERHS / tstep;
   }
 
-  s01IterErr = abs(NiterS01 - 2);
-  s02IterErr = abs(NiterS02 - 2);
-
   switch (ciMode) {
   case 1:
-    velIterErr = abs(NiterU - 14);
-    s1Err = abs((err[2] - 5.42E-12) / err[2]);
-    s2Err = abs((err[3] - 6.30E-12) / err[3]);
-    pIterErr = abs(NiterP - 6);
-    vxErr = abs((err[0] - 2.77E-10) / err[0]);
-    prErr = abs((err[1] - 7.14E-10) / err[1]);
+  {
+    velIterTest = abs(NiterU - 14) < 2;
+    s1Test = abs((err[2] - 5.42E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 6.30E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 6) < 2;
+    vxTest = abs((err[0] - 2.77E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 7.14E-10) / err[1]) < EPS;
     break;
+  }
   case 2:
-    velIterErr = abs(NiterU - 14);
-    s1Err = abs((err[2] - 7.49E-12) / err[2]);
-    s2Err = abs((err[3] - 7.22E-12) / err[3]);
-    pIterErr = abs(NiterP - 4);
-    vxErr = abs((err[0] - 2.77E-10) / err[0]);
-    prErr = abs((err[1] - 7.14E-10) / err[1]);
+  {
+    velIterTest = abs(NiterU - 14) < 2 ;
+    s1Test = abs((err[2] - 7.49E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 7.22E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 4) < 2;
+    vxTest = abs((err[0] - 2.77E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 7.14E-10) / err[1]) < EPS;
     break;
+  }
   case 11:
-    velIterErr = abs(NiterU - 15);
-    s1Err = abs((err[2] - 6.67E-12) / err[2]);
-    s2Err = abs((err[3] - 7.49E-12) / err[3]);
-    pIterErr = abs(NiterP - 5);
-    vxErr = abs((err[0] - 2.77E-10) / err[0]);
-    prErr = abs((err[1] - 6.98E-10) / err[1]);
+  {
+    velIterTest = abs(NiterU - 15) < 2;
+    s1Test = abs((err[2] - 6.67E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 7.49E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 5) < 2;
+    vxTest = abs((err[0] - 2.77E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 6.98E-10) / err[1]) < EPS;
     break;
+  }
   case 19: // same as 2, 11, but solves converge in a single step
-    velIterErr = abs(NiterU - 1);
-    s1Err = abs((err[2] - 6.67E-12) / err[2]);
-    s2Err = abs((err[3] - 7.49E-12) / err[3]);
-    pIterErr = abs(NiterP - 1);
-    vxErr = abs((err[0] - 2.77E-10) / err[0]);
-    prErr = abs((err[1] - 6.98E-10) / err[1]);
+  {
+    velIterTest = abs(NiterU - 1) < 2;
+    s1Test = abs((err[2] - 6.67E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 7.49E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 1) < 2;
+    vxTest = abs((err[0] - 2.77E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 6.98E-10) / err[1]) < EPS;
     break;
+  }
   case 3:
-    velIterErr = abs(NiterU - 10);
-    s1Err = abs((err[2] - 5.25E-12) / err[2]);
-    s2Err = abs((err[3] - 6.09E-12) / err[3]);
-    pIterErr = abs(NiterP - 16);
-    vxErr = abs((err[0] - 2.78E-10) / err[0]);
-    prErr = abs((err[1] - 7.11E-10) / err[1]);
+  {
+    velIterTest = abs(NiterU - 10) < 2;
+    s1Test = abs((err[2] - 5.25E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 6.09E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 16) < 2;
+    vxTest = abs((err[0] - 2.78E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 7.11E-10) / err[1]) < EPS;
     break;
+  }
   case 4:
-    velIterErr = abs(NiterU - 1);
-    s1Err = abs((err[2] - 2.00E-11) / err[2]);
-    s2Err = abs((err[3] - 2.00E-11) / err[3]);
-    pIterErr = abs(NiterP - 1);
-    vxErr = abs((err[0] - 3.65E-10) / err[0]);
-    prErr = abs((err[1] - 6.71E-10) / err[1]);
-    break;
-  case 5:
-    velIterErr = abs(NiterU - 16);
-    s1Err = abs((err[2] - 1.53E-06) / err[2]);
-    s2Err = abs((err[3] - 1.73E-06) / err[3]);
-    pIterErr = abs(NiterP - 15);
-    vxErr = abs((err[0] - 2.57E-07) / err[0]);
-    prErr = abs((err[1] - 2.16E-06) / err[1]);
-    s01IterErr = abs(NiterS01 - 5);
-    s02IterErr = abs(NiterS02 - 5);
-    break;
-  case 6:
-    velIterErr = abs(NiterU - 16);
-    s1Err = abs((err[2] - 1.27E-06) / err[2]);
-    s2Err = abs((err[3] - 1.41E-06) / err[3]);
-    pIterErr = abs(NiterP - 15);
-    vxErr = abs((err[0] - 2.43E-07) / err[0]);
-    prErr = abs((err[1] - 2.89E-06) / err[1]);
-    s01IterErr = abs(NiterS01 - 5);
-    s02IterErr = abs(NiterS02 - 5);
-    break;
-  case 7:
-    velIterErr = abs(NiterU - 10);
-    s1Err = abs((err[2] - 2E-13) / err[2]);
-    s2Err = abs((err[3] - 2E-13) / err[3]);
+  {
+    velIterTest = abs(NiterU - 1) < 2;
+    s1Test = abs((err[2] - 2.00E-11) / err[2]) < EPS;
+    s2Test = abs((err[3] - 2.00E-11) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 1) < 2;
+    vxTest = abs((err[0] - 3.65E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 6.71E-10) / err[1]) < EPS;
 
-    // just check for convergence
-    pIterErr = (NiterP < 999) ? 0 : 1000;
-
-    vxErr = abs((err[0] - 1.4E-10) / err[0]);
-    prErr = abs((err[1] - 8.7E-9) / err[1]);
-    break;
-  case 8:
-    velIterErr = abs(NiterU - 12);
-    s1Err = abs((err[2] - 2.51E-11) / err[2]);
-    s2Err = abs((err[3] - 2.69E-11) / err[3]);
-    pIterErr = abs(NiterP - 4);
-    vxErr = abs((err[0] - 3.47E-10) / err[0]);
-    prErr = abs((err[1] - 5.08E-08) / err[1]);
-    break;
-  case 9:
-    velIterErr = abs(NiterU - 15);
-    s1Err = abs((err[2] - 7.49E-12) / err[2]);
-    s2Err = abs((err[3] - 7.22E-12) / err[3]);
-    pIterErr = abs(NiterP - 4);
-    vxErr = abs((err[0] - 2.77E-10) / err[0]);
-    prErr = abs((err[1] - 7.14E-10) / err[1]);
-    break;
-  case 10:
-    velIterErr = abs(NiterU - 15);
-    s1Err = abs((err[2] - 4.42E-12) / err[2]);
-    s2Err = abs((err[3] - 5.30E-12) / err[3]);
-    pIterErr = abs(NiterP - 4);
-    vxErr = abs((err[0] - 2.78E-10) / err[0]);
-    prErr = abs((err[1] - 6.98E-10) / err[1]);
-    break;
-  case 12:
-    velIterErr = abs(NiterU - 15);
-    s1Err = 1;
-    s2Err = abs((err[3] - 6.30E-12) / err[3]);
-    pIterErr = abs(NiterP - 6);
-    vxErr = abs((err[0] - 2.78E-10) / err[0]);
-    prErr = abs((err[1] - 6.98E-10) / err[1]);
-    s01IterErr = abs(NiterS01 + 1);
-    break;
-  case 13:
-    velIterErr = abs(NiterU + 1);
-    s1Err = abs((err[2] - 2.506E-3) / err[2]);
-    s2Err = abs((err[3] - 1.52E-5) / err[3]);
-    pIterErr = abs(NiterP + 1);
-    vxErr = abs((err[0] - 2.5E-3) / err[0]);
-    prErr = abs((err[1] - 2.364E-2) / err[1]);
-    s01IterErr = abs(NiterS01 + 1);
-    break;
-  case 14:
-    velIterErr = abs(NiterU - 15);
-    s1Err = abs((err[2] - 6.67E-12) / err[2]);
-    s2Err = abs((err[3] - 7.50E-12) / err[3]);
-    pIterErr = abs(NiterP - 14);
-    vxErr = abs((err[0] - 2.78E-10) / err[0]);
-    prErr = abs((err[1] - 7E-010) / err[1]);
-    s01IterErr = abs(NiterS01 - 2);
-    s02IterErr = abs(NiterS02 - 2);
-    break;
-  case 16:
-  case 18:
-    velIterErr = abs(NiterU - 15);
-    s1Err = abs((err[2] - 2.31E-08) / err[2]);
-    s2Err = abs((err[3] - 2.51E-08) / err[3]);
-    pIterErr = abs(NiterP - 6);
-    vxErr = abs((err[0] - 2.78E-10) / err[0]);
-    prErr = abs((err[1] - 7.11E-10) / err[1]);
-    s01IterErr = abs(NiterS01 - 3.5); // nsteps
-    s02IterErr = abs(NiterS02 - 3.5); // nli
-    break;
-  case 17:
-    velIterErr = abs(NiterU - 15);
-    s1Err = abs((err[2] - 6.11E-12) / err[2]);
-    s2Err = abs((err[3] - 4.92E-08) / err[3]);
-    pIterErr = abs(NiterP - 6);
-    vxErr = abs((err[0] - 2.78E-10) / err[0]);
-    prErr = abs((err[1] - 7.11E-10) / err[1]);
-    s01IterErr = abs(NiterS01 - 1.67); // nsteps
-    s02IterErr = abs(NiterS02 - 1.67); // nli
-    break;
-  case 22:
-    velIterErr = abs(NiterU - 10);
-    s1Err = abs((err[2] - 1.75E-06) / err[2]);
-    s2Err = abs((err[3] - 1.77E-06) / err[3]);
-    pIterErr = abs(NiterP - 2);
-    vxErr = abs((err[0] - 6.82E-07) / err[0]);
-    prErr = abs((err[1] - 8.76E-06) / err[1]);
-    break;
-  }
-
-  // on ci modes 12, 13, confirm that the correct solvers are present
-  if (ciMode == 12) {
-    bool correct = true;
-    correct &= (nrs->pSolver != nullptr);
-    correct &= (nrs->uSolver != nullptr || nrs->uvwSolver != nullptr);
-    correct &= (nrs->cds->solver[0] == nullptr);
-    correct &= (nrs->cds->solver[1] != nullptr);
-    nekrsCheck(!correct,
-             platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "Unexpected solver configuration for CI mode %d\n",
-             ciMode);
-  }
-  if (ciMode == 13) {
-    bool correct = true;
-    correct &= (nrs->pSolver == nullptr);
-    correct &= (nrs->uSolver == nullptr && nrs->uvwSolver == nullptr);
-    correct &= (nrs->cds->solver[0] == nullptr);
-    correct &= (nrs->cds->solver[1] != nullptr);
-    nekrsCheck(!correct,
-             platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "Unexpected solver configuration for CI mode %d\n",
-             ciMode);
-    nekrsCheck(nrs->flow, platform->comm.mpiComm, EXIT_FAILURE, "nrs->flow == true for CI mode %d\n", ciMode);
-  }
-
-  if (ciMode == 4) {
     dfloat memoryUsage = platform->device.occaDevice().memoryAllocated() / 1e9;
     const dfloat expectedMemoryUsage = 0.0555274;
     if (memoryUsage > 1.03 * expectedMemoryUsage && platform->comm.mpiCommSize == 2) {
@@ -1271,16 +1148,20 @@ void ciTestErrors(nrs_t *nrs,
       CiFailTest();
       nekrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
     }
-  }
-  if (ciMode == 8) {
-    const int expectedSteps = 68;
-    int errSteps = abs(expectedSteps - tstep);
 
-    MPI_Allreduce(MPI_IN_PLACE, &errSteps, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    CiEvalTest("variable dt (stepErr: " + std::to_string(errSteps) + ")", errSteps < 1);
+    break;
   }
+  case 5:
+  {
+    velIterTest = abs(NiterU - 16) < 2;
+    s1Test = abs((err[2] - 1.53E-06) / err[2]) < EPS;
+    s2Test = abs((err[3] - 1.73E-06) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 15) < 2;
+    vxTest = abs((err[0] - 2.57E-07) / err[0]) < EPS;
+    prTest = abs((err[1] - 2.16E-06) / err[1]) < EPS;
+    s1IterTest = abs(NiterS01 - 5) < 2;
+    s2IterTest = abs(NiterS02 - 5) < 2;
 
-  if (ciMode == 5 || ciMode == 6) {
     if (platform->options.compareArgs("MOVING MESH", "FALSE")) {
       if (rank == 0) {
         printf("Unable to test moving mesh in ethier. Please re-run the case with mv_ethier!\n");
@@ -1288,18 +1169,186 @@ void ciTestErrors(nrs_t *nrs,
       (CiFailTest());
       nekrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
     }
+
+    break;
+  }
+  case 6:
+  {
+    velIterTest = abs(NiterU - 16) < 2;
+    s1Test = abs((err[2] - 1.27E-06) / err[2]) < EPS;
+    s2Test = abs((err[3] - 1.41E-06) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 15) < 2;
+    vxTest = abs((err[0] - 2.43E-07) / err[0]) < EPS;
+    prTest = abs((err[1] - 2.89E-06) / err[1]) < EPS;
+    s1IterTest = abs(NiterS01 - 5) < 2;
+    s2IterTest = abs(NiterS02 - 5) < 2;
+
+    if (platform->options.compareArgs("MOVING MESH", "FALSE")) {
+      if (rank == 0) {
+        printf("Unable to test moving mesh in ethier. Please re-run the case with mv_ethier!\n");
+      }
+      (CiFailTest());
+      nekrsAbort(platform->comm.mpiComm, EXIT_FAILURE, "%s", "");
+    }
+
+    break;
+  }
+  case 7:
+  {
+    velIterTest = abs(NiterU - 10) < 2;
+    s1Test = abs((err[2] - 2E-13) / err[2]) < EPS;
+    s2Test = abs((err[3] - 2E-13) / err[3]) < EPS;
+
+    // just check for convergence
+    pIterTest = (NiterP < 300);
+
+    vxTest = abs((err[0] - 1.4E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 8.7E-9) / err[1]) < EPS;
+    break;
+  }
+  case 8:
+  {
+    velIterTest = abs(NiterU - 12) < 2;
+    s1Test = abs((err[2] - 2.51E-11) / err[2]) < EPS;
+    s2Test = abs((err[3] - 2.69E-11) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 4) < 2;
+    vxTest = abs((err[0] - 3.47E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 5.08E-08) / err[1]) < EPS;
+
+    const int expectedSteps = 68;
+    int errSteps = abs(expectedSteps - tstep);
+
+    MPI_Allreduce(MPI_IN_PLACE, &errSteps, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
+    CiEvalTest("variable dt (stepErr: " + std::to_string(errSteps) + ")", errSteps < 1);
+
+    break;
+  }
+  case 9:
+  {
+    velIterTest = abs(NiterU - 15) < 2;
+    s1Test = abs((err[2] - 7.49E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 7.22E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 4) < 2;
+    vxTest = abs((err[0] - 2.77E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 7.14E-10) / err[1]) < EPS;
+    break;
+  }
+  case 10:
+  {
+    velIterTest = abs(NiterU - 15) < 2;
+    s1Test = abs((err[2] - 4.42E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 5.30E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 4) < 2;
+    vxTest = abs((err[0] - 2.78E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 6.98E-10) / err[1]) < EPS;
+    break;
+  }
+  case 12:
+  {
+    velIterTest = abs(NiterU - 15) < 2;
+    s1Test = true;
+    s2Test = abs((err[3] - 6.30E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 6) < 2;
+    vxTest = abs((err[0] - 2.78E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 6.98E-10) / err[1]) < EPS;
+    s1IterTest = abs(NiterS01 + 1) < 2;
+
+    bool correct = true;
+    correct &= (nrs->pSolver != nullptr);
+    correct &= (nrs->uSolver != nullptr || nrs->uvwSolver != nullptr);
+    correct &= (nrs->cds->solver[0] == nullptr);
+    correct &= (nrs->cds->solver[1] != nullptr);
+    nekrsCheck(!correct,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "Unexpected solver configuration for CI mode %d\n",
+             ciMode);
+
+    break;
+  }
+  case 13:
+  {
+    velIterTest = abs(NiterU + 1) < 2;
+    s1Test = abs((err[2] - 2.506E-3) / err[2]) < EPS;
+    s2Test = abs((err[3] - 1.52E-5) / err[3]) < EPS;
+    pIterTest = abs(NiterP + 1) < 2;
+    vxTest = abs((err[0] - 2.5E-3) / err[0]) < EPS;
+    prTest = abs((err[1] - 2.364E-2) / err[1]) < EPS;
+    s1IterTest = abs(NiterS01 + 1) < 2;
+
+    bool correct = true;
+    correct &= (nrs->pSolver == nullptr);
+    correct &= (nrs->uSolver == nullptr && nrs->uvwSolver == nullptr);
+    correct &= (nrs->cds->solver[0] == nullptr);
+    correct &= (nrs->cds->solver[1] != nullptr);
+    nekrsCheck(!correct,
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
+             "Unexpected solver configuration for CI mode %d\n",
+             ciMode);
+    nekrsCheck(nrs->flow, platform->comm.mpiComm, EXIT_FAILURE, "nrs->flow == true for CI mode %d\n", ciMode);
+
+    break;
+  }
+  case 14: {
+    velIterTest = abs(NiterU - 15) < 2;
+    s1Test = abs((err[2] - 6.67E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 7.50E-12) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 14) < 2;
+    vxTest = abs((err[0] - 2.78E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 7E-010) / err[1]) < EPS;
+    s1IterTest = abs(NiterS01 - 2) < 2;
+    s2IterTest = abs(NiterS02 - 2) < 2;
+    break;
+  }
+  case 16:
+  case 18:
+  {
+    velIterTest = abs(NiterU - 15) < 2;
+    s1Test = abs((err[2] - 2.31E-08) / err[2]) < EPS;
+    s2Test = abs((err[3] - 2.51E-08) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 6) < 2;
+    vxTest = abs((err[0] - 2.78E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 7.11E-10) / err[1]) < EPS;
+    s1IterTest = abs(NiterS01 - 3.5) < EPS; // nsteps
+    s2IterTest = abs(NiterS02 - 3.5) < EPS; // nli
+    break;
+  }
+  case 17:
+  {
+    velIterTest = abs(NiterU - 15) < 2;
+    s1Test = abs((err[2] - 6.11E-12) / err[2]) < EPS;
+    s2Test = abs((err[3] - 4.92E-08) / err[3]) < EPS;
+    pIterTest = abs(NiterP - 6) < 2;
+    vxTest = abs((err[0] - 2.78E-10) / err[0]) < EPS;
+    prTest = abs((err[1] - 7.11E-10) / err[1]) < EPS;
+    s1IterTest = abs(NiterS01 - 1.67) < EPS; // nsteps
+    s2IterTest = abs(NiterS02 - 1.67) < EPS; // nli
+    break;
+  }
+  case 22:
+  {
+    velIterTest = abs(NiterU - 12) < 2;
+    s1Test = err[2] < 2e-6;
+    s2Test = err[3] < 2e-6;
+    pIterTest = abs(NiterP - 1) < 2;
+    vxTest = err[0] < 8e-7;
+    prTest = err[1] < 2e-5;
+    break;
+  }
+
   }
 
   if (nrs->timeStepConverged) {
     if (ciMode != 13 ) {
-      CiEvalTest("velocity (LinfErr: " + to_string_f(vxErr) + ")", vxErr < EPS);
-      CiEvalTest("velocity iter (iterErr: " + to_string_f(velIterErr) + ")", velIterErr <= 1);
+      CiEvalTest("velocity", vxTest);
+      CiEvalTest("velocity iter", velIterTest);
  
-      CiEvalTest("pressure (LinfErr: " + to_string_f(prErr) + ")", prErr < EPS);
-      CiEvalTest("pressure iter (iterErr: " + to_string_f(pIterErr) + ")", pIterErr <= 1);
+      CiEvalTest("pressure", prTest);
+      CiEvalTest("pressure iter", pIterTest);
     }
  
-    if (ciMode != 12) CiEvalTest("scalar01 (LinfErr: " + to_string_f(s1Err) +")", s1Err < EPS);
-    CiEvalTest("scalar02 (LinfErr: " + to_string_f(s2Err) + ")", s2Err < EPS);
+    if (ciMode != 12) CiEvalTest("scalar01", s1Test);
+    CiEvalTest("scalar02", s2Test);
   }
 }

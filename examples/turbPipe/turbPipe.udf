@@ -1,16 +1,20 @@
 #include "velRecycling.hpp"
 #include "tavg.hpp"
 #include "avm.hpp"
+#include <csignal>
 //#include "nekAscent.hpp"
 
 static int NSLABS;
 static int NELSLAB;
-static int renderStep;
+static int processAscentYamlFrequency;
 
 deviceMemory<dfloat> o_qcriterion;
 deviceMemory<dfloat> o_nuAVM;
 
 std::unique_ptr<iofld> iofld;
+
+#define ASCENT_UPDATE_SIGNAL SIGUSR1
+volatile sig_atomic_t processAscentYaml = 0;
 
 #ifdef __okl__
 
@@ -20,7 +24,7 @@ std::unique_ptr<iofld> iofld;
 
 void uservp(double time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   auto cds = nrs->cds;
 
   static auto firstTime = true;
@@ -61,7 +65,7 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
   platform->par->extract("casedata", "nslabs", NSLABS);
   platform->par->extract("casedata", "nelslab", NELSLAB);
-  platform->par->extract("casedata", "renderstep", renderStep); // ascent
+  platform->par->extract("casedata", "processAscentYamlFrequency", processAscentYamlFrequency); // ascent
 }
 
 void UDF_Setup()
@@ -70,11 +74,18 @@ void UDF_Setup()
   nrs->userProperties = &uservp;
 #endif
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   const auto zLen = abs( 
               platform->linAlg->max(mesh->Nlocal, mesh->o_z, platform->comm.mpiComm) - 
               platform->linAlg->min(mesh->Nlocal, mesh->o_z, platform->comm.mpiComm)
             ); 
+
+  std::vector<dfloat> x(mesh->Nlocal);
+  std::vector<dfloat> y(mesh->Nlocal);
+  std::vector<dfloat> z(mesh->Nlocal);
+  mesh->o_x.copyTo(x.data());
+  mesh->o_y.copyTo(y.data());
+  mesh->o_z.copyTo(z.data());
 
   o_qcriterion.resize(mesh->Nlocal);
 
@@ -90,7 +101,7 @@ void UDF_Setup()
     std::vector<int> elementFilter;
     for(int e = 0; e < mesh->Nelements; e++) {
        auto zmaxLocal = std::numeric_limits<dfloat>::lowest();
-       for(int i = 0; i < mesh->Np; i++) zmaxLocal = std::max(mesh->z[i + e * mesh->Np], zmaxLocal);
+       for(int i = 0; i < mesh->Np; i++) zmaxLocal = std::max(z[i + e * mesh->Np], zmaxLocal);
        if (zmaxLocal > zRecycLayer) elementFilter.push_back(e);
     }
     return elementFilter;
@@ -105,16 +116,19 @@ void UDF_Setup()
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
     auto rand = randomVector<dfloat>(mesh->Nlocal, -1.0, 1.0, true);
 
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    std::vector<dfloat> S(mesh->Nlocal, 0.0);
+
     for (int n = 0; n < mesh->Nlocal; n++) {
       const auto R = 0.5;
 
-      const auto xr = mesh->x[n] / R;
-      const auto yr = mesh->y[n] / R;
-      const auto zo = 2 * M_PI * mesh->z[n] / zLen;
+      const auto xr = x[n] / R;
+      const auto yr = y[n] / R;
+      const auto zo = 2 * M_PI * z[n] / zLen;
 
       auto rr = xr * xr + yr * yr;
       rr = (rr > 0) ? sqrt(rr) : 0.0;
-      const auto th = atan2(mesh->y[n], mesh->x[n]);
+      const auto th = atan2(y[n], x[n]);
 
       auto uz = 6/5. * (1 - pow(rr, 6));
 
@@ -133,12 +147,14 @@ void UDF_Setup()
       if (amp_sin < -amp_clip) amp_sin = -amp_clip;
       if (rr > (1 - blt)) uz += amp_sin;
 
-      nrs->U[n + 0 * nrs->fieldOffset] = 0.05 * pow(rand[n], 2);
-      nrs->U[n + 1 * nrs->fieldOffset] = 0.1  * pow(rand[n], 3);
-      nrs->U[n + 2 * nrs->fieldOffset] = uz + 0.01 * rand[n];
+      U[n + 0 * nrs->fieldOffset] = 0.05 * pow(rand[n], 2);
+      U[n + 1 * nrs->fieldOffset] = 0.1  * pow(rand[n], 3);
+      U[n + 2 * nrs->fieldOffset] = uz + 0.01 * rand[n];
 
-      nrs->cds->S[n] = 0;
+      S[n] = 0;
     }
+    nrs->o_U.copyFrom(U.data(), U.size());
+    nrs->cds->o_S.copyFrom(S.data(), S.size());
   }
 
   nrs->o_usrwrk.resize(nrs->NVfields * nrs->fieldOffset);
@@ -183,17 +199,29 @@ void UDF_Setup()
 
 #ifdef NEKRS_ASCENT_ENABLED 
   {
+    auto handleSignal = [](int signal) {
+      processAscentYaml = 1;
+    };
+    std::signal(ASCENT_UPDATE_SIGNAL, handleSignal);
+
     auto cds = nrs->cds;
-    auto meshV = nrs->meshV;
+    auto meshV = nrs->mesh;
     auto meshT = (nrs->cds) ? cds->mesh[0] : meshV;
 
-    nekAscent::addVectorField("velocity", nrs->o_U, meshV, nrs->fieldOffset);
-    nekAscent::addScalarField("scalar00", cds->o_S.slice(cds->fieldOffsetScan[0]), meshT);
-    nekAscent::addScalarField("Qcriterion", o_qcriterion, meshV);
+    deviceMemory<dfloat> o_ux(nrs->o_U.slice(0 * nrs->fieldOffset));
+    deviceMemory<dfloat> o_uy(nrs->o_U.slice(1 * nrs->fieldOffset));
+    deviceMemory<dfloat> o_uz(nrs->o_U.slice(2 * nrs->fieldOffset));
+    std::vector<deviceMemory<dfloat>> o_U{o_ux, o_uy, o_uz};
+    nekAscent::addVariable("velocity", meshV, o_U);
+
+    deviceMemory<dfloat> o_scalar0(cds->o_S.slice(cds->fieldOffsetScan[0])); 
+    nekAscent::addVariable("scalar00", meshT, std::vector<deviceMemory<dfloat>>{o_scalar0});
+
+    nekAscent::addVariable("Qcriterion", meshV, std::vector<deviceMemory<dfloat>>{o_qcriterion});
 
     const int Nviz = 1.5 * mesh->N;
-    const auto uniform = false;
-    nekAscent::setup(nrs->_mesh, "ascent.yaml", Nviz, uniform);
+    const auto uniform = true;
+    nekAscent::setup(mesh, "ascent.yaml", Nviz, uniform);
   }
 #endif
 
@@ -201,10 +229,10 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   if (tstep == 0) {
-    nrs->writeCheckpoint(time, tstep); 
+    //nrs->writeCheckpoint(time, tstep); 
   }
 
   velRecycling::copy();
@@ -212,15 +240,17 @@ void UDF_ExecuteStep(double time, int tstep)
     tavg::run(time);
   }
 
-  auto computeQ = nrs->isCheckpointStep;
 #ifdef NEKRS_ASCENT_ENABLED
-  if (tstep % renderStep == 0) computeQ = 1;
+  blockSignal(ASCENT_UPDATE_SIGNAL);
+  MPI_Bcast(const_cast<sig_atomic_t*>(&processAscentYaml), 1, MPI_INT, 0, platform->comm.mpiComm);
+  processAscentYaml = processAscentYaml || (tstep % processAscentYamlFrequency == 0 && tstep > 0);
 #endif
-  if (computeQ) {
+
+  if (nrs->checkpointStep || processAscentYaml) {
     nrs->Qcriterion(nrs->o_U, o_qcriterion);
   }
 
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     auto o_UZ = nrs->o_U + 2 * nrs->fieldOffset;
     const dfloat ubar =
         platform->linAlg->innerProd(mesh->Nlocal, o_UZ, mesh->o_Jw, platform->comm.mpiComm) / mesh->volume;
@@ -238,8 +268,11 @@ void UDF_ExecuteStep(double time, int tstep)
 #endif
 
 #ifdef NEKRS_ASCENT_ENABLED 
-  if (tstep % renderStep == 0) {
+  if (processAscentYaml) {
     nekAscent::run(time, tstep);
+    processAscentYaml = 0;
   }
+  if (nrs->lastStep) nekAscent::finalize();
+  unblockSignal(ASCENT_UPDATE_SIGNAL);
 #endif
 }

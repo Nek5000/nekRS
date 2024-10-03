@@ -335,8 +335,7 @@ void setup(MPI_Comm commg_in,
 
   const double setupTime = platform->timer.query("setup", "DEVICE:MAX");
   if (rank == 0) {
-    std::cout << "\noptions:\n"
-              << platform->options << std::endl;
+    std::cout << "\noptions:\n" << platform->options << std::endl;
   }
 
   platform->device.printMemoryUsage(platform->comm.mpiComm);
@@ -357,15 +356,10 @@ void setup(MPI_Comm commg_in,
   fflush(stdout);
 }
 
-void copyFromNek(double time, int tstep)
+void udfExecuteStep(double time, int tstep, int checkpointStep)
 {
-  nrs->ocopyToNek(time, tstep);
-}
-
-void udfExecuteStep(double time, int tstep, int isCheckpointStep)
-{
-  nrs->isCheckpointStep = isCheckpointStep;
-  if (nrs->isCheckpointStep) {
+  nrs->checkpointStep = checkpointStep;
+  if (nrs->checkpointStep) {
     nek::ifoutfld(1);
   }
 
@@ -377,7 +371,7 @@ void udfExecuteStep(double time, int tstep, int isCheckpointStep)
 
   // reset
   nek::ifoutfld(0);
-  nrs->isCheckpointStep = 0;
+  nrs->checkpointStep = 0;
 }
 
 void nekUserchk(void)
@@ -434,7 +428,6 @@ std::tuple<double, double> dt(int tstep)
              "Invalid time step size %.2e\n",
              dt_);
 
-
   return std::make_tuple(dt_, innerSteps * dt_);
 }
 
@@ -458,10 +451,14 @@ int checkpointStep(double time, int tStep)
 
     double val;
     platform->options.getArgs("START TIME", val);
-    if (cnt == 1 && val > 0) cnt = val/nekrs::writeInterval() + 1; 
+    if (cnt == 1 && val > 0) {
+      cnt = val / nekrs::writeInterval() + 1;
+    }
 
-    outputStep = time > cnt*nekrs::writeInterval();
-    if (outputStep) cnt++;
+    outputStep = time > cnt * nekrs::writeInterval();
+    if (outputStep) {
+      cnt++;
+    }
   } else {
     if (writeInterval() > 0) {
       outputStep = (tStep % (int)writeInterval() == 0);
@@ -477,7 +474,7 @@ int checkpointStep(double time, int tStep)
 
 void checkpointStep(int val)
 {
-  nrs->isCheckpointStep = val;
+  nrs->checkpointStep = val;
 }
 
 void writeCheckpoint(double time, int step)
@@ -618,14 +615,6 @@ void processUpdFile()
 void printStepInfo(double time, int tstep, bool printStepInfo, bool printVerboseInfo)
 {
   nrs->printStepInfo(time, tstep, printStepInfo, printVerboseInfo);
-}
-
-void verboseStepInfo(bool enabled)
-{
-  platform->options.setArgs("VERBOSE SOLVER INFO", "FALSE");
-  if (enabled) {
-    platform->options.setArgs("VERBOSE SOLVER INFO", "TRUE");
-  }
 }
 
 void updateTimer(const std::string &key, double time)

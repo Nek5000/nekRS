@@ -17,7 +17,7 @@ void userf(double time)
 
 void uservp(double time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   platform->linAlg->fill(mesh->Nlocal, 1.0, nrs->o_rho);
   nrs->o_mue.copyFrom(o_nekMue, mesh->Nlocal);
 }
@@ -36,10 +36,15 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup()
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   nrs->userVelocitySource = &userf;
   nrs->userProperties = &uservp;
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    nek::getIC();
+    nrs->copyFromNek();
+  }
 
   o_nekFU.resize(nrs->NVfields * nrs->fieldOffset);
   o_nekMue.resize(mesh->Nlocal);
@@ -59,8 +64,8 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isCheckpointStep) {
-    nrs->ocopyToNek(time, tstep);
+  if (nrs->checkpointStep) {
+    nrs->copyToNek(time, tstep);
     nek::userchk();
   }
   if (ciMode) {

@@ -9,7 +9,7 @@
 struct cdsConfig_t {
 
   int Nscalar;
-  mesh_t *mesh;
+  mesh_t *meshT;
   mesh_t *meshV;
   dfloat *g0 = nullptr;
   dfloat *dt = nullptr;
@@ -93,8 +93,6 @@ public:
   std::vector<int> cvodeSolve;
   occa::memory o_compute;
   occa::memory o_cvodeSolve;
-
-  dfloat *S = nullptr;
 
   std::vector<dfloat> filterS;
   occa::memory o_applyFilterRT;

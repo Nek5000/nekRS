@@ -1475,7 +1475,7 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
           {"scalingcoeff"},
           {"activationwidth"},
           {"decaythreshold"},
-          {"absolutetol"},
+          {"noisethreshold"},
 
       };
       const std::vector<std::string> list = serializeString(regularization, '+');
@@ -1523,7 +1523,7 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
             append_error("cutoffRatio qualifier is invalid for avm!\n");
           }
 
-          const auto absTolStr = parseValueForKey(s, "absolutetol");
+          const auto absTolStr = parseValueForKey(s, "noisethreshold");
           if (!absTolStr.empty()) {
             options.setArgs(parPrefix + "REGULARIZATION AVM ABSOLUTE TOL", absTolStr);
           }
@@ -1573,7 +1573,7 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
           if (!scalingCoeffStr.empty()) {
             setsStrength = true;
             int err = 0;
-            double weight = te_interp(scalingCoeffStr.c_str(), &err);
+            double weight = parseFormula(scalingCoeffStr.c_str(), &err);
             if (err) {
               append_error("Invalid expression for scalingCoeff");
             }
@@ -1594,7 +1594,7 @@ void parseRegularization(const int rank, setupAide &options, inipp::Ini *ini, st
         options.setArgs(parPrefix + "REGULARIZATION METHOD", "HPFRT");
         if (ini->extract(parSection, "filterweight", sbuf)) {
           int err = 0;
-          double weight = te_interp(sbuf.c_str(), &err);
+          double weight = parseFormula(sbuf.c_str(), &err);
           if (err) {
             append_error("Invalid expression for filterWeight");
           }
@@ -2213,7 +2213,7 @@ void parseVelocitySection(const int rank, setupAide &options, inipp::Ini *ini)
 
   if (ini->extract("velocity", "viscosity", sbuf) || ini->extract("velocity", "mu", sbuf)) {
     int err = 0;
-    double viscosity = te_interp(sbuf.c_str(), &err);
+    double viscosity = parseFormula(sbuf.c_str(), &err);
     if (err) {
       append_error("Invalid expression for viscosity");
     }
@@ -2362,7 +2362,7 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
     std::string sbuf;
     if (ini->extract("temperature", "conductivity", sbuf) || ini->extract("temperature", "k", sbuf)) {
       int err = 0;
-      double diffusivity = te_interp(sbuf.c_str(), &err);
+      double diffusivity = parseFormula(sbuf.c_str(), &err);
       if (err) {
         append_error("Invalid expression for conductivity");
       }
@@ -2374,7 +2374,7 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
 
     if (ini->extract("temperature", "rhocp", sbuf) || ini->extract("temperature", "heatcapacity", sbuf)) {
       int err = 0;
-      double rhoCp = te_interp(sbuf.c_str(), &err);
+      double rhoCp = parseFormula(sbuf.c_str(), &err);
       if (err) {
         append_error("Invalid expression for rhoCp");
       }
@@ -2500,7 +2500,7 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
     std::string sbuf;
     if (ini->extract(parScope, "diffusivity", sbuf) || ini->extract(parScope, "d", sbuf)) {
       int err = 0;
-      double diffusivity = te_interp(sbuf.c_str(), &err);
+      double diffusivity = parseFormula(sbuf.c_str(), &err);
       if (err) {
         append_error("Invalid expression for diffusivity");
       }
@@ -2512,7 +2512,7 @@ void parseScalarSections(const int rank, setupAide &options, inipp::Ini *ini)
 
     if (ini->extract(parScope, "rho", sbuf) || ini->extract(parScope, "density", sbuf)) {
       int err = 0;
-      double rho = te_interp(sbuf.c_str(), &err);
+      double rho = parseFormula(sbuf.c_str(), &err);
       if (err) {
         append_error("Invalid expression for rho");
       }

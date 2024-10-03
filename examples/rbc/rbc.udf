@@ -9,22 +9,35 @@ static deviceMemory<float> o_hist;
 
 void userf(double time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   auto o_zNLT = nrs->o_NLT + 2*nrs->fieldOffset;
   platform->linAlg->axpby(mesh->Nlocal, 1.0, nrs->cds->o_S, 0.0, o_zNLT); 
 }
 
 void UDF_Setup()
 {
+  auto mesh = nrs->mesh;
   nrs->userVelocitySource = &userf;
 
   const auto nBin = 256;
   o_hist.resize(nBin);
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto [x, y, z] = mesh->xyzHost();
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    std::vector<dfloat> S(mesh->Nlocal);
+    for(int n = 0; n < mesh->Nlocal; n++) { 
+      S[n] = 1 - z[n];
+    }
+    nrs->o_U.copyFrom(U.data(), U.size());
+    nrs->cds->o_S.copyFrom(S.data(), S.size());
+  }
+
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  auto mesh = nrs->_mesh;
+  auto mesh = nrs->mesh;
 
   auto weightedHistogram = [&](auto uMin, auto uMax, auto Nlocal, const auto& o_wght, const auto& o_u, auto& o_out) 
   {
@@ -38,7 +51,7 @@ void UDF_ExecuteStep(double time, int tstep)
 
   weightedHistogram(0.0, 1.0, mesh->Nlocal, mesh->o_Jw, nrs->cds->o_S, o_hist); 
 
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     std::vector<float> hist(o_hist.size());
     o_hist.copyTo(hist);
     MPI_Allreduce(MPI_IN_PLACE, hist.data(), hist.size(), MPI_FLOAT, MPI_SUM, platform->comm.mpiComm);
@@ -48,7 +61,7 @@ void UDF_ExecuteStep(double time, int tstep)
       outputFile.close();
     }
 
-    nrs->ocopyToNek(time, tstep);
+    nrs->copyToNek(time, tstep);
     nek::userchk();
   }
 }

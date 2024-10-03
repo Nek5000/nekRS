@@ -9,7 +9,7 @@ FetchContent_Declare(
 )
 FetchContent_GetProperties(gs_content)
 if (NOT gs_content_POPULATED)
-    FetchContent_Populate(gs_content)
+    FetchContent_MakeAvailable(gs_content)
 endif()
 set(GS_SOURCE_DIR ${gs_content_SOURCE_DIR})
 

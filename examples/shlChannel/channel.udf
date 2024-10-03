@@ -13,7 +13,7 @@ static dfloat visc;
 
 void userf(double time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   const dfloat DP = 3.0 * visc;
   cfill(mesh->Nlocal, nrs->fieldOffset, P_ROT, DP, nrs->o_NLT);
 }
@@ -39,12 +39,17 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 void UDF_Setup()
 {
   nrs->userVelocitySource = &userf;
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    nek::getIC();
+    nrs->copyFromNek();
+  }
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isCheckpointStep) {
-    nrs->ocopyToNek(time, tstep);
+  if (nrs->checkpointStep) {
+    nrs->copyToNek(time, tstep);
     nek::userchk();
   }
   if (ciMode) {

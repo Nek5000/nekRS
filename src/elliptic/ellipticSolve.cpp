@@ -29,7 +29,11 @@
 #include "platform.hpp"
 #include "linAlg.hpp"
 
-void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const occa::memory &o_lambda1, const occa::memory &o_rhs, occa::memory o_x)
+void ellipticSolve(elliptic_t *elliptic,
+                   const occa::memory &o_lambda0,
+                   const occa::memory &o_lambda1,
+                   const occa::memory &o_rhs,
+                   occa::memory o_x)
 {
   elliptic->o_lambda0 = o_lambda0;
   elliptic->o_lambda1 = o_lambda1;
@@ -44,42 +48,7 @@ void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const oc
   const int verbose = platform->options.compareArgs("VERBOSE", "TRUE");
   const auto movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
-  auto updateResidualWeight = [&]()
-  {
-    if (platform->options.compareArgs("LINEAR SOLVER STOPPING CRITERION TYPE", "LEGACY")) {
-      if (!elliptic->o_residualWeight.isInitialized()) {
-        elliptic->o_residualWeight = platform->device.malloc<dfloat>(mesh->Nlocal);
-      }
-      elliptic->o_residualWeight.copyFrom(elliptic->o_invDegree);
-      platform->linAlg->scale(mesh->Nlocal, 1 / mesh->volume, elliptic->o_residualWeight);
-    } else if(platform->options.compareArgs("LINEAR SOLVER STOPPING CRITERION TYPE", "l2_RESIDUAL")) {
-     if (!elliptic->o_residualWeight.isInitialized()) {
-        elliptic->o_residualWeight = platform->device.malloc<dfloat>(mesh->Nlocal);
-      }
-      auto Nglobal = mesh->NelementsGlobal * mesh->Np;
-      platform->linAlg->axmyz(mesh->Nlocal, 1. / Nglobal, mesh->o_invAJw, mesh->o_invAJw, elliptic->o_residualWeight);
-      platform->linAlg->axmy(mesh->Nlocal, 1.0, elliptic->o_invDegree, elliptic->o_residualWeight);
-    } else if(platform->options.compareArgs("LINEAR SOLVER STOPPING CRITERION TYPE", "L2_RESIDUAL")) {
-      elliptic->o_residualWeight = mesh->o_invAJwTimesInvDegree;
-    } else {
-      const auto txt = platform->options.getArgs("LINEAR SOLVER STOPPING CRITERION TYPE");
-      nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s <%s>\n", "Invalid LINEAR SOLVER STOPPING CRITERION TYPE", txt.c_str());
-    }
-  };
- 
-  if (!elliptic->o_residualWeight.isInitialized()) {
-    updateResidualWeight();
-  } else if (movingMesh) {
-    updateResidualWeight(); 
-  } 
-
-  std::string timerName = elliptic->name;
-  if (timerName.find("scalar") != std::string::npos) {
-    timerName = "scalar";
-  }
-
-  auto printNorm = [&] (const occa::memory& o_u, const std::string& txt)
-  {
+  auto printNorm = [&](const occa::memory &o_u, const std::string &txt) {
     const dfloat norm = platform->linAlg->weightedNorm2Many(mesh->Nlocal,
                                                             elliptic->Nfields,
                                                             elliptic->fieldOffset,
@@ -89,17 +58,59 @@ void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const oc
     if (platform->comm.mpiRank == 0) {
       printf("%s %s norm: %.15e\n", elliptic->name.c_str(), txt.c_str(), norm);
     }
-    nekrsCheck(std::isnan(norm), MPI_COMM_SELF, EXIT_FAILURE, "%s unreasonable %s!\n", elliptic->name.c_str(), txt.c_str());
+    nekrsCheck(std::isnan(norm),
+               MPI_COMM_SELF,
+               EXIT_FAILURE,
+               "%s unreasonable %s!\n",
+               elliptic->name.c_str(),
+               txt.c_str());
   };
 
-  if (platform->verbose) 
-    printNorm(o_rhs, "o_rhs");
+  auto o_x0 = platform->o_memPool.reserve<dfloat>(
+      (elliptic->Nfields > 1) ? elliptic->Nfields * elliptic->fieldOffset : mesh->Nlocal);
+  nekrsCheck(o_x.size() < o_x0.size(), MPI_COMM_SELF, EXIT_FAILURE, "%s!\n", "unreasonable size of o_x");
+  nekrsCheck(o_rhs.size() < o_x.size(), MPI_COMM_SELF, EXIT_FAILURE, "%s!\n", "unreasonable size of o_rhs");
 
-  auto o_x0 = platform->o_memPool.reserve<dfloat>(elliptic->Nfields * elliptic->fieldOffset);
-  o_x0.copyFrom(o_x, elliptic->Nfields * elliptic->fieldOffset);
+  auto updateResidualWeight = [&]() {
+    if (platform->options.compareArgs("LINEAR SOLVER STOPPING CRITERION TYPE", "LEGACY")) {
+      if (!elliptic->o_residualWeight.isInitialized()) {
+        elliptic->o_residualWeight = platform->device.malloc<dfloat>(mesh->Nlocal);
+      }
+      elliptic->o_residualWeight.copyFrom(elliptic->o_invDegree);
+      platform->linAlg->scale(mesh->Nlocal, 1 / mesh->volume, elliptic->o_residualWeight);
+    } else if (platform->options.compareArgs("LINEAR SOLVER STOPPING CRITERION TYPE", "l2_RESIDUAL")) {
+      if (!elliptic->o_residualWeight.isInitialized()) {
+        elliptic->o_residualWeight = platform->device.malloc<dfloat>(mesh->Nlocal);
+      }
+      auto Nglobal = mesh->NelementsGlobal * mesh->Np;
+      platform->linAlg->axmyz(mesh->Nlocal,
+                              1. / Nglobal,
+                              mesh->o_invAJw,
+                              mesh->o_invAJw,
+                              elliptic->o_residualWeight);
+      platform->linAlg->axmy(mesh->Nlocal, 1.0, elliptic->o_invDegree, elliptic->o_residualWeight);
+    } else if (platform->options.compareArgs("LINEAR SOLVER STOPPING CRITERION TYPE", "L2_RESIDUAL")) {
+      elliptic->o_residualWeight = mesh->o_invAJwTimesInvDegree;
+    } else {
+      const auto txt = platform->options.getArgs("LINEAR SOLVER STOPPING CRITERION TYPE");
+      nekrsAbort(MPI_COMM_SELF,
+                 EXIT_FAILURE,
+                 "%s <%s>\n",
+                 "Invalid LINEAR SOLVER STOPPING CRITERION TYPE",
+                 txt.c_str());
+    }
+  };
 
-  if (platform->verbose) 
-    printNorm(o_x0, "o_x0");
+  if (!elliptic->o_residualWeight.isInitialized()) {
+    updateResidualWeight();
+  } else if (movingMesh) {
+    updateResidualWeight();
+  }
+
+  std::string timerName = elliptic->name;
+  if (timerName.find("scalar") != std::string::npos) {
+    timerName = "scalar";
+  }
 
   ellipticAllocateWorkspace(elliptic);
 
@@ -114,22 +125,21 @@ void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const oc
     }
   }
 
+  o_x0.copyFrom(o_x);
+  if (platform->verbose) {
+    printNorm(o_x0, "o_x0");
+    printNorm(o_rhs, "o_rhs");
+  }
+
   // compute initial residual r = rhs - Ax0
-  auto o_r = [&]()
-  {
-    auto o_r = platform->o_memPool.reserve<dfloat>(elliptic->Nfields * elliptic->fieldOffset);
-    auto& o_Ap = o_x;
+  auto o_r = [&]() {
+    auto o_r = platform->o_memPool.reserve<dfloat>(o_x0.size());
+    auto &o_Ap = o_x;
     ellipticAx(elliptic, mesh->Nelements, mesh->o_elementList, o_x0, o_Ap, dfloatString);
-    platform->linAlg->axpbyzMany(mesh->Nlocal,
-                                 elliptic->Nfields,
-                                 elliptic->fieldOffset,
-                                 -1.0,
-                                 o_Ap,
-                                 1.0,
-                                 o_rhs,
-                                 o_r);
- 
-    if (elliptic->allNeumann) {
+    platform->linAlg
+        ->axpbyzMany(mesh->Nlocal, elliptic->Nfields, elliptic->fieldOffset, -1.0, o_Ap, 1.0, o_rhs, o_r);
+
+    if (elliptic->nullspace) {
       ellipticZeroMean(elliptic, o_r);
     }
     ellipticApplyMask(elliptic, o_r, dfloatString);
@@ -137,8 +147,11 @@ void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const oc
     return o_r;
   }();
 
-  const auto rdotr = [&]()
-  {
+  if (platform->verbose) {
+    printNorm(o_r, "o_r");
+  }
+
+  const auto rdotr = [&]() {
     return platform->linAlg->weightedNorm2Many(mesh->Nlocal,
                                                elliptic->Nfields,
                                                elliptic->fieldOffset,
@@ -151,7 +164,7 @@ void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const oc
       options.compareArgs("INITIAL GUESS", "PROJECTION-ACONJ")) {
 
     platform->timer.tic(timerName + " proj pre", 1);
-    elliptic->res00Norm = rdotr(); 
+    elliptic->res00Norm = rdotr();
     nekrsCheck(std::isnan(elliptic->res00Norm),
                MPI_COMM_SELF,
                EXIT_FAILURE,
@@ -163,13 +176,12 @@ void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const oc
     platform->timer.toc(timerName + " proj pre");
   }
 
-  elliptic->res0Norm = rdotr(); 
+  elliptic->res0Norm = rdotr();
   nekrsCheck(std::isnan(elliptic->res0Norm),
              MPI_COMM_SELF,
              EXIT_FAILURE,
              "%s unreasonable res00Norm!\n",
              elliptic->name.c_str());
-
 
   // linear solve
   {
@@ -189,7 +201,7 @@ void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const oc
     }
 
     elliptic->resNorm = elliptic->res0Norm;
-    platform->linAlg->fill(elliptic->fieldOffset * elliptic->Nfields, 0.0, o_x);
+    platform->linAlg->fill(o_x.size(), 0.0, o_x);
 
     if (options.compareArgs("SOLVER", "PCG")) {
       elliptic->Niter = pcg(elliptic, tol, maxIter, elliptic->resNorm, o_r, o_x);
@@ -216,10 +228,9 @@ void ellipticSolve(elliptic_t *elliptic, const occa::memory &o_lambda0, const oc
     elliptic->res00Norm = elliptic->res0Norm;
   }
 
-  platform->linAlg
-      ->axpbyMany(mesh->Nlocal, elliptic->Nfields, elliptic->fieldOffset, 1.0, o_x0, 1.0, o_x);
+  platform->linAlg->axpbyMany(mesh->Nlocal, elliptic->Nfields, elliptic->fieldOffset, 1.0, o_x0, 1.0, o_x);
 
-  if (elliptic->allNeumann) {
+  if (elliptic->nullspace) {
     ellipticZeroMean(elliptic, o_x);
   }
 

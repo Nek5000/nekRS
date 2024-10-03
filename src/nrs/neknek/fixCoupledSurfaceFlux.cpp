@@ -28,7 +28,7 @@ void neknek_t::fixCoupledSurfaceFlux(occa::memory o_U)
     return;
   }
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   static bool isCalled = false;
   static bool hasOutlet;

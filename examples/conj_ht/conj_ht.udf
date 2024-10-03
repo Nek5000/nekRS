@@ -20,7 +20,7 @@ void userq(double time)
 void uservp(double time)
 {
   auto cds = nrs->cds;
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   if (updateProperties) {
     if (platform->comm.mpiRank == 0) {
@@ -60,12 +60,34 @@ void UDF_Setup()
 {
   nrs->userScalarSource = &userq;
   nrs->userProperties = &uservp;
+
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    {
+      auto mesh = nrs->mesh;
+      auto [x, y, z] = mesh->xyzHost();
+      std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+      for(int n = 0; n < mesh->Nlocal; n++) {
+        U[n + 0 * nrs->fieldOffset] = 4.0 * y[n] * (1.0 - y[n]);
+      }
+      nrs->o_U.copyFrom(U.data(), U.size());
+    }
+
+    {
+      auto mesh = nrs->cds->mesh[0];
+      std::vector<dfloat> T(mesh->Nlocal);
+      for(int n = 0; n < mesh->Nlocal; n++) {
+        T[n] = 0; 
+      }
+      nrs->cds->o_S.copyFrom(T.data(), T.size());
+    }
+  }
 }
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  if (nrs->isCheckpointStep) {
-    nrs->ocopyToNek(time, tstep);
+  if (nrs->checkpointStep) {
+    nrs->copyToNek(time, tstep);
     nek::userchk();
   }
   if (ciMode) {

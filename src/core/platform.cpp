@@ -179,6 +179,10 @@ platform_t::platform_t(setupAide &_options, MPI_Comm _commg, MPI_Comm _comm)
   kernelInfo["defines/"
              "hlong"] = "long long"; // occa's parser doesn't know long long int
 
+  kernelInfo["defines/"
+             "p_PI"] = M_PI;
+
+
   if (device.mode() == "CUDA") {
     kernelInfo["defines/smXX"] = 1;
   }

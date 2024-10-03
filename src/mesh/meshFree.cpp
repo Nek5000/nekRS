@@ -41,16 +41,6 @@ void meshFree(mesh_t* mesh)
 
   if(mesh->elementInfo) free(mesh->elementInfo);   //type of element
 
-  // MPI halo exchange info
-  if(mesh->haloElementList) free(mesh->haloElementList);   // sorted list of elements to be sent in halo exchange
-  if(mesh->NhaloPairs) free(mesh->NhaloPairs);        // number of elements worth of data to send/recv
-
-  if(mesh->haloGetNodeIds) free(mesh->haloGetNodeIds);   // volume node ids of outgoing halo nodes
-  if(mesh->haloPutNodeIds) free(mesh->haloPutNodeIds);   // volume node ids of incoming halo nodes
-
-  if(mesh->haloSendRequests) free(mesh->haloSendRequests);
-  if(mesh->haloRecvRequests) free(mesh->haloRecvRequests);
-
   // CG gather-scatter info
   if(mesh->globalIds) free(mesh->globalIds);
   //if(mesh->gsh) ogsHostFree(mesh->gsh);
@@ -67,9 +57,6 @@ void meshFree(mesh_t* mesh)
   if(mesh->r) free(mesh->r);
   if(mesh->s) free(mesh->s);
   if(mesh->t) free(mesh->t);      // coordinates of local nodes
-  if(mesh->x) free(mesh->x);
-  if(mesh->y) free(mesh->y);
-  if(mesh->z) free(mesh->z);      // coordinates of physical nodes
   if(mesh->vertexNodes) free(mesh->vertexNodes);
 
   if(mesh->D) free(mesh->D);   // 1D differentiation matrix (for tensor-product)

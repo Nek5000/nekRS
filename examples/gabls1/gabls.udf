@@ -89,7 +89,7 @@ void findUThetaTau(dfloat uWall, dfloat tempWall, dfloat &uTau, dfloat &thetaTau
 
 auto planarAverage()
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   poolDeviceMemory<dfloat> o_work(6 * nrs->fieldOffset);
 
   // <u>(y)
@@ -116,13 +116,13 @@ auto planarAverage()
 
 void userf(double time)
 {
-  auto mesh = nrs->meshV;
-  coriolis(mesh->Nlocal, nrs->fieldOffset, nrs->meshV->o_y, nrs->cds->o_S, nrs->o_U, o_divTau, nrs->o_NLT);
+  auto mesh = nrs->mesh;
+  coriolis(mesh->Nlocal, nrs->fieldOffset, nrs->mesh->o_y, nrs->cds->o_S, nrs->o_U, o_divTau, nrs->o_NLT);
 }
 
 void userq(double time)
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
   auto o_divTauY = o_divTau.slice(2 * nrs->fieldOffset , nrs->fieldOffset);
   platform->linAlg->axpby(mesh->Nlocal, -1.0, o_divTauY, 1.0, nrs->cds->o_NLT, 0, 0);
 }
@@ -130,7 +130,7 @@ void userq(double time)
 void writeProfiles(double time, int tstep)
 {
   const std::string fname = "profiles.dat";
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   auto o_data = [&]()
   {
@@ -302,31 +302,9 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 
 void UDF_Setup()
 {
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   o_divTau.resize(3 * nrs->fieldOffset);
-
-  {
-    auto rescale = [&](dfloat newMin, dfloat newMax, dfloat *x)
-    {
-      auto min = std::numeric_limits<dfloat>::max();
-      auto max = std::numeric_limits<dfloat>::lowest();
-      for(int i = 0; i < mesh->Nlocal ; i++) {
-        min = std::min(min, x[i]);
-        max = std::max(max, x[i]);
-      }
-      MPI_Allreduce(MPI_IN_PLACE, &min, 1, MPI_DFLOAT, MPI_MIN, platform->comm.mpiComm);
-      MPI_Allreduce(MPI_IN_PLACE, &max, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
-      const auto scale = (newMax - newMin)/(max - min);
-
-      for(int i = 0; i < mesh->Nlocal ; i++) {
-        x[i] = newMin + scale*(x[i] - min);
-      }
-    };
-    rescale(0.0, XLEN, mesh->x);
-    rescale(0.0, YLEN, mesh->y);
-    rescale(0.0, ZLEN, mesh->z);
-  }
 
   nrs->o_usrwrk.resize(5);
 
@@ -366,32 +344,34 @@ void UDF_Setup()
   }
 
   if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    platform->linAlg->rescale(0.0, XLEN, mesh->o_x, platform->comm.mpiComm);
+    platform->linAlg->rescale(0.0, YLEN, mesh->o_y, platform->comm.mpiComm);
+    platform->linAlg->rescale(0.0, ZLEN, mesh->o_z, platform->comm.mpiComm);
+
+    auto [x, y, z] = mesh->xyzHost();
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    std::vector<dfloat> T(mesh->Nlocal);
 
     for (int n = 0; n < mesh->Nlocal; n++) {
-      const auto x = mesh->x[n];
-      const auto y = mesh->y[n];
-      const auto z = mesh->z[n];
-
       auto temp = (T0S - 1.);
-      if (y <= 0.5) { 
+      if (y[n] <= 0.5) { 
          const auto kx  = 23;
          const auto kz  = 13;
          const auto alpha = kx * 2*M_PI / XLEN;
          const auto beta  = kz * 2*M_PI / ZLEN;
          const auto epsT  = 0.1 / TREF;
 
-         temp += epsT * sin(alpha * x) * sin(beta * z);
+         temp += epsT * sin(alpha * x[n]) * sin(beta * z[n]);
       } else {
          const auto ts_grad = ILSTRENGTH * LREF/TREF;
-         temp += ts_grad * (y - 1.);
+         temp += ts_grad * (y[n] - 1.);
       } 
 
-      nrs->U[n + 0 * nrs->fieldOffset] = 1;
-      nrs->U[n + 1 * nrs->fieldOffset] = 0;
-      nrs->U[n + 2 * nrs->fieldOffset] = 0;
-      nrs->cds->S[n] = temp;
+      U[n + 0 * nrs->fieldOffset] = 1;
+      T[n] = temp;
     }
-
+    nrs->o_U.copyFrom(U.data(), U.size());
+    nrs->cds->o_S.copyFrom(T.data(), T.size());
   }
 }
 
@@ -411,7 +391,7 @@ void UDF_ExecuteStep(double time, int tstep)
 
   restoreDt();
 
-  auto mesh = nrs->meshV;
+  auto mesh = nrs->mesh;
 
   if (nrs->timeStepConverged && time >= startTimeStatistics) {
     tavg::run(time);
@@ -503,7 +483,7 @@ void UDF_ExecuteStep(double time, int tstep)
   o_ddyAvg.clear();
   o_avg.clear();
 
-  if (nrs->isCheckpointStep) {
+  if (nrs->checkpointStep) {
     if (platform->comm.mpiRank == 0) {
       printf("uAvgWall: %g  wAvgWall: %g  magUWall: %g  tempAvgWall: %g\n"
              "uTau: %g  thetaTau: %g  rLength: %g\n",

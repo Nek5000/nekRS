@@ -211,7 +211,7 @@ static void rk44(int nFields,
 
 } // namespace
 
-occa::memory advectionSubcyclingRK(mesh_t *_mesh,
+occa::memory advectionSubcyclingRK(mesh_t *_meshT,
                                    mesh_t *_meshV,
                                    double time,
                                    dfloat *dt,
@@ -230,7 +230,7 @@ occa::memory advectionSubcyclingRK(mesh_t *_mesh,
 {
   const auto movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
-  mesh = _mesh;
+  mesh = _meshT;
   meshV = _meshV;
 
   gsh = _gsh;

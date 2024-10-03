@@ -257,9 +257,9 @@ void codedFixedGradientScalar(bcData *bc)
 
 void userq(double time)
 {
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->mesh;
   cds_t *cds = nrs->cds;
-  const dlong Nlocal = nrs->meshV->Nelements * nrs->meshV->Np;
+  const dlong Nlocal = nrs->mesh->Nelements * nrs->mesh->Np;
 
   dpdx(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 0 * cds->fieldOffset[0], nrs->cds->o_NLT);
   dpdx(Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, 1 * cds->fieldOffset[0], nrs->cds->o_NLT);
@@ -337,6 +337,11 @@ int timeStepConverged(int stage)
 
 void UDF_Setup()
 {
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    nek::getIC();
+    nrs->copyFromNek();
+  }
+
   // only ciMode 1 exercises the particles
   if (ciMode == 1) {
 
@@ -409,7 +414,7 @@ void UDF_Setup()
     particles->setProp("gid", o_pid);
   }
 
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->mesh;
 
   nrs->userScalarSource = &userq;
   nrs->userConvergenceCheck = &timeStepConverged;
@@ -445,7 +450,7 @@ void overwriteParticleSolution(nrs_t *nrs, double time)
     zp0_g[i] = zpg0[gid];
   }
 
-  deviceMemory<dfloat> o_y0(nrs->meshV->dim * xp0_g.size());
+  deviceMemory<dfloat> o_y0(nrs->mesh->dim * xp0_g.size());
 
   if (particles->numParticles() > 0) {
     auto o_x0coord = o_y0.slice(0 * xp0_g.size());
@@ -475,7 +480,7 @@ void overwriteParticleSolution(nrs_t *nrs, double time)
 
 void UDF_ExecuteStep(double time, int tstep)
 {
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->mesh;
   cds_t *cds = nrs->cds;
 
   if (tstep <= 5) {
@@ -502,8 +507,8 @@ void UDF_ExecuteStep(double time, int tstep)
     userMeshVelocity(mesh->Nlocal, nrs->fieldOffset, time, o_x0, o_y0, o_z0, mesh->o_U);
   }
 
-  if (nrs->isCheckpointStep) {
-    nrs->ocopyToNek(time, tstep);
+  if (nrs->checkpointStep) {
+    nrs->copyToNek(time, tstep);
     nek::userchk();
 
     if (ciMode == 1) {

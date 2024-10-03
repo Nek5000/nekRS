@@ -62,19 +62,19 @@ void cds_t::solve(double time, int stage)
       return o_l;
     }();
 
-    auto o_S = [&]() {
-      auto o_S0 = platform->o_memPool.reserve<dfloat>(this->fieldOffset[is]);
+    auto o_Si = [&]() {
+      auto o_S0 = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
       if (platform->options.compareArgs("SCALAR" + sid + " INITIAL GUESS", "EXTRAPOLATION") && stage == 1) {
-        o_S0.copyFrom(this->o_Se, this->fieldOffset[is], 0, this->fieldOffsetScan[is]);
+        o_S0.copyFrom(this->o_Se, o_S0.size(), 0, this->fieldOffsetScan[is]);
       } else {
-        o_S0.copyFrom(this->o_S, this->fieldOffset[is], 0, this->fieldOffsetScan[is]);
+        o_S0.copyFrom(this->o_S, o_S0.size(), 0, this->fieldOffsetScan[is]);
       }
 
       return o_S0;
     }();
 
-    this->solver[is]->solve(o_lambda0, o_lambda1, o_rhs, o_S);
-    o_S.copyTo(this->o_S, this->fieldOffset[is], this->fieldOffsetScan[is]);
+    this->solver[is]->solve(o_lambda0, o_lambda1, o_rhs, o_Si);
+    o_Si.copyTo(this->o_S, o_Si.size(), this->fieldOffsetScan[is]);
   }
 
   platform->timer.toc("scalarSolve");

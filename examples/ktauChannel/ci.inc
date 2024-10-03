@@ -51,7 +51,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
     return;
   }
 
-  mesh_t *mesh = nrs->meshV;
+  mesh_t *mesh = nrs->mesh;
 
   std::vector<int> bidWall = {1};
   occa::memory o_bidWall = platform->device.malloc<int>(bidWall.size(), bidWall.data());
