@@ -3,3 +3,4 @@ breathe==4.35.0
 sphinx-rtd-theme==2.0.0
 sphinx-tabs==3.4.5
 sphinx_mdinclude==0.6.0
+sphinx-autobuild
