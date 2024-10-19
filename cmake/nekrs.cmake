@@ -31,6 +31,7 @@ set(OGS_SOURCES
 
 set(NRS_SRC 
     src/lib/nekrs.cpp
+    src/core/threadPool.cpp
     src/core/io/iofld.cpp
     src/core/io/iofldFactory.cpp
     src/core/io/iofldNek.cpp

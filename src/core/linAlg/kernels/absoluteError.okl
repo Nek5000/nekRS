@@ -25,8 +25,8 @@ SOFTWARE.
 */
 
 @kernel void absoluteError(const dlong N, 
-                           const long Nfields, 
-                           const long fieldOffset, 
+                           const int Nfields, 
+                           const dlong fieldOffset, 
                            const dfloat absTol, 
                            @ restrict const dfloat *u, 
                            @ restrict const dfloat *uRef, 

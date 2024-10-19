@@ -32,7 +32,7 @@ void setup(nrs_t *nrs)
   firstTime = false;
 }
 
-}
+} // namespace
 
 dfloat nrs_t::computeCFL()
 {
@@ -41,20 +41,15 @@ dfloat nrs_t::computeCFL()
 
 dfloat nrs_t::computeCFL(dfloat dt)
 {
-  if (firstTime) setup(this);
+  if (firstTime) {
+    setup(this);
+  }
 
-  auto o_cfl = platform->o_memPool.reserve<dfloat>(mesh->Nelements);
+  auto o_cfl = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nelements);
 
-  this->cflKernel(mesh->Nelements,
-                  dt,
-                  mesh->o_vgeo,
-                  o_dx,
-                  this->fieldOffset,
-                  this->o_U,
-                  mesh->o_U,
-                  o_cfl);
+  this->cflKernel(mesh->Nelements, dt, mesh->o_vgeo, o_dx, this->fieldOffset, this->o_U, mesh->o_U, o_cfl);
 
-  auto scratch = (dfloat *) h_scratch.ptr();
+  auto scratch = (dfloat *)h_scratch.ptr();
   o_cfl.copyTo(scratch);
 
   dfloat cfl = 0;

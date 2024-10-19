@@ -7,7 +7,7 @@ namespace {
 
 void registerGMRESKernels(const std::string &section, int Nfields)
 {
-  const std::string oklpath = getenv("NEKRS_KERNEL_DIR") + std::string("/elliptic/");
+  const std::string oklpath = getenv("NEKRS_KERNEL_DIR") + std::string("/elliptic/linearSolver/");
   std::string fileName;
   const bool serial = platform->serial;
 
@@ -32,7 +32,7 @@ void registerGMRESKernels(const std::string &section, int Nfields)
 
 void registerCombinedPCGKernels(const std::string &section, int Nfields)
 {
-  const std::string oklpath = getenv("NEKRS_KERNEL_DIR") + std::string("/elliptic/");
+  const std::string oklpath = getenv("NEKRS_KERNEL_DIR") + std::string("/elliptic/linearSolver/");
   std::string fileName;
   const bool serial = platform->serial;
 
@@ -125,18 +125,19 @@ void registerEllipticKernels(std::string section, int poissonEquation)
       occa::properties properties = platform->kernelInfo;
 
       kernelName = "fusedCopyDfloatToPfloat";
-      fileName = oklpath + kernelName + extension;
+      fileName = oklpath + kernelName + fileNameExtension;
       platform->kernelRequests.add(kernelName, fileName, properties);
 
       properties["defines/p_Nfields"] = Nfields;
 
       kernelName = "ellipticBlockUpdatePCG";
-      fileName = oklpath + "ellipticBlockUpdatePCG" + extension;
+      fileName = oklpath + "/linearSolver/" + "ellipticBlockUpdatePCG" + fileNameExtension;
       platform->kernelRequests.add(sectionIdentifier + kernelName, fileName, properties);
 
       kernelName = "multiScaledAddwOffset";
       fileName = oklpath + kernelName + extension;
       platform->kernelRequests.add(sectionIdentifier + kernelName, fileName, properties);
+
       kernelName = "accumulate";
       fileName = oklpath + kernelName + extension;
       platform->kernelRequests.add(sectionIdentifier + kernelName, fileName, properties);

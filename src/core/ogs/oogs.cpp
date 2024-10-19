@@ -659,17 +659,6 @@ oogs_t *oogs::setup(ogs_t *ogs,
           fflush(stdout);
         }
 
-        device.finish();
-        constexpr int Nwarmup = 30;
-        for (int test = 0; test < Nwarmup; ++test) {
-          oogs::start(o_q, nVec, stride, type, ogsAdd, gs);
-          if (callback) {
-            callback();
-          }
-          oogs::finish(o_q, nVec, stride, type, ogsAdd, gs);
-        }
-        device.finish();
-
         // run Ntests measurements and take min to eliminate runtime variations
         constexpr int Ntests = 100;
         double elapsedTest = std::numeric_limits<double>::max();

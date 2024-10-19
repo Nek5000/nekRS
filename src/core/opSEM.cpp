@@ -7,7 +7,7 @@ static const std::string suffix = "Hex3D";
 namespace opSEM
 {
 
-void grad(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory& o_out)
+void grad(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory &o_out)
 {
   static occa::kernel kernel;
   if (!kernel.isInitialized()) {
@@ -18,13 +18,12 @@ void grad(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory& o_
 
 occa::memory grad(mesh_t *mesh, dlong offset, const occa::memory &o_in)
 {
-  auto o_out = platform->o_memPool.reserve<dfloat>(mesh->dim * offset);
+  auto o_out = platform->deviceMemoryPool.reserve<dfloat>(mesh->dim * offset);
   grad(mesh, offset, o_in, o_out);
   return o_out;
 }
 
-
-void strongGrad(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory& o_out)
+void strongGrad(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory &o_out)
 {
   static occa::kernel kernel;
   if (!kernel.isInitialized()) {
@@ -35,12 +34,12 @@ void strongGrad(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memo
 
 occa::memory strongGrad(mesh_t *mesh, dlong offset, const occa::memory &o_in)
 {
-  auto o_out = platform->o_memPool.reserve<dfloat>(mesh->dim * offset);
+  auto o_out = platform->deviceMemoryPool.reserve<dfloat>(mesh->dim * offset);
   strongGrad(mesh, offset, o_in, o_out);
   return o_out;
 }
 
-void strongGradVec(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory& o_out)
+void strongGradVec(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory &o_out)
 {
   for (int i = 0; i < mesh->dim; i++) {
     auto o_u = o_in.slice(i * offset, mesh->Nlocal);
@@ -56,7 +55,7 @@ occa::memory strongGradVec(mesh_t *mesh, dlong offset, const occa::memory &o_in)
   return o_out;
 }
 
-void divergence(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory& o_out)
+void divergence(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory &o_out)
 {
   static occa::kernel kernel;
   if (!kernel.isInitialized()) {
@@ -67,12 +66,12 @@ void divergence(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memo
 
 occa::memory divergence(mesh_t *mesh, dlong offset, const occa::memory &o_in)
 {
-  auto o_out = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_out = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   divergence(mesh, offset, o_in, o_out);
   return o_out;
 }
 
-void strongDivergence(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory& o_out)
+void strongDivergence(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory &o_out)
 {
   static occa::kernel kernel;
   if (!kernel.isInitialized()) {
@@ -83,12 +82,16 @@ void strongDivergence(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa
 
 occa::memory strongDivergence(mesh_t *mesh, dlong offset, const occa::memory &o_in)
 {
-  auto o_out = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_out = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   strongDivergence(mesh, offset, o_in);
   return o_out;
 }
 
-void laplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda, const occa::memory &o_in, occa::memory& o_out)
+void laplacian(mesh_t *mesh,
+               dlong offset,
+               const occa::memory &o_lambda,
+               const occa::memory &o_in,
+               occa::memory &o_out)
 {
   static occa::memory o_fieldOffsetScan;
   static occa::kernel kernel;
@@ -101,21 +104,24 @@ void laplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda, const o
 
 occa::memory laplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda, const occa::memory &o_in)
 {
-  auto o_out = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_out = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   laplacian(mesh, offset, o_lambda, o_in, o_out);
   return o_out;
 }
 
-void
-strongLaplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda, const occa::memory &o_in, occa::memory& o_out)
+void strongLaplacian(mesh_t *mesh,
+                     dlong offset,
+                     const occa::memory &o_lambda,
+                     const occa::memory &o_in,
+                     occa::memory &o_out)
 {
   auto o_grad = strongGrad(mesh, offset, o_in);
   oogs::startFinish(o_grad, mesh->dim, offset, ogsDfloat, ogsAdd, mesh->oogs);
 
-  auto o_tmp = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_tmp = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   platform->linAlg->axmyz(mesh->Nlocal, 1.0, mesh->o_invAJw, o_lambda, o_tmp);
   platform->linAlg->axmyVector(mesh->Nlocal, offset, 0, 1.0, o_tmp, o_grad);
-  
+
   o_out = strongDivergence(mesh, offset, o_grad);
 }
 
@@ -127,7 +133,7 @@ strongLaplacian(mesh_t *mesh, dlong offset, const occa::memory &o_lambda, const 
   return o_out;
 }
 
-void strongCurl(mesh_t *mesh, dlong offset, const occa::memory& o_in, occa::memory& o_out)
+void strongCurl(mesh_t *mesh, dlong offset, const occa::memory &o_in, occa::memory &o_out)
 {
   static occa::kernel kernel;
   if (!kernel.isInitialized()) {
@@ -137,9 +143,9 @@ void strongCurl(mesh_t *mesh, dlong offset, const occa::memory& o_in, occa::memo
   kernel(mesh->Nelements, scaleJW, mesh->o_vgeo, mesh->o_D, offset, o_in, o_out);
 }
 
-occa::memory strongCurl(mesh_t *mesh, dlong offset, const occa::memory& o_in)
+occa::memory strongCurl(mesh_t *mesh, dlong offset, const occa::memory &o_in)
 {
-  auto o_out = platform->o_memPool.reserve<dfloat>(mesh->dim * offset);
+  auto o_out = platform->deviceMemoryPool.reserve<dfloat>(mesh->dim * offset);
   strongCurl(mesh, offset, o_in, o_out);
   return o_out;
 }

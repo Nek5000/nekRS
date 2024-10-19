@@ -270,14 +270,14 @@ static occa::memory meshSolve(nrs_t *nrs, double time, int iter)
   auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
   linAlg_t *linAlg = platform->linAlg;
 
-  auto o_rhs = platform->o_memPool.reserve<dfloat>(mesh->dim * nrs->fieldOffset);
+  auto o_rhs = platform->deviceMemoryPool.reserve<dfloat>(mesh->dim * nrs->fieldOffset);
   platform->linAlg->fill(mesh->dim * nrs->fieldOffset, 0, o_rhs);
 
   platform->timer.tic("meshSolve", 1);
 
   auto o_lambda0 = nrs->o_meshMue;
 
-  auto o_U = platform->o_memPool.reserve<dfloat>(mesh->dim * nrs->fieldOffset);
+  auto o_U = platform->deviceMemoryPool.reserve<dfloat>(mesh->dim * nrs->fieldOffset);
   if (platform->options.compareArgs("MESH INITIAL GUESS", "EXTRAPOLATION") && iter == 1) {
     o_U.copyFrom(mesh->o_Ue);
   } else {
@@ -417,7 +417,7 @@ void nrs_t::initInnerStep(double time, dfloat _dt, int tstep)
   if (this->flow) {
     platform->timer.tic("makef", 1);
 
-     platform->linAlg->fill(this->fieldOffset * this->NVfields, 0.0, this->o_NLT);
+    platform->linAlg->fill(this->fieldOffset * this->NVfields, 0.0, this->o_NLT);
 
     if (this->userVelocitySource) {
       platform->timer.tic("udfUEqnSource", 1);

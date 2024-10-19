@@ -36,23 +36,23 @@ namespace
 
 occa::memory modeInfoKlocknerHex3D(int _N)
 {
- const int _Np = (_N+1)*(_N+1)*(_N+1);
- const int _Nmodes1D = (_N+1);
- std::vector<int> _modeMap(_Np);
+  const int _Np = (_N + 1) * (_N + 1) * (_N + 1);
+  const int _Nmodes1D = (_N + 1);
+  std::vector<int> _modeMap(_Np);
 
-  int sk = 0, n=0;
-  for(int id=0; id<_Nmodes1D;id++){
-    for(int j=0; j<_Nmodes1D; j++){
-      for(int i=0; i<_Nmodes1D; i++){
-        for(int k=0; k<_Nmodes1D; k++){
-         if(std::max(std::max(i,j),k) == id){
+  int sk = 0, n = 0;
+  for (int id = 0; id < _Nmodes1D; id++) {
+    for (int j = 0; j < _Nmodes1D; j++) {
+      for (int i = 0; i < _Nmodes1D; i++) {
+        for (int k = 0; k < _Nmodes1D; k++) {
+          if (std::max(std::max(i, j), k) == id) {
             _modeMap[n++] = sk;
           }
-        sk++;
-         }
+          sk++;
         }
       }
-    sk=0;
+    }
+    sk = 0;
   }
 
   auto o_modeMap = platform->device.malloc<int>(_modeMap.size());
@@ -62,15 +62,15 @@ occa::memory modeInfoKlocknerHex3D(int _N)
 
 occa::memory leastSquaresFitKlockner(int _N)
 {
-  std::vector<dfloat> tmp(2*_N);
-  for(int n=0; n<_N; n++){
-    tmp[2*n + 0] = std::log10(n+1);
-    tmp[2*n + 1] = 1.0;
+  std::vector<dfloat> tmp(2 * _N);
+  for (int n = 0; n < _N; n++) {
+    tmp[2 * n + 0] = std::log10(n + 1);
+    tmp[2 * n + 1] = 1.0;
   }
- 
-  std::vector<dfloat> _LSF( _N);
+
+  std::vector<dfloat> _LSF(_N);
   auto invTmp = platform->linAlg->matrixPseudoInverse(2, tmp);
-  for(int n=0; n<_N; n++){
+  for (int n = 0; n < _N; n++) {
     _LSF[n] = invTmp[n];
   }
 
@@ -82,15 +82,15 @@ occa::memory leastSquaresFitKlockner(int _N)
 occa::memory baseLineDecayKlockner(int _N)
 {
   dfloat bsum = 0.0;
-  for(int j=1; j<_N+1; j++) {
-    bsum +=1.0/std::pow(j, 2*_N);
+  for (int j = 1; j < _N + 1; j++) {
+    bsum += 1.0 / std::pow(j, 2 * _N);
   }
-  bsum = 1.0/std::sqrt(bsum);
+  bsum = 1.0 / std::sqrt(bsum);
 
-  std::vector<dfloat> _BLD(_N+1, 0.0);
-  for(int n=1; n<_N+1; n++){
-    const dfloat bdecay = bsum/std::pow(n,_N);
-    _BLD[n] = bdecay*bdecay;
+  std::vector<dfloat> _BLD(_N + 1, 0.0);
+  for (int n = 1; n < _N + 1; n++) {
+    const dfloat bdecay = bsum / std::pow(n, _N);
+    _BLD[n] = bdecay * bdecay;
   }
 
   auto o_BLD = platform->device.malloc<dfloat>(_BLD.size());
@@ -98,7 +98,7 @@ occa::memory baseLineDecayKlockner(int _N)
   return o_BLD;
 }
 
-}
+} // namespace
 
 void setup(mesh_t *mesh_, oogs_t *gsh_)
 {
@@ -113,9 +113,8 @@ void setup(mesh_t *mesh_, oogs_t *gsh_)
   o_modeMap = modeInfoKlocknerHex3D(mesh->N);
   o_leastSquares1D = leastSquaresFitKlockner(mesh->N);
   o_baseLineDecay = baseLineDecayKlockner(mesh->N);
-  o_invVT = [&] () 
-  {
-    std::vector<dfloat> V(mesh->Nq *  mesh->Nq);
+  o_invVT = [&]() {
+    std::vector<dfloat> V(mesh->Nq * mesh->Nq);
     Vandermonde1D(mesh->N, mesh->Nq, mesh->r, V.data());
     auto invV = platform->linAlg->matrixInverse(mesh->Nq, V);
     auto invVT = platform->linAlg->matrixTranspose(mesh->Nq, invV);
@@ -140,21 +139,34 @@ void setup(mesh_t *mesh_, oogs_t *gsh_)
   modesKernel = platform->kernelRequests.load(kernelName);
 }
 
-occa::memory viscosity(dlong UFieldOffset, const occa::memory& o_U, const occa::memory& o_S,
-                       dfloat absTol, dfloat scalingCoeff, dfloat logS0, dfloat kappa, bool makeCont)
+occa::memory viscosity(dlong UFieldOffset,
+                       const occa::memory &o_U,
+                       const occa::memory &o_S,
+                       dfloat absTol,
+                       dfloat scalingCoeff,
+                       dfloat logS0,
+                       dfloat kappa,
+                       bool makeCont)
 {
-  auto o_nu = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_nu = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   viscosity(UFieldOffset, o_U, o_S, o_nu, absTol, scalingCoeff, logS0, kappa, makeCont);
   return o_nu;
 }
 
-void viscosity(dlong UFieldOffset, const occa::memory& o_U, const occa::memory& o_S, occa::memory& o_nu,
-               dfloat absTol, dfloat scalingCoeff, dfloat logS0, dfloat kappa, bool C0)
+void viscosity(dlong UFieldOffset,
+               const occa::memory &o_U,
+               const occa::memory &o_S,
+               occa::memory &o_nu,
+               dfloat absTol,
+               dfloat scalingCoeff,
+               dfloat logS0,
+               dfloat kappa,
+               bool C0)
 {
-  occa::memory o_logSk = platform->o_memPool.reserve<dfloat>(mesh->Nelements);
-  occa::memory o_Shat = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  occa::memory o_logSk = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nelements);
+  occa::memory o_Shat = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
 
-  modesKernel(mesh->Nelements, o_invVT, o_S, o_Shat); 
+  modesKernel(mesh->Nelements, o_invVT, o_S, o_Shat);
   relativeMassAveragedModeKernel(mesh->Nelements,
                                  absTol,
                                  o_modeMap,
@@ -177,8 +189,7 @@ void viscosity(dlong UFieldOffset, const occa::memory& o_U, const occa::memory& 
                        mesh->o_z,
                        o_U,
                        o_logSk,
-                       o_nu
-  );
+                       o_nu);
 
   if (C0) {
     oogs::startFinish(o_nu, 1, 0, ogsDfloat, ogsMax, gsh);

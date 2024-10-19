@@ -18,7 +18,7 @@ FUNC(combinedPCGUpdateConvergedSolution)(const dlong &N,
       for (dlong n = 0; n < N; ++n) {
         const dlong id = n + fld * fieldOffset;
         const dfloat pk = p[id];
-        x[id] = x[id] + alphak * pk;
+        x[id] += alphak * pk;
       }
     }
   } else {
@@ -28,7 +28,7 @@ FUNC(combinedPCGUpdateConvergedSolution)(const dlong &N,
         const dfloat pk = p[id];
         const dfloat rk = r[id];
         const dfloat M = preco ? Minv[id] : 1.0;
-        x[id] = x[id] + alphak * pk + alphaDivBetakm1 * (pk - M * rk);
+        x[id] += alphak * pk + alphaDivBetakm1 * (pk - M * rk);
       }
     }
   }

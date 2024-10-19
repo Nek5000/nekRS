@@ -29,9 +29,10 @@
 #include "ellipticMultiGrid.h"
 #include "linAlg.hpp"
 #include <iostream>
+
 void pMGLevel::Ax(occa::memory o_x, occa::memory o_Ax)
 {
-  ellipticOperator(elliptic,o_x,o_Ax, pfloatString);
+  ellipticOperator(elliptic, o_x, o_Ax, pfloatString);
 }
 
 void pMGLevel::residual(occa::memory o_rhs, occa::memory o_x, occa::memory o_res)
@@ -57,15 +58,16 @@ void pMGLevel::coarsen(occa::memory o_x, occa::memory o_Rx)
   const auto workPerElem = 2 * (NqF * NqF * NqF * NqC + NqF * NqF * NqC * NqC + NqF * NqC * NqC * NqC);
   flopCounter += static_cast<double>(mesh->Nelements) * workPerElem;
 
-  if (options.compareArgs("DISCRETIZATION","CONTINUOUS")) {
+  if (options.compareArgs("DISCRETIZATION", "CONTINUOUS")) {
     oogs::startFinish(o_Rx, elliptic->Nfields, elliptic->fieldOffset, ogsPfloat, ogsAdd, elliptic->oogs);
-    ellipticApplyMask(elliptic, o_Rx, pfloatString); // apply mask again because coarsenKernel does not preserve it
+    ellipticApplyMask(elliptic,
+                      o_Rx,
+                      pfloatString); // apply mask again because coarsenKernel does not preserve it
   }
 
-  const double factor = (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) 
-                        ? 0.5 : 1.0;
+  const double factor =
+      (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) ? 0.5 : 1.0;
   platform->flopCounter->add("pMGLevel::coarsen, N=" + std::to_string(mesh->N), factor * flopCounter);
-
 }
 
 void pMGLevel::prolongate(occa::memory o_x, occa::memory o_Px)
@@ -79,8 +81,8 @@ void pMGLevel::prolongate(occa::memory o_x, occa::memory o_Px)
   flopCounter += NqF * NqF * NqF;
   flopCounter *= static_cast<double>(mesh->Nelements);
 
-  const double factor = (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) 
-                        ? 0.5 : 1.0;
+  const double factor =
+      (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) ? 0.5 : 1.0;
   platform->flopCounter->add("pMGLevel::prolongate, N=" + std::to_string(mesh->N), factor * flopCounter);
 }
 
@@ -88,49 +90,55 @@ void pMGLevel::smooth(occa::memory o_rhs, occa::memory o_x, bool x_is_zero)
 {
   platform->timer.tic(elliptic->name + " preconditioner smoother N=" + std::to_string(mesh->N), 1);
 
-  if(!x_is_zero && smootherType == SmootherType::ASM) return;
-  if(!x_is_zero && smootherType == SmootherType::RAS) return;
+  if (!x_is_zero && smootherType == SmootherType::ASM) {
+    return;
+  }
+  if (!x_is_zero && smootherType == SmootherType::RAS) {
+    return;
+  }
 
-  if (smootherType == SmootherType::CHEBYSHEV)
+  if (smootherType == SmootherType::CHEBYSHEV) {
     this->smoothChebyshev(o_rhs, o_x, x_is_zero);
-  else if (smootherType == SmootherType::OPT_FOURTH_CHEBYSHEV || smootherType == SmootherType::FOURTH_CHEBYSHEV)
+  } else if (smootherType == SmootherType::OPT_FOURTH_CHEBYSHEV ||
+             smootherType == SmootherType::FOURTH_CHEBYSHEV) {
     this->smoothFourthKindChebyshev(o_rhs, o_x, x_is_zero);
-  else if (smootherType == SmootherType::ASM)
+  } else if (smootherType == SmootherType::ASM) {
     this->smoothSchwarz(o_rhs, o_x, x_is_zero);
-  else if (smootherType == SmootherType::RAS)
+  } else if (smootherType == SmootherType::RAS) {
     this->smoothSchwarz(o_rhs, o_x, x_is_zero);
-  else if (smootherType == SmootherType::JACOBI)
+  } else if (smootherType == SmootherType::JACOBI) {
     this->smoothJacobi(o_rhs, o_x, x_is_zero);
+  }
 
   platform->timer.toc(elliptic->name + " preconditioner smoother N=" + std::to_string(mesh->N));
 }
 
 void pMGLevel::smoother(occa::memory o_x, occa::memory o_Sx, bool x_is_zero)
 {
-  if (chebySmootherType == ChebyshevSmootherType::JACOBI){
+  if (chebySmootherType == ChebyshevSmootherType::JACOBI) {
     this->smootherJacobi(o_x, o_Sx);
   } else {
     this->smoothSchwarz(o_x, o_Sx, true);
   }
 }
 
-void pMGLevel::smoothJacobi (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
+void pMGLevel::smoothJacobi(occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
-  auto o_res = platform->o_memPool.reserve<pfloat>(Ncols); 
-  auto o_d = platform->o_memPool.reserve<pfloat>(Ncols); 
+  auto o_res = platform->deviceMemoryPool.reserve<pfloat>(Ncols);
+  auto o_d = platform->deviceMemoryPool.reserve<pfloat>(Ncols);
 
   const pfloat one = 1.0;
   const pfloat mone = -1.0;
 
   double flopCount = 0.0;
 
-  if(xIsZero) { //skip the Ax if x is zero
-    //res = Sr
-    platform->linAlg->paxmyz(Nrows,one,o_invDiagA,o_r,o_x);
+  if (xIsZero) { // skip the Ax if x is zero
+    // res = Sr
+    platform->linAlg->paxmyz(Nrows, one, o_invDiagA, o_r, o_x);
     flopCount += Nrows;
   } else {
-    //res = S(r-Ax)
-    this->Ax(o_x,o_res);
+    // res = S(r-Ax)
+    this->Ax(o_x, o_res);
     platform->linAlg->paxpby(Nrows, one, o_r, mone, o_res);
     platform->linAlg->paxmyz(Nrows, one, o_invDiagA, o_res, o_d);
     platform->linAlg->paxpby(Nrows, one, o_d, one, o_x);
@@ -138,18 +146,19 @@ void pMGLevel::smoothJacobi (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
     flopCount += 7 * Nrows;
   }
   auto mesh = elliptic->mesh;
-  const double factor = (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) 
-                        ? 0.5 : 1.0;
+  const double factor =
+      (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) ? 0.5 : 1.0;
   platform->flopCounter->add("pMGLevel::smoothJacobi, N=" + std::to_string(mesh->N), factor * flopCount);
 }
 
-void pMGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
+void pMGLevel::smoothChebyshev(occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
   const auto ChebyshevDegree = xIsZero ? DownLegChebyshevDegree : UpLegChebyshevDegree;
 
   // p_0(0) = I -> no-op smoothing
-  if (ChebyshevDegree == 0)
+  if (ChebyshevDegree == 0) {
     return;
+  }
 
   const pfloat theta = 0.5 * (lambda1 + lambda0);
   const pfloat delta = 0.5 * (lambda1 - lambda0);
@@ -159,9 +168,9 @@ void pMGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZe
 
   pfloat one = 1., mone = -1., zero = 0.0;
 
-  auto o_res = platform->o_memPool.reserve<pfloat>(Ncols);       
-  auto o_Ad = platform->o_memPool.reserve<pfloat>(Ncols); 
-  auto o_d = platform->o_memPool.reserve<pfloat>(Ncols);
+  auto o_res = platform->deviceMemoryPool.reserve<pfloat>(Ncols);
+  auto o_Ad = platform->deviceMemoryPool.reserve<pfloat>(Ncols);
+  auto o_d = platform->deviceMemoryPool.reserve<pfloat>(Ncols);
 
   double flopCount = 0.0;
 
@@ -171,7 +180,7 @@ void pMGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZe
 
   // res = S(r-Ax)
   if (!xIsZero) {
-    this->Ax(o_x,o_res);
+    this->Ax(o_x, o_res);
     platform->linAlg->paxpby(Nrows, one, o_r, mone, o_res);
     flopCount += 2 * Nrows;
   } else {
@@ -186,7 +195,7 @@ void pMGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZe
   for (int k = 1; k < ChebyshevDegree; k++) {
 
     // SAd_k
-    this->Ax(o_d,o_Ad);
+    this->Ax(o_d, o_Ad);
     this->smoother(o_Ad, o_Ad, xIsZero);
 
     // x_k+1 = x_k + d_k
@@ -203,30 +212,31 @@ void pMGLevel::smoothChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZe
 
     flopCount += 5 * Nrows;
   }
-  //x_k+1 = x_k + d_k
+  // x_k+1 = x_k + d_k
   platform->linAlg->paxpby(Nrows, one, o_d, one, o_x);
   flopCount += Nrows;
   ellipticApplyMask(elliptic, o_x, pfloatString);
 
-  const double factor = (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) 
-                        ? 0.5 : 1.0;
+  const double factor =
+      (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) ? 0.5 : 1.0;
   platform->flopCounter->add("pMGLevel::smoothChebyshev, N=" + std::to_string(mesh->N), factor * flopCount);
 }
 
-void pMGLevel::smoothFourthKindChebyshev (occa::memory &o_r, occa::memory &o_x, bool xIsZero)
+void pMGLevel::smoothFourthKindChebyshev(occa::memory &o_r, occa::memory &o_x, bool xIsZero)
 {
   const auto ChebyshevDegree = xIsZero ? DownLegChebyshevDegree : UpLegChebyshevDegree;
   auto &betas = xIsZero ? DownLegBetas : UpLegBetas;
 
   // p_0(0) = I -> no-op smoothing
-  if (ChebyshevDegree == 0)
+  if (ChebyshevDegree == 0) {
     return;
+  }
 
   pfloat one = 1., mone = -1., zero = 0.0;
 
-  auto o_res = platform->o_memPool.reserve<pfloat>(Ncols);       
-  auto o_Ad = platform->o_memPool.reserve<pfloat>(Ncols); 
-  auto o_d = platform->o_memPool.reserve<pfloat>(Ncols);
+  auto o_res = platform->deviceMemoryPool.reserve<pfloat>(Ncols);
+  auto o_Ad = platform->deviceMemoryPool.reserve<pfloat>(Ncols);
+  auto o_d = platform->deviceMemoryPool.reserve<pfloat>(Ncols);
 
   const auto rho = this->lambda1;
 
@@ -236,9 +246,8 @@ void pMGLevel::smoothFourthKindChebyshev (occa::memory &o_r, occa::memory &o_x, 
   if (xIsZero) {
     platform->linAlg->pfill(Nrows, zero, o_x);
     o_res.copyFrom(o_r, Nrows);
-  }
-  else {
-    this->Ax(o_x,o_res);
+  } else {
+    this->Ax(o_x, o_res);
     platform->linAlg->paxpby(Nrows, one, o_r, mone, o_res);
     flopCount += Nrows;
   }
@@ -265,21 +274,22 @@ void pMGLevel::smoothFourthKindChebyshev (occa::memory &o_r, occa::memory &o_x, 
     platform->linAlg->paxpby(Nrows, rCoeff, o_Ad, dCoeff, o_d);
   }
 
-  //x_k+1 = x_k + \beta_k d_k
+  // x_k+1 = x_k + \beta_k d_k
   platform->linAlg->paxpby(Nrows, betas.back(), o_d, one, o_x);
   flopCount += 2 * Nrows;
   ellipticApplyMask(elliptic, o_x, pfloatString);
 
-  const double factor = (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) 
-                        ? 0.5 : 1.0;  
-  platform->flopCounter->add("pMGLevel::smoothOptChebyshev, N=" + std::to_string(mesh->N), factor * flopCount);
+  const double factor =
+      (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) ? 0.5 : 1.0;
+  platform->flopCounter->add("pMGLevel::smoothOptChebyshev, N=" + std::to_string(mesh->N),
+                             factor * flopCount);
 }
 
 void pMGLevel::smootherJacobi(occa::memory &o_r, occa::memory &o_Sr)
 {
   platform->linAlg->paxmyz(Nrows, 1.0f, o_invDiagA, o_r, o_Sr);
 
-  const double factor = (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) 
-                        ? 0.5 : 1.0;
+  const double factor =
+      (std::is_same<pfloat, float>::value && !std::is_same<pfloat, dfloat>::value) ? 0.5 : 1.0;
   platform->flopCounter->add("pMGLevel::smootherJacobi, N=" + std::to_string(mesh->N), factor * Nrows);
 }

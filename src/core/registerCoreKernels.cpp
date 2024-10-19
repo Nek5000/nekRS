@@ -18,8 +18,14 @@ void registerCoreKernels()
     kernelName = "core-copyDfloatToDouble";
     platform->copyDfloatToDoubleKernel = platform->kernelRequests.load(kernelName);
 
+    kernelName = "core-copyDfloatToFloat";
+    platform->copyDfloatToFloatKernel = platform->kernelRequests.load(kernelName);
+
     kernelName = "core-copyDoubleToDfloat";
     platform->copyDoubleToDfloatKernel = platform->kernelRequests.load(kernelName);
+
+    kernelName = "core-copyFloatToDfloat";
+    platform->copyFloatToDfloatKernel = platform->kernelRequests.load(kernelName);
 
     return;
   }
@@ -109,7 +115,17 @@ void registerCoreKernels()
       fileName = oklpath + "/core/" + kernelName + extension;
       auto prop = platform->kernelInfo;
       prop["defines/pfloat"] = "double";
+      prop["defines/dummy"] = 1; // just to make it different from copyDfloatToDouble to avoid collison
       platform->kernelRequests.add(section + "copyDfloatToDouble", fileName, prop);
+    }
+
+    {
+      kernelName = "copyDfloatToPfloat";
+      fileName = oklpath + "/core/" + kernelName + extension;
+      auto prop = platform->kernelInfo;
+      prop["defines/pfloat"] = "float";
+      prop["defines/dummy"] = 2; // just to make it different from copyDfloatToDouble to avoid collison
+      platform->kernelRequests.add(section + "copyDfloatToFloat", fileName, prop);
     }
  
     {
@@ -118,8 +134,18 @@ void registerCoreKernels()
       auto prop = platform->kernelInfo;
       prop["defines/dfloat"] = "double";
       prop["defines/pfloat"] = dfloatString;
-      prop["defines/dummy"] = 1; // just to make it different from copyDfloatToDouble to avoid collison
+      prop["defines/dummy"] = 3; // just to make it different from copyDfloatToDouble to avoid collison
       platform->kernelRequests.add(section + "copyDoubleToDfloat", fileName, prop);
+    }
+
+    {
+      kernelName = "copyDfloatToPfloat";
+      fileName = oklpath + "/core/" + kernelName + extension;
+      auto prop = platform->kernelInfo;
+      prop["defines/dfloat"] = "float";
+      prop["defines/pfloat"] = dfloatString;
+      prop["defines/dummy"] = 4; // just to make it different from copyDfloatToDouble to avoid collison
+      platform->kernelRequests.add(section + "copyFloatToDfloat", fileName, prop);
     }
 
     auto prop = platform->kernelInfo;

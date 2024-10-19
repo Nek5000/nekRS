@@ -1414,6 +1414,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
 
           bool converged_internal = (fpt->flags & FLAG_MASK) == CONVERGED_FLAG;
           if (*code_i == CODE_NOT_FOUND || converged_internal || fpt->dist2 < *dist2_i) {
+            @barrier(); // ensure if-condition is evaluated first before changing code_i and dist2_i
             for (dlong j = 0; j < p_innerSize; ++j; @inner) {
               if (j == 0) {
                 *el_i = el;
@@ -1431,6 +1432,7 @@ dfloat tensor_ig3_j(@ restrict dfloat *g_partials,
               }
             }
             @barrier();
+
             if (converged_internal) {
               break;
             }

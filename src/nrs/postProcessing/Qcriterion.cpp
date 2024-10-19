@@ -20,14 +20,14 @@ void nrs_t::Qcriterion(occa::memory &o_Q)
 
 occa::memory nrs_t::Qcriterion(const occa::memory &o_U)
 {
-  auto o_Q = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_Q = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   Qcriterion(o_U, o_Q);
   return o_Q;
 }
 
 occa::memory nrs_t::Qcriterion()
 {
-  auto o_Q = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_Q = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   Qcriterion(this->o_U, o_Q);
   return o_Q;
 }

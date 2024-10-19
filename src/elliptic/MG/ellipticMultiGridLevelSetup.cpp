@@ -57,8 +57,7 @@ ChebyshevSmootherType convertSmootherType(SmootherType s)
 
 pMGLevel::pMGLevel(elliptic_t *ellipticBase, int Nc, setupAide options_, MPI_Comm comm_, bool _isCoarse)
     : multigridLevel(ellipticBase->mesh->Nelements * ellipticBase->mesh->Np,
-                     (ellipticBase->mesh->Nelements) *
-                         ellipticBase->mesh->Np,
+                     (ellipticBase->mesh->Nelements) * ellipticBase->mesh->Np,
                      comm_)
 {
   isCoarse = _isCoarse;
@@ -82,8 +81,7 @@ pMGLevel::pMGLevel(elliptic_t *ellipticBase, // finest level
                    MPI_Comm comm_,
                    bool _isCoarse)
     : multigridLevel(ellipticCoarse->mesh->Nelements * ellipticCoarse->mesh->Np,
-                     ellipticCoarse->mesh->Np *
-                         (ellipticCoarse->mesh->Nelements),
+                     ellipticCoarse->mesh->Np * (ellipticCoarse->mesh->Nelements),
                      comm_)
 {
 
@@ -160,7 +158,8 @@ void pMGLevel::setupSmoother(elliptic_t *ellipticBase)
 
   std::string schedule = options.getArgs("MULTIGRID SCHEDULE");
   if (!schedule.empty()) {
-    auto [scheduleMap, errorString] = ellipticParseMultigridSchedule(schedule, options, DownLegChebyshevDegree);
+    auto [scheduleMap, errorString] =
+        ellipticParseMultigridSchedule(schedule, options, DownLegChebyshevDegree);
     if (scheduleMap[{degree, true}] > -1) {
       UpLegChebyshevDegree = scheduleMap[{degree, true}];
     }
@@ -213,7 +212,8 @@ void pMGLevel::Report()
   if (platform->comm.mpiRank == 0) {
     if (isCoarse && options.compareArgs("MULTIGRID COARSE SOLVE", "TRUE")) {
       const auto useSEMFEM = options.compareArgs("MULTIGRID SEMFEM", "TRUE");
-      if (options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE") || options.compareArgs("MULTIGRID SEMFEM", "TRUE")) {
+      if (options.compareArgs("MULTIGRID COARSE SOLVE AND SMOOTH", "TRUE") ||
+          options.compareArgs("MULTIGRID SEMFEM", "TRUE")) {
 
         printf("|    pMG     |   Matrix-free   | %s\n", smootherString.c_str());
         printf("     |            |     p = %2d      |\n", degree);
@@ -308,7 +308,7 @@ dfloat pMGLevel::maxEigSmoothAx()
   hlong Nglobal = 0;
   MPI_Allreduce(&Nlocal, &Nglobal, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
 
-  auto o_invDegree = platform->o_memPool.reserve<dfloat>(Nlocal);
+  auto o_invDegree = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
   o_invDegree.copyFrom(elliptic->ogs->invDegree);
   const auto k = (unsigned int)std::min(pMGLevel::Narnoldi, Nglobal);
 
@@ -317,14 +317,14 @@ dfloat pMGLevel::maxEigSmoothAx()
 
   std::vector<occa::memory> o_V(k + 1);
   for (int i = 0; i <= k; i++) {
-    o_V[i] = platform->o_memPool.reserve<dfloat>(M);
+    o_V[i] = platform->deviceMemoryPool.reserve<dfloat>(M);
   }
 
-  auto o_Vx = platform->o_memPool.reserve<dfloat>(M);
-  auto o_VxPfloat = platform->o_memPool.reserve<pfloat>(M);
+  auto o_Vx = platform->deviceMemoryPool.reserve<dfloat>(M);
+  auto o_VxPfloat = platform->deviceMemoryPool.reserve<pfloat>(M);
 
-  auto o_AVx = platform->o_memPool.reserve<dfloat>(M);
-  auto o_AVxPfloat = platform->o_memPool.reserve<pfloat>(M);
+  auto o_AVx = platform->deviceMemoryPool.reserve<dfloat>(M);
+  auto o_AVxPfloat = platform->deviceMemoryPool.reserve<pfloat>(M);
 
   if (options.compareArgs("DISCRETIZATION", "CONTINUOUS")) {
     ogsGatherScatter(Vx.data(), ogsDfloat, ogsAdd, mesh->ogs);

@@ -111,7 +111,7 @@ std::vector<dfloat> mesh_t::surfaceAreaNormalMultiplyIntegrate(dlong fieldOffset
 
 occa::memory mesh_t::surfaceAreaMultiply(int nbID, const occa::memory &o_bID, const occa::memory &o_fld)
 {
-  auto o_out = platform->o_memPool.reserve<dfloat>(this->Nlocal);
+  auto o_out = platform->deviceMemoryPool.reserve<dfloat>(this->Nlocal);
 
   static occa::kernel kernel;
   if (!kernel.isInitialized()) {

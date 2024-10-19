@@ -1,12 +1,12 @@
 #include "nrs.hpp"
 
-static occa::memory _strainRotationRate(nrs_t* nrs, bool rotationRate, const occa::memory &o_U, bool smooth)
+static occa::memory _strainRotationRate(nrs_t *nrs, bool rotationRate, const occa::memory &o_U, bool smooth)
 {
   auto mesh = nrs->mesh;
 
   const int nFields = (rotationRate) ? 2 * nrs->NVfields + nrs->NVfields : 2 * nrs->NVfields;
 
-  auto o_SO = platform->o_memPool.reserve<dfloat>(nFields * nrs->fieldOffset);
+  auto o_SO = platform->deviceMemoryPool.reserve<dfloat>(nFields * nrs->fieldOffset);
 
   nrs->SijOijKernel(mesh->Nelements,
                     nrs->fieldOffset,

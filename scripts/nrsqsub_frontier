@@ -50,9 +50,8 @@ echo "module load craype-accel-amd-gfx90a" >> $SFILE
 echo "module load cray-mpich" >> $SFILE
 echo "module load rocm" >> $SFILE
 echo "module load cmake" >> $SFILE
-echo "module use /sw/frontier/ascent/modulefiles/" >> $SFILE
-echo "module load ascent/0.9.2-gpu-mpi-omp" >> $SFILE
-echo "module load adios2" >> $SFILE
+#echo "module use /sw/frontier/ascent/modulefiles/" >> $SFILE
+#echo "module load ascent/0.9.2-gpu-mpi-omp" >> $SFILE
 echo "module unload cray-libsci" >> $SFILE
 echo "module list" >> $SFILE
 
@@ -63,11 +62,8 @@ echo "squeue -u \$USER" >>$SFILE
 
 echo "export MPICH_GPU_SUPPORT_ENABLED=1" >>$SFILE
 
-# Ascent (the module is brocken after 07/16/24)
-echo "export NEKRS_ASCENT_INSTALL_DIR=\"$OLCF_ASCENT_ROOT/\"" >> $SFILE
-
-# Adios2
-echo "export NEKRS_ADIOS2_INSTALL_DIR=$OLCF_ADIOS2_ROOT" >> $SFILE
+# Ascent (the module is brocken for lacking VTKH after 07/16/24)
+#echo "export NEKRS_ASCENT_INSTALL_DIR=\"$OLCF_ASCENT_ROOT/\"" >> $SFILE
 
 ## These must be set before compiling so the executable picks up GTL
 echo "export PE_MPICH_GTL_DIR_amd_gfx90a=\"-L${CRAY_MPICH_ROOTDIR}/gtl/lib\"" >> $SFILE
@@ -97,32 +93,35 @@ echo "" >> $SFILE
 echo "date" >>$SFILE
 echo "" >> $SFILE
 
-bin_nvme=$NVME_HOME"nekrs-bin"
-bin_nvme_libs=$bin_nvme"_libs"
-echo "sbcast -fp --send-libs $bin $bin_nvme" >> $SFILE
-echo "if [ ! \"\$?\" == \"0\" ]; then"  >> $SFILE
-echo "    echo \"SBCAST failed!\"" >> $SFILE
-echo "    exit 1" >> $SFILE
-echo "fi" >> $SFILE
+if [ $NEKRS_CACHE_BCAST -eq 1 ]; then
+  bin_nvme=$NVME_HOME"nekrs-bin"
+  bin_nvme_libs=$bin_nvme"_libs"
+  echo "sbcast -fp --send-libs $bin $bin_nvme" >> $SFILE
+  echo "if [ ! \"\$?\" == \"0\" ]; then"  >> $SFILE
+  echo "    echo \"SBCAST failed!\"" >> $SFILE
+  echo "    exit 1" >> $SFILE
+  echo "fi" >> $SFILE
 
-echo "export LD_LIBRARY_PATH=$bin_nvme_libs:${LD_LIBRARY_PATH}" >> $SFILE
-if [ $FP32 -eq 0 ]; then
-echo "export LD_PRELOAD=$bin_nvme_libs/libnekrs.so:$bin_nvme_libs/libocca.so:$bin_nvme_libs/libnekrs-hypre-device.so:$bin_nvme_libs/libnekrs-hypre.so" >> $SFILE
-else
-echo "export LD_PRELOAD=$bin_nvme_libs/libnekrs-fp32.so:$bin_nvme_libs/libocca.so:$bin_nvme_libs/libnekrs-hypre-device.so:$bin_nvme_libs/libnekrs-hypre.so" >> $SFILE
+  echo "export LD_LIBRARY_PATH=$bin_nvme_libs:${LD_LIBRARY_PATH}" >> $SFILE
+  if [ $FP32 -eq 0 ]; then
+  echo "export LD_PRELOAD=$bin_nvme_libs/libnekrs.so:$bin_nvme_libs/libocca.so:$bin_nvme_libs/libnekrs-hypre-device.so:$bin_nvme_libs/libnekrs-hypre.so" >> $SFILE
+  else
+  echo "export LD_PRELOAD=$bin_nvme_libs/libnekrs-fp32.so:$bin_nvme_libs/libocca.so:$bin_nvme_libs/libnekrs-hypre-device.so:$bin_nvme_libs/libnekrs-hypre.so" >> $SFILE
+  fi
+
+  # OLCFDEV-1787: sbcast requires extra patch when using GPU-aware MPI
+  echo "ln -s $bin_nvme_libs/libhsa-runtime64.so.1 $bin_nvme_libs/libhsa-runtime64.so" >> $SFILE
+  echo "ln -s $bin_nvme_libs/libamdhip64.so.5 $bin_nvme_libs/libamdhip64.so" >> $SFILE
+
+  echo "ls -ltra $NVME_HOME" >> $SFILE
+  echo "ls -ltra $bin_nvme_libs" >> $SFILE
+  echo "bin=$bin_nvme" >> $SFILE
 fi
-
-# OLCFDEV-1787: sbcast requires extra patch when using GPU-aware MPI
-echo "ln -s $bin_nvme_libs/libhsa-runtime64.so.1 $bin_nvme_libs/libhsa-runtime64.so" >> $SFILE
-echo "ln -s $bin_nvme_libs/libamdhip64.so.5 $bin_nvme_libs/libamdhip64.so" >> $SFILE
-
-echo "ls -ltra $NVME_HOME" >> $SFILE
-echo "ls -ltra $bin_nvme_libs" >> $SFILE
-echo "ldd $bin_nvme" >> $SFILE
+echo "ldd $bin" >> $SFILE
 
 if [ $RUN_ONLY -eq 0 ]; then
   echo -e "\n# precompilation" >>$SFILE
-  CMD_build="srun -N 1 -n $gpu_per_node $bin_nvme --backend $backend --device-id 0 $extra_args --setup \$case_tmp --build-only \$ntasks_tmp"
+  CMD_build="srun -N 1 -n $gpu_per_node $bin --backend $backend --device-id 0 $extra_args --setup \$case_tmp --build-only \$ntasks_tmp"
   add_build_CMD "$SFILE" "$CMD_build" "$ntasks"
 fi
 
@@ -130,7 +129,7 @@ fi
 if [ $BUILD_ONLY -eq 0 ]; then
   link_neknek_logfile "$SFILE"
   echo -e "\n# actual run" >>$SFILE
-  echo "srun -N $nodes -n $ntasks $bin_nvme --backend $backend --device-id 0 $extra_args --setup $case" >>$SFILE
+  echo "srun -N $nodes -n $ntasks $bin --backend $backend --device-id 0 $extra_args --setup $case" >>$SFILE
 fi
 sbatch $SFILE
 

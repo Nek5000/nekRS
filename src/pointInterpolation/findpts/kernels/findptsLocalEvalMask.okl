@@ -1,7 +1,7 @@
 #if 1
 #define CODE_NOT_FOUND (2)
 @kernel void findptsLocalEvalMask(const dlong pn,
-                              const dlong Nfields,
+                              const int Nfields,
                               const dlong fieldOffset,
                               const dlong outputOffset,
                               const dlong myRank,

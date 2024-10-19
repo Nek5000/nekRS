@@ -3,31 +3,19 @@
 #include "findpts.hpp"
 #include "pointInterpolation.hpp"
 
-pointInterpolation_t::pointInterpolation_t(mesh_t *mesh,
-                                           MPI_Comm comm,
-                                           bool mySession_,
-                                           std::vector<int> bID)
-    : pointInterpolation_t(mesh,
-                           comm,
-                           mesh->Nlocal,
-                           mesh->Nlocal,
-                           0.01,
-                           0,
-                           true,
-                           bID)
-{
-}
-
 pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
                                            MPI_Comm comm,
-                                           dlong localHashSize,
-                                           dlong globalHashSize,
+                                           bool mySession_,
+                                           std::vector<int> bIntID,
                                            double bb_tol,
                                            double newton_tol_,
-                                           bool mySession_,
-                                           std::vector<int> bIntID)
-    : mesh(mesh_), newton_tol(newton_tol_), mySession(mySession_), nPoints(0)
+                                           dlong localHashSize,
+                                           dlong globalHashSize)
+
+    : mesh(mesh_), mySession(mySession_), nPoints(0)
 {
+  if (localHashSize == 0) localHashSize = mesh->Nlocal; 
+  if (globalHashSize == 0) globalHashSize = mesh->Nlocal;
 
   // communicator is implicitly required to be either platform->comm.mpiComm or platform->comm.mpiCommParent
   // due to other communicator synchronous calls, such as platform->timer.tic
@@ -44,13 +32,11 @@ pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
              "Communicator must be either platform->comm.mpiComm or platform->comm.mpiCommParent");
 
   newton_tol =
-      (sizeof(dfloat) == sizeof(double))
-      ? std::max(5e-13, newton_tol_)
-      : std::max(1e-6, newton_tol_);
+    (sizeof(dfloat) == sizeof(double)) ? std::max(5e-13, newton_tol_) : std::max(1e-6, newton_tol_);
 
-  auto x = platform->memPool.reserve<dfloat>(mesh->Nlocal);
-  auto y = platform->memPool.reserve<dfloat>(mesh->Nlocal);
-  auto z = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+  auto x = platform->memoryPool.reserve<dfloat>(mesh->Nlocal);
+  auto y = platform->memoryPool.reserve<dfloat>(mesh->Nlocal);
+  auto z = platform->memoryPool.reserve<dfloat>(mesh->Nlocal);
 
   if (mySession) {
     mesh->o_x.copyTo(x, mesh->Nlocal);
@@ -60,7 +46,7 @@ pointInterpolation_t::pointInterpolation_t(mesh_t *mesh_,
 
   std::vector<dfloat> distanceINT;
   if (bIntID.size()) {
-    auto o_bIntID = platform->o_memPool.reserve<int>(bIntID.size());
+    auto o_bIntID = platform->deviceMemoryPool.reserve<int>(bIntID.size());
     o_bIntID.copyFrom(bIntID.data());
     _o_distanceINT = mesh->minDistance(bIntID.size(), o_bIntID, "cheap_dist");
     distanceINT.resize(mesh->Nlocal);
@@ -137,30 +123,41 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity, 
       _o_z.copyTo(h_z, n);
     }
 
+    const auto maxVerbosePoints = 5;
+
     dlong nOutside = 0;
     dlong nBoundary = 0;
+    dfloat maxDistNorm = 0;
     for (int in = 0; in < n; ++in) {
       if (data_.code_base[in] == findpts::CODE_BORDER) {
         if (data_.dist2_base[in] > 10 * newton_tol) {
-          nBoundary += 1;
-          if (nBoundary < 5 && verbosity == VerbosityLevel::Detailed) {
-            std::cout << " WARNING: point on boundary or outside the mesh distNorm2: " << h_x[in] << ","
-                      << h_y[in] << ", " << h_z[in] << ", " << data_.dist2_base[in] << std::endl;
+          const auto distNorm = data_.dist2_base[in];
+          maxDistNorm = std::max(maxDistNorm, distNorm);
+          nBoundary++;
+          if (nBoundary < maxVerbosePoints && verbosity == VerbosityLevel::Detailed) {
+            std::cout << "pointInterpolation_t::find: WARNING point on boundary or outside the mesh"
+                      << " xyz= " << h_x[in] << " " << h_y[in] << " " << h_z[in]
+                      << " distNorm= " << std::scientific << std::setprecision(3) << distNorm << std::endl;
           }
         }
       } else if (data_.code_base[in] == findpts::CODE_NOT_FOUND) {
-        nOutside += 1;
-        if (nOutside < 5 && verbosity == VerbosityLevel::Detailed) {
-          std::cout << " WARNING: point not within mesh xy[z]: " << h_x[in] << "," << h_y[in] << ", "
-                    << h_z[in] << std::endl;
+        nOutside++;
+        if (nOutside < maxVerbosePoints && verbosity == VerbosityLevel::Detailed) {
+          std::cout << "pointInterpolation_t::find: WARNING point outside the mesh"
+                    << " xyz= " << h_x[in] << " " << h_y[in] << " " << h_z[in] << std::endl;
         }
       }
     }
+
     std::array<hlong, 3> counts = {n, nBoundary, nOutside};
     MPI_Allreduce(MPI_IN_PLACE, counts.data(), counts.size(), MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-    if (platform->comm.mpiRank == 0 && counts[2] > 0) {
-      std::cout << "WARNING interp::find - total = " << counts[0] << ", boundary = " << counts[1]
-                << ", outside = " << counts[2] << "\n";
+    MPI_Allreduce(MPI_IN_PLACE, &maxDistNorm, 1, MPI_DFLOAT, MPI_MAX, platform->comm.mpiComm);
+
+    if (platform->comm.mpiRank == 0 && verbosity == VerbosityLevel::Detailed) {
+      std::cout << "pointInterpolation_t::find:"
+                << " total= " << counts[0] << " boundary= " << counts[1] << " (max distNorm=" << maxDistNorm
+                << ")"
+                << " outside= " << counts[2] << std::endl;
     }
   }
 
@@ -169,89 +166,82 @@ void pointInterpolation_t::find(pointInterpolation_t::VerbosityLevel verbosity, 
   }
 
   findCalled = true;
+  data_.updateCache = true;
 }
 
 void pointInterpolation_t::eval(dlong nFields,
                                 dlong inputFieldOffset,
-                                const occa::memory& o_in,
+                                const occa::memory &o_in,
                                 dlong outputFieldOffset,
-                                occa::memory &o_out)
+                                occa::memory &o_out,
+                                dlong nPointsIn,
+                                dlong offset)
 {
-  nekrsCheck(!findCalled,
-             platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "%s\n",
-             "find has not been called prior to eval!");
-
-  if (timerLevel != TimerLevel::None) {
-    platform->timer.tic("pointInterpolation_t::eval");
+  if (inputFieldOffset == 0) {
+    inputFieldOffset = o_in.size();
+  }
+  if (outputFieldOffset == 0) {
+    outputFieldOffset = o_out.size();
   }
 
-  nekrsCheck(mesh->Nlocal > inputFieldOffset,
-             platform->comm.mpiComm,
+  auto nPoints_ = (nPointsIn > -1) ? nPointsIn : nPoints;
+  if (nPointsIn >= 0) {
+    data_.updateCache = true; // enforce update as cache cannot be used
+  }
+
+  nekrsCheck(!findCalled, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "find has not been called prior to eval!");
+
+  nekrsCheck(nFields > 1 && mesh->Nlocal > inputFieldOffset,
+             MPI_COMM_SELF,
              EXIT_FAILURE,
              "pointInterpolation_t::eval inputFieldOffset (%d) is less than mesh->Nlocal (%d)\n",
              inputFieldOffset,
              mesh->Nlocal);
 
+  nekrsCheck(nFields > 1 && nPoints_ > outputFieldOffset,
+             MPI_COMM_SELF,
+             EXIT_FAILURE,
+             "pointInterpolation_t::eval outputFieldOffset (%d) is less than nPoints (%d)\n",
+             inputFieldOffset,
+             nPoints_);
+
   nekrsCheck(o_in.byte_size() < nFields * inputFieldOffset * sizeof(dfloat),
-             platform->comm.mpiComm,
+             MPI_COMM_SELF,
              EXIT_FAILURE,
              "pointInterpolation_t::eval input size (%" PRId64 ") is smaller than expected (%ld)\n",
              o_in.byte_size(),
              nFields * inputFieldOffset * sizeof(dfloat));
 
   nekrsCheck(o_out.byte_size() < nFields * outputFieldOffset * sizeof(dfloat),
-             platform->comm.mpiComm,
+             MPI_COMM_SELF,
              EXIT_FAILURE,
              "pointInterpolation_t::eval output size (%" PRId64 ") is smaller than expected (%ld)\n",
              o_out.byte_size(),
              nFields * outputFieldOffset * sizeof(dfloat));
 
-  findpts_->eval(nPoints, nFields, inputFieldOffset, outputFieldOffset, o_in, &data_, o_out);
-
-  if (timerLevel != TimerLevel::None) {
-    platform->timer.toc("pointInterpolation_t::eval");
-  }
-}
-
-void pointInterpolation_t::eval(dlong nFields,
-                                dlong inputFieldOffset,
-                                const std::vector<dfloat>& in,
-                                dlong outputFieldOffset,
-                                std::vector<dfloat>& out)
-{
-  nekrsCheck(!findCalled,
-             platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "%s\n",
-             "find has not been called prior to eval!");
-
   if (timerLevel != TimerLevel::None) {
     platform->timer.tic("pointInterpolation_t::eval");
   }
 
-  nekrsCheck(mesh->Nlocal > inputFieldOffset,
-             platform->comm.mpiComm,
-             EXIT_FAILURE,
-             "pointInterpolation_t::eval inputFieldOffset (%d) is less than mesh->Nlocal (%d)\n",
-             inputFieldOffset,
-             mesh->Nlocal);
-
-  findpts_->eval(nPoints, nFields, inputFieldOffset, outputFieldOffset, const_cast<dfloat*>(in.data()), &data_, out.data());
+  findpts_->eval(nPoints_, offset, nFields, inputFieldOffset, outputFieldOffset, o_in, &data_, o_out);
 
   if (timerLevel != TimerLevel::None) {
     platform->timer.toc("pointInterpolation_t::eval");
   }
 }
 
-void pointInterpolation_t::setPoints(const std::vector<dfloat>& x, const std::vector<dfloat>& y, const std::vector<dfloat>& z)
+void pointInterpolation_t::setPoints(const std::vector<dfloat> &x,
+                                     const std::vector<dfloat> &y,
+                                     const std::vector<dfloat> &z)
 {
   std::vector<dlong> session;
   this->setPoints(x, y, z, session);
 }
 
-void pointInterpolation_t::setPoints(const std::vector<dfloat>& x, const std::vector<dfloat>& y, const std::vector<dfloat>& z, const std::vector<dlong>& session)
+void pointInterpolation_t::setPoints(const std::vector<dfloat> &x,
+                                     const std::vector<dfloat> &y,
+                                     const std::vector<dfloat> &z,
+                                     const std::vector<dlong> &session)
 {
   auto o_x = platform->device.malloc<dfloat>(x.size());
   o_x.copyFrom(x.data());
@@ -264,7 +254,7 @@ void pointInterpolation_t::setPoints(const std::vector<dfloat>& x, const std::ve
   if (session.size()) {
     o_session = platform->device.malloc<dlong>(session.size());
     o_session.copyFrom(session.data());
-  } 
+  }
   this->setPoints(o_x, o_y, o_z, o_session);
 }
 
@@ -319,10 +309,4 @@ void pointInterpolation_t::setTimerName(std::string name)
 {
   timerName = name;
   findpts_->setTimerName(name);
-}
-
-void pointInterpolation_t::o_update()
-{
-  findCalled = true;
-  findpts_->o_update(data_);
 }

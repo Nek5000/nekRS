@@ -46,7 +46,8 @@ public:
 
   int elementType = HEXAHEDRA;
 
-  mesh_t* mesh = nullptr;
+  mesh_t *mesh = nullptr;
+  mesh_t *meshV = nullptr; 
 
   elliptic *uSolver = nullptr;
   elliptic *vSolver = nullptr;
@@ -254,6 +255,7 @@ public:
 
   void copyFromNek(double &time);
   void copyFromNek();
+  void getICFromNek();
 
 private:
   void initInnerStep(double time, dfloat dt, int tstep);

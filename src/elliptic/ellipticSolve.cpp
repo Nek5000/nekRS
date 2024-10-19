@@ -66,7 +66,7 @@ void ellipticSolve(elliptic_t *elliptic,
                txt.c_str());
   };
 
-  auto o_x0 = platform->o_memPool.reserve<dfloat>(
+  auto o_x0 = platform->deviceMemoryPool.reserve<dfloat>(
       (elliptic->Nfields > 1) ? elliptic->Nfields * elliptic->fieldOffset : mesh->Nlocal);
   nekrsCheck(o_x.size() < o_x0.size(), MPI_COMM_SELF, EXIT_FAILURE, "%s!\n", "unreasonable size of o_x");
   nekrsCheck(o_rhs.size() < o_x.size(), MPI_COMM_SELF, EXIT_FAILURE, "%s!\n", "unreasonable size of o_rhs");
@@ -133,7 +133,7 @@ void ellipticSolve(elliptic_t *elliptic,
 
   // compute initial residual r = rhs - Ax0
   auto o_r = [&]() {
-    auto o_r = platform->o_memPool.reserve<dfloat>(o_x0.size());
+    auto o_r = platform->deviceMemoryPool.reserve<dfloat>(o_x0.size());
     auto &o_Ap = o_x;
     ellipticAx(elliptic, mesh->Nelements, mesh->o_elementList, o_x0, o_Ap, dfloatString);
     platform->linAlg

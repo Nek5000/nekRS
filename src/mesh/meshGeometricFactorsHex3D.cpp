@@ -32,7 +32,7 @@
 
 void mesh_t::geometricFactors()
 {
-  auto o_J = platform->o_memPool.reserve<dfloat>(Nlocal * sizeof(dfloat));
+  auto o_J = platform->deviceMemoryPool.reserve<dfloat>(Nlocal * sizeof(dfloat));
 
   geometricFactorsKernel(Nelements, o_D, o_gllw, o_x, o_y, o_z, o_LMM, o_vgeo, o_ggeo, o_J);
 

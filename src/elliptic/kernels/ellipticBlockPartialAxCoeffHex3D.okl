@@ -713,3 +713,366 @@
   }
 }
 #endif
+
+// Tim's v5
+#if p_knl == 3
+#define p_dim 3
+@kernel void ellipticBlockPartialAxCoeffHex3D_v3(const dlong Nelements,
+                                                    const dlong offset,
+                                                    const dlong loffset,
+                                                    @ restrict const dlong *elementList,
+                                                    @ restrict const dfloat *ggeo,
+                                                    @ restrict const dfloat *D,
+                                                    @ restrict const dfloat *S,
+                                                    @ restrict const dfloat *lambda0,
+                                                    @ restrict const dfloat *lambda1,
+                                                    @ restrict const dfloat *q,
+                                                    @ restrict dfloat *Aq)
+{
+#if defined(XeHPC)
+  @simd_length(16)
+#endif
+    @outer for (dlong e = 0; e < Nelements; ++e) {
+    @exclusive dlong element;
+
+#if p_Nq==2 || p_Nq==4 || p_Nq==6 || p_Nq==8
+#define p_pad 1
+#else
+#define p_pad 0
+#endif
+    
+    @shared dfloat s_U1[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_U2[p_Nq][p_Nq][p_Nq];
+
+    @inner for (int j = 0; j < p_Nq; ++j) {
+      @inner for (int i = 0; i < p_Nq; ++i) {
+
+	element = elementList[e];
+
+	for (int d = 0; d < p_dim; ++d) {
+	  @barrier();
+
+	  dfloat r_U[p_Nq];
+#pragma unroll p_Nq
+	  for (int k = 0; k < p_Nq; ++k) {
+	    const dfloat U_ijk = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset];
+	    r_U[k] = U_ijk;
+	    s_U2[k][j][i] = U_ijk;
+	  }
+
+	  @barrier();
+	  
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat U_jil = s_U2[j][i][l];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[k][l] * U_jil;
+	      }
+	    }
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      s_U1[j][i][k] = r_Ud[k];
+	    }
+	  }
+
+	  @barrier();
+	  
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat U_jli = s_U2[j][l][i];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[k][l] * U_jli;
+	      }
+	    }
+
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      s_U2[j][k][i] = r_Ud[k];
+	    }
+	  }
+
+	  @barrier();
+
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat U_lji = r_U[l];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[k][l] * U_lji;
+	      }
+	    }
+        
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      const dlong lbase = i+p_Nq*j+p_Nq*p_Nq*k;
+	      const dlong gbase = lbase+p_Np*element*p_Nggeo;
+	      const dfloat lam0k = lambda0[lbase+p_Np*element+d*loffset];
+	      const dfloat lam1k = lambda1[lbase+p_Np*element+d*loffset];
+
+	      const dfloat G00 = ggeo[gbase+p_Np*p_G00ID], G01 = ggeo[gbase+p_Np*p_G01ID], G02 = ggeo[gbase+p_Np*p_G02ID];
+	      const dfloat G11 = ggeo[gbase+p_Np*p_G11ID], G12 = ggeo[gbase+p_Np*p_G12ID];
+	      const dfloat G22 = ggeo[gbase+p_Np*p_G22ID];
+	      const dfloat GWJ = ggeo[gbase+p_Np*p_GWJID];
+
+	      const dfloat Ur = s_U1[k][j][i];
+	      const dfloat Us = s_U2[k][j][i];
+	      
+	      const dfloat GUr = G00 * Ur + G01 * Us + G02 * r_Ud[k];
+	      const dfloat GUs = G01 * Ur + G11 * Us + G12 * r_Ud[k];
+	      const dfloat GUt = G02 * Ur + G12 * Us + G22 * r_Ud[k];
+
+	      r_Ud[k]       = lam0k * GUt;
+	      r_U[k] *= GWJ * lam1k;
+
+	      s_U1[k][j][i] = lam0k * GUr;
+	      s_U2[k][j][i] = lam0k * GUs;
+
+	    }
+	  
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat GUt_lji = r_Ud[l];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_U[k] += c_D[l][k] * GUt_lji;
+	      }
+	    }
+	  }
+
+	  @barrier();
+
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat GUr_jil = s_U1[j][i][l];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[l][k] * GUr_jil;
+	      }
+	    }
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      s_U1[j][i][k] = r_Ud[k];
+	    }
+	  }
+
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat GUs_jli = s_U2[j][l][i];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[l][k] * GUs_jli;
+	      }
+	    }
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      s_U2[j][k][i] = r_Ud[k];
+	    }
+	  }
+        
+	  @barrier();
+
+#pragma unroll p_Nq
+	  for (int k = 0; k < p_Nq; ++k) {
+	    Aq[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset] = r_U[k] + s_U1[k][j][i] + s_U2[k][j][i];
+	  }
+	}
+      }
+    }
+  }
+}
+#endif
+
+// Tim's v6
+#if p_knl == 4
+#define p_dim 3
+@kernel void ellipticBlockPartialAxCoeffHex3D_v4(const dlong Nelements,
+                                                    const dlong offset,
+                                                    const dlong loffset,
+                                                    @ restrict const dlong *elementList,
+                                                    @ restrict const dfloat *ggeo,
+                                                    @ restrict const dfloat *D,
+                                                    @ restrict const dfloat *S,
+                                                    @ restrict const dfloat *lambda0,
+                                                    @ restrict const dfloat *lambda1,
+                                                    @ restrict const dfloat *q,
+                                                    @ restrict dfloat *Aq)
+{
+#if defined(XeHPC)
+  @simd_length(16)
+#endif
+    @outer for (dlong e = 0; e < Nelements; ++e) {
+
+#if p_Nq==2 || p_Nq==4 || p_Nq==6 || p_Nq==8
+#define p_pad 1
+#else
+#define p_pad 0
+#endif
+    
+    @shared dfloat s_U[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Ur[p_Nq][p_Nq][p_Nq];
+    @shared dfloat s_Us[p_Nq][p_Nq][p_Nq];
+
+    @inner for (int j = 0; j < p_Nq; ++j) {
+      @inner for (int i = 0; i < p_Nq; ++i) {
+
+	const dlong element = elementList[e];
+
+	for (int d = 0; d < p_dim; ++d) {
+
+	  @barrier();
+
+	  dfloat r_U[p_Nq];
+#pragma unroll p_Nq
+	  for (int k = 0; k < p_Nq; ++k) {
+	    const dfloat U_ijk = q[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset];
+	    s_U[k][j][i] = U_ijk;
+	  }
+
+	  @barrier();
+
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat U_jil = s_U[j][i][l];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[k][l] * U_jil;
+	      }
+	    }
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      s_Ur[j][i][k] = r_Ud[k];
+	    }
+	  }
+
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat U_jli = s_U[j][l][i];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[k][l] * U_jli;
+	      }
+	    }
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      s_Us[j][k][i] = r_Ud[k];
+	    }
+	  }
+
+	  @barrier();
+
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat U_lji = s_U[l][j][i]; // r_U[l];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[k][l] * U_lji;
+	      }
+	    }
+        
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      const dlong lbase = i+p_Nq*j+p_Nq*p_Nq*k;
+	      const dlong gbase = lbase+p_Np*element*p_Nggeo;
+	      const dfloat lam0k = lambda0[lbase+p_Np*element+d*loffset];
+	      const dfloat lam1k = lambda1[lbase+p_Np*element+d*loffset];
+
+	      const dfloat G00 = ggeo[gbase+p_Np*p_G00ID], G01 = ggeo[gbase+p_Np*p_G01ID], G02 = ggeo[gbase+p_Np*p_G02ID];
+	      const dfloat G11 = ggeo[gbase+p_Np*p_G11ID], G12 = ggeo[gbase+p_Np*p_G12ID];
+	      const dfloat G22 = ggeo[gbase+p_Np*p_G22ID];
+	      const dfloat GWJ = ggeo[gbase+p_Np*p_GWJID];
+	      
+	      const dfloat GUr = G00 * s_Ur[k][j][i] + G01 * s_Us[k][j][i] + G02 * r_Ud[k];
+	      const dfloat GUs = G01 * s_Ur[k][j][i] + G11 * s_Us[k][j][i] + G12 * r_Ud[k];
+	      const dfloat GUt = G02 * s_Ur[k][j][i] + G12 * s_Us[k][j][i] + G22 * r_Ud[k];
+
+	      s_Ur[k][j][i] = lam0k * GUr;
+	      s_Us[k][j][i] = lam0k * GUs;
+	      r_Ud[k]       = lam0k * GUt;
+	      //r_U[k] *= GWJ * lam1k;
+	      r_U[k] = GWJ * lam1k*s_U[k][j][i];
+	    }
+	  
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat GUt_lji = r_Ud[l];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_U[k] += c_D[l][k] * GUt_lji;
+	      }
+	    }
+	  }
+
+	  @barrier();
+
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat GUr_jil = s_Ur[j][i][l];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[l][k] * GUr_jil;
+	      }
+	    }
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      s_Ur[j][i][k] = r_Ud[k];
+	    }
+	  }
+
+	  {
+	    dfloat r_Ud[p_Nq] = {0.};
+
+#pragma unroll p_Nq
+	    for (int l = 0; l < p_Nq; ++l) {
+	      const dfloat GUs_jli = s_Us[j][l][i];
+#pragma unroll p_Nq
+	      for (int k = 0; k < p_Nq; ++k) {
+		r_Ud[k] += c_D[l][k] * GUs_jli;
+	      }
+	    }
+#pragma unroll p_Nq
+	    for (int k = 0; k < p_Nq; ++k) {
+	      s_Us[j][k][i] = r_Ud[k];
+	    }
+	  }
+        
+	  @barrier();
+
+#pragma unroll p_Nq
+	  for (int k = 0; k < p_Nq; ++k) {
+	    Aq[i + p_Nq * (j + p_Nq * (k + p_Nq * element)) + d * offset] = r_U[k] + s_Ur[k][j][i] + s_Us[k][j][i];
+	  }
+	}
+      }
+    }
+  }
+}
+#endif

@@ -33,18 +33,11 @@ public:
     return ss.str();
   }
 
-  int allreduce(const void *sendbuf, void *recvbuf, int count,
-                  type datatype, op op, MPI_Comm comm) const;
-  int allreduce(occa::memory sendbuf, occa::memory recvbuf, int count,
-                  type datatype, op op, MPI_Comm comm) const;
-  
-  // in place
-  int allreduce(occa::memory recvbuf, int count,
-                  type datatype, op op, MPI_Comm comm) const;
+  int allreduce(occa::memory recvbuf, int count, op op, MPI_Comm comm) const;
   
 private:
 
-  MPI_Datatype toMPI_Datatype(type t) const;
+  MPI_Datatype toMPI_Datatype(const occa::memory& t) const;
   MPI_Op toMPI_Op(op t) const;
 
   void reallocScratch(size_t Nbytes) const;

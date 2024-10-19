@@ -23,7 +23,7 @@ dfloat stdDev(const std::vector<dfloat>& data)
 
 void runBenchmarks(nrs_t *nrs)
 {
-  auto *mesh = nrs->mesh;
+  auto mesh = nrs->mesh;
   auto [x, y, z] = mesh->xyzHost();
 
   std::vector<dfloat> rhs;
@@ -88,7 +88,6 @@ void runBenchmarks(nrs_t *nrs)
 
       Nrep = bp6NReps;
       solver->options().setArgs("PRECONDITIONER", "NONE");
-      solver->options().setArgs("BLOCK SOLVER", "TRUE");
       solver->options().setArgs("SOLVER", "PCG");
       solver->options().setArgs("MAXIMUM ITERATIONS", "1000");
       solver->options().setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
@@ -98,7 +97,6 @@ void runBenchmarks(nrs_t *nrs)
 
       Nrep = bp6NReps;
       solver->options().setArgs("PRECONDITIONER", "NONE");
-      solver->options().setArgs("BLOCK SOLVER", "TRUE");
       solver->options().setArgs("SOLVER", "PCG+COMBINED");
       solver->options().setArgs("MAXIMUM ITERATIONS", "1000");
       solver->options().setArgs("SOLVER TOLERANCE", to_string_f(1e-15));
@@ -122,8 +120,17 @@ void runBenchmarks(nrs_t *nrs)
       platform->device.finish();
       MPI_Barrier(platform->comm.mpiComm);
 
+      occa::memory o_r;
+      occa::memory o_U;
+      if (benchmark == "BP5" || (benchmark == "BPS5")) {  
+        o_r = o_rhs.slice(0, mesh->Nlocal);
+        o_U = nrs->o_U.slice(0, mesh->Nlocal);
+      } else {
+        o_r = o_rhs;
+        o_U = nrs->o_U.slice(0, nrs->NVfields * nrs->fieldOffset);
+      }
       const auto tStart = MPI_Wtime();
-      solver->solve(o_lambda0, o_lambda1, o_rhs, nrs->o_U);
+      solver->solve(o_lambda0, o_lambda1, o_r, o_U);
       platform->device.finish();
       platform->timer.set(solver->name() + "Solve", MPI_Wtime() - tStart);
 

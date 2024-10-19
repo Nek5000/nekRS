@@ -166,8 +166,8 @@ void SEMFEMSolver_t::run(const occa::memory &o_r, occa::memory &o_z)
   const auto useDevice = elliptic->options.compareArgs("COARSE SOLVER LOCATION", "DEVICE");
   const dlong numRows = o_dofMap.size();
 
-  auto o_rT = platform->o_memPool.reserve<pfloat>(numRows);
-  auto o_zT = platform->o_memPool.reserve<pfloat>(numRows);
+  auto o_rT = platform->deviceMemoryPool.reserve<pfloat>(numRows);
+  auto o_zT = platform->deviceMemoryPool.reserve<pfloat>(numRows);
 
   static occa::kernel gatherKernel;
   if (!gatherKernel.isInitialized()) {

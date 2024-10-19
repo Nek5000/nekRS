@@ -148,15 +148,8 @@ int main(int argc, char **argv)
   Np = Nq * Nq * Nq;
   const int cubNq = cubN + 1;
   cubNp = cubNq * cubNq * cubNq;
-  fieldOffset = Np * Nelements;
-  const int pageW = ALIGN_SIZE / sizeof(dfloat);
-  if (fieldOffset % pageW) {
-    fieldOffset = (fieldOffset / pageW + 1) * pageW;
-  }
-  cubatureOffset = std::max(fieldOffset, Nelements * cubNp);
-  if (cubatureOffset % pageW) {
-    cubatureOffset = (cubatureOffset / pageW + 1) * pageW;
-  }
+  fieldOffset = alignStride<dfloat>(Np * Nelements);
+  cubatureOffset = alignStride<dfloat>(std::max(fieldOffset, Nelements * cubNp));
 
   platform = platform_t::getInstance(options, MPI_COMM_WORLD, MPI_COMM_WORLD);
   platform->options.setArgs("BUILD ONLY", "FALSE");

@@ -3,25 +3,26 @@
 ## What is new? 
 
 * FP32 solver mode
+* DPCPP backend to support Intel GPUs
 * Interpolation based velocity recycling
 * [Ascent](https://ascent.readthedocs.io/en/latest/) in situ visualisation plugin
 * iofld class reading/writing field files including [ADIOS2](https://adios2.readthedocs.io/) support 
 * Addtional output options (element filter and interpolation on uniform grid / different polynomial-order)
 * Multi session nek-nek including multi-rate time stepping
+* Improved memory management
 * CHT nek-nek support
 * nek-nek support for nrsqsub scripts
 * Improved JIT compilation performance
-* HIP support for BoomerAMG
-* Intel GPU support
+* HIP support for SEMFEM  
 * Aero forces
 * opSEM class
 * Mesh surface ops
 * Linear implicit velocity source term
-* Combined CG for improved performance
 * Various bug fixes
 
 ## Good to know
 
+* GPU aware MPI is disabled by default (`NEKRS_GPU_MPI=0`)
 * HYPRE replaces AmgX
 * [reproducibility] variable time step controller restricts dt to 5 significant digits
 * after fixing a bug in the linear solver residual norm, iteration counts have increased compared to previous versions
@@ -31,20 +32,18 @@
 This list provides an overview of the most significant changes in this release, although it may not encompass all modifications. We acknowledge that this release introduces several breaking changes. These adjustments were essential to enhance the stability of the user interface in future iterations. We apologize for any inconvenience this may cause.
 
 * run `build.sh` instead of `nrsconfig` to build the code
-* change par section `TEMPERATURE` to `SCALAR00` in case it does not represent indeed a physical temperature
+* change par section `SCALAR00` to `TEMPERATURE` in case it represent indeed a physical temperature
 * `velocityDirichletConditions` -> `codedFixedValueVelocity` (same for scalars)
 * `velocityNeumannConditions` -> `codedFixedGradientVelocity` (same for scalars)
-* `nek::useric` is no longer automatically called, if needed call it in `UDF_Setup` (see e.g. lowMach example)
-* `nek::userchk` is no longer called automatically 
+* `nek::userchk` is no longer called automatically during the setup phase 
 * use temporary instead of `nrs->U` and copy to `nrs->o_U`
 * use temporary instead of `cds->S` and copy to `cds->o_S`
 * use `auto [x, y, z] = mesh->xyzHost()` instead of `mesh->x` (same for other components) 
-* `nrs->meshV` -> `nrs->mesh`
 * `nrs->_mesh` -> `cds->mesh[0]`
 * `nek::ocopyToNek` -> `nrs->copyToNek`
 * `nek::ocopyFromNek` -> `nek::copyFromNek`
 * send signal (defined in env-var `NEKRS_SIGNUM_UPD`) to process trigger file `nekrs.upd`
-* use `auto foo = platform->o_memPool.reserve<T>(nWords)` instead of e.g. `platform->o_mempool.slice0`
+* use `auto foo = platform->deviceMemoryPool.reserve<T>(nWords)` instead of e.g. `platform->o_mempool.slice0`
 * change count argument of `occa::memory::slice, occa::memory::copyFrom, occa::memory::copyTo` to number of words instead of bytes 
 * define `time` as double (instead of defloat) in all UDF functions
 * remove `nrs_t` argument from UDF API functions (nrs object is now globally accessible within udf if the Navier Stokes solver is enabled)
@@ -79,7 +78,7 @@ This list provides an overview of the most significant changes in this release, 
 
 ## Thanks to our Contributors
 
-@kris-rowe, @yslan, @MalachiTimothyPhillips, @tcew
+@kris-rowe, @tcew, @yslan, @MalachiTimothyPhillips, @thilinarmtb
 
 We are grateful to all who added new features, filed issues or helped resolve them, 
 asked and answered questions, and were part of inspiring discussions.

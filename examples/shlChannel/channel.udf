@@ -39,11 +39,6 @@ void UDF_Setup0(MPI_Comm comm, setupAide &options)
 void UDF_Setup()
 {
   nrs->userVelocitySource = &userf;
-
-  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
-    nek::getIC();
-    nrs->copyFromNek();
-  }
 }
 
 void UDF_ExecuteStep(double time, int tstep)

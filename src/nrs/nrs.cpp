@@ -16,7 +16,7 @@ static void computeDivUErr(nrs_t *nrs, dfloat &divUErrVolAvg, dfloat &divUErrL2)
 {
   auto mesh = nrs->mesh;
 
-  auto o_divErr = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
+  auto o_divErr = platform->deviceMemoryPool.reserve<dfloat>(nrs->fieldOffset);
 
   nrs->divergenceVolumeKernel(mesh->Nelements, mesh->o_vgeo, mesh->o_D, nrs->fieldOffset, nrs->o_U, o_divErr);
 
@@ -222,7 +222,7 @@ static void setupEllipticSolvers(nrs_t *nrs)
 
       auto o_rho_i = cds->o_rho.slice(cds->fieldOffsetScan[is], mesh->Nlocal);
       auto o_lambda0 = cds->o_diff.slice(cds->fieldOffsetScan[is], mesh->Nlocal);
-      auto o_lambda1 = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+      auto o_lambda1 = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
       platform->linAlg->axpby(mesh->Nlocal, *cds->g0 / cds->dt[0], o_rho_i, 0.0, o_lambda1);
 
       cds->solver[is] = new elliptic("scalar" + sid, mesh, nrs->fieldOffset, EToB, o_lambda0, o_lambda1);
@@ -255,7 +255,7 @@ static void setupEllipticSolvers(nrs_t *nrs)
     }
 
     auto o_lambda0 = nrs->o_mue;
-    auto o_lambda1 = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+    auto o_lambda1 = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
     platform->linAlg->axpby(mesh->Nlocal, nrs->g0 / nrs->dt[0], nrs->o_rho, 0.0, o_lambda1);
 
     auto EToBx = createEToB("x-velocity", mesh);
@@ -305,7 +305,7 @@ static void setupEllipticSolvers(nrs_t *nrs)
       printf("================ ELLIPTIC SETUP PRESSURE ================\n");
     }
 
-    auto o_lambda0 = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+    auto o_lambda0 = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
     platform->linAlg->adyz(mesh->Nlocal, 1.0, nrs->o_rho, o_lambda0);
 
     auto EToB = createEToB("pressure", mesh);
@@ -314,7 +314,6 @@ static void setupEllipticSolvers(nrs_t *nrs)
     if (nrs->cds) {
       nrs->cds->dpdt = nrs->pSolver->nullSpace();
     }
-
   }
 
   if (!platform->options.compareArgs("MESH SOLVER", "NONE")) {
@@ -546,7 +545,6 @@ nrs_t::nrs_t()
   platform->options.getArgs("MESH DIMENSION", this->NVfields);
   platform->options.getArgs("ELEMENT TYPE", this->elementType);
 
-  checkpointWriter = iofldFactory::create();
 }
 
 void nrs_t::init()
@@ -562,8 +560,7 @@ void nrs_t::init()
     }
   }
 
-  this->cht = [&] ()
-  {
+  this->cht = [&]() {
     int nelgt, nelgv;
     const std::string meshFile = platform->options.getArgs("MESH FILE");
     re2::nelg(meshFile, nelgt, nelgv, platform->comm.mpiComm);
@@ -574,20 +571,15 @@ void nrs_t::init()
                "%s\n",
                "Conjugate heat transfer not supported in a moving mesh!");
 
-    nekrsCheck(nelgt != nelgv && !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE"),
-               platform->comm.mpiComm,
-               EXIT_FAILURE,
-               "%s\n",
-               "Conjugate heat transfer requires a temperature field!");
-
     return (nelgt > nelgv) ? 1 : 0;
   }();
 
-  nekrsCheck(platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE") &&
-             (!cht && !platform->options.compareArgs("LOWMACH", "TRUE")),
-             platform->comm.mpiComm, EXIT_FAILURE,
+  nekrsCheck((cht || platform->options.compareArgs("LOWMACH", "TRUE")) &&
+                 !platform->options.compareArgs("SCALAR00 IS TEMPERATURE", "TRUE"),
+             platform->comm.mpiComm,
+             EXIT_FAILURE,
              "%s\n",
-             "TEMPERATURE field requires conjugate heat transfer or lowMach");
+             "conjugate heat transfer or lowMach requires a TEMPERATURE field");
 
   platform->options.getArgs("SUBCYCLING STEPS", this->Nsubsteps);
 
@@ -616,14 +608,15 @@ void nrs_t::init()
 
   nek::setup(numberActiveFields());
 
-  auto getMesh = [&]() 
-  {  
+  auto getMesh = [&]() {
     auto [meshT, meshV] = createMesh(platform->comm.mpiComm, N, cubN, this->cht, platform->kernelInfo);
-    if (!cht) meshV = meshT;
- 
+    if (!cht) {
+      meshV = meshT;
+    }
+
     auto offset = meshV->Np * (meshV->Nelements);
     offset = std::max(offset, meshT->Np * (meshT->Nelements));
- 
+
     auto cubOffset = offset;
     if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
       cubOffset = std::max(cubOffset, meshV->Nelements * meshV->cubNp);
@@ -631,7 +624,7 @@ void nrs_t::init()
 
     offset = alignStride<dfloat>(offset);
     cubOffset = alignStride<dfloat>(cubOffset);
- 
+
     this->fieldOffset = offset;
     this->cubatureOffset = cubOffset;
 
@@ -642,6 +635,7 @@ void nrs_t::init()
   }();
 
   this->mesh = getMesh.second;
+  this->meshV = this->mesh;
   auto meshT = getMesh.first;
 
   auto verifyBC = [&]() {
@@ -789,7 +783,6 @@ void nrs_t::init()
 
   assignKernels(this);
 
-
   if (this->Nscalar) {
     cdsConfig_t cfg;
 
@@ -853,88 +846,91 @@ void nrs_t::init()
     }
   }
 
-
   printMeshMetrics(meshT);
-  if (mesh != meshT) printMeshMetrics(mesh);
+  if (mesh != meshT) {
+    printMeshMetrics(mesh);
+  }
 
   setupEllipticSolvers(this);
 }
 
-void nrs_t::restartFromFile(const std::string& restartStr)
+void nrs_t::restartFromFile(const std::string &restartStr)
 {
   auto options = serializeString(restartStr, '+');
   const auto fileName = options[0];
   options.erase(options.begin());
 
   if (platform->comm.mpiRank == 0) {
-    if (options.size()) std::cout << "restart options: "; 
-    for (const auto& element : options) std::cout << element << "  "; 
+    if (options.size()) {
+      std::cout << "restart options: ";
+    }
+    for (const auto &element : options) {
+      std::cout << element << "  ";
+    }
     std::cout << std::endl;
   }
 
-  auto requestedStep = [&]()
-  {
-    auto it = std::find_if(options.begin(), options.end(), 
-      [](const std::string& s) 
-      {
-        return s.find("step") != std::string::npos;
-      }
-    );
+  auto requestedStep = [&]() {
+    auto it = std::find_if(options.begin(), options.end(), [](const std::string &s) {
+      return s.find("step") != std::string::npos;
+    });
 
     std::string val;
-    if (it != options.end()) { 
+    if (it != options.end()) {
       val = serializeString(*it, '=').at(1);
       options.erase(it);
     }
     return (val.empty()) ? -1 : std::stoi(val);
   }();
 
-
-  auto requestedTime = [&]()
-  {
-    auto it = std::find_if(options.begin(), options.end(), 
-      [](const std::string& s) 
-      {
-        return s.find("time") != std::string::npos;
-      }
-    );
+  auto requestedTime = [&]() {
+    auto it = std::find_if(options.begin(), options.end(), [](const std::string &s) {
+      return s.find("time") != std::string::npos;
+    });
 
     std::string val;
-    if (it != options.end()) { 
+    if (it != options.end()) {
       val = serializeString(*it, '=').at(1);
       options.erase(it);
     }
     return val;
   }();
 
-  const auto requestedFields = [&]()
-  { 
+  auto pointInterpolation = [&]() {
+    auto it = std::find_if(options.begin(), options.end(), [](const std::string &s) {
+      return s.find("int") != std::string::npos;
+    });
+
+    auto found = false;
+    if (it != options.end()) {
+      found = true;
+      options.erase(it);
+    }
+    return found;
+  }();
+
+  const auto requestedFields = [&]() {
     std::vector<std::string> flds;
-    for (const auto& entry : {"x", "u", "p", "t", "s"}) {
-      auto it = std::find_if(options.begin(), options.end(), 
-        [entry](const std::string& s) 
-        {
-          std::string ss = s;
-          lowerCase(ss);
-          return ss.find(entry) != std::string::npos;
-        }
-      );
+    for (const auto &entry : {"x", "u", "p", "t", "s"}) {
+      auto it = std::find_if(options.begin(), options.end(), [entry](const std::string &s) {
+        std::string ss = s;
+        lowerCase(ss);
+        return ss.find(entry) != std::string::npos;
+      });
       if (it != options.end()) {
         std::string s = *it;
         lowerCase(s);
-        std::cout << "requested field: " << s << std::endl; 
+        std::cout << "requested field: " << s << std::endl;
         flds.push_back(s);
       }
     }
     return flds;
   }();
 
-
-  auto fileNameEndsWithBp = [&]() 
-  {
+  auto fileNameEndsWithBp = [&]() {
     const std::string suffix = ".bp";
     if (fileName.size() >= suffix.size()) {
-        return fileName.compare(fileName.size() - suffix.size(), suffix.size(), suffix) == 0;
+      return fileName.compare(fileName.size() - suffix.size(), suffix.size(), suffix) == 0;
     }
     return false;
   }();
@@ -942,29 +938,29 @@ void nrs_t::restartFromFile(const std::string& restartStr)
   iofld->open((cht) ? cds->mesh[0] : mesh, iofld::mode::read, fileName, requestedStep);
 
   const auto avaiableFields = iofld->availableVariables();
-  if (platform->comm.mpiRank == 0 && platform->verbose)  {
-    for(const auto& entry : avaiableFields) {
+  if (platform->comm.mpiRank == 0 && platform->verbose) {
+    for (const auto &entry : avaiableFields) {
       std::cout << " found variable " << entry << std::endl;
-    } 
+    }
   }
 
   double time = -1;
   iofld->addVariable("time", time);
   if (platform->options.compareArgs("LOWMACH", "TRUE")) {
     iofld->addVariable("p0th", p0th[0]);
-  } 
+  }
 
-  auto checkOption = [&](const std::string& name)
-  {
-    if (requestedFields.size() == 0) return true; // nothing specfied -> assign all
+  auto checkOption = [&](const std::string &name) {
+    if (requestedFields.size() == 0) {
+      return true; // nothing specfied -> assign all
+    }
     if (std::find(requestedFields.begin(), requestedFields.end(), name) != requestedFields.end()) {
-      return true; 
+      return true;
     }
     return false;
-  }; 
+  };
 
-  auto isAvailable = [&](const std::string& name)
-  {
+  auto isAvailable = [&](const std::string &name) {
     return std::find(avaiableFields.begin(), avaiableFields.end(), name) != avaiableFields.end();
   };
 
@@ -979,9 +975,9 @@ void nrs_t::restartFromFile(const std::string& restartStr)
 
   if (checkOption("u") && isAvailable("velocity")) {
     std::vector<occa::memory> o_iofldU;
-    o_iofldU.push_back(o_U.slice(0*fieldOffset, mesh->Nlocal));
-    o_iofldU.push_back(o_U.slice(1*fieldOffset, mesh->Nlocal));
-    o_iofldU.push_back(o_U.slice(2*fieldOffset, mesh->Nlocal));
+    o_iofldU.push_back(o_U.slice(0 * fieldOffset, mesh->Nlocal));
+    o_iofldU.push_back(o_U.slice(1 * fieldOffset, mesh->Nlocal));
+    o_iofldU.push_back(o_U.slice(2 * fieldOffset, mesh->Nlocal));
     iofld->addVariable("velocity", o_iofldU);
   }
 
@@ -991,7 +987,7 @@ void nrs_t::restartFromFile(const std::string& restartStr)
   }
 
   if (Nscalar) {
-    std::vector<occa::memory> o_iofldT; 
+    std::vector<occa::memory> o_iofldT;
     if (checkOption("t") && isAvailable("temperature")) {
       auto mesh = (cht) ? cds->mesh[0] : this->mesh;
       o_iofldT.push_back(cds->o_S.slice(0, mesh->Nlocal));
@@ -999,32 +995,45 @@ void nrs_t::restartFromFile(const std::string& restartStr)
     }
 
     const auto scalarStart = (o_iofldT.size()) ? 1 : 0;
-    for(int i = scalarStart; i < Nscalar; i++) {
+    for (int i = scalarStart; i < Nscalar; i++) {
       const auto sid = scalarDigitStr(i - scalarStart);
       if (checkOption("s" + sid) && isAvailable("scalar" + sid)) {
-        auto o_Si = cds->o_S.slice(cds->fieldOffsetScan[i], mesh->Nlocal); 
+        auto o_Si = cds->o_S.slice(cds->fieldOffsetScan[i], mesh->Nlocal);
         std::vector<occa::memory> o_iofldSi = {o_Si};
         iofld->addVariable("scalar" + sid, o_iofldSi);
       }
     }
   }
 
+  if (pointInterpolation) {
+    iofld->readAttribute("interpolate", "true");
+  }
+
   iofld->process();
+  iofld->close();
 
   platform->options.setArgs("START TIME", (requestedTime.size()) ? requestedTime : to_string_f(time));
-} 
+}
 
 void nrs_t::setIC()
 {
+  getICFromNek();
+
   if (!platform->options.getArgs("RESTART FILE NAME").empty()) {
     restartFromFile(platform->options.getArgs("RESTART FILE NAME"));
   }
 
-  if (platform->comm.mpiRank == 0) std::cout << "calling UDF_Setup ... \n" << std::flush; 
+  if (platform->comm.mpiRank == 0) {
+    std::cout << "calling UDF_Setup ... \n" << std::flush;
+  }
   udf.setup();
-  if (platform->comm.mpiRank == 0) std::cout << "done\n" << std::flush; 
+  if (platform->comm.mpiRank == 0) {
+    std::cout << "done\n" << std::flush;
+  }
 
-  if (cht) cds->mesh[0]->update(); 
+  if (cht) {
+    cds->mesh[0]->update();
+  }
   mesh->update();
 
   auto projC0 = [&](oogs_t *gsh, mesh_t *mesh, int nFields, dlong fieldOffset, occa::memory &o_in) {
@@ -1051,12 +1060,13 @@ void nrs_t::setIC()
 
   double startTime;
   platform->options.getArgs("START TIME", startTime);
-  copyToNek(startTime, 0, true); // ensure both codes are in sync 
+  copyToNek(startTime, 0, true); // ensure both codes are in sync
 
   nekrsCheck(platform->options.compareArgs("LOWMACH", "TRUE") && p0th[0] <= 1e-6,
              platform->comm.mpiComm,
              EXIT_FAILURE,
-             "Unreasonable p0th value %g!", p0th[0]);
+             "Unreasonable p0th value %g!",
+             p0th[0]);
 }
 
 void nrs_t::printRunStat(int step)
@@ -1323,9 +1333,13 @@ void nrs_t::printRunStat(int step)
 
   platform->timer.printStatEntry("    dotp multi          ", "dotpMulti", "DEVICE:MAX", tElapsedTimeSolve);
 
-  if (platform->comm.mpiRank == 0) std::cout << std::endl;
+  if (platform->comm.mpiRank == 0) {
+    std::cout << std::endl;
+  }
   platform->device.printMemoryUsage(platform->comm.mpiComm);
-  if (platform->comm.mpiRank == 0) std::cout << std::endl;
+  if (platform->comm.mpiRank == 0) {
+    std::cout << std::endl;
+  }
 
   std::cout.unsetf(std::ios::scientific);
   std::cout.precision(outPrecisionSave);
@@ -1398,7 +1412,7 @@ void nrs_t::makeNLT(double time, int tstep, occa::memory &o_Usubcycling)
     if (this->Nsubsteps) {
       o_Usubcycling = this->advectionSubcycling(std::min(tstep, this->nEXT), time);
     } else {
-      auto o_adv = platform->o_memPool.reserve<dfloat>(this->NVfields * this->fieldOffset);
+      auto o_adv = platform->deviceMemoryPool.reserve<dfloat>(this->NVfields * this->fieldOffset);
 
       if (platform->options.compareArgs("ADVECTION TYPE", "CUBATURE")) {
         this->strongAdvectionCubatureVolumeKernel(mesh->Nelements,
@@ -1506,7 +1520,9 @@ void nrs_t::printStepInfo(double time, int tstep, bool printStepInfo, bool print
 
     if (printStepInfo) {
       printf("step= %d  t= %.8e  dt=%.1e  C= %.3f", tstep, time, this->dt[0], cfl);
-      if (!printTimers) std::cout << std::endl;
+      if (!printTimers) {
+        std::cout << std::endl;
+      }
     }
 
     if (printTimers) {
@@ -1531,14 +1547,20 @@ void nrs_t::printStepInfo(double time, int tstep, bool printStepInfo, bool print
 
 void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforceFP64, int N_, bool uniform)
 {
-  const auto outXYZ = (enforceOutXYZ) ? true : platform->options.compareArgs("CHECKPOINT OUTPUT MESH", "TRUE");
+  if (!checkpointWriter) {
+    checkpointWriter = iofldFactory::create();
+  }
+
+  const auto outXYZ =
+      (enforceOutXYZ) ? true : platform->options.compareArgs("CHECKPOINT OUTPUT MESH", "TRUE");
 
   if (!checkpointWriter->isInitialized()) {
     auto visMesh = (cht) ? cds->mesh[0] : mesh;
     checkpointWriter->open(visMesh, iofld::mode::write, platform->options.getArgs("CASENAME"));
 
-    if (platform->options.compareArgs("LOWMACH", "TRUE"))
+    if (platform->options.compareArgs("LOWMACH", "TRUE")) {
       checkpointWriter->addVariable("p0th", p0th[0]);
+    }
 
     if (platform->options.compareArgs("VELOCITY CHECKPOINTING", "TRUE")) {
       std::vector<occa::memory> o_V;
@@ -1547,7 +1569,7 @@ void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforce
       }
       checkpointWriter->addVariable("velocity", o_V);
     }
- 
+
     if (platform->options.compareArgs("PRESSURE CHECKPOINTING", "TRUE")) {
       auto o_p = std::vector<occa::memory>{o_P.slice(0, visMesh->Nlocal)};
       checkpointWriter->addVariable("pressure", o_p);
@@ -1567,23 +1589,24 @@ void nrs_t::writeCheckpoint(double t, int step, bool enforceOutXYZ, bool enforce
     }
   }
 
-  const auto Nfld = [&] () 
-  {
+  const auto Nfld = [&]() {
     int N;
     platform->options.getArgs("POLYNOMIAL DEGREE", N);
-    return (N_) ? N_ : N;  
+    return (N_) ? N_ : N;
   }();
   checkpointWriter->writeAttribute("polynomialOrder", std::to_string(Nfld));
 
   auto FP64 = platform->options.compareArgs("CHECKPOINT PRECISION", "FP64");
-  if (enforceFP64) FP64 = true; 
+  if (enforceFP64) {
+    FP64 = true;
+  }
   checkpointWriter->writeAttribute("precision", (FP64) ? "64" : "32");
   checkpointWriter->writeAttribute("uniform", (uniform) ? "true" : "false");
   checkpointWriter->writeAttribute("outputMesh", (outXYZ) ? "true" : "false");
 
   checkpointWriter->addVariable("time", t);
 
-  for (const auto& entry : userCheckpointFields) {
+  for (const auto &entry : userCheckpointFields) {
     checkpointWriter->addVariable(entry.first, entry.second);
   }
 
@@ -1638,8 +1661,7 @@ void nrs_t::copyToNek(double time, bool updateMesh_)
   *(nekData.time) = time;
   *(nekData.p0th) = p0th[0];
 
-  auto updateMesh = [&]()
-  {
+  auto updateMesh = [&]() {
     auto mesh = (cht) ? cds->mesh[0] : this->mesh;
 
     auto [x, y, z] = mesh->xyzHost();
@@ -1648,11 +1670,11 @@ void nrs_t::copyToNek(double time, bool updateMesh_)
       nekData.ym1[i] = y[i];
       nekData.zm1[i] = z[i];
     }
-    nek::recomputeGeometry(); 
+    nek::recomputeGeometry();
   };
 
   {
-    auto U = platform->memPool.reserve<dfloat>(mesh->dim * fieldOffset);
+    auto U = platform->memoryPool.reserve<dfloat>(mesh->dim * fieldOffset);
     o_U.copyTo(U, U.size());
     auto vx = U.ptr<dfloat>() + 0 * fieldOffset;
     auto vy = U.ptr<dfloat>() + 1 * fieldOffset;
@@ -1667,7 +1689,7 @@ void nrs_t::copyToNek(double time, bool updateMesh_)
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     auto mesh = (cht) ? cds->mesh[0] : this->mesh;
 
-    auto U = platform->memPool.reserve<dfloat>(mesh->dim * fieldOffset);
+    auto U = platform->memoryPool.reserve<dfloat>(mesh->dim * fieldOffset);
     mesh->o_U.copyTo(U, U.size());
     auto wx = U.ptr<dfloat>() + 0 * fieldOffset;
     auto wy = U.ptr<dfloat>() + 1 * fieldOffset;
@@ -1680,12 +1702,14 @@ void nrs_t::copyToNek(double time, bool updateMesh_)
     updateMesh_ = true;
   }
 
-  if (updateMesh_) updateMesh();
+  if (updateMesh_) {
+    updateMesh();
+  }
 
   {
-    auto P = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+    auto P = platform->memoryPool.reserve<dfloat>(mesh->Nlocal);
     o_P.copyTo(P, P.size());
-    auto Pptr = P.ptr<dfloat>(); 
+    auto Pptr = P.ptr<dfloat>();
     for (int i = 0; i < mesh->Nlocal; i++) {
       nekData.pr[i] = Pptr[i];
     }
@@ -1696,10 +1720,10 @@ void nrs_t::copyToNek(double time, bool updateMesh_)
     for (int is = 0; is < Nscalar; is++) {
       auto mesh = cds->mesh[is];
 
-      auto S = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+      auto S = platform->memoryPool.reserve<dfloat>(mesh->Nlocal);
       cds->o_S.copyTo(S, S.size(), 0, cds->fieldOffsetScan[is]);
 
-      auto Sptr = S.ptr<dfloat>(); 
+      auto Sptr = S.ptr<dfloat>();
       auto Ti = nekData.t + is * nekFieldOffset;
       for (int i = 0; i < mesh->Nlocal; i++) {
         Ti[i] = Sptr[i];
@@ -1725,7 +1749,7 @@ void nrs_t::copyFromNek(double &time)
   p0th[0] = *(nekData.p0th);
 
   {
-    auto U = platform->memPool.reserve<dfloat>(mesh->dim * fieldOffset);
+    auto U = platform->memoryPool.reserve<dfloat>(mesh->dim * fieldOffset);
     auto vx = U.ptr<dfloat>() + 0 * fieldOffset;
     auto vy = U.ptr<dfloat>() + 1 * fieldOffset;
     auto vz = U.ptr<dfloat>() + 2 * fieldOffset;
@@ -1740,7 +1764,7 @@ void nrs_t::copyFromNek(double &time)
   if (platform->options.compareArgs("MOVING MESH", "TRUE")) {
     auto mesh = (cht) ? cds->mesh[0] : this->mesh;
 
-    auto U = platform->memPool.reserve<dfloat>(mesh->dim * fieldOffset);
+    auto U = platform->memoryPool.reserve<dfloat>(mesh->dim * fieldOffset);
     auto wx = U.ptr<dfloat>() + 0 * fieldOffset;
     auto wy = U.ptr<dfloat>() + 1 * fieldOffset;
     auto wz = U.ptr<dfloat>() + 2 * fieldOffset;
@@ -1753,8 +1777,8 @@ void nrs_t::copyFromNek(double &time)
   }
 
   {
-    auto P = platform->memPool.reserve<dfloat>(o_P.size());
-    auto Pptr = P.ptr<dfloat>(); 
+    auto P = platform->memoryPool.reserve<dfloat>(o_P.size());
+    auto Pptr = P.ptr<dfloat>();
     for (int i = 0; i < mesh->Nlocal; i++) {
       Pptr[i] = nekData.pr[i];
     }
@@ -1767,9 +1791,9 @@ void nrs_t::copyFromNek(double &time)
       auto mesh = cds->mesh[is];
       auto Ti = nekData.t + is * nekFieldOffset;
 
-      auto S = platform->memPool.reserve<dfloat>(mesh->Nlocal);
+      auto S = platform->memoryPool.reserve<dfloat>(mesh->Nlocal);
 
-      auto Sptr = S.ptr<dfloat>(); 
+      auto Sptr = S.ptr<dfloat>();
       for (int i = 0; i < mesh->Nlocal; i++) {
         Sptr[i] = Ti[i];
       }
@@ -1778,3 +1802,8 @@ void nrs_t::copyFromNek(double &time)
   }
 }
 
+void nrs_t::getICFromNek()
+{
+  nek::getIC();
+  copyFromNek();
+}

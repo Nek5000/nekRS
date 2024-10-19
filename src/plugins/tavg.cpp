@@ -6,8 +6,6 @@
 // private members
 namespace
 {
-ogs_t *ogs;
-
 dlong fieldOffset;
 
 std::vector< std::vector<deviceMemory<dfloat>> > userFieldList;

@@ -3,6 +3,7 @@ Variable			Value(s)   	Description / Comment
 ------------------------------------------------------------------------------------------------------------------------------------
 NEKRS_HOME			string	     	Installation directory
 
+NEKRS_JITC_NTHREADS             int             
 NEKRS_CACHE_DIR			string		Case cache directory	
 NEKRS_LOCAL_TMP_DIR		string		Node local temp directory
 NEKRS_CACHE_BCAST		0[D]/1		Broadcast cache to NEKRS_LOCAL_TMP_DIR after JIT compilation

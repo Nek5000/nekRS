@@ -310,12 +310,14 @@ int pgmres(elliptic_t *elliptic,
 {
   const auto Nlocal = elliptic->Nfields * static_cast<size_t>(elliptic->fieldOffset);
 
-  elliptic->gmresData->o_p = platform->o_memPool.reserve<dfloat>(Nlocal);
-  elliptic->gmresData->o_z = platform->o_memPool.reserve<dfloat>(Nlocal);
-  elliptic->gmresData->o_Ap = platform->o_memPool.reserve<dfloat>(Nlocal);
-  
-  elliptic->gmresData->o_V = platform->o_memPool.reserve<dfloat>(Nlocal * elliptic->gmresData->nRestartVectors);
-  elliptic->gmresData->o_Z = platform->o_memPool.reserve<dfloat>(Nlocal * ((elliptic->gmresData->flexible) ? elliptic->gmresData->nRestartVectors : 1));
+  elliptic->gmresData->o_p = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
+  elliptic->gmresData->o_z = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
+  elliptic->gmresData->o_Ap = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
+
+  elliptic->gmresData->o_V =
+      platform->deviceMemoryPool.reserve<dfloat>(Nlocal * elliptic->gmresData->nRestartVectors);
+  elliptic->gmresData->o_Z = platform->deviceMemoryPool.reserve<dfloat>(
+      Nlocal * ((elliptic->gmresData->flexible) ? elliptic->gmresData->nRestartVectors : 1));
 
   const int Niter = _pgmres(elliptic, tol, MAXIT, rdotr, o_r, o_x);
 
@@ -325,5 +327,5 @@ int pgmres(elliptic_t *elliptic,
   elliptic->gmresData->o_V.free();
   elliptic->gmresData->o_Z.free();
 
-  return Niter; 
+  return Niter;
 }

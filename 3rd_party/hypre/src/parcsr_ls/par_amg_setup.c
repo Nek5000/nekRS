@@ -31,8 +31,9 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
                       hypre_ParVector    *f,
                       hypre_ParVector    *u )
 {
-   MPI_Comm            comm = hypre_ParCSRMatrixComm(A);
-   hypre_ParAMGData   *amg_data = (hypre_ParAMGData*) amg_vdata;
+   MPI_Comm             comm = hypre_ParCSRMatrixComm(A);
+   hypre_ParAMGData    *amg_data = (hypre_ParAMGData*) amg_vdata;
+   hypre_ParCSRMatrix  *A_tilde = A;
 
    /* Data Structure variables */
    HYPRE_Int            num_vectors;
@@ -89,6 +90,9 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
 
    HYPRE_MemoryLocation memory_location = hypre_ParCSRMatrixMemoryLocation(A);
    hypre_ParAMGDataMemoryLocation(amg_data) = memory_location;
+#if defined(HYPRE_USING_GPU)
+   HYPRE_ExecutionPolicy exec = hypre_GetExecPolicy1(memory_location);
+#endif
 
    /* Local variables */
    HYPRE_Int           *CF_marker;
@@ -121,7 +125,6 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
    HYPRE_Int       setup_type;
    HYPRE_BigInt    fine_size;
    HYPRE_Int       offset;
-   HYPRE_Real      size;
    HYPRE_Int       not_finished_coarsening = 1;
    HYPRE_Int       coarse_threshold = hypre_ParAMGDataMaxCoarseSize(amg_data);
    HYPRE_Int       min_coarse_size = hypre_ParAMGDataMinCoarseSize(amg_data);
@@ -133,6 +136,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
 #endif
    HYPRE_Int      *grid_relax_type = hypre_ParAMGDataGridRelaxType(amg_data);
    HYPRE_Int       num_functions = hypre_ParAMGDataNumFunctions(amg_data);
+   HYPRE_Int       filter_functions = hypre_ParAMGDataFilterFunctions(amg_data);
    HYPRE_Int       nodal = hypre_ParAMGDataNodal(amg_data);
    HYPRE_Int       nodal_levels = hypre_ParAMGDataNodalLevels(amg_data);
    HYPRE_Int       nodal_diag = hypre_ParAMGDataNodalDiag(amg_data);
@@ -235,6 +239,9 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
 
    HYPRE_Real cum_nnz_AP = hypre_ParAMGDataCumNnzAP(amg_data);
 
+   HYPRE_ANNOTATE_FUNC_BEGIN;
+   hypre_GpuProfilingPushRange("AMGsetup");
+   hypre_MemoryPrintUsage(comm, hypre_HandleLogLevel(hypre_handle()), "BoomerAMG setup begin", 0);
    hypre_MPI_Comm_size(comm, &num_procs);
    hypre_MPI_Comm_rank(comm, &my_id);
 
@@ -337,8 +344,6 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
    {
       num_vectors = 1;
    }
-
-   HYPRE_ANNOTATE_FUNC_BEGIN;
 
    /* change in definition of standard and multipass interpolation, by
       eliminating interp_type 9 and 5 and setting sep_weight instead
@@ -697,7 +702,6 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
    if (num_C_points_coarse > 0)
    {
 #if defined(HYPRE_USING_GPU)
-      HYPRE_ExecutionPolicy exec = hypre_GetExecPolicy1(memory_location);
       if (exec == HYPRE_EXEC_DEVICE)
       {
 #if defined(HYPRE_USING_SYCL)
@@ -753,7 +757,6 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       offset = (HYPRE_Int) ( first_local_row % ((HYPRE_BigInt) num_functions) );
 
 #if defined(HYPRE_USING_GPU)
-      HYPRE_ExecutionPolicy exec = hypre_GetExecPolicy1(memory_location);
       if (exec == HYPRE_EXEC_DEVICE)
       {
          hypre_BoomerAMGInitDofFuncDevice(hypre_IntArrayData(dof_func), local_size, offset, num_functions);
@@ -768,7 +771,13 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       }
    }
 
-   A_array[0] = A;
+   /* Eliminate inter-variable connections among functions for preconditioning purposes */
+   if (num_functions > 1 && filter_functions)
+   {
+      hypre_ParCSRMatrixBlkFilter(A, num_functions, &A_tilde);
+   }
+
+   A_array[0] = A_tilde;
 
    /* interp vectors setup */
    if (interp_vec_variant == 1)
@@ -776,7 +785,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       num_levels_interp_vectors = interp_vec_first_level + 1;
       hypre_ParAMGNumLevelsInterpVectors(amg_data) = num_levels_interp_vectors;
    }
-   if ( interp_vec_variant > 0 &&  num_interp_vectors > 0)
+   if (interp_vec_variant > 0 && num_interp_vectors > 0)
    {
       interp_vectors_array =  hypre_CTAlloc(hypre_ParVector**, num_levels_interp_vectors,
                                             HYPRE_MEMORY_HOST);
@@ -3127,10 +3136,15 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
          A_array[level] = A_H;
       }
 
-      size = ((HYPRE_Real) fine_size ) * .75;
-      if (coarsen_type > 0 && coarse_size >= (HYPRE_BigInt) size)
+#if defined(HYPRE_USING_GPU)
+      if (exec == HYPRE_EXEC_HOST)
+#endif
       {
-         coarsen_type = 0;
+         HYPRE_Real size = ((HYPRE_Real)fine_size) * .75;
+         if (coarsen_type > 0 && coarse_size >= (HYPRE_BigInt)size)
+         {
+            coarsen_type = 0;
+         }
       }
 
       {
@@ -3239,6 +3253,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
     * Setup of special smoothers when needed
     *-----------------------------------------------------------------------*/
 
+   hypre_GpuProfilingPushRange("Relaxation");
    if (addlvl > -1 ||
        grid_relax_type[1] ==  7 || grid_relax_type[2] ==  7 || grid_relax_type[3] ==  7 ||
        grid_relax_type[1] ==  8 || grid_relax_type[2] ==  8 || grid_relax_type[3] ==  8 ||
@@ -3549,8 +3564,6 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
                               (HYPRE_ParCSRMatrix) A_array[j],
                               (HYPRE_ParVector) F_array[j],
                               (HYPRE_ParVector) U_array[j]);
-
-
       }
 
       if (relax_weight[j] == 0.0)
@@ -3783,6 +3796,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       hypre_GpuProfilingPopRange();
       hypre_GpuProfilingPopRange();
    } /* end of levels loop */
+   hypre_GpuProfilingPopRange(); /* Relaxation */
 
    if (amg_logging > 1)
    {
@@ -3828,8 +3842,14 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       hypre_BoomerAMGSetupStats(amg_data, A);
    }
 
-   /* print out CF info to plot grids in matlab (see 'tools/AMGgrids.m') */
+   /* Destroy filtered matrix */
+   if (A_tilde != A)
+   {
+      hypre_ParCSRMatrixDestroy(A_tilde);
+      A_array[0] = A;
+   }
 
+   /* Print out CF info to plot grids in matlab (see 'tools/AMGgrids.m') */
    if (hypre_ParAMGDataPlotGrids(amg_data))
    {
       HYPRE_Int *CF, *CFc, *itemp;
@@ -4018,6 +4038,8 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
    }
 #endif
 
+   hypre_MemoryPrintUsage(comm, hypre_HandleLogLevel(hypre_handle()), "BoomerAMG setup end", 0);
+   hypre_GpuProfilingPopRange();
    HYPRE_ANNOTATE_FUNC_END;
 
    return (hypre_error_flag);

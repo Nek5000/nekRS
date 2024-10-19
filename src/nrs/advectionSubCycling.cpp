@@ -166,16 +166,16 @@ static void rk44(int nFields,
 
   const bool movingMesh = platform->options.compareArgs("MOVING MESH", "TRUE");
 
-  occa::memory o_u1 = platform->o_memPool.reserve<dfloat>(nFields * fieldOffset);
+  occa::memory o_u1 = platform->deviceMemoryPool.reserve<dfloat>(nFields * fieldOffset);
   o_u1.copyFrom(o_u0);
 
   std::vector<occa::memory> o_rhs(4);
-  o_rhs[0] = platform->o_memPool.reserve<dfloat>(nFields * fieldOffset);
-  o_rhs[1] = platform->o_memPool.reserve<dfloat>(nFields * fieldOffset);
-  o_rhs[2] = platform->o_memPool.reserve<dfloat>(nFields * fieldOffset);
-  o_rhs[3] = platform->o_memPool.reserve<dfloat>(nFields * fieldOffset);
+  o_rhs[0] = platform->deviceMemoryPool.reserve<dfloat>(nFields * fieldOffset);
+  o_rhs[1] = platform->deviceMemoryPool.reserve<dfloat>(nFields * fieldOffset);
+  o_rhs[2] = platform->deviceMemoryPool.reserve<dfloat>(nFields * fieldOffset);
+  o_rhs[3] = platform->deviceMemoryPool.reserve<dfloat>(nFields * fieldOffset);
 
-  occa::memory o_LMMe = (movingMesh) ? platform->o_memPool.reserve<dfloat>(fieldOffset) : nullptr;
+  occa::memory o_LMMe = (movingMesh) ? platform->deviceMemoryPool.reserve<dfloat>(fieldOffset) : nullptr;
 
   for (int rk = 0; rk < nRK; ++rk) {
     auto extC = extCoeffs(nEXT, time, tstage, sdt, dt, nodes, rk);
@@ -243,7 +243,7 @@ occa::memory advectionSubcyclingRK(mesh_t *_meshT,
   nStagesSum3Kernel = platform->kernelRequests.load("core-nStagesSum3");
   subCycleRKKernel = platform->kernelRequests.load("nrs-subCycleRK");
 
-  occa::memory o_u0 = platform->o_memPool.reserve<dfloat>(nFields * fieldOffset);
+  occa::memory o_u0 = platform->deviceMemoryPool.reserve<dfloat>(nFields * fieldOffset);
   platform->linAlg->fill(o_u0.length(), 0.0, o_u0);
 
   for (int torder = nEXT - 1; torder >= 0; torder--) {

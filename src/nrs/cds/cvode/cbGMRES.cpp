@@ -181,11 +181,11 @@ static int CGSI(realtype **h, int k, int p, realtype *new_vk_norm, occa::memory 
 }
 
 #define cbGMRESFinish(lastFlag)                                                                              \
-{                                                                                                            \
-o_s2Inv.free();                                                                                              \
-o_V.free();                                                                                                  \
-return lastFlag;                                                                                             \
-}
+  {                                                                                                          \
+    o_s2Inv.free();                                                                                          \
+    o_V.free();                                                                                              \
+    return lastFlag;                                                                                         \
+  }
 
 } // namespace
 
@@ -277,8 +277,8 @@ int cbGMRESSolve(SUNLinearSolver S, N_Vector x, N_Vector b, realtype delta)
     firstTime = 0;
   }
 
-  o_s2Inv = platform->o_memPool.reserve<sunrealtype>(N);
-  o_V = platform->o_memPool.reserve<pfloat>((l_max + 1) * static_cast<size_t>(N));
+  o_s2Inv = platform->deviceMemoryPool.reserve<sunrealtype>(N);
+  o_V = platform->deviceMemoryPool.reserve<pfloat>((l_max + 1) * static_cast<size_t>(N));
 
   /* Initialize counters and convergence flag */
   *nli = 0;

@@ -365,7 +365,7 @@ public:
                          occa::memory &o_y);
 
   dfloat maxRelativeError(const dlong N,
-                          const dlong Nfields,
+                          const int Nfields,
                           const dlong fieldOffset,
                           const dfloat absTol,
                           const occa::memory &o_u,
@@ -373,7 +373,7 @@ public:
                           MPI_Comm comm);
 
   dfloat maxAbsoluteError(const dlong N,
-                          const dlong Nfields,
+                          const int Nfields,
                           const dlong fieldOffset,
                           const dfloat absTol,
                           const occa::memory &o_u,

@@ -57,9 +57,9 @@ void initializeAscent()
   conduit::utils::set_error_handler(errHandler);
 
   ascent_opts["mpi_comm"] = MPI_Comm_c2f(comm);
-  //ascent_opts["runtime/vtkm/backend"] = "serial";
-  // ascent_opts["exceptions"] = "forward";
-  // ascent_opts["messages"] = "verbose";
+  // ascent_opts["runtime/vtkm/backend"] = "serial";
+  //  ascent_opts["exceptions"] = "forward";
+  //  ascent_opts["messages"] = "verbose";
 
   mAscent.open(ascent_opts);
 
@@ -160,7 +160,7 @@ void updateFieldData()
       auto data = [&]() {
         occa::memory o_fldOut;
         if (interpolate || uniform) {
-          auto o_tmp = platform->o_memPool.reserve<dfloat>(mesh_vis->Nlocal);
+          auto o_tmp = platform->deviceMemoryPool.reserve<dfloat>(mesh_vis->Nlocal);
           if (uniform) {
             mesh_fld->interpolate(o_fldIn.at(idim), mesh_vis, o_tmp, true);
           } else {
@@ -178,13 +178,13 @@ void updateFieldData()
         } else {
           occa::memory o_tmp;
           if (stageThroughHost) {
-            o_tmp = platform->memPool.reserve<dfloat>(mesh_vis->Nlocal);
+            o_tmp = platform->memoryPool.reserve<dfloat>(mesh_vis->Nlocal);
             auto ptr = o_tmp.ptr<dfloat>();
             for (int i = 0; i < o_tmp.size(); i++) {
               ptr[i] = 0.0;
             }
           } else {
-            o_tmp = platform->o_memPool.reserve<dfloat>(mesh_vis->Nlocal);
+            o_tmp = platform->deviceMemoryPool.reserve<dfloat>(mesh_vis->Nlocal);
             platform->linAlg->fill(o_tmp.size(), 0.0, o_tmp);
           }
           o_tmp.copyFrom(o_fldIn.at(idim), o_fldIn.at(idim).size());
@@ -234,9 +234,7 @@ void updateFieldData()
 
 } // namespace
 
-void addVariable(const std::string &name,
-                            mesh_t *mesh_fld,
-                            const std::vector<deviceMemory<dfloat>> &fld)
+void addVariable(const std::string &name, mesh_t *mesh_fld, const std::vector<deviceMemory<dfloat>> &fld)
 {
   std::vector<occa::memory> fld_;
   for (const auto &entry : fld) {
@@ -255,11 +253,10 @@ void clearData()
 }
 
 void setup(mesh_t *mesh_,
-                      const std::string &actionFile,
-                      int Nin_ = 0,
-                      bool uniform_ = false,
-                      bool stageThroughHost_ = false
-                      bool async_ = false)
+           const std::string &actionFile,
+           int Nin_ = 0,
+           bool uniform_ = false,
+           bool stageThroughHost_ = false bool async_ = false)
 {
   mesh_in = mesh_;
   const int Nin = (Nin_) ? Nin_ : mesh_in->N;
@@ -270,7 +267,9 @@ void setup(mesh_t *mesh_,
     stageThroughHost = false;
   }
 
-  if (stageThroughHost) async = true; 
+  if (stageThroughHost) {
+    async = true;
+  }
 
   if (async) {
     int provided;
@@ -346,7 +345,7 @@ void setup(mesh_t *mesh_,
     std::vector<dlong> etov(Nverts);
 
     occa::memory o_etov;
-    if (stageThroughHost) { 
+    if (stageThroughHost) {
       o_etov = platform->device.mallocHost<dlong>(etov.size());
     } else {
       o_etov = platform->device.malloc<dlong>(etov.size());

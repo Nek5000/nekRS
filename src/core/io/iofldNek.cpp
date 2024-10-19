@@ -138,6 +138,8 @@ size_t iofldNek::write()
 
 size_t iofldNek::read()
 {
+  nekrsCheck(pointInterpolation, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "read attribute interpolate not supported!");
+
   nek::readFld(fldData);
 
   if (auto time = inquireVariable<double>("time")) {

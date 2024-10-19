@@ -81,7 +81,7 @@ bool atomicsAvailable(device_t &device, MPI_Comm comm)
   return atomicSupported;
 }
 
-std::string extractKernelName(const std::string& fullPath)
+std::string extractKernelName(const std::string &fullPath)
 {
   std::regex kernelNameRegex(R"((.+)\/(.+)\.)");
   std::smatch kernelNameMatch;
@@ -93,9 +93,9 @@ std::string extractKernelName(const std::string& fullPath)
   // 2:   advectMeshVelocityHex3D.okl
 
   return (foundKernelName && kernelNameMatch.size() == 3) ? kernelNameMatch[2].str() : "";
-} 
+}
 
-occa::properties adjustKernelProps(const std::string& fileName, const occa::properties& props_)
+occa::properties adjustKernelProps(const std::string &fileName, const occa::properties &props_)
 {
   occa::properties props = props_;
   if (fileName.find(".okl") != std::string::npos) {
@@ -114,18 +114,12 @@ occa::kernel device_t::wrapperCompileKernel(const std::string &fileName,
                                             const occa::properties &props_,
                                             const std::string &suffix) const
 {
-  if(!_compilationEnabled) {
-    nekrsAbort(MPI_COMM_SELF,
-               EXIT_FAILURE,
-               "%s",
-               "illegal call detected after 'finish' declaration\n");
+  if (!_compilationEnabled) {
+    nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s", "illegal call detected after 'finish' declaration\n");
   }
 
-  if(fileName.empty()) {
-    nekrsAbort(MPI_COMM_SELF,
-               EXIT_FAILURE,
-               "%s",
-               "Empty fileName\n");
+  if (fileName.empty()) {
+    nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s", "Empty fileName\n");
   }
 
   auto props = props_;
@@ -168,7 +162,7 @@ occa::kernel device_t::wrapperLoadKernel(const std::string &fileName,
              "Cannot load kernel <%s>\n",
              kernelName.c_str());
 
-#if  0
+#if 0
   // restore
   if (platform->cacheBcast) {
     occa::env::OCCA_CACHE_DIR = cacheDir0;
@@ -184,8 +178,7 @@ occa::kernel device_t::compileKernel(const std::string &fileName,
                                      const std::string &suffix,
                                      const MPI_Comm &commIn) const
 {
-  const auto collective = [&commIn]() 
-  {
+  const auto collective = [&commIn]() {
     int tmp;
     MPI_Comm_compare(commIn, MPI_COMM_SELF, &tmp);
     return (tmp == MPI_UNEQUAL) ? true : false;
@@ -193,20 +186,23 @@ occa::kernel device_t::compileKernel(const std::string &fileName,
 
   MPI_Comm comm = commIn;
   if (collective) {
-    if (platform->cacheLocal) comm = _comm.mpiCommLocal; 
-    if (platform->cacheBcast) comm = _comm.mpiComm; 
+    if (platform->cacheLocal) {
+      comm = _comm.mpiCommLocal;
+    }
+    if (platform->cacheBcast) {
+      comm = _comm.mpiComm;
+    }
   }
 
-  const auto buildRank = [&comm]()
-  { 
+  const auto buildRank = [&comm]() {
     int rank;
     MPI_Comm_rank(comm, &rank);
-    return (rank == 0) ? true : false; 
+    return (rank == 0) ? true : false;
   }();
 
   occa::kernel knl;
-  if (buildRank) { 
-    knl = this->wrapperCompileKernel(fileName, props, suffix); 
+  if (buildRank) {
+    knl = this->wrapperCompileKernel(fileName, props, suffix);
   }
   MPI_Barrier(comm); // finish compilation
 
@@ -222,7 +218,7 @@ occa::kernel device_t::compileKernel(const std::string &fileName,
 }
 
 occa::kernel device_t::loadKernel(const std::string &fileName,
-                                  const std::string &kernelName, 
+                                  const std::string &kernelName,
                                   const occa::properties &props,
                                   const std::string &suffix) const
 {
@@ -239,7 +235,6 @@ occa::kernel device_t::loadKernel(const std::string &fileName,
 {
   return this->loadKernel(fileName, extractKernelName(fileName), props, suffix);
 }
-
 
 occa::memory device_t::mallocHost(size_t Nbytes)
 {
@@ -266,7 +261,9 @@ occa::memory device_t::malloc(size_t Nbytes, const occa::properties &properties)
 occa::memory device_t::malloc(size_t Nbytes, const void *src, const occa::properties &properties)
 {
   auto props = properties;
-  if (platform->serial) props["use_host_pointer"] = true;
+  if (platform->serial) {
+    props["use_host_pointer"] = true;
+  }
 
   occa::memory o_returnValue = _device.malloc(Nbytes, src, props);
   return o_returnValue;
@@ -275,7 +272,9 @@ occa::memory device_t::malloc(size_t Nbytes, const void *src, const occa::proper
 occa::memory device_t::malloc(size_t Nword, size_t wordSize, const occa::memory &src)
 {
   occa::properties props;
-  if (platform->serial) props["use_host_pointer"] = true;
+  if (platform->serial) {
+    props["use_host_pointer"] = true;
+  }
 
   occa::memory o_returnValue = _device.malloc(Nword * wordSize, src, props);
   return o_returnValue;
@@ -293,7 +292,8 @@ occa::memory device_t::malloc(size_t Nword, size_t wordSize)
 device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
 {
   // OCCA build stuff
-  char deviceConfig[4096];
+  int deviceConfigSize = 4096;
+  char deviceConfig[deviceConfigSize];
   int worldRank = _comm.mpiRank;
 
   int device_id = 0;
@@ -312,23 +312,31 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
     if (!getenv("CUDA_CACHE_DISABLE")) {
       setenv("CUDA_CACHE_DISABLE", "1", 1);
     }
-    sprintf(deviceConfig, "{mode: 'CUDA', device_id: %d}", device_id);
+    snprintf(deviceConfig, deviceConfigSize, "{mode: 'CUDA', device_id: %d}", device_id);
   } else if (strcasecmp(requestedOccaMode.c_str(), "HIP") == 0) {
-    sprintf(deviceConfig, "{mode: 'HIP', device_id: %d}", device_id);
+    snprintf(deviceConfig, deviceConfigSize, "{mode: 'HIP', device_id: %d}", device_id);
   } else if (strcasecmp(requestedOccaMode.c_str(), "DPCPP") == 0) {
     int plat = 0;
     options.getArgs("PLATFORM NUMBER", plat);
-    sprintf(deviceConfig, "{mode: 'dpcpp', device_id: %d, platform_id: %d}", device_id, plat);
+    snprintf(deviceConfig,
+             deviceConfigSize,
+             "{mode: 'dpcpp', device_id: %d, platform_id: %d}",
+             device_id,
+             plat);
   } else if (strcasecmp(requestedOccaMode.c_str(), "OPENCL") == 0) {
     int plat = 0;
     options.getArgs("PLATFORM NUMBER", plat);
-    sprintf(deviceConfig, "{mode: 'OpenCL', device_id: %d, platform_id: %d}", device_id, plat);
+    snprintf(deviceConfig,
+             deviceConfigSize,
+             "{mode: 'OpenCL', device_id: %d, platform_id: %d}",
+             device_id,
+             plat);
   } else if (strcasecmp(requestedOccaMode.c_str(), "OPENMP") == 0) {
     nekrsCheck(true, _comm.mpiComm, EXIT_FAILURE, "%s\n", "OpenMP backend currently not supported!");
-    sprintf(deviceConfig, "{mode: 'OpenMP'}");
+    snprintf(deviceConfig, deviceConfigSize, "{mode: 'OpenMP'}");
   } else if (strcasecmp(requestedOccaMode.c_str(), "CPU") == 0 ||
              strcasecmp(requestedOccaMode.c_str(), "SERIAL") == 0) {
-    sprintf(deviceConfig, "{mode: 'Serial'}");
+    snprintf(deviceConfig, deviceConfigSize, "{mode: 'Serial'}");
     options.setArgs("THREAD MODEL", "SERIAL");
     options.getArgs("THREAD MODEL", requestedOccaMode);
   } else {
@@ -349,7 +357,7 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
   if (worldRank == 0) {
     printf("Initializing device \n");
   }
-  this->_device.setup((std::string)deviceConfig);
+  this->_device.setup(static_cast<std::string>(deviceConfig));
 
   if (worldRank == 0) {
     std::cout << "active occa mode: " << this->mode() << "\n\n";
@@ -381,18 +389,17 @@ device_t::device_t(setupAide &options, comm_t &comm) : _comm(comm)
 size_t device_t::memoryUsage() const
 {
   return platform->device.occaDevice().memoryAllocated();
-} 
+}
 
 void device_t::printMemoryUsage(MPI_Comm comm) const
 {
-  const auto maxMemSizes = [&]()
-  {
+  const auto maxMemSizes = [&]() {
     std::vector<uint64_t> work;
     work.push_back(platform->device.occaDevice().maxMemoryAllocated());
-    work.push_back(platform->o_memPool.size());
-    work.push_back(platform->memPool.size());
+    work.push_back(platform->deviceMemoryPool.size());
+    work.push_back(platform->memoryPool.size());
 
-    MPI_Allreduce(MPI_IN_PLACE, work.data(), work.size(), MPI_UINT64_T, MPI_MAX, comm); 
+    MPI_Allreduce(MPI_IN_PLACE, work.data(), work.size(), MPI_UINT64_T, MPI_MAX, comm);
     return std::make_tuple(work[0], work[1], work[2]);
   }();
 
@@ -401,11 +408,12 @@ void device_t::printMemoryUsage(MPI_Comm comm) const
 
   if (rank == 0) {
     int width = 12;
-    std::cout << "occa max memory usage: " << std::setw(width) << std::right 
-              << std::get<0>(maxMemSizes)  << " bytes" << std::endl;
-    std::cout << "  o_mempool:           " << std::setw(width) << std::right 
-              << std::get<1>(maxMemSizes)  << " bytes" << std::endl;
-    std::cout << "  mempool:             " << std::setw(width) << std::right 
-              << std::get<2>(maxMemSizes)  << " bytes" << std::endl << std::flush;
+    std::cout << "occa max memory usage: " << std::setw(width) << std::right << std::get<0>(maxMemSizes)
+              << " bytes" << std::endl;
+    std::cout << "  deviceMemoryPool:    " << std::setw(width) << std::right << std::get<1>(maxMemSizes)
+              << " bytes" << std::endl;
+    std::cout << "  mempool:             " << std::setw(width) << std::right << std::get<2>(maxMemSizes)
+              << " bytes" << std::endl
+              << std::flush;
   }
-} 
+}

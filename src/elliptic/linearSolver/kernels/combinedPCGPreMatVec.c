@@ -22,7 +22,7 @@ extern "C" void FUNC(combinedPCGPreMatVec)(const dlong &N,
         const dfloat pkm1 = p[id];
         const dfloat rkm1 = r[id];
         const dfloat vkm1 = v[id];
-        x[id] = x[id] + alphakm1 * pkm1 + alphaDivBetakm2 * (pkm1 - M * rkm1);
+        x[id] += alphakm1 * pkm1 + alphaDivBetakm2 * (pkm1 - M * rkm1);
         const dfloat rk = rkm1 - alphakm1 * vkm1;
         r[id] = rk;
         p[id] = M * rk + betakm1 * pkm1;

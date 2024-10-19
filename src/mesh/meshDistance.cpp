@@ -87,7 +87,7 @@ cheapDist(mesh_t *mesh, int nbID, const occa::memory &o_bID, dlong offsetFld, bo
                        o_dist);
   }
 
-  auto o_changed = platform->o_memPool.reserve<hlong>(mesh->Nlocal);
+  auto o_changed = platform->deviceMemoryPool.reserve<hlong>(mesh->Nlocal);
 
   for (int iter = 0; iter < maxIter; ++iter) {
     mesh->distanceKernel(mesh->Nelements,
@@ -162,7 +162,7 @@ occa::memory mesh_t::minDistance(int nbID, const occa::memory &o_bID, std::strin
 std::vector<dfloat>
 mesh_t::distance(const std::vector<dlong> &bID, dlong offsetFld, std::string type, int maxIter)
 {
-  auto o_bid = platform->o_memPool.reserve<dlong>(bID.size());
+  auto o_bid = platform->deviceMemoryPool.reserve<dlong>(bID.size());
   o_bid.copyFrom(bID.data());
 
   auto o_dist = this->distance(bID.size(), o_bid, offsetFld, type, maxIter);
@@ -178,7 +178,7 @@ mesh_t::distance(const std::vector<dlong> &bID, dlong offsetFld, std::string typ
 
 std::vector<dfloat> mesh_t::minDistance(const std::vector<dlong> &bID, std::string type, int maxIter)
 {
-  auto o_bid = platform->o_memPool.reserve<dlong>(bID.size());
+  auto o_bid = platform->deviceMemoryPool.reserve<dlong>(bID.size());
   o_bid.copyFrom(bID.data());
 
   auto o_dist = this->minDistance(bID.size(), o_bid, type, maxIter);

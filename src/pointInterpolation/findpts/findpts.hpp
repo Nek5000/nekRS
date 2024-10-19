@@ -21,7 +21,18 @@ static constexpr int CODE_BORDER = 1;
 static constexpr int CODE_NOT_FOUND = 2;
 static constexpr int dim = 3;
 
+// src cache on target
+struct cache_t { 
+  occa::memory o_el;
+  occa::memory o_r; 
+  std::vector<dlong> proc;
+  std::vector<dlong> index;
+};
+
 struct data_t {
+  bool updateCache = true;
+  cache_t cache;
+
   std::vector<dlong> code;
   std::vector<dlong> proc;
   std::vector<dlong> el;
@@ -128,23 +139,13 @@ public:
   void eval(const dlong npt, const occa::memory &o_in, data_t *findPtsData, occa::memory &o_out);
 
   void eval(const dlong npt,
+            const dlong offset,
             const dlong nFields,
             const dlong inputOffset,
             const dlong outputOffset,
             const occa::memory &o_in,
             data_t *findPtsData,
             occa::memory &o_out);
-
-  // Host versions (copies to device when needed)
-  void eval(const dlong npt, dfloat *in, data_t *findPtsData, dfloat *out);
-
-  void eval(const dlong npt,
-            const dlong nFields,
-            const dlong inputOffset,
-            const dlong outputOffset,
-            dfloat *in,
-            data_t *findPtsData,
-            dfloat *out);
 
   // set timer level
   void setTimerLevel(TimerLevel level)
@@ -166,11 +167,6 @@ public:
 
   crystal *crystalRouter();
 
-  // For use in, e.g., nek-nek
-  // If altering code, proc, el, r, or dist2 after a find call,
-  // update device arrays with this function
-  void o_update(data_t &data);
-
 private:
   static constexpr int maxFields = 30;
 
@@ -187,6 +183,9 @@ private:
   occa::kernel localEvalKernel;
   occa::kernel localEvalMaskKernel;
   occa::kernel localKernel;
+
+  occa::stream defaultStream;
+  occa::stream localEvalStream;
 
   // data for elx
   occa::memory o_x;
@@ -261,41 +260,17 @@ private:
                     const int pn);
 
   template <typename OutputType>
-  void findptsEvalImpl(dfloat *out,
-                       const int *const code_base,
-                       const int *const proc_base,
-                       const int *const el_base,
-                       const dfloat *const r_base,
-                       const int npt,
-                       const int nFields,
-                       const int inputOffset,
-                       const int outputOffset,
-                       const dfloat *const in,
-                       hashData_t &hash,
-                       crystal &cr);
-
-  template <typename OutputType>
   void findptsEvalImpl(occa::memory &o_out,
-                       const int *const code_base,
-                       const int *const proc_base,
-                       const int *const el_base,
-                       const dfloat *const r_base,
-                       const int npt,
+                       dlong offset,
+                       data_t *findPtsData,
+                       const dlong npt,
                        const int nFields,
-                       const int inputOffset,
-                       const int outputOffset,
+                       const dlong inputOffset,
+                       const dlong outputOffset,
                        const occa::memory &o_in,
                        hashData_t &hash,
                        crystal &cr);
 
-  template <typename OutputType>
-  void findptsLocalEvalInternal(OutputType *opt,
-                                const evalSrcPt_t *spt,
-                                const int pn,
-                                const int nFields,
-                                const int inputOffset,
-                                const int outputOffset,
-                                const occa::memory &o_in);
 };
 
 } // namespace findpts

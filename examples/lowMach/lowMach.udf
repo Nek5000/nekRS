@@ -68,11 +68,6 @@ void UDF_Setup()
   nrs->userScalarSource = &userq;
   nrs->userProperties = &uservp;
 
-  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
-    nek::getIC();
-    nrs->copyFromNek();
-  }
-
   o_beta.resize(nrs->fieldOffset);
   o_kappa.resize(nrs->fieldOffset);
 

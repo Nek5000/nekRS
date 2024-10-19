@@ -32,7 +32,7 @@ if [ ! -f $case.par ]; then
     NEKRS_CACHE_BCAST=0
 
     if ! [ "$nsessions" -gt 1 ] 2> /dev/null; then
-      echo "ERROR: not enough of sessions in $case.sess"
+      echo "ERROR: number of sessions in $case.sess has to be at least 2"
       exit 1
     fi
   fi
@@ -40,7 +40,7 @@ fi
 
 jobname="nekRS_"
 if [ $nsessions -gt 1 ]; then
-  jobname+="nn_"
+  jobname+="neknek_"
 fi
 if [ $BUILD_ONLY -eq 1 ]; then
   jobname+="build_"
@@ -50,6 +50,14 @@ jobname+=$case
 if [ "$nsessions" -gt 1 ] 2> /dev/null; then
   case=$case.sess
 fi
+
+if [ $nsessions -gt 1 ]; then
+  if [ $nodes -lt $nsessions ]; then
+    echo "ERROR: number of nodes is smaller than number of sessions!"
+    exit 1
+  fi
+fi
+
 
 if [ $BUILD_ONLY -eq 0 ]; then
   qnodes=$nodes
@@ -154,7 +162,7 @@ chk_case() {
   else
     ntmp=`cat $case | awk -F ':' '{sum+=$2} END{print sum}'`
     if [ $__ntasks -ne $ntmp ]; then
-      echo "ERROR: total #ranks in $case not matched with $__ntasks"
+      echo "ERROR: number of ranks in $case does not match job size"
       exit 1
     fi
 
@@ -225,6 +233,7 @@ link_neknek_logfile() {
       cname_sess="${p%:*}"
       folder_sess="$(dirname "${cname_sess}")"
       echo "  ln -sf $PWD/$folder_sess/logfile-\$jobid $PWD/$folder_sess/logfile" >> $f
+      echo "  echo "redirect output to $PWD/$folder_sess/logfile-\$jobid"" >> $f
     done < $case
     echo "fi" >> $f
   fi

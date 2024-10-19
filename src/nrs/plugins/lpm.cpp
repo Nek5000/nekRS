@@ -16,7 +16,7 @@ lpm_t::lpm_t(dfloat bb_tol_, dfloat newton_tol_)
       bb_tol(bb_tol_),
       newton_tol(newton_tol_), 
       interp(std::make_unique<pointInterpolation_t>(nrs->mesh, platform->comm.mpiComm, 
-        nrs->mesh->Nlocal, nrs->mesh->Nlocal, bb_tol, newton_tol))
+                                                    true, std::vector<int>{}, bb_tol, newton_tol))
 {
   nekrsCheck(!kernelsRegistered_,
              platform->comm.mpiComm,
@@ -503,7 +503,7 @@ void lpm_t::integrate(double tf)
     interp.reset();
 
     interp = std::make_unique<pointInterpolation_t>(nrs->mesh, platform->comm.mpiComm,
-      nrs->mesh->Nlocal, nrs->mesh->Nlocal, bb_tol, newton_tol);
+     true, std::vector<int>{}, bb_tol, newton_tol);
   }
 
   // set extrapolated state to t^n (copy from laggedInterpFields)
@@ -1717,8 +1717,6 @@ void lpm_t::writeFld()
   ++out_step;
 
   MPI_Comm mpi_comm = platform->comm.mpiComm;
-  int mpi_rank = platform->comm.mpiRank;
-  int mpi_size = platform->comm.mpiCommSize;
 
   long long int globalNPartOutput = nPartOutput;
 

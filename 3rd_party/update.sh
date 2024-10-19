@@ -38,7 +38,7 @@ elif [ "$1" == "hypre" ]; then
 git rm -rf 3rd_party/hypre
 git commit -m 'remove hypre'
 rm -rf 3rd_party/hypre
-git subtree add --prefix 3rd_party/hypre https://github.com/hypre-space/hypre.git v2.31.0 --squash
+git subtree add --prefix 3rd_party/hypre https://github.com/hypre-space/hypre.git v2.32.0 --squash
 rm -rf 3rd_party/hypre/src/examples 3rd_party/hypre/src/docs 3rd_party/hypre/src/test
 git reset HEAD~2 --soft
 git add -u

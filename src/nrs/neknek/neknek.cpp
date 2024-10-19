@@ -1,7 +1,6 @@
 #include <cfloat>
 #include "platform.hpp"
 #include "bcMap.hpp"
-#include "findpts.hpp"
 #include "neknek.hpp"
 #include "nrs.hpp"
 #include "nekInterfaceAdapter.hpp"
@@ -75,14 +74,11 @@ void neknek_t::updateInterpPoints()
     return;
   }
 
-  auto neknek = nrs->neknek;
-  const dlong nsessions = this->nsessions_;
-  const dlong sessionID = this->sessionID_;
-
   auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
 
   this->interpolator.reset();
-  this->interpolator = std::make_shared<pointInterpolation_t>(mesh, platform->comm.mpiCommParent, true, intBIDs);
+  this->interpolator =
+      std::make_shared<pointInterpolation_t>(mesh, platform->comm.mpiCommParent, true, intBIDs);
   this->interpolator->setTimerName("neknek_t::");
 
   // neknekX[:] = mesh->x[pointMap[:]]
@@ -103,13 +99,13 @@ void neknek_t::updateInterpPoints()
 
 void neknek_t::findIntPoints()
 {
-  const dlong nsessions = this->nsessions_;
   const dlong sessionID = this->sessionID_;
 
   auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
 
   this->interpolator.reset();
-  this->interpolator = std::make_shared<pointInterpolation_t>(mesh, platform->comm.mpiCommParent, true, intBIDs);
+  this->interpolator =
+      std::make_shared<pointInterpolation_t>(mesh, platform->comm.mpiCommParent, true, intBIDs);
   this->interpolator->setTimerName("neknek_t::");
 
   // int points are the same for all neknek fields
@@ -182,8 +178,6 @@ void neknek_t::setup()
   dlong globalRank;
   MPI_Comm_rank(platform->comm.mpiCommParent, &globalRank);
 
-  auto mesh = (nrs->cht) ? nrs->cds->mesh[0] : nrs->mesh;
-
   const int nsessions = this->nsessions_;
   if (platform->comm.mpiRank == 0) {
     printf("initializing neknek with %d sessions\n", nsessions);
@@ -212,6 +206,8 @@ void neknek_t::setup()
   this->fields = [&]() {
     std::vector<std::string> list;
     for (auto &&field : nrsFieldsToSolve(platform->options)) {
+      auto mesh = (field == "scalar00") ?  nrs->cds->mesh[0] : nrs->mesh;
+
       int intFound = 0;
       for (dlong e = 0; e < mesh->Nelements; ++e) {
         for (dlong f = 0; f < mesh->Nfaces; ++f) {
@@ -263,8 +259,8 @@ void neknek_t::setup()
   this->o_scalarIndices_ = platform->device.malloc<int>(nrs->Nscalar, scalarIndices.data());
 
   for (int bID = 1; bID <= bcMap::size(this->fields[0]); ++bID) {
-    if (isIntBc(bcMap::id(bID, this->fields[0]), this->fields[0])) { 
-       intBIDs.push_back(bID);
+    if (isIntBc(bcMap::id(bID, this->fields[0]), this->fields[0])) {
+      intBIDs.push_back(bID);
     }
   }
 
@@ -376,10 +372,10 @@ occa::memory neknek_t::partitionOfUnity()
 
   auto o_dist = pointInterp.distanceINT();
 
-  auto o_sess = platform->o_memPool.reserve<dlong>(nrs->fieldOffset);
-  auto o_sumDist = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
-  auto o_found = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
-  auto o_interpDist = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
+  auto o_sess = platform->deviceMemoryPool.reserve<dlong>(nrs->fieldOffset);
+  auto o_sumDist = platform->deviceMemoryPool.reserve<dfloat>(nrs->fieldOffset);
+  auto o_found = platform->deviceMemoryPool.reserve<dfloat>(nrs->fieldOffset);
+  auto o_interpDist = platform->deviceMemoryPool.reserve<dfloat>(nrs->fieldOffset);
   o_sumDist.copyFrom(o_dist, mesh->Nlocal);
 
   std::vector<dfloat> found(mesh->Nlocal);
@@ -398,7 +394,7 @@ occa::memory neknek_t::partitionOfUnity()
 
     auto &data = pointInterp.data();
     for (int n = 0; n < mesh->Nlocal; ++n) {
-      found[n] = (data.code[n] == findpts::CODE_NOT_FOUND) ? 0.0 : 1.0;
+      found[n] = (data.code[n] == pointInterpolation_t::CODE_NOT_FOUND) ? 0.0 : 1.0;
     }
 
     o_found.copyFrom(found.data());
@@ -440,7 +436,6 @@ void neknek_t::lag()
 
 void neknek_t::extrapolate(int tstep)
 {
-  auto *mesh = nrs->mesh;
   int extOrder = std::min(tstep, this->nEXT_);
   int bdfOrder = std::min(tstep, nrs->nBDF);
   nek::extCoeff(this->coeffEXT.data(), nrs->dt, extOrder, bdfOrder);
@@ -517,7 +512,7 @@ void neknek_t::exchange(bool allTimeStates, bool lagState)
   if (this->Nscalar_) {
     auto o_S = nrs->cds->o_S;
     if (this->Nscalar_ != nrs->Nscalar) {
-      o_S = platform->o_memPool.reserve<dfloat>(nStates * this->Nscalar_ * nrs->fieldOffset);
+      o_S = platform->deviceMemoryPool.reserve<dfloat>(nStates * this->Nscalar_ * nrs->fieldOffset);
       this->mapScalarKernel(nrs->cds->mesh[0]->Nlocal,
                             nrs->Nscalar,
                             nrs->fieldOffset,

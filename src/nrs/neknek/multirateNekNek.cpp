@@ -16,7 +16,7 @@ void neknek_t::exchangeTimes(double time)
     this->recomputePartition = true;
   }
 
-  auto o_timeFld = platform->o_memPool.reserve<dfloat>((maxOrd + 1) * nrs->fieldOffset);
+  auto o_timeFld = platform->deviceMemoryPool.reserve<dfloat>((maxOrd + 1) * nrs->fieldOffset);
   for (int s = 0; s <= maxOrd; ++s) {
     auto o_timeSlice = o_timeFld.slice(s * nrs->fieldOffset, nrs->fieldOffset);
     platform->linAlg->fill(nrs->fieldOffset, time, o_timeSlice);

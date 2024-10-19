@@ -26,7 +26,6 @@ dfloat area;
 static bool buildKernelCalled = false;
 static bool setupCalled = false;
 
-int Nblock;
 } // namespace
 
 static void _setup(occa::memory &o_wrk_, const int bID_, const dfloat wbar_)

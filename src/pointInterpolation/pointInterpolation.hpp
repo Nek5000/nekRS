@@ -11,19 +11,20 @@ using findpts::TimerLevel;
 class pointInterpolation_t
 {
 public:
+  static constexpr int CODE_INTERNAL = 0;
+  static constexpr int CODE_BORDER = 1;
+  static constexpr int CODE_NOT_FOUND = 2;
+
   enum class VerbosityLevel { None, Basic, Detailed };
-  pointInterpolation_t(mesh_t *mesh,
-                       MPI_Comm comm,
-                       bool mySession_ = true,
-                       std::vector<int> bIntID = {});
   pointInterpolation_t(mesh_t *mesh_,
                        MPI_Comm comm,
-                       dlong localHashSize,
-                       dlong globalHashSize,
-                       double bb_tol = 0.01,
-                       double newton_tol = 0,
                        bool mySession_ = true,
-                       std::vector<int> bIntID = {});
+                       std::vector<int> bIntID = {},
+                       double bb_tol = 0.05,
+                       double newton_tol = 0,
+                       dlong localHashSize = 0,
+                       dlong globalHashSize = 0);
+
   ~pointInterpolation_t() = default;
 
   // Finds the process, element, and reference coordinates of the given points
@@ -33,9 +34,9 @@ public:
             dlong inputFieldOffset,
             const occa::memory& o_in,
             dlong outputFieldOffset,
-            occa::memory& o_out);
-
-  void eval(dlong nFields, dlong inputFieldOffset, const std::vector<dfloat>& in, dlong outputFieldOffset, std::vector<dfloat> &out);
+            occa::memory& o_out,
+            dlong nPoints = -1,
+            dlong findPtsOffset = 0);
 
   auto *ptr()
   {
@@ -73,16 +74,16 @@ public:
   occa::memory distanceINT();
 
 private:
-  mesh_t *mesh;
-  double newton_tol;
-  std::string timerName = "";
+  mesh_t *mesh = nullptr;
+  double newton_tol = 0;
+  std::string timerName;
   TimerLevel timerLevel = TimerLevel::None;
+
   std::unique_ptr<findpts::findpts_t> findpts_;
   findpts::data_t data_;
-  bool mySession;
 
+  bool mySession = true;
   bool findCalled = false;
-
   bool pointsAdded = false;
 
   // correponds  to which setPoints overload is called
@@ -91,10 +92,10 @@ private:
 
   int nPoints;
 
-  dfloat *_x;
-  dfloat *_y;
-  dfloat *_z;
-  dlong *_session;
+  dfloat *_x = nullptr;
+  dfloat *_y = nullptr;
+  dfloat *_z = nullptr;
+  dlong *_session = nullptr;
 
   occa::memory _o_x;
   occa::memory _o_y;

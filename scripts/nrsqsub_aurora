@@ -2,8 +2,8 @@
 set -e
 
 #--------------------------------------
-: ${QUEUE:="lustre_scaling"}
-: ${NEKRS_GPU_MPI:=1}
+: ${QUEUE:="EarlyAppAccess"}
+: ${NEKRS_GPU_MPI:=0}
 : ${NEKRS_BACKEND:="dpcpp"}
 : ${RANKS_PER_NODE:=12}
 : ${RANKS_FOR_BUILD:=12}
@@ -85,14 +85,14 @@ chmod u+x $CMD
 
 if [ $RUN_ONLY -eq 0 ]; then
   echo -e "\n# precompilation" >>$SFILE
-  CMD_build="mpiexec -n ${RANKS_FOR_BUILD} -ppn ${RANKS_FOR_BUILD} --cpu-bind=list:${CPU_BIND_LIST} -- ./${CMD} $bin --setup \${case_tmp} --backend ${NEKRS_BACKEND} --device-id 0 $extra_args --build-only \${ntasks_tmp}"
+  CMD_build="mpiexec --no-vni -n ${RANKS_FOR_BUILD} -ppn ${RANKS_FOR_BUILD} --cpu-bind=list:${CPU_BIND_LIST} -- ./${CMD} $bin --setup \${case_tmp} --backend ${NEKRS_BACKEND} --device-id 0 $extra_args --build-only \${ntasks_tmp}"
   add_build_CMD "$SFILE" "$CMD_build" "$TOTAL_RANKS"
 fi
 
 if [ $BUILD_ONLY -eq 0 ]; then
   link_neknek_logfile "$SFILE"
   echo -e "\n# actual run" >>$SFILE
-  echo "mpiexec -n ${TOTAL_RANKS} -ppn ${RANKS_PER_NODE} --cpu-bind=list:${CPU_BIND_LIST} -- ./${CMD} $bin --setup ${case} --backend ${NEKRS_BACKEND} --device-id 0 $extra_args" >> $SFILE
+  echo "mpiexec --no-vni -n ${TOTAL_RANKS} -ppn ${RANKS_PER_NODE} --cpu-bind=list:${CPU_BIND_LIST} -- ./${CMD} $bin --setup ${case} --backend ${NEKRS_BACKEND} --device-id 0 $extra_args" >> $SFILE
 fi
 
 qsub -q $QUEUE $SFILE

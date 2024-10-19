@@ -330,7 +330,8 @@ void udfBuild(setupAide &options)
     if (buildRank == 0) {
       double tStart = MPI_Wtime();
 
-      char cmd[4096];
+      const int cmdSize = 4096;
+      char cmd[cmdSize];
       mkdir(std::string(cache_dir + "/udf").c_str(), S_IRWXU);
 
       const std::string pipeToNull =
@@ -433,7 +434,8 @@ void udfBuild(setupAide &options)
         const std::string useFloat = (sizeof(dfloat) == sizeof(float)) ? "ON" : "OFF";
         const std::string cmakeVerbose = (verbose) ? "ON" : "OFF";
 
-        sprintf(cmd,
+        snprintf(cmd,
+                 cmdSize,
                 "rm -f %s/*.so && cmake %s -S %s -B %s "
                 "-DNEKRS_USE_DFLOAT_FLOAT=%s "
                 "-DNEKRS_INSTALL_DIR=\"%s\" -DCASE_DIR=\"%s\" -DCMAKE_CXX_COMPILER=\"$NEKRS_CXX\" "
@@ -458,7 +460,7 @@ void udfBuild(setupAide &options)
         auto stdoutFlag = (verbose) ? std::string("") : ">>cmake.log 2>&1"; 
 
         { // generate pre-processed okl
-          sprintf(cmd, "cd %s && make -j1 okl.i %s", cmakeBuildDir.c_str(), stdoutFlag.c_str());
+          snprintf(cmd, cmdSize, "cd %s && make -j1 okl.i %s", cmakeBuildDir.c_str(), stdoutFlag.c_str());
           const int retVal = system(cmd);
           if (verbose && platform->comm.mpiRank == 0) {
             printf("%s (preprocessing retVal: %d)\n", cmd, retVal);
@@ -473,7 +475,7 @@ void udfBuild(setupAide &options)
         }
 
         { // build
-          sprintf(cmd, "cd %s/udf && make -j1", cache_dir.c_str());
+          snprintf(cmd, cmdSize, "cd %s/udf && make -j1", cache_dir.c_str());
           const int retVal = system(cmd);
           if (verbose && platform->comm.mpiRank == 0) {
             printf("%s (make retVal: %d)\n", cmd, retVal);

@@ -49,10 +49,10 @@ void compute(nrs_t *nrs, double time)
   double flops = 0.0;
 
   platform->timer.tic("pressure rhs", 1);
-  auto o_Prhs = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
-  auto o_lambda0 = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_Prhs = platform->deviceMemoryPool.reserve<dfloat>(nrs->fieldOffset);
+  auto o_lambda0 = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   {
-    occa::memory o_gradPCoeff = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+    occa::memory o_gradPCoeff = platform->deviceMemoryPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
 
     platform->linAlg->adyz(mesh->Nlocal, 1.0, nrs->o_rho, o_lambda0);
 
@@ -86,7 +86,7 @@ void compute(nrs_t *nrs, double time)
 
   // solve homogenous Stokes problem
   platform->timer.tic("velocity rhs", 1);
-  occa::memory o_RhsVel = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  occa::memory o_RhsVel = platform->deviceMemoryPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
   {
     nrs->gradientVolumeKernel(mesh->Nelements,
                               mesh->o_vgeo,
@@ -101,7 +101,7 @@ void compute(nrs_t *nrs, double time)
 
     platform->linAlg->scaleMany(mesh->Nlocal, nrs->NVfields, nrs->fieldOffset, -1.0, o_RhsVel);
 
-    occa::memory o_JwF = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+    occa::memory o_JwF = platform->deviceMemoryPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
     o_JwF.copyFrom(mesh->o_LMM, mesh->Nlocal, 0 * nrs->fieldOffset, 0);
     o_JwF.copyFrom(mesh->o_LMM, mesh->Nlocal, 1 * nrs->fieldOffset, 0);
     o_JwF.copyFrom(mesh->o_LMM, mesh->Nlocal, 2 * nrs->fieldOffset, 0);
@@ -118,7 +118,7 @@ void compute(nrs_t *nrs, double time)
 
   o_lambda0.free();
   o_lambda0 = nrs->o_mue;
-  auto o_lambda1 = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_lambda1 = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   platform->linAlg->axpby(mesh->Nlocal, nrs->g0 / nrs->dt[0], nrs->o_rho, 0.0, o_lambda1);
 
   if (nrs->uvwSolver) {
@@ -147,7 +147,7 @@ bool checkIfRecompute(nrs_t *nrs, int tstep)
   bool adjustFlowRate = false;
 
   // did the properties change?
-  occa::memory o_propDelta = platform->o_memPool.reserve<dfloat>(nPropertyFields * nrs->fieldOffset);
+  occa::memory o_propDelta = platform->deviceMemoryPool.reserve<dfloat>(nPropertyFields * nrs->fieldOffset);
   platform->linAlg->axpbyzMany(mesh->Nlocal,
                                nPropertyFields,
                                nrs->fieldOffset,
@@ -280,21 +280,21 @@ bool nrs_t::adjustFlowRate(int tstep, double time)
       platform->options.getArgs("CONSTANT FLOW TO BID", toBID);
 
       occa::memory o_centroid =
-          platform->o_memPool.reserve<dfloat>(this->NVfields * mesh->Nelements * mesh->Nfaces);
+          platform->deviceMemoryPool.reserve<dfloat>(this->NVfields * mesh->Nelements * mesh->Nfaces);
       platform->linAlg->fill(mesh->Nelements * mesh->Nfaces * 3, 0.0, o_centroid);
 
-      occa::memory o_counts = platform->o_memPool.reserve<dfloat>(mesh->Nelements * mesh->Nfaces);
+      occa::memory o_counts = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nelements * mesh->Nfaces);
       platform->linAlg->fill(mesh->Nelements * mesh->Nfaces, 0.0, o_counts);
 
       this->computeFaceCentroidKernel(mesh->Nelements,
-                                     fromBID,
-                                     mesh->o_EToB,
-                                     mesh->o_vmapM,
-                                     mesh->o_x,
-                                     mesh->o_y,
-                                     mesh->o_z,
-                                     o_centroid,
-                                     o_counts);
+                                      fromBID,
+                                      mesh->o_EToB,
+                                      mesh->o_vmapM,
+                                      mesh->o_x,
+                                      mesh->o_y,
+                                      mesh->o_z,
+                                      o_centroid,
+                                      o_counts);
       flops += 3 * mesh->Nlocal;
 
       dfloat NfacesContrib =
@@ -319,14 +319,14 @@ bool nrs_t::adjustFlowRate(int tstep, double time)
       platform->linAlg->fill(mesh->Nelements * mesh->Nfaces * 3, 0.0, o_centroid);
       platform->linAlg->fill(mesh->Nelements * mesh->Nfaces, 0.0, o_counts);
       this->computeFaceCentroidKernel(mesh->Nelements,
-                                     toBID,
-                                     mesh->o_EToB,
-                                     mesh->o_vmapM,
-                                     mesh->o_x,
-                                     mesh->o_y,
-                                     mesh->o_z,
-                                     o_centroid,
-                                     o_counts);
+                                      toBID,
+                                      mesh->o_EToB,
+                                      mesh->o_vmapM,
+                                      mesh->o_x,
+                                      mesh->o_y,
+                                      mesh->o_z,
+                                      o_centroid,
+                                      o_counts);
 
       flops += 3 * mesh->Nlocal;
 
@@ -366,10 +366,12 @@ bool nrs_t::adjustFlowRate(int tstep, double time)
       std::cout << "recomputing base flow rate\n";
     }
 
-    auto getSolverData = [](elliptic *solver)
-    {
+    auto getSolverData = [](elliptic *solver) {
       if (solver) {
-        std::tuple<int, dfloat, dfloat, dfloat> val(solver->Niter(), solver->initialResidual(), solver->initialGuessResidual(), solver->finalResidual());
+        std::tuple<int, dfloat, dfloat, dfloat> val(solver->Niter(),
+                                                    solver->initialResidual(),
+                                                    solver->initialGuessResidual(),
+                                                    solver->finalResidual());
         return val;
       } else {
         std::tuple<int, dfloat, dfloat, dfloat> val(0, 0, 0, 0);
@@ -386,8 +388,7 @@ bool nrs_t::adjustFlowRate(int tstep, double time)
     compute(this, time);
 
     // restore norms + update iteration count
-    auto setSolverData = [](elliptic *solver, int Niter, dfloat res00Norm, dfloat res0Norm, dfloat resNorm)
-    {
+    auto setSolverData = [](elliptic *solver, int Niter, dfloat res00Norm, dfloat res0Norm, dfloat resNorm) {
       solver->Niter(solver->Niter() + Niter);
       solver->initialResidual(res00Norm);
       solver->initialGuessResidual(res0Norm);
@@ -404,15 +405,15 @@ bool nrs_t::adjustFlowRate(int tstep, double time)
     setSolverData(this->pSolver, NiterP, res00NormP, res0NormP, resNormP);
   }
 
-  occa::memory o_currentFlowRate = platform->o_memPool.reserve<dfloat>(this->fieldOffset);
+  occa::memory o_currentFlowRate = platform->deviceMemoryPool.reserve<dfloat>(this->fieldOffset);
 
   this->computeFieldDotNormalKernel(mesh->Nlocal,
-                                   this->fieldOffset,
-                                   flowDirection[0],
-                                   flowDirection[1],
-                                   flowDirection[2],
-                                   this->o_U,
-                                   o_currentFlowRate);
+                                    this->fieldOffset,
+                                    flowDirection[0],
+                                    flowDirection[1],
+                                    flowDirection[2],
+                                    this->o_U,
+                                    o_currentFlowRate);
 
   flops += 5 * mesh->Nlocal;
 
@@ -423,14 +424,14 @@ bool nrs_t::adjustFlowRate(int tstep, double time)
       platform->linAlg->sum(mesh->Nlocal, o_currentFlowRate, platform->comm.mpiComm) / lengthScale;
 
   if (recomputeBaseFlowRate) {
-    occa::memory o_baseFlowRate = platform->o_memPool.reserve<dfloat>(this->fieldOffset);
+    occa::memory o_baseFlowRate = platform->deviceMemoryPool.reserve<dfloat>(this->fieldOffset);
     this->computeFieldDotNormalKernel(mesh->Nlocal,
-                                     this->fieldOffset,
-                                     flowDirection[0],
-                                     flowDirection[1],
-                                     flowDirection[2],
-                                     this->o_Uc,
-                                     o_baseFlowRate);
+                                      this->fieldOffset,
+                                      flowDirection[0],
+                                      flowDirection[1],
+                                      flowDirection[2],
+                                      this->o_Uc,
+                                      o_baseFlowRate);
     flops += 5 * mesh->Nlocal;
 
     // scale by mass matrix
@@ -449,19 +450,24 @@ bool nrs_t::adjustFlowRate(int tstep, double time)
   constantFlowScale = deltaFlowRate / baseFlowRate;
 
   // add corrections
-  platform->linAlg
-      ->axpbyMany(mesh->Nlocal, this->NVfields, this->fieldOffset, constantFlowScale, this->o_Uc, 1.0, this->o_U);
+  platform->linAlg->axpbyMany(mesh->Nlocal,
+                              this->NVfields,
+                              this->fieldOffset,
+                              constantFlowScale,
+                              this->o_Uc,
+                              1.0,
+                              this->o_U);
 
   platform->linAlg->axpby(mesh->Nlocal, constantFlowScale, this->o_Pc, 1.0, this->o_P);
 
   // compute flow rate after correction as diagnostic
   this->computeFieldDotNormalKernel(mesh->Nlocal,
-                                   this->fieldOffset,
-                                   flowDirection[0],
-                                   flowDirection[1],
-                                   flowDirection[2],
-                                   this->o_U,
-                                   o_currentFlowRate);
+                                    this->fieldOffset,
+                                    flowDirection[0],
+                                    flowDirection[1],
+                                    flowDirection[2],
+                                    this->o_U,
+                                    o_currentFlowRate);
 
   flops += 5 * mesh->Nlocal;
 
@@ -480,5 +486,3 @@ dfloat nrs_t::flowRatescaleFactor()
 {
   return constantFlowScale;
 }
-
-

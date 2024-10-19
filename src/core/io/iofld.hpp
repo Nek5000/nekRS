@@ -61,6 +61,8 @@ public:
   bool uniform = false;
   int precision = 32;
   bool outputMesh = false;
+  bool redistribute = true;
+  bool pointInterpolation = false;
 
   void writeAttribute(const std::string& key_, const std::string& val)
   {
@@ -77,14 +79,29 @@ public:
       precision = stoi(val);
       nekrsCheck(precision != 64 && precision != 32,
                  MPI_COMM_SELF, EXIT_FAILURE, "invalid precision value %d\n", precision);
-    } else if (key == "uniform" || key == "equidistant") {
+    } else if (key.find("uniform") == 0 || key.find("equidistant") == 0) {
       uniform = (val == "true") ? true : false;
     } else if (key == "outputmesh") {
       outputMesh = (val == "true") ? true : false;
+    } else if (key == "redistribute") {
+      redistribute = (val == "true") ? true : false;
     } else {
       nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "invalid attribute %s\n", key_.c_str());
     }
   };
+
+  void readAttribute(const std::string& key_, const std::string& val)
+  {
+    nekrsCheck(!initialized, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "illegal to call prior to iofld::open()!");
+
+    std::string key = key_;
+    lowerCase(key);
+
+    if (key == "interpolate") {
+      pointInterpolation = (val == "true") ? true : false;
+      if (pointInterpolation) redistribute = false; 
+    }
+  }
 
   std::vector<int> elementMask;
 
@@ -222,10 +239,12 @@ public:
       std::string orderSuffix;
       if (p > mesh->N) {
         kernelName = "coarsenHex3D";
+        if (engineMode == iofld::mode::write) kernelName = "prolongateHex3D";
         orderSuffix = std::string("_Nf_") + std::to_string(p) + std::string("_Nc_") + std::to_string(mesh->N);
       } else {
         kernelName = "prolongateHex3D";
-        orderSuffix = std::string("_Nf_") + std::to_string(p) + std::string("_Nc_") + std::to_string(mesh->N);
+        if (engineMode == iofld::mode::write) kernelName = "coarsenHex3D";
+        orderSuffix = std::string("_Nf_") + std::to_string(mesh->N) + std::string("_Nc_") + std::to_string(p);
       }
       return platform->kernelRequests.load("mesh-" + kernelName + orderSuffix);
     };

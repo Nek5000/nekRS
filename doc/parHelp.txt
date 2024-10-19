@@ -31,6 +31,7 @@ startFrom                   "<string>"
                               + u                                      read velocity 
                               + t                                      read temperature
                               + s00 s01 s02 ...                        read scalars 
+                              + int                                    use point interpolation
 
 timeStepper                 tombo1, tombo2 [D], tombo3
 

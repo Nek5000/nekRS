@@ -44,7 +44,7 @@ private:
 
   LVectorMapping_t setup(mesh_t *mesh)
   {
-    auto o_Lids = platform->o_memPool.reserve<dlong>(mesh->Nlocal);
+    auto o_Lids = platform->deviceMemoryPool.reserve<dlong>(mesh->Nlocal);
     std::vector<dlong> Eids(mesh->Nlocal);
     std::iota(Eids.begin(), Eids.end(), 0);
     o_Lids.copyFrom(Eids.data(), mesh->Nlocal);

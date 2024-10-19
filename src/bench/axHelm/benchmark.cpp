@@ -174,7 +174,7 @@ occa::kernel benchmarkAx(int Nelements,
         props["defines/pts_per_thread"] = Nq/n_plane;              
       }
       if (kernelName == "ellipticBlockPartialAxCoeffHex3D") {
-        const int Nkernels = 3;
+        const int Nkernels = 5;
         for (int knl = 0; knl < Nkernels; ++knl)
           kernelVariants.push_back(knl);
 

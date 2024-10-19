@@ -38,6 +38,8 @@
 namespace
 {
 
+constexpr auto tiny = 10 * std::numeric_limits<dfloat>::min();
+
 occa::memory o_p;
 occa::memory o_z;
 occa::memory o_Ap;
@@ -54,7 +56,6 @@ dfloat update(elliptic_t *elliptic,
 {
   mesh_t *mesh = elliptic->mesh;
 
-
   const bool serial = platform->serial;
 
   // r <= r - alpha*A*p
@@ -69,10 +70,10 @@ dfloat update(elliptic_t *elliptic,
 
   dfloat rdotr1 = 0;
 #ifdef ELLIPTIC_ENABLE_TIMER
-  platform->timer.tic("dotp",0);
+  platform->timer.tic("dotp");
 #endif
   if (serial) {
-    rdotr1 = *((dfloat *)o_tmpReductions.ptr());
+    rdotr1 = *(o_tmpReductions.ptr<dfloat>());
   } else {
     auto tmp = h_tmpReductions.ptr<dfloat>();
     o_tmpReductions.copyTo(tmp);
@@ -89,7 +90,7 @@ dfloat update(elliptic_t *elliptic,
   platform->timer.toc("dotp");
 #endif
 
-  platform->flopCounter->add(elliptic->name + " ellipticUpdatePC",
+  platform->flopCounter->add(elliptic->name + " ellipticUpdatePCG",
                              elliptic->Nfields * static_cast<double>(mesh->Nlocal) * 6 + mesh->Nlocal);
 
   return rdotr1;
@@ -135,8 +136,11 @@ void combinedPCGReductions(elliptic_t *elliptic,
     }
   }
 
-  // batch into single, large all-reduce
+  // batch into single fused all-reduce
   MPI_Allreduce(MPI_IN_PLACE, reductions.data(), nRed, MPI_DFLOAT, MPI_SUM, platform->comm.mpiComm);
+
+  platform->flopCounter->add(elliptic->name + " ellipticCombinedPCGReductions",
+                             elliptic->Nfields * static_cast<double>(mesh->Nlocal) * 3 * 7);
 }
 
 int standardPCG(elliptic_t *elliptic,
@@ -231,7 +235,7 @@ int standardPCG(elliptic_t *elliptic,
                                                                o_p,
                                                                o_Ap,
                                                                platform->comm.mpiComm);
-    alpha = rdotz1 / (pAp + 10 * std::numeric_limits<dfloat>::min());
+    alpha = rdotz1 / (pAp + tiny);
 
 #ifdef DEBUG
     printf("alpha: %.15e\n", alpha);
@@ -276,7 +280,6 @@ int combinedPCG(elliptic_t *elliptic,
   const int verbose = platform->options.compareArgs("VERBOSE", "TRUE");
   const int preco = !options.compareArgs("PRECONDITIONER", "NONE");
 
-  constexpr auto tiny = 10 * std::numeric_limits<dfloat>::min();
 
   dfloat betakm1 = 0;
   dfloat betakm2 = 0;
@@ -288,7 +291,6 @@ int combinedPCG(elliptic_t *elliptic,
 
   /*aux variables */
   auto &o_Minv = (preco) ? precon->o_invDiagA : o_null;
-  auto &o_weight = elliptic->o_invDegree;
   platform->linAlg->fill(o_p.size(), 0.0, o_p);
   platform->linAlg->fill(o_v.size(), 0.0, o_v);
 
@@ -321,6 +323,10 @@ int combinedPCG(elliptic_t *elliptic,
                                          o_p,
                                          o_x,
                                          o_r);
+
+    platform->flopCounter->add(elliptic->name + " ellipticCombinedPCGPreMatVecKernel",
+                               elliptic->Nfields * static_cast<double>(mesh->Nlocal) * 0.5*(11 + 5));
+
 
     ellipticOperator(elliptic, o_p, o_v, dfloatString);
 
@@ -366,7 +372,6 @@ int combinedPCG(elliptic_t *elliptic,
     if (verbose && (platform->comm.mpiRank == 0)) {
       printf("it %d r norm %.15e\n", iter, rdotr);
     }
-
 
     // converged, update solution prior to exit
     if (rdotr <= tol) {
@@ -420,36 +425,36 @@ int pcg(elliptic_t *elliptic,
 {
   setupAide &options = elliptic->options;
 
-  const auto Nlocal = (elliptic->Nfields > 1) ?
-                      elliptic->Nfields * static_cast<size_t>(elliptic->fieldOffset) : elliptic->mesh->Nlocal;
+  const auto Nlocal = (elliptic->Nfields > 1) ? elliptic->Nfields * static_cast<size_t>(elliptic->fieldOffset)
+                                              : elliptic->mesh->Nlocal;
 
-  o_p = platform->o_memPool.reserve<dfloat>(Nlocal);
-  o_z = (elliptic->options.compareArgs("PRECONDITIONER", "NONE")) ? o_r : platform->o_memPool.reserve<dfloat>(Nlocal);
-  o_Ap = platform->o_memPool.reserve<dfloat>(Nlocal);
+  o_p = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
+  o_z = (elliptic->options.compareArgs("PRECONDITIONER", "NONE"))
+            ? o_r
+            : platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
+  o_Ap = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
   if (elliptic->options.compareArgs("SOLVER", "PCG+COMBINED")) {
-    o_v = platform->o_memPool.reserve<dfloat>(Nlocal);
+    o_v = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
   }
 
-  o_tmpReductions = [&]() 
+  const auto Nblock = [&]()
   {
-    int Nreductions = 1;
-    if (options.compareArgs("SOLVER", "PCG+COMBINED")) {
-      Nreductions = CombinedPCGId::nReduction;
-    }
-    auto mesh = elliptic->mesh; 
+    auto mesh = elliptic->mesh;
     const dlong Nlocal = mesh->Np * mesh->Nelements;
-    const dlong Nblock = (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
-
-    if (h_tmpReductions.size() < Nreductions * Nblock) {
-      h_tmpReductions.free();
-      h_tmpReductions = platform->device.mallocHost<dfloat>(Nreductions * Nblock);
-    }
-
-    return platform->o_memPool.reserve<dfloat>(Nreductions * Nblock);
+    return (Nlocal + BLOCKSIZE - 1) / BLOCKSIZE;
   }();
 
-  const auto Niter = [&]() 
-  {
+
+  auto Nreductions = [&]() {
+    int n = 1;
+    if (options.compareArgs("SOLVER", "PCG+COMBINED")) n = CombinedPCGId::nReduction; 
+    return n;
+  }();
+
+  h_tmpReductions = platform->memoryPool.reserve<dfloat>(Nreductions * Nblock);
+  o_tmpReductions = platform->deviceMemoryPool.reserve<dfloat>(h_tmpReductions.size());
+
+  const auto Niter = [&]() {
     if (elliptic->options.compareArgs("SOLVER", "PCG+COMBINED")) {
       return combinedPCG(elliptic, tol, MAXIT, rdotr, o_r, o_x);
     } else {
@@ -465,7 +470,9 @@ int pcg(elliptic_t *elliptic,
   if (elliptic->options.compareArgs("SOLVER", "PCG+COMBINED")) {
     o_v.free();
   }
+
   o_tmpReductions.free();
+  h_tmpReductions.free();
 
   return Niter;
 }

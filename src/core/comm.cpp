@@ -24,18 +24,20 @@ comm_t::comm_t(MPI_Comm _commg, MPI_Comm _comm)
   }
 }
 
-MPI_Datatype comm_t::toMPI_Datatype(comm_t::type t) const
+MPI_Datatype comm_t::toMPI_Datatype(const occa::memory& t) const
 {
-  switch (t) {
-  case comm_t::type::dfloat:
-    return MPI_DFLOAT;
-  case comm_t::type::dlong:
-    return MPI_DLONG;
-  case comm_t::type::hlong:
-    return MPI_HLONG;
-  default:
+  const auto type = t.dtype(); 
+
+  if (type == occa::dtype::get<double>()) 
+   return MPI_DOUBLE;
+  else if (type == occa::dtype::get<float>()) 
+   return MPI_FLOAT;
+  else if (type == occa::dtype::get<int>()) 
+   return MPI_INT;
+  else if (type == occa::dtype::get<long long int>()) 
+   return MPI_LONG_LONG_INT;
+  else
     nekrsAbort(MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "Unkown datatype!");
-  }
 
   return 0;
 }
@@ -76,58 +78,12 @@ void comm_t::reallocScratch(size_t Nbytes) const
   }
 };
 
-int comm_t::allreduce(const void *sendbuf,
-                      void *recvbuf,
-                      int count,
-                      comm_t::type datatype,
-                      comm_t::op op,
-                      MPI_Comm comm) const
-{
-  auto mpiDataType = toMPI_Datatype(datatype);
-  auto mpiOp = toMPI_Op(op);
-
-  return MPI_Allreduce(sendbuf, recvbuf, count, mpiDataType, mpiOp, comm);
-}
-
-int comm_t::allreduce(occa::memory sendbuf,
-                      occa::memory recvbuf,
-                      int count,
-                      comm_t::type datatype,
-                      comm_t::op op,
-                      MPI_Comm comm) const
-{
-  auto mpiDataType = toMPI_Datatype(datatype);
-  auto mpiOp = toMPI_Op(op);
-
-  int sizeBytes;
-  MPI_Type_size(mpiDataType, &sizeBytes);
-
-  const size_t Nbytes = sizeBytes * count;
-
-  reallocScratch(Nbytes);
-
-  if (useGPUAware || platform->serial) {
-    platform->device.finish();
-    return MPI_Allreduce((void *)sendbuf.ptr(), (void *)recvbuf.ptr(), count, mpiDataType, mpiOp, comm);
-  } else {
-    int retVal = 0;
-
-    sendbuf.copyTo(send, Nbytes);
-    retVal = MPI_Allreduce(send, recv, count, mpiDataType, mpiOp, comm);
-    recvbuf.copyFrom(recv, Nbytes);
-
-    return retVal;
-  }
-}
-
-// in place
 int comm_t::allreduce(occa::memory recvbuf,
                       int count,
-                      comm_t::type datatype,
                       comm_t::op op,
                       MPI_Comm comm) const
 {
-  auto mpiDataType = toMPI_Datatype(datatype);
+  auto mpiDataType = toMPI_Datatype(recvbuf);
   auto mpiOp = toMPI_Op(op);
 
   int sizeBytes;
@@ -141,12 +97,9 @@ int comm_t::allreduce(occa::memory recvbuf,
     platform->device.finish();
     return MPI_Allreduce(MPI_IN_PLACE, (void *)recvbuf.ptr(), count, mpiDataType, mpiOp, comm);
   } else {
-    int retVal = 0;
-
-    recvbuf.copyTo(recv, Nbytes);
-    retVal = MPI_Allreduce(MPI_IN_PLACE, recv, count, mpiDataType, mpiOp, comm);
-    recvbuf.copyFrom(recv, Nbytes);
-
+    recvbuf.copyTo(recv, count);
+    int retVal = MPI_Allreduce(MPI_IN_PLACE, recv, count, mpiDataType, mpiOp, comm);
+    recvbuf.copyFrom(recv, count);
     return retVal;
   }
 }

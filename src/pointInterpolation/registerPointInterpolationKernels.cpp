@@ -12,12 +12,9 @@ unsigned nearestPowerOfTwo(unsigned int v)
     answer *= 2;
   return answer;
 }
-} // namespace
 
-void registerPointInterpolationKernels()
+void registerKernels(int N)
 {
-  dlong N;
-  platform->options.getArgs("POLYNOMIAL DEGREE", N);
   const dlong Nq = N + 1;
 
   const std::string oklpath = getenv("NEKRS_KERNEL_DIR");
@@ -53,16 +50,24 @@ void registerPointInterpolationKernels()
 
   std::string kernelName;
   std::string fileName;
+  std::string orderSuffix = "_" + std::to_string(N);
 
   kernelName = "findptsLocal";
   fileName = oklpath + "/pointInterpolation/findpts/" + kernelName + ".okl";
-  platform->kernelRequests.add(kernelName, fileName, findptsKernelInfo);
+  platform->kernelRequests.add(kernelName + orderSuffix, fileName, findptsKernelInfo);
 
   kernelName = "findptsLocalEval";
   fileName = oklpath + "/pointInterpolation/findpts/" + kernelName + ".okl";
-  platform->kernelRequests.add(kernelName, fileName, findptsKernelInfo);
+  platform->kernelRequests.add(kernelName + orderSuffix, fileName, findptsKernelInfo);
 
   kernelName = "findptsLocalEvalMask";
   fileName = oklpath + "/pointInterpolation/findpts/" + kernelName + ".okl";
-  platform->kernelRequests.add(kernelName, fileName, findptsKernelInfo);
+  platform->kernelRequests.add(kernelName + orderSuffix, fileName, findptsKernelInfo);
+}
+
+} // namespace
+
+void registerPointInterpolationKernels()
+{
+  for (int i = 1; i < mesh_t::maxNqIntp; i++) registerKernels(i);
 }

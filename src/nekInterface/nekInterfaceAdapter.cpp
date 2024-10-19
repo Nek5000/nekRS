@@ -19,9 +19,32 @@ static void (*userbc_ptr)(void);
 static void (*useric_ptr)(void);
 static void (*userqtl_ptr)(void);
 static void (*usrsetvert_ptr)(void);
-static void (*nek_outfld_ptr)(char *, double*, int*, int *, int *, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, int);
+static void (*nek_outfld_ptr)(char *,
+                              double *,
+                              int *,
+                              int *,
+                              int *,
+                              double *,
+                              double *,
+                              double *,
+                              double *,
+                              double *,
+                              double *,
+                              double *,
+                              double *,
+                              double *,
+                              int *,
+                              int);
 static void (*nek_openfld_ptr)(char *, double *, double *, int);
-static void (*nek_readfld_ptr)(double *, double *, double *, double *, double *, double *, double *, double *, double *);
+static void (*nek_readfld_ptr)(double *,
+                               double *,
+                               double *,
+                               double *,
+                               double *,
+                               double *,
+                               double *,
+                               double *,
+                               double *);
 static void (*nek_uic_ptr)(int *);
 static void (*nek_end_ptr)(void);
 static void (*nek_restart_ptr)(char *, int *);
@@ -59,7 +82,7 @@ static void (*nek_meshmetrics_ptr)(void);
 static int (*nek_gllnid_ptr)(int *);
 static int (*nek_gllel_ptr)(int *);
 
-static std::map<std::string, void*> ptrListData;
+static std::map<std::string, void *> ptrListData;
 
 void noop_func(void) {}
 
@@ -103,22 +126,32 @@ long long int localElementIdToGlobal(int _id)
   return static_cast<long long int>(gid - 1);
 }
 
-fldData openFld(const std::string& filename, std::vector<std::string>& _availableVariables)
+fldData openFld(const std::string &filename, std::vector<std::string> &_availableVariables)
 {
-  auto fname = const_cast<char*>(filename.c_str());
+  auto fname = const_cast<char *>(filename.c_str());
 
   double time_;
   double p0th_;
 
-  (*nek_openfld_ptr) (fname, &time_, &p0th_, static_cast<int>(filename.size())); 
+  (*nek_openfld_ptr)(fname, &time_, &p0th_, static_cast<int>(filename.size()));
 
-  if (*ptr<int>("getxr")) _availableVariables.push_back("mesh");
-  if (*ptr<int>("getur")) _availableVariables.push_back("velocity");
-  if (*ptr<int>("getpr")) _availableVariables.push_back("pressure");
-  if (*ptr<int>("gettr")) _availableVariables.push_back("temperature");
+  if (*ptr<int>("getxr")) {
+    _availableVariables.push_back("mesh");
+  }
+  if (*ptr<int>("getur")) {
+    _availableVariables.push_back("velocity");
+  }
+  if (*ptr<int>("getpr")) {
+    _availableVariables.push_back("pressure");
+  }
+  if (*ptr<int>("gettr")) {
+    _availableVariables.push_back("temperature");
+  }
 
   const auto nsr = *ptr<int>("npsr");
-  for (int i = 0; i < nsr; i++) _availableVariables.push_back("scalar" + scalarDigitStr(i));
+  for (int i = 0; i < nsr; i++) {
+    _availableVariables.push_back("scalar" + scalarDigitStr(i));
+  }
 
   fldData data;
   data.time = time_;
@@ -127,7 +160,7 @@ fldData openFld(const std::string& filename, std::vector<std::string>& _availabl
   return data;
 }
 
-void readFld(fldData& data)
+void readFld(fldData &data)
 {
   const auto nxyz = nekData.nx1 * nekData.nx1 * nekData.nx1;
   const auto Nlocal = nekData.nelt * nxyz;
@@ -135,50 +168,50 @@ void readFld(fldData& data)
 
   occa::memory xm, ym, zm;
   if (*ptr<int>("getxr")) {
-    xm = platform->memPool.reserve<double>(Nlocal);
-    ym = platform->memPool.reserve<double>(Nlocal);
-    zm = platform->memPool.reserve<double>(Nlocal);
+    xm = platform->memoryPool.reserve<double>(Nlocal);
+    ym = platform->memoryPool.reserve<double>(Nlocal);
+    zm = platform->memoryPool.reserve<double>(Nlocal);
   }
 
   occa::memory vx, vy, vz;
   if (*ptr<int>("getur")) {
-    vx = platform->memPool.reserve<double>(Nlocal);
-    vy = platform->memPool.reserve<double>(Nlocal);
-    vz = platform->memPool.reserve<double>(Nlocal);
+    vx = platform->memoryPool.reserve<double>(Nlocal);
+    vy = platform->memoryPool.reserve<double>(Nlocal);
+    vz = platform->memoryPool.reserve<double>(Nlocal);
   }
 
   occa::memory pr;
   if (*ptr<int>("getpr")) {
-    pr = platform->memPool.reserve<double>(Nlocal); 
+    pr = platform->memoryPool.reserve<double>(Nlocal);
   }
 
   occa::memory t;
   if (*ptr<int>("gettr")) {
-    t = platform->memPool.reserve<double>(Nlocal); 
+    t = platform->memoryPool.reserve<double>(Nlocal);
   }
 
   occa::memory s;
   const auto nsr = *ptr<int>("npsr");
   if (nsr) {
-    s = platform->memPool.reserve<double>(nekFieldOffset * nsr);
+    s = platform->memoryPool.reserve<double>(nekFieldOffset * nsr);
   }
 
-  (*nek_readfld_ptr) 
-  (
-    static_cast<double*>(xm.ptr()), static_cast<double*>(ym.ptr()), static_cast<double*>(zm.ptr()),
-    static_cast<double*>(vx.ptr()), static_cast<double*>(vy.ptr()), static_cast<double*>(vz.ptr()),
-    static_cast<double*>(pr.ptr()), 
-    static_cast<double*>(t.ptr()),
-    static_cast<double*>(s.ptr()) 
-  );
+  (*nek_readfld_ptr)(static_cast<double *>(xm.ptr()),
+                     static_cast<double *>(ym.ptr()),
+                     static_cast<double *>(zm.ptr()),
+                     static_cast<double *>(vx.ptr()),
+                     static_cast<double *>(vy.ptr()),
+                     static_cast<double *>(vz.ptr()),
+                     static_cast<double *>(pr.ptr()),
+                     static_cast<double *>(t.ptr()),
+                     static_cast<double *>(s.ptr()));
 
-  auto populate = [&](const std::vector<occa::memory>& fields, std::vector<occa::memory>& o_u)
-  {
+  auto populate = [&](const std::vector<occa::memory> &fields, std::vector<occa::memory> &o_u) {
     auto o_tmpDouble = platform->device.malloc<double>(Nlocal);
     o_u.resize(fields.size());
     for (int i = 0; i < fields.size(); i++) {
       o_tmpDouble.copyFrom(fields[i]);
-      o_u[i] = platform->o_memPool.reserve<dfloat>(Nlocal);
+      o_u[i] = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
       platform->copyDoubleToDfloatKernel(Nlocal, o_tmpDouble, o_u[i]);
     }
   };
@@ -203,42 +236,43 @@ void readFld(fldData& data)
     populate(fields, data.o_t);
   }
 
-  for(int i = 0; i < nsr; i++) {
-    std::vector<occa::memory> fields = {s.slice(i*nekFieldOffset, Nlocal)};
+  for (int i = 0; i < nsr; i++) {
+    std::vector<occa::memory> fields = {s.slice(i * nekFieldOffset, Nlocal)};
     std::vector<occa::memory> o_Si;
     data.o_s.push_back(o_Si);
     populate(fields, data.o_s.at(i));
   }
 }
 
-void writeFld(const std::string& filename,
-              const fldData& data,
+void writeFld(const std::string &filename,
+              const fldData &data,
               bool FP64,
-              const std::vector<int>& elementMask,
-              int Nout, 
+              const std::vector<int> &elementMask,
+              int Nout,
               bool uniform)
 {
   int step = 0;
   const auto nxyz = nekData.nx1 * nekData.nx1 * nekData.nx1;
   const auto Nlocal = nekData.nelt * nxyz;
 
-  const auto& time = data.time;
-  const auto& p0th = data.p0th;
+  const auto &time = data.time;
+  const auto &p0th = data.p0th;
 
-  const auto& o_x = data.o_x;
-  const auto& o_u = data.o_u;
-  const auto& o_p = data.o_p;
-  const auto& o_t = data.o_t;
-  const auto& o_s = data.o_s;
+  const auto &o_x = data.o_x;
+  const auto &o_u = data.o_u;
+  const auto &o_p = data.o_p;
+  const auto &o_t = data.o_t;
+  const auto &o_s = data.o_s;
 
-  auto copyField = [&](occa::memory o_fldIn, double* fldOut, std::string tag)
-  {
+  auto copyField = [&](occa::memory o_fldIn, double *fldOut, std::string tag) {
     nekrsCheck(o_fldIn.size() < Nlocal,
                platform->comm.mpiComm,
                EXIT_FAILURE,
                "%s%s%s\n",
-               "outfld: ",tag.c_str()," is too short on T-mesh!");
-    auto o_tmpDouble = platform->o_memPool.reserve<double>(Nlocal);
+               "outfld: ",
+               tag.c_str(),
+               " is too short on T-mesh!");
+    auto o_tmpDouble = platform->deviceMemoryPool.reserve<double>(Nlocal);
     if (o_fldIn.dtype() == occa::dtype::get<dfloat>()) {
       platform->copyDfloatToDoubleKernel(Nlocal, o_fldIn, o_tmpDouble);
       o_tmpDouble.copyTo(fldOut, Nlocal);
@@ -247,7 +281,7 @@ void writeFld(const std::string& filename,
     }
   };
 
-  std::vector<double> xm; 
+  std::vector<double> xm;
   std::vector<double> ym;
   std::vector<double> zm;
   if (o_x.size()) {
@@ -305,8 +339,8 @@ void writeFld(const std::string& filename,
     const auto nekFieldOffset = static_cast<size_t>(nekData.lelt) * nxyz;
     ps.resize(o_s.size() * nekFieldOffset, 0);
     for (int is = 0; is < o_s.size(); is++) {
-      auto& o_Si = o_s[is][0];
-      copyField(o_Si, ps.data() + nps*nekFieldOffset, "o_S[" + scalarDigitStr(is) + "]");
+      auto &o_Si = o_s[is][0];
+      copyField(o_Si, ps.data() + nps * nekFieldOffset, "o_S[" + scalarDigitStr(is) + "]");
       nps++;
     }
   }
@@ -319,52 +353,58 @@ void writeFld(const std::string& filename,
     *(nekData.p0th) = p0th;
 
     std::vector<int> fldWriteFlag;
-    fldWriteFlag.push_back(xm.size()  ? 1 : 0);
+    fldWriteFlag.push_back(xm.size() ? 1 : 0);
     fldWriteFlag.push_back(vx.size() ? 1 : 0);
     fldWriteFlag.push_back(pr.size() ? 1 : 0);
     fldWriteFlag.push_back(temp.size() ? 1 : 0);
-    for (int is = 0; is < nps; is++) fldWriteFlag.push_back(1);
+    for (int is = 0; is < nps; is++) {
+      fldWriteFlag.push_back(1);
+    }
 
-    auto& p63 = nekData.param[62];
+    auto &p63 = nekData.param[62];
     const auto p63_s = p63;
     p63 = (FP64) ? 1 : 0;
 
     int nxo = Nout + 1;
     int ifreg = uniform;
     auto nek_out_mask = ptr<int>("out_mask");
-    for(int i = 0; i < nekData.lelt; i++) nek_out_mask[i] = 1; 
+    for (int i = 0; i < nekData.lelt; i++) {
+      nek_out_mask[i] = 1;
+    }
 
     // filter elements
     int filterEnabled = elementMask.size() ? 1 : 0;
     MPI_Allreduce(MPI_IN_PLACE, &filterEnabled, 1, MPI_INT, MPI_MAX, platform->comm.mpiComm);
-    if(filterEnabled) {
-      for(int i = 0; i < nekData.lelt; i++) nek_out_mask[i] = 0; 
-      for(auto& entry : elementMask) {
+    if (filterEnabled) {
+      for (int i = 0; i < nekData.lelt; i++) {
+        nek_out_mask[i] = 0;
+      }
+      for (auto &entry : elementMask) {
         nek_out_mask[entry] = 1;
       }
     }
 
-    (*nek_outfld_ptr)(const_cast<char*>(filename.c_str()),
-                      const_cast<double*>(&time),
-                      fldWriteFlag.data(), 
+    (*nek_outfld_ptr)(const_cast<char *>(filename.c_str()),
+                      const_cast<double *>(&time),
+                      fldWriteFlag.data(),
                       &nxo,
-                      &ifreg,          
-                      xm.data(), 
-                      ym.data(), 
-                      zm.data(), 
-                      vx.data(), 
-                      vy.data(), 
-                      vz.data(), 
-                      pr.data(), 
-                      temp.data(), 
-                      ps.data(), 
-                      &nps, 
+                      &ifreg,
+                      xm.data(),
+                      ym.data(),
+                      zm.data(),
+                      vx.data(),
+                      vy.data(),
+                      vz.data(),
+                      pr.data(),
+                      temp.data(),
+                      ps.data(),
+                      &nps,
                       filename.size());
 
     // filter reset
-    for(int i = 0; i < nekData.lelt; i++) {
+    for (int i = 0; i < nekData.lelt; i++) {
       nek_out_mask[i] = 1;
-    } 
+    }
 
     *(nekData.p0th) = p0th_s;
     *(nekData.istep) = step_s;
@@ -374,6 +414,9 @@ void writeFld(const std::string& filename,
 
 void getIC(int ifield)
 {
+  if (!useric_ptr) {
+    return;
+  }
   (*nek_uic_ptr)(&ifield);
 }
 
@@ -388,12 +431,16 @@ void restartFromFile(const std::string &str_in)
   str.erase(std::remove_if(str.begin(), str.end(), ::isspace), str.end());
 
   auto pos = str.find('+');
-  if (pos == std::string::npos) pos = str.length();
+  if (pos == std::string::npos) {
+    pos = str.length();
+  }
 
   auto fileName = str.substr(0, pos);
 
   std::string options;
-  if (pos != std::string::npos) options = str.substr(pos);
+  if (pos != std::string::npos) {
+    options = str.substr(pos);
+  }
   upperCase(options);
   std::replace_copy(options.begin(), options.end(), options.begin(), '+', ' ');
 
@@ -424,7 +471,7 @@ void xm1N(dfloat *_x, dfloat *_y, dfloat *_z, int N, dlong Nelements)
       _y[i] = nekData.ym1[i];
       _z[i] = nekData.zm1[i];
     }
-    return; 
+    return;
   }
 
   std::vector<double> x(Np);
@@ -455,6 +502,10 @@ void setics(void)
 
 void userchk(void)
 {
+  if (!userchk_ptr) {
+    return;
+  }
+
   if (rank == 0) {
     printf("calling nek_userchk ...\n");
   }
@@ -492,7 +543,7 @@ void set_usr_handles(const char *session_in, int verbose)
 
   // check if we need to append an underscore
   auto us = [handle] {
-    auto fptr = (void (*)(void)) dlsym(handle, "usrdat_");
+    auto fptr = (void (*)(void))dlsym(handle, "usrdat_");
     if (handle) {
       return "_";
     } else {
@@ -516,19 +567,48 @@ void set_usr_handles(const char *session_in, int verbose)
   nek_bootstrap_ptr =
       (void (*)(int *, char *, char *, char *, int, int, int))dlsym(handle, fname("nekf_bootstrap"));
   check_error(dlerror());
-  nek_setup_ptr =
-      (void (*)(int *, int *, int *, int *, int *, int *, int *, int *, int *, double *, double *, double *, double *, double *, int *))
-          dlsym(handle, fname("nekf_setup"));
+  nek_setup_ptr = (void (*)(int *,
+                            int *,
+                            int *,
+                            int *,
+                            int *,
+                            int *,
+                            int *,
+                            int *,
+                            int *,
+                            double *,
+                            double *,
+                            double *,
+                            double *,
+                            double *,
+                            int *))dlsym(handle, fname("nekf_setup"));
   check_error(dlerror());
   nek_uic_ptr = (void (*)(int *))dlsym(handle, fname("nekf_uic"));
   check_error(dlerror());
   nek_end_ptr = (void (*)(void))dlsym(handle, fname("nekf_end"));
   check_error(dlerror());
-  nek_outfld_ptr = (void (*)(char *, double *, int *, int *, int *, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, int))dlsym(handle, fname("nekf_outfld"));
+  nek_outfld_ptr = (void (*)(char *,
+                             double *,
+                             int *,
+                             int *,
+                             int *,
+                             double *,
+                             double *,
+                             double *,
+                             double *,
+                             double *,
+                             double *,
+                             double *,
+                             double *,
+                             double *,
+                             int *,
+                             int))dlsym(handle, fname("nekf_outfld"));
   check_error(dlerror());
   nek_openfld_ptr = (void (*)(char *, double *, double *, int))dlsym(handle, fname("nekf_openfld"));
   check_error(dlerror());
-  nek_readfld_ptr = (void (*)(double *, double *, double *, double *, double *, double *, double *, double *, double *))dlsym(handle, fname("nekf_readfld"));
+  nek_readfld_ptr =
+      (void (*)(double *, double *, double *, double *, double *, double *, double *, double *, double *))
+          dlsym(handle, fname("nekf_readfld"));
   check_error(dlerror());
 
   nek_restart_ptr = (void (*)(char *, int *))dlsym(handle, fname("nekf_restart"));
@@ -566,19 +646,16 @@ void set_usr_handles(const char *session_in, int verbose)
   nek_gllel_ptr = (int (*)(int *))dlsym(handle, fname("gllel"));
   check_error(dlerror());
 
-
 #define postfix(x) x##_ptr
 #define load_or_noop(s)                                                                                      \
-do {                                                                                                         \
-postfix(s) = (void (*)(void))dlsym(handle, fname(#s));                                                       \
-if (!(postfix(s))) {                                                                                         \
-postfix(s) = noop_func;                                                                                      \
-if (verbose)                                                                                                 \
-printf("Setting function " #s " to noop_func.\n");                                                           \
-} else if (verbose && rank == 0) {                                                                           \
-printf("Loading " #s "\n");                                                                                  \
-}                                                                                                            \
-} while (0)
+  do {                                                                                                       \
+    postfix(s) = (void (*)(void))dlsym(handle, fname(#s));                                                   \
+    if (!(postfix(s))) {                                                                                     \
+      postfix(s) = noop_func;                                                                                \
+    } else if (verbose && rank == 0) {                                                                       \
+      printf("Loading " #s "\n");                                                                            \
+    }                                                                                                        \
+  } while (0)
 
   load_or_noop(uservp);
   load_or_noop(userf);
@@ -613,7 +690,7 @@ void mkSIZE(int lx1,
   const int verbose = options.compareArgs("VERBOSE", "TRUE") ? 1 : 0;
 
   // Read and generate the new size file.
-  sprintf(line, "%s/core/SIZE.template", nek5000_dir.c_str());
+  snprintf(line, lineSize, "%s/core/SIZE.template", nek5000_dir.c_str());
   FILE *fp = fopen(line, "r");
   nekrsCheck(!fp, MPI_COMM_SELF, EXIT_FAILURE, "Cannot open %s!\n", line);
 
@@ -632,37 +709,37 @@ void mkSIZE(int lx1,
   int count = 0;
   while (fgets(line, lineSize, fp) != NULL) {
     if (strstr(line, "parameter (lx1=") != NULL) {
-      sprintf(line, "      parameter (lx1=%d)\n", lx1);
+      snprintf(line, lineSize, "      parameter (lx1=%d)\n", lx1);
     } else if (strstr(line, "parameter (lxd=") != NULL) {
-      sprintf(line, "      parameter (lxd=%d)\n", lxd);
+      snprintf(line, lineSize, "      parameter (lxd=%d)\n", lxd);
     } else if (strstr(line, "parameter (lelt=") != NULL) {
-      sprintf(line, "      parameter (lelt=%d)\n", lelt);
+      snprintf(line, lineSize, "      parameter (lelt=%d)\n", lelt);
     } else if (strstr(line, "parameter (lelg=") != NULL) {
-      sprintf(line, "      parameter (lelg=%d)\n", lelg);
+      snprintf(line, lineSize, "      parameter (lelg=%d)\n", lelg);
     } else if (strstr(line, "parameter (ldim=") != NULL) {
-      sprintf(line, "      parameter (ldim=%d)\n", ldim);
+      snprintf(line, lineSize, "      parameter (ldim=%d)\n", ldim);
     } else if (strstr(line, "parameter (lpmin=") != NULL) {
-      sprintf(line, "      parameter (lpmin=%d)\n", lpmin);
+      snprintf(line, lineSize, "      parameter (lpmin=%d)\n", lpmin);
     } else if (strstr(line, "parameter (ldimt=") != NULL) {
-      sprintf(line, "      parameter (ldimt=%d)\n", ldimt);
+      snprintf(line, lineSize, "      parameter (ldimt=%d)\n", ldimt);
     } else if (strstr(line, "parameter (mxprev=") != NULL) {
-      sprintf(line, "      parameter (mxprev=%d)\n", 1);
+      snprintf(line, lineSize, "      parameter (mxprev=%d)\n", 1);
     } else if (strstr(line, "parameter (lgmres=") != NULL) {
-      sprintf(line, "      parameter (lgmres=%d)\n", 1);
+      snprintf(line, lineSize, "      parameter (lgmres=%d)\n", 1);
     } else if (strstr(line, "parameter (lxo=") != NULL) {
-      sprintf(line, "      parameter (lxo=%d)\n", lx1+4);
+      snprintf(line, lineSize, "      parameter (lxo=%d)\n", lx1 + 4);
     } else if (strstr(line, "parameter (lorder=") != NULL) {
-      sprintf(line, "      parameter (lorder=%d)\n", 1);
+      snprintf(line, lineSize, "      parameter (lorder=%d)\n", 1);
     } else if (strstr(line, "parameter (lhis=") != NULL) {
-      sprintf(line, "      parameter (lhis=%d)\n", 1);
+      snprintf(line, lineSize, "      parameter (lhis=%d)\n", 1);
     } else if (strstr(line, "parameter (lelr=") != NULL) {
-      sprintf(line, "      parameter (lelr=%d)\n", std::min(128 * lelt, lelg));
+      snprintf(line, lineSize, "      parameter (lelr=%d)\n", std::min(128 * lelt, lelg));
     } else if (strstr(line, "parameter (lx1m=") != NULL) {
-      sprintf(line, "      parameter (lx1m=%d)\n", lx1m);
+      snprintf(line, lineSize, "      parameter (lx1m=%d)\n", lx1m);
     } else if (strstr(line, "parameter (nsessmax=") != NULL) {
-      sprintf(line, "      parameter (nsessmax=%d)\n", nsessmax);
+      snprintf(line, lineSize, "      parameter (nsessmax=%d)\n", nsessmax);
     } else if (strstr(line, "parameter (maxobj=") != NULL) {
-      sprintf(line, "      parameter (maxobj=%d)\n", nMaxObj);
+      snprintf(line, lineSize, "      parameter (maxobj=%d)\n", nMaxObj);
     }
 
     strcpy(sizeFile + count, line);
@@ -819,26 +896,28 @@ void buildNekInterface(int ldimt, int N, int np, setupAide &options)
           out_args = "";
         }
 
-        char buf[4096];
-        sprintf(buf,
-                "cd %s"
-                " && cp -f %s/makefile.template makefile"
-                " && make %s"
-                "S=%s "
-                "OPT_INCDIR=\"%s\" "
-                "CASENAME=%s "
-                "CASEDIR=%s "
-                "-f %s/Makefile lib usr libnekInterface "
-                "%s",
-                cache_dir.c_str(),
-                nek5000_dir.c_str(),
-                make_args.c_str(),
-                nek5000_dir.c_str(),
-                include_dirs.c_str(),
-                casename.c_str(),
-                cache_dir.c_str(),
-                nekInterface_dir.c_str(),
-                out_args.c_str());
+        const int bufSize = 4096;
+        char buf[bufSize];
+        snprintf(buf,
+                 bufSize,
+                 "cd %s"
+                 " && cp -f %s/makefile.template makefile"
+                 " && make %s"
+                 "S=%s "
+                 "OPT_INCDIR=\"%s\" "
+                 "CASENAME=%s "
+                 "CASEDIR=%s "
+                 "-f %s/Makefile lib usr libnekInterface "
+                 "%s",
+                 cache_dir.c_str(),
+                 nek5000_dir.c_str(),
+                 make_args.c_str(),
+                 nek5000_dir.c_str(),
+                 include_dirs.c_str(),
+                 casename.c_str(),
+                 cache_dir.c_str(),
+                 nekInterface_dir.c_str(),
+                 out_args.c_str());
 
         if (verbose && rank == 0) {
           printf("\n%s\n", buf);
@@ -866,7 +945,10 @@ void buildNekInterface(int ldimt, int N, int np, setupAide &options)
     } // buildRank
 
     if (platform->cacheBcast) {
-      fileBcast(libFile, fs::path(platform->tmpDir) / fs::path("nek5000"), platform->comm.mpiComm, platform->verbose);
+      fileBcast(libFile,
+                fs::path(platform->tmpDir) / fs::path("nek5000"),
+                platform->comm.mpiComm,
+                platform->verbose);
     }
 
     return 0;
@@ -940,7 +1022,6 @@ void bootstrap()
       printf("done\n");
       fflush(stdout);
     }
-
   }
 }
 
@@ -1004,17 +1085,15 @@ int setup(int numberActiveFields)
   re2::nelg(options->getArgs("MESH FILE"), nelgt, nelgv, platform->comm.mpiComm);
   const int cht = (nelgt > nelgv) && nscal;
 
-
-  auto boundaryIDMap = [&](bool vMesh = false)
-  {
+  auto boundaryIDMap = [&](bool vMesh = false) {
     const std::string prefix = (cht && vMesh) ? "MESHV " : "MESH ";
 
     std::vector<std::string> list;
     options->getArgs(prefix + "BOUNDARY ID MAP", list, ",");
- 
+
     std::vector<int> map;
-    for(auto& entry : list) {
-      map.push_back(std::stoi(entry)); 
+    for (auto &entry : list) {
+      map.push_back(std::stoi(entry));
     }
     return map;
   };
@@ -1070,14 +1149,14 @@ int setup(int numberActiveFields)
   nekData.xm1 = ptr<double>("xm1");
   nekData.ym1 = ptr<double>("ym1");
   nekData.zm1 = ptr<double>("zm1");
-  nekData.xc =  ptr<double>("xc");
-  nekData.yc =  ptr<double>("yc");
-  nekData.zc =  ptr<double>("zc");
+  nekData.xc = ptr<double>("xc");
+  nekData.yc = ptr<double>("yc");
+  nekData.zc = ptr<double>("zc");
 
   nekData.unx = ptr<double>("unx");
   nekData.uny = ptr<double>("uny");
   nekData.unz = ptr<double>("unz");
-  
+
   nekData.cbc = ptr<char>("cbc");
   nekData.boundaryID = ptr<int>("boundaryID");
   nekData.boundaryIDt = ptr<int>("boundaryIDt");
@@ -1090,7 +1169,9 @@ int setup(int numberActiveFields)
     gen_bcmap();
 
     auto flow = true;
-    if (platform->options.compareArgs("VELOCITY SOLVER", "NONE")) flow = false; 
+    if (platform->options.compareArgs("VELOCITY SOLVER", "NONE")) {
+      flow = false;
+    }
 
     if (flow) {
       if (rank == 0) {
@@ -1155,11 +1236,7 @@ int setup(int numberActiveFields)
   {
     hlong NelementsV = nekData.nelv;
     MPI_Allreduce(MPI_IN_PLACE, &NelementsV, 1, MPI_HLONG, MPI_SUM, platform->comm.mpiComm);
-    nekrsCheck(NelementsV != nelgv,
-               MPI_COMM_SELF,
-               EXIT_FAILURE,
-               "%s\n",
-               "Invalid element partitioning");
+    nekrsCheck(NelementsV != nelgv, MPI_COMM_SELF, EXIT_FAILURE, "%s\n", "Invalid element partitioning");
 
     if (cht) {
       hlong NelementsT = nekData.nelt;
@@ -1222,7 +1299,7 @@ void printMeshMetrics()
   (*nek_meshmetrics_ptr)();
 }
 
-const std::map<std::string, void*>& ptrList()
+const std::map<std::string, void *> &ptrList()
 {
   return ptrListData;
 }
@@ -1237,17 +1314,19 @@ void nekf_registerptr(char *id, void *val, int *nameLen)
   auto name = std::string(id, *nameLen); // id comes from Fortran and is not null terminated
   auto entry = ptrListData.find(name);
   auto entryFound = (entry != ptrListData.end());
-  nekrsCheck(entryFound && entry->second != val, MPI_COMM_SELF, EXIT_FAILURE, 
-             "%s exists already but is pointing to a different memory address\n", name.c_str());
+  nekrsCheck(entryFound && entry->second != val,
+             MPI_COMM_SELF,
+             EXIT_FAILURE,
+             "%s exists already but is pointing to a different memory address\n",
+             name.c_str());
   if (!entryFound) {
     const auto [it, success] = ptrListData.insert(std::make_pair(name, val));
     nekrsCheck(!success, MPI_COMM_SELF, EXIT_FAILURE, "Adding %s failed\n", name.c_str());
   }
 }
 
-void nekf_registerptr_(char *id, void* val, int *nameLen)
+void nekf_registerptr_(char *id, void *val, int *nameLen)
 {
   nekf_registerptr(id, val, nameLen);
 }
-
 }

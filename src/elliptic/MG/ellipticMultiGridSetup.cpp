@@ -80,8 +80,8 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
       return;
     }
 
-    auto o_p = platform->o_memPool.reserve<pfloat>(mesh->Nlocal);
-    auto o_Ap = platform->o_memPool.reserve<pfloat>(mesh->Nlocal);
+    auto o_p = platform->deviceMemoryPool.reserve<pfloat>(mesh->Nlocal);
+    auto o_Ap = platform->deviceMemoryPool.reserve<pfloat>(mesh->Nlocal);
 
     auto timeOperator = [&]() {
       const int Nsamples = 10;
@@ -223,7 +223,7 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
               baseLevel->smooth(o_rhs, o_x, true);
               baseLevel->residual(o_rhs, o_x, o_res);
 
-              auto o_tmp = platform->o_memPool.reserve<pfloat>(o_x.size());
+              auto o_tmp = platform->deviceMemoryPool.reserve<pfloat>(o_x.size());
               elliptic->precon->SEMFEMSolver->run(o_res, o_tmp);
 
               platform->linAlg->paxpby(o_x.size(), 1.0, o_tmp, 1.0, o_x);
@@ -299,7 +299,7 @@ void ellipticMultiGridSetup(elliptic_t *elliptic_)
               baseLevel->smooth(o_rhs, o_x, true);
               baseLevel->residual(o_rhs, o_x, o_res);
 
-              auto o_tmp = platform->o_memPool.reserve<pfloat>(baseLevel->Nrows);
+              auto o_tmp = platform->deviceMemoryPool.reserve<pfloat>(baseLevel->Nrows);
               coarseLevel->solve(o_res, o_tmp);
 
               platform->linAlg->paxpby(baseLevel->Nrows, 1.0, o_tmp, 1.0, o_x);

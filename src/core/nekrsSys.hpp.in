@@ -160,13 +160,13 @@ namespace
 constexpr double targetTimeBenchmark{0.5};
 
 constexpr int BLOCKSIZE = 256;
-constexpr int ALIGN_SIZE = 1024;
+constexpr int ALIGN_SIZE_BYTES = 256;
 constexpr int NSCALAR_MAX = 99;
 const occa::memory o_NULL;
 
 template <typename T> unsigned int alignStride(unsigned int stride)
 {
-  const auto pageW = ALIGN_SIZE / sizeof(T);
+  const auto pageW = ALIGN_SIZE_BYTES / sizeof(T);
   if (stride % pageW) {
     stride = (stride / pageW + 1) * pageW;
   }

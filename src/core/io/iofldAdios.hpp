@@ -6,6 +6,7 @@
 #include "iofld.hpp"
 #include "adios2.h"
 #include "nekInterfaceAdapter.hpp"
+#include "pointInterpolation.hpp"
 
 class iofldAdios : public iofld
 {
@@ -23,6 +24,8 @@ public:
 private:
   static constexpr int VTK_HEXAHEDRON = 12;
   static constexpr const char *configFile = "adios.yaml";
+
+  std::unique_ptr<pointInterpolation_t> interp;
 
   std::string streamName;
 

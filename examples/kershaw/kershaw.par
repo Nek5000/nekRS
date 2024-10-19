@@ -1,5 +1,5 @@
 [GENERAL] 
-#verbose = true
+verbose = false 
 polynomialOrder = 7
 timeStepper = tombo2
 subCyclingSteps = 1
@@ -53,12 +53,12 @@ viscosity = 1.0
 [CASEDATA]
 gsOverlap = 1
 
-bp5 = true
+bp5 = true 
 bp5Repetitions = 50
 
-bps5 = true
+bps5 = true 
 bps5Repetitions = 50
 eps = 0.3
 
 bp6 = true
-bp6Repetitions = 50 
+bp6Repetitions = 50

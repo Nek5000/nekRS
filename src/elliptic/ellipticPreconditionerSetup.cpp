@@ -32,7 +32,6 @@ void ellipticPreconditionerSetup(elliptic_t *elliptic, ogs_t *ogs)
 {
   const auto pre = platform->device.occaDevice().memoryAllocated();
 
-  mesh_t *mesh = elliptic->mesh;
   setupAide &options = elliptic->options;
 
   MPI_Barrier(platform->comm.mpiComm);

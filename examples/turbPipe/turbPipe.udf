@@ -92,7 +92,7 @@ void UDF_Setup()
 #if 0
   iofld = iofldFactory::create();
   iofld->open(mesh, iofld::mode::write, "qcrit");
-  iofld->writeAttribute("uniform", "true");
+  iofld->writeAttribute("uniformSpacing", "true");
   iofld->writeAttribute("polynomialOrder", std::to_string(mesh->N + 2));
 
 #if 0

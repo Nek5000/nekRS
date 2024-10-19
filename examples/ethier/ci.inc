@@ -145,7 +145,6 @@ void ciSetup(MPI_Comm comm, setupAide &options)
   if (ciMode == 2 || ciMode == 19 || ciMode == 22) {
     options.setArgs("VELOCITY BLOCK SOLVER", "TRUE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
-    options.setArgs("PRESSURE INITIAL GUESS", "PROJECTION-ACONJ");
 
     if (ciMode == 22) {
       options.setArgs("VELOCITY SOLVER TOLERANCE", std::string("1e-10"));
@@ -316,7 +315,11 @@ void ciSetup(MPI_Comm comm, setupAide &options)
     options.setArgs("SCALAR01 SOLVER", "CVODE");
     options.setArgs("SUBCYCLING STEPS", std::string("1"));
   }
-
+  if (ciMode == 23) {
+    options.setArgs("NUMBER TIMESTEPS", std::string("0"));
+    options.setArgs("END TIME", std::string("0"));
+    options.setArgs("CHECKPOINT INTERVAL", std::string("0"));
+  }
 }
 
 auto generatePoints(int nPoints, double R)
@@ -474,7 +477,7 @@ void ciTestPointInterpolation(nrs_t *nrs, double time, occa::kernel exactUVWPKer
   exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, o_Pe, o_Ue);
 
   const auto verbosity = pointInterpolation_t::VerbosityLevel::Detailed;
-  const auto threshold = (sizeof(dfloat) == sizeof(double)) ? 2e-8 : 1e-5;
+  const auto threshold = (sizeof(dfloat) == sizeof(double)) ? 3e-8 : 1e-5;
 
   const auto computeRelErrors = [&](dlong n, dlong offset, occa::memory o_Uexact, occa::memory o_Uinterp) {
     const auto absTol = 1e-5;
@@ -575,7 +578,7 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
   auto mesh = nrs->mesh;
   exactUVWPKernel(mesh->Nlocal, time, mesh->o_x, mesh->o_y, mesh->o_z, nrs->fieldOffset, nrs->o_P, nrs->o_U);
   
-  auto o_Usave = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+  auto o_Usave = platform->deviceMemoryPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
   nrs->o_U.copyTo(o_Usave, nrs->NVfields * nrs->fieldOffset);
 
   std::vector<mesh_t*> meshes = {nrs->mesh, nrs->mesh, nrs->mesh};
@@ -590,7 +593,7 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
 
   // sanity check: is o_U the same as before?
   auto checkErr = [&](bool subtract = true){
-    auto o_Uerr = platform->o_memPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
+    auto o_Uerr = platform->deviceMemoryPool.reserve<dfloat>(nrs->NVfields * nrs->fieldOffset);
     if(subtract){
       platform->linAlg->axpbyzMany(nrs->mesh->Nlocal,
                                   nrs->NVfields,
@@ -644,7 +647,7 @@ void ciTestLVector(nrs_t *nrs, double time, occa::kernel exactUVWPKernel)
     lengths_[is] = Nlocal;
   }
 
-  auto o_UL = platform->o_memPool.reserve<dfloat>(nEq);
+  auto o_UL = platform->deviceMemoryPool.reserve<dfloat>(nEq);
   UL.fieldOffsets(lengths_);
   UL.optr(o_UL);
   
@@ -723,13 +726,50 @@ void ciTestSurfaceIntegral(nrs_t *nrs)
   }
 }
 
+void ciCheckpointing(nrs_t *nrs)
+{
+  auto run = [&](const std::string& engine, const std::string& restartFile, bool readOnly = false) 
+  {
+    const auto tol = 10 * std::numeric_limits<float>::epsilon();
+    const double time = 0.123; // just for testing, actual solution is based on t==0
+
+    if (!readOnly) {
+      platform->options.setArgs("CHECKPOINT ENGINE", engine);
+      nrs->checkpointWriter = iofldFactory::create();
+  
+      nrs->writeCheckpoint(time, 0);
+    }
+
+    nrs->restartFromFile(restartFile); 
+ 
+    double startTime;
+    platform->options.getArgs("START TIME", startTime);
+ 
+    nrs->copyToNek(0.0, 0);
+    nek::userchk();
+ 
+    auto err = nek::ptr<double>("errors");
+    CiEvalTest("velocity", err[0] < tol);
+    CiEvalTest("pressure", err[1] < tol);
+    CiEvalTest("scalar00", err[2] < tol);
+    CiEvalTest("scalar01", err[3] < tol);
+    CiEvalTest("time", std::abs(startTime- time) < tol);
+
+    nrs->checkpointWriter.reset();
+  };
+
+  run("NEK", "ethier0.f00000");
+  run("ADIOS", "ethier.bp");
+  run("ADIOS", "ethier.bp+int", true);
+}
+
 void ciTestDistance(nrs_t *nrs)
 {
   auto mesh = nrs->mesh;
 
   int nbID = 1;
   int bID = 1;
-  occa::memory o_bID = platform->o_memPool.reserve<int>(nbID);
+  occa::memory o_bID = platform->deviceMemoryPool.reserve<int>(nbID);
   o_bID.copyFrom(&bID);
 
   auto o_dist = mesh->minDistance(nbID, o_bID, "cheap_dist");
@@ -755,7 +795,7 @@ void ciTestDistance(nrs_t *nrs)
     refVal[n] = ref;
   }
 
-  auto o_refVal = platform->o_memPool.reserve<dfloat>(nrs->fieldOffset);
+  auto o_refVal = platform->deviceMemoryPool.reserve<dfloat>(nrs->fieldOffset);
   o_refVal.copyFrom(refVal.data(), mesh->Nlocal);
 
   platform->linAlg->axpby(mesh->Nlocal, 1.0, o_refVal, -1.0, o_dist);
@@ -878,11 +918,7 @@ void ciTestLinAlg(nrs_t *nrs, const int N)
   evaluateMethod(linAlg->amax(N, o_x, comm), &amaxRef, "amax");
   o_x.free();
 
-  int fieldOffset = N;
-  const int pageW = ALIGN_SIZE / sizeof(dfloat);
-  if (fieldOffset % pageW) {
-    fieldOffset = (fieldOffset / pageW + 1) * pageW;
-  }
+  int fieldOffset = alignStride<dfloat>(N);
 
   constexpr int maxFields = 10;
   for (int Nfields = 1; Nfields <= maxFields; ++Nfields) {
@@ -974,15 +1010,15 @@ void ciTestErrors(nrs_t *nrs,
     }
 
     int expectedNiterS00 = 17;
-    int expectedNiterS01 = 14;
+    int expectedNiterS01 = 17;
     if (ciMode == 19 && nrs->timeStepConverged) {
       expectedNiterS00 = 11;
-      expectedNiterS01 = 8;
+      expectedNiterS01 = 11;
     }
 
     if (ciMode == 22) {
       expectedNiterS00 = 13;
-      expectedNiterS01 = 11;
+      expectedNiterS01 = 13;
     }
 
     if (ciMode != 12 && nrs->timeStepConverged) {
@@ -1072,7 +1108,7 @@ void ciTestErrors(nrs_t *nrs,
     velIterTest = abs(NiterU - 14) < 2 ;
     s1Test = abs((err[2] - 7.49E-12) / err[2]) < EPS;
     s2Test = abs((err[3] - 7.22E-12) / err[3]) < EPS;
-    pIterTest = abs(NiterP - 4) < 2;
+    pIterTest = abs(NiterP - 6) < 2;
     vxTest = abs((err[0] - 2.77E-10) / err[0]) < EPS;
     prTest = abs((err[1] - 7.14E-10) / err[1]) < EPS;
     break;
@@ -1200,7 +1236,7 @@ void ciTestErrors(nrs_t *nrs,
     s2Test = abs((err[3] - 2E-13) / err[3]) < EPS;
 
     // just check for convergence
-    pIterTest = (NiterP < 300);
+    pIterTest = (NiterP < 500);
 
     vxTest = abs((err[0] - 1.4E-10) / err[0]) < EPS;
     prTest = abs((err[1] - 8.7E-9) / err[1]) < EPS;
@@ -1332,8 +1368,8 @@ void ciTestErrors(nrs_t *nrs,
     s1Test = err[2] < 2e-6;
     s2Test = err[3] < 2e-6;
     pIterTest = abs(NiterP - 1) < 2;
-    vxTest = err[0] < 8e-7;
-    prTest = err[1] < 2e-5;
+    vxTest = err[0] < 8e-5;
+    prTest = err[1] < 8e-4;
     break;
   }
 

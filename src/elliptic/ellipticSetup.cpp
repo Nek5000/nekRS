@@ -328,8 +328,8 @@ void ellipticSolveSetup(elliptic_t *elliptic, const occa::memory &o_lambda0, con
 
   if (platform->options.compareArgs("ENABLE GS COMM OVERLAP", "TRUE")) {
     const auto Nlocal = elliptic->Nfields * static_cast<size_t>(elliptic->fieldOffset);
-    auto o_p = platform->o_memPool.reserve<dfloat>(Nlocal);
-    auto o_Ap = platform->o_memPool.reserve<dfloat>(Nlocal);
+    auto o_p = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
+    auto o_Ap = platform->deviceMemoryPool.reserve<dfloat>(Nlocal);
 
     auto timeEllipticOperator = [&]() {
       const int Nsamples = 10;

@@ -20,7 +20,7 @@ AeroForce *nrs_t::aeroForces(int nbID, const occa::memory &o_bID, const occa::me
     o_rho = this->o_rho;
   }
 
-  auto o_forces = platform->o_memPool.reserve<dfloat>(2 * mesh->dim * mesh->Nelements);
+  auto o_forces = platform->deviceMemoryPool.reserve<dfloat>(2 * mesh->dim * mesh->Nelements);
   static occa::kernel kernel;
   if (!kernel.isInitialized()) {
     kernel = platform->kernelRequests.load("nrs-aeroForces");

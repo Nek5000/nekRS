@@ -54,7 +54,6 @@ void ellipticBuildFEM(elliptic_t* elliptic,
                       dlong* nnz,
                       hlong* globalStarts)
 {
-  mesh_t *mesh = elliptic->mesh;
   MPI_Barrier(platform->comm.mpiComm);
   const double tStart = MPI_Wtime();
   if(platform->comm.mpiRank == 0) 
@@ -78,7 +77,6 @@ void ellipticBuildFEMHex3D(elliptic_t* elliptic,
 {
   
   mesh_t* mesh = elliptic->mesh;
-  setupAide& options = elliptic->options;
 
   std::vector<pfloat> ggeo(mesh->o_ggeo.length());
   mesh->o_ggeo.copyTo(ggeo.data());
@@ -322,7 +320,6 @@ void ellipticBuildFEMGalerkin(elliptic_t* elliptic,
     exit(1);
   }
 
-  mesh_t* mesh = elliptic->mesh;
   switch(elliptic->elementType) {
   case TRIANGLES:
   case TETRAHEDRA:

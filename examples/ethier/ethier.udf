@@ -337,11 +337,6 @@ int timeStepConverged(int stage)
 
 void UDF_Setup()
 {
-  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
-    nek::getIC();
-    nrs->copyFromNek();
-  }
-
   // only ciMode 1 exercises the particles
   if (ciMode == 1) {
 
@@ -492,6 +487,10 @@ void UDF_ExecuteStep(double time, int tstep)
     if (nrs->Nscalar > 1) {
       cds->o_S.copyFrom(nrs->o_U, mesh->Nlocal, 1 * cds->fieldOffset[0]);
     }
+  }
+
+  if (ciMode == 23) {
+    ciCheckpointing(nrs);
   }
 
   // only ciMode 1 exercises the particles path

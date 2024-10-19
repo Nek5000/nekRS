@@ -32,8 +32,10 @@ occa::memory mesh_t::intpMatrix(std::vector<dfloat> M)
   return o_J[M.size() - 1];
 }
 
-void mesh_t::interpolate(const occa::memory& o_z, mesh_t *mesh, occa::memory& o_zM, bool uniform)
+void mesh_t::interpolate(const occa::memory& o_z, mesh_t *mesh, occa::memory& o_zM, bool uniform, dlong nel_)
 {
+  auto nel = (nel_ > 0) ? nel_ : this->Nelements;
+
   if (uniform) {
     auto M = [&]()
     {
@@ -46,13 +48,12 @@ void mesh_t::interpolate(const occa::memory& o_z, mesh_t *mesh, occa::memory& o_
       return r;
     }();
 
-    this->intpKernel[mesh->N](this->Nelements, intpMatrix(M), o_z, o_zM);
+    this->intpKernel[mesh->N](nel, intpMatrix(M), o_z, o_zM);
     return;
   }
 
   std::vector<dfloat> M(mesh->Nq);
   for(int i = 0; i < M.size(); i++) M[i] = mesh->r[i];
 
-  const dlong nel = std::min(this->Nelements, mesh->Nelements);
   this->intpKernel[mesh->N](nel, intpMatrix(M), o_z, o_zM);
 }

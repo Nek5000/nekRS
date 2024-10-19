@@ -37,11 +37,11 @@ void neknek_t::fixCoupledSurfaceFlux(occa::memory o_U)
     isCalled = true;
   }
   if (hasOutlet) {
-     return;
+    return;
   }
 
   constexpr int nReduction = 2;
-  auto o_reduction = platform->o_memPool.reserve<dfloat>(nReduction * mesh->Nelements);
+  auto o_reduction = platform->deviceMemoryPool.reserve<dfloat>(nReduction * mesh->Nelements);
 
   this->computeFluxKernel(mesh->Nelements,
                           nrs->fieldOffset,
@@ -72,8 +72,7 @@ void neknek_t::fixCoupledSurfaceFlux(occa::memory o_U)
   }
 
   if (platform->verbose && platform->comm.mpiRank == 0) {
-    printf("neknek::fixCoupledSurfaceFlux flux = %11.4e, area = %11.4e, gamma = %11.4e\n",
-           flux, area , gamma);
+    printf("neknek::fixCoupledSurfaceFlux flux = %11.4e, area = %11.4e, gamma = %11.4e\n", flux, area, gamma);
   }
 
   this->fixSurfaceFluxKernel(mesh->Nelements,

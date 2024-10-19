@@ -61,7 +61,7 @@ void ciTestErrors(nrs_t *nrs, double time, int tstep)
   auto forces = nrs->aeroForces(bidWall.size(), o_bidWall, o_Sij);
   o_Sij.free();
 
-  auto o_tmp = platform->o_memPool.reserve<dfloat>(mesh->Nlocal);
+  auto o_tmp = platform->deviceMemoryPool.reserve<dfloat>(mesh->Nlocal);
   platform->linAlg->fill(mesh->Nlocal, 1.0, o_tmp);
   const auto areaWall = mesh->surfaceAreaMultiplyIntegrate(bidWall.size(), o_bidWall, o_tmp);
 

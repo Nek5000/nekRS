@@ -181,7 +181,9 @@ void linAlg_t::setup()
   double tStartLoadKernel = MPI_Wtime();
   {
     std::string prefix = "";
-    if (sizeof(dfloat) != sizeof(float)) prefix = "p"; 
+    if (sizeof(dfloat) != sizeof(float)) {
+      prefix = "p";
+    }
     pfillKernel = kernelRequests.load(prefix + "fill");
     paxmyzManyKernel = kernelRequests.load(prefix + "axmyzMany");
     padyManyKernel = kernelRequests.load(prefix + "adyMany");
@@ -243,26 +245,27 @@ void linAlg_t::setup()
     magSqrSymTensorDiagKernel = kernelRequests.load("magSqrSymTensorDiag");
     magSqrTensorKernel = kernelRequests.load("magSqrTensor");
     maskKernel = kernelRequests.load("mask");
-
   }
 }
 
-linAlg_t::~linAlg_t()
-{
-}
+linAlg_t::~linAlg_t() {}
 
 /*********************/
 /* vector operations */
 /*********************/
 
-void linAlg_t::mask(const dlong N, const occa::memory& o_maskIds, occa::memory &o_a)
+void linAlg_t::mask(const dlong N, const occa::memory &o_maskIds, occa::memory &o_a)
 {
-  if(N) maskKernel(N, o_maskIds, o_a);
+  if (N) {
+    maskKernel(N, o_maskIds, o_a);
+  }
 }
 
-void linAlg_t::pmask(const dlong N, const occa::memory& o_maskIds, occa::memory &o_a)
+void linAlg_t::pmask(const dlong N, const occa::memory &o_maskIds, occa::memory &o_a)
 {
-  if(N) pmaskKernel(N, o_maskIds, o_a);
+  if (N) {
+    pmaskKernel(N, o_maskIds, o_a);
+  }
 }
 
 // o_a[n] = alpha
@@ -1401,7 +1404,6 @@ void linAlg_t::magSqrTensor(const dlong N,
   magSqrTensorKernel(N, fieldOffset, o_tensor, o_mag);
 }
 
-
 void linAlg_t::magSqrSymTensor(const dlong N,
                                const dlong fieldOffset,
                                const occa::memory &o_tensor,
@@ -1417,9 +1419,9 @@ void linAlg_t::magSqrSymTensor(const dlong N,
 }
 
 void linAlg_t::magSqrSymTensorDiag(const dlong N,
-                               const dlong fieldOffset,
-                               const occa::memory &o_tensor,
-                               occa::memory &o_mag)
+                                   const dlong fieldOffset,
+                                   const occa::memory &o_tensor,
+                                   occa::memory &o_mag)
 {
   nekrsCheck(o_tensor.length() < 6 * fieldOffset,
              MPI_COMM_SELF,
@@ -1429,8 +1431,6 @@ void linAlg_t::magSqrSymTensorDiag(const dlong N,
 
   magSqrSymTensorDiagKernel(N, fieldOffset, o_tensor, o_mag);
 }
-
-
 
 void linAlg_t::linearCombination(const dlong N,
                                  const dlong Nfields,
@@ -1454,27 +1454,27 @@ void linAlg_t::linearCombination(const dlong N,
 }
 
 dfloat linAlg_t::maxRelativeError(const dlong N,
-                                  const dlong Nfields,
+                                  const int Nfields,
                                   const dlong fieldOffset,
                                   const dfloat absTol,
                                   const occa::memory &o_u,
                                   const occa::memory &o_uRef,
                                   MPI_Comm comm)
 {
-  auto o_err = platform->o_memPool.reserve<dfloat>(std::max(Nfields * fieldOffset, N));
+  auto o_err = platform->deviceMemoryPool.reserve<dfloat>(std::max(Nfields * fieldOffset, N));
   relativeErrorKernel(N, Nfields, fieldOffset, absTol, o_u, o_uRef, o_err);
   return this->amaxMany(N, Nfields, fieldOffset, o_err, comm);
 }
 
 dfloat linAlg_t::maxAbsoluteError(const dlong N,
-                                  const dlong Nfields,
+                                  const int Nfields,
                                   const dlong fieldOffset,
                                   const dfloat absTol,
                                   const occa::memory &o_u,
                                   const occa::memory &o_uRef,
                                   MPI_Comm comm)
 {
-  auto o_err = platform->o_memPool.reserve<dfloat>(std::max(Nfields * fieldOffset, N));
+  auto o_err = platform->deviceMemoryPool.reserve<dfloat>(std::max(Nfields * fieldOffset, N));
   absoluteErrorKernel(N, Nfields, fieldOffset, absTol, o_u, o_uRef, o_err);
   return this->amaxMany(N, Nfields, fieldOffset, o_err, comm);
 }

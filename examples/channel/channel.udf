@@ -41,11 +41,6 @@ void UDF_Setup()
   nrs->userVelocitySource = &userf;
   nrs->userProperties = &uservp;
 
-  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
-    nek::getIC();
-    nrs->copyFromNek();
-  }
-
   o_nekFU.resize(nrs->NVfields * nrs->fieldOffset);
   o_nekMue.resize(mesh->Nlocal);
 
