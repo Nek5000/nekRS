@@ -89,7 +89,7 @@ elseif(OCCA_HIP_ENABLED)
 endif()
 
 if(NEKRS_GPU_MPI)
-  list(APPEND HYPRE_CONFIGURE_FLAGS "--enable-gpu-aware-mpi --with-cxxstandard=17")
+  list(APPEND HYPRE_CONFIGURE_FLAGS "--enable-gpu-aware-mpi" "--with-cxxstandard=17")
 endif()
 
   set(HYPRE_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/HYPRE_BUILD_DEVICE-prefix)
