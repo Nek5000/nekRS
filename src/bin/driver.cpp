@@ -95,16 +95,36 @@ int main(int argc, char** argv)
       std::cout << "FATAL ERROR: Requested thread level not provided by MPI library" << std::endl;
       exit(EXIT_FAILURE);
     }
-    MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
   }
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  const double time0 = MPI_Wtime(); 
+  MPI_Comm commGlobal = MPI_COMM_NULL;
 
-  MPI_Comm commGlobal;
+#ifdef MPI_HONOR_APPNUM
+  {
+    int *appnum = nullptr;
+    int flag = 0;
+    MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_APPNUM, &appnum, &flag);
+    if (!flag || appnum == nullptr) {
+      std::cout << "FATAL ERROR: MPI_APPNUM not available\n" << std::endl;
+      MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    }
+
+    MPI_Comm_split(MPI_COMM_WORLD, *appnum, 0, &commGlobal);
+
+    if (commGlobal == MPI_COMM_NULL) {
+      std::cout << "FATAL ERROR: unexpected MPI_COMM_NULL\n" << std::endl;
+      MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    }
+  }
+#else
   MPI_Comm_dup(MPI_COMM_WORLD, &commGlobal);
+#endif
 
-  MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+  MPI_Comm_rank(commGlobal, &worldRank);
+  MPI_Comm_set_errhandler(commGlobal, MPI_ERRORS_RETURN);
+  MPI_Barrier(commGlobal);
+
+  const double time0 = MPI_Wtime();
 
   if(!getenv("NEKRS_HOME")) {
     std::cout << "FATAL ERROR: Cannot find env variable NEKRS_HOME!" << "\n";

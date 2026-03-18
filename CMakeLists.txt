@@ -156,6 +156,8 @@ set(NEKRS_BUILD_FLOAT ON CACHE BOOL "Build dfloat = float version")
 
 set(ENABLE_CPPTRACE OFF CACHE BOOL "Enable cpptrace for stack tracing")
 
+set(MPI_HONOR_APPNUM OFF CACHE BOOL "Split global communicator by MPI_APPNUM in MPMD launches")
+
 ###############################################################################
 # Set compiler flags                                                          #
 ###############################################################################
