@@ -373,6 +373,7 @@ int main(int argc, char** argv)
   const int exitValue = nekrs::finalize();
 
   MPI_Barrier(commGlobal);
+  MPI_Comm_free(&commGlobal);
   MPI_Finalize();
 
   if(exitValue)
