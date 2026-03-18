@@ -88,7 +88,11 @@ int main(int argc, char** argv)
     int provided;
     int retval =  MPI_Init_thread(&argc, &argv, request, &provided);
     if (retval != MPI_SUCCESS) {
-      std::cout << "FATAL ERROR: Cannot initialize MPI!" << "\n";
+      std::cout << "FATAL ERROR: Cannot initialize MPI!" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    if (provided < request) {
+      std::cout << "FATAL ERROR: Requested thread level not provided by MPI library" << std::endl;
       exit(EXIT_FAILURE);
     }
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
