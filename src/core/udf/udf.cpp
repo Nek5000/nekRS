@@ -285,6 +285,7 @@ void udfLoad()
   *(void **)(&udf.autoloadKernels) = udfLoadFunction("UDF_AutoLoadKernels", 0);
   *(void **)(&udf.autoloadPlugins) = udfLoadFunction("UDF_AutoLoadPlugins", 1);
   *(void **)(&udf.executeStep) = udfLoadFunction("UDF_ExecuteStep", 1);
+  *(void **)(&udf.finalize) = udfLoadFunction("UDF_Finalize", 0);
 }
 
 void udfEcho()

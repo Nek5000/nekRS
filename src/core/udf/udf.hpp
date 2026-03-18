@@ -14,6 +14,7 @@ void UDF_LoadKernels(deviceKernelProperties& kernelInfo);
 void UDF_AutoLoadKernels(occa::properties &kernelInfo);
 void UDF_AutoLoadPlugins(occa::properties &kernelInfo);
 void UDF_ExecuteStep(double time, int tstep);
+void UDF_Finalize();
 }
 
 using udfsetup0 = void (*)(MPI_Comm, setupAide &);
@@ -22,6 +23,7 @@ using udfloadKernels = void (*)(deviceKernelProperties &);
 using udfautoloadKernels = void (*)(occa::properties &);
 using udfautoloadPlugins = void (*)(occa::properties &);
 using udfexecuteStep = void (*)(double, int);
+using udffinalize = void (*)();
 
 struct UDF {
   udfsetup0 setup0;
@@ -30,6 +32,7 @@ struct UDF {
   udfautoloadKernels autoloadKernels;
   udfautoloadPlugins autoloadPlugins;
   udfexecuteStep executeStep;
+  udffinalize finalize;
 };
 
 extern UDF udf;
