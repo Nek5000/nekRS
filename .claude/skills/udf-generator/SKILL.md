@@ -104,6 +104,15 @@ Check the generated files for consistency:
 - For constant pressure-gradient driven flows, prefer `constFlowRate` in `[GENERAL]` over manual forcing
 - `regularization = hpfrt` requires `+nModes=<int>+scalingCoeff=<float>` — omitting either causes errors
 - Never include `ci.inc` or CI-related code in generated cases — that's for regression tests only
+- **Include paths**: use `#include "RANSktau.hpp"`, `#include "tavg.hpp"`, `#include "lowMach.hpp"` — NOT `#include "plugins/RANSktau.hpp"`. Match the style used in existing examples.
+- **Do not use `usrwrk` for constant BC values.** For uniform or constant boundary values, pass them as compile-time constants via `UDF_LoadKernels` using `kernelInfo.define("p_MY_CONST") = value`, then reference `p_MY_CONST` directly in OKL code. Reserve `usrwrk` for spatially/temporally varying BC data computed on the host.
+- **Do not generate dead code.** Only include OKL kernels and helper functions that are actually called. For example, do not include a `scalarScaledAdd` kernel unless the case has a temperature scalar with turbulent diffusion.
+- **Always include `UDF_LoadKernels`** if the UDF defines any OKL kernels or uses compile-time constants in `#ifdef __okl__` blocks. Even an empty body is fine.
+- **IC vector sizing**: use `nrs->fluid->fieldOffsetSum` for velocity IC vectors (not `mesh->dim * nrs->fluid->fieldOffset`). This is the idiomatic pattern from existing examples.
+- **Do not duplicate `.par` settings in code.** If `equation = navierStokes+variableViscosity` is in the `.par` file, do not also call `options.setArgs("PROBLEMTYPE EQUATION", ...)` in `UDF_Setup0`. Pick one place.
+- **CFL defaults**: for RANS cases use `targetCFL=0.5+initial=1e-3` (conservative). For well-resolved DNS/LES, `targetCFL=2.0` is acceptable. Do not use very small initial dt (e.g., 1e-6) unless the physics demands it.
+- **Always set `stopAt` explicitly** in `[GENERAL]` (e.g., `stopAt = numSteps` or `stopAt = endTime`). The default is `numSteps` but reference examples always state it explicitly for clarity.
+- **Always add `userSections = CASEDATA`** in `[GENERAL]` when the `.par` file includes a `[CASEDATA]` section. This is the documented pattern used by reference examples (e.g., `ethier.par`).
 
 ## File Templates
 
@@ -112,10 +121,12 @@ Check the generated files for consistency:
 ```ini
 [GENERAL]
 polynomialOrder = 7
+stopAt = numSteps
 numSteps = 1000
 dt = 1e-03
 timeStepper = tombo2
 checkpointInterval = 500
+userSections = CASEDATA
 
 [FLUID VELOCITY]
 boundaryTypeMap = <types matching mesh boundary IDs>
@@ -125,6 +136,9 @@ density = 1.0
 
 [FLUID PRESSURE]
 residualTol = 1e-04
+
+[CASEDATA]
+# user-defined parameters here
 ```
 
 ### Minimal `.udf` Template

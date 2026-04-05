@@ -7,11 +7,11 @@
 #include "udf.hpp"
 ```
 
-Additional headers by feature:
-- `#include "plugins/tavg.hpp"` — time averaging
-- `#include "plugins/RANSktau.hpp"` — k-tau RANS
-- `#include "plugins/lowMach.hpp"` — low-Mach
-- `#include "plugins/lpm.hpp"` — Lagrangian particles
+Additional headers by feature (use short form, matching existing examples):
+- `#include "tavg.hpp"` — time averaging
+- `#include "RANSktau.hpp"` — k-tau RANS
+- `#include "lowMach.hpp"` — low-Mach
+- `#include "lpm.hpp"` — Lagrangian particles
 
 ## Core Callback Signatures
 
@@ -204,12 +204,28 @@ void userSource(double time)
 
 ## Pattern: RANS k-tau SST
 
-Requires scalars `K` and `TAU` in `.par`.
+Requires scalars `K` and `TAU` in `.par`, and `equation = navierStokes+variableViscosity`
+in `[PROBLEMTYPE]`.
+
+### Minimal RANS (no temperature)
 
 ```cpp
-#include "nrs.hpp"
-#include "udf.hpp"
-#include "plugins/RANSktau.hpp"
+#include "RANSktau.hpp"
+
+#ifdef __okl__
+
+void udfDirichlet(bcData *bc)
+{
+  // Wall BC for k and tau
+  if (isField("scalar k")) {
+    bc->sScalar = 0.0;
+  }
+  if (isField("scalar tau")) {
+    bc->sScalar = 1e-12;
+  }
+}
+
+#endif
 
 void userq(double time)
 {
@@ -218,32 +234,171 @@ void userq(double time)
 
 void uservp(double time)
 {
-  auto mesh = nrs->meshV;
-
-  // Update RANS eddy viscosity
   RANSktau::updateProperties();
+}
 
-  // If there's a temperature scalar, add turbulent diffusion
-  dfloat conduct;
-  platform->options.getArgs("SCALAR00 DIFFUSIVITY", conduct);
-  const dfloat Pr_t = 0.85;
-  scalarScaledAdd(mesh->Nlocal, conduct, 1.0 / Pr_t,
-                  RANSktau::o_mue_t(),
-                  nrs->scalar->o_diffusionCoeff("temperature"));
+void UDF_Setup0(MPI_Comm comm, setupAide &options) {}
+
+void UDF_Setup()
+{
+  nrs->userProperties = &uservp;
+  nrs->userSource = &userq;
+
+  // Set IC if not restarting
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto mesh = nrs->meshV;
+    std::vector<dfloat> U(nrs->fluid->fieldOffsetSum, 0.0);
+    std::vector<dfloat> k(mesh->Nlocal, 0.01);
+    std::vector<dfloat> tau(mesh->Nlocal, 0.1);
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      U[n + 0 * nrs->fieldOffset] = 1.0;
+    }
+    nrs->fluid->o_U.copyFrom(U.data(), U.size());
+    nrs->scalar->o_solution("k").copyFrom(k.data(), k.size());
+    nrs->scalar->o_solution("tau").copyFrom(tau.data(), tau.size());
+  }
+
+  RANSktau::setup(nrs->scalar->nameToIndex.find("k")->second);
+}
+
+void UDF_ExecuteStep(double time, int tstep) {}
+```
+
+### RANS with Inlet Turbulence (inflow/outflow cases)
+
+For cases with inflow BCs, pass inlet k/tau as compile-time constants:
+
+```cpp
+#include "RANSktau.hpp"
+
+static dfloat P_U_INLET, P_K_INLET, P_TAU_INLET;
+
+#ifdef __okl__
+
+void udfDirichlet(bcData *bc)
+{
+  if (isField("fluid velocity")) {
+    if (bc->id == 1) {  // inlet
+      bc->uxFluid = p_U_INLET;
+      bc->uyFluid = 0.0;
+      bc->uzFluid = 0.0;
+    }
+  }
+  if (isField("scalar k")) {
+    if (bc->id == 1) {
+      bc->sScalar = p_K_INLET;
+    } else if (bc->id == 3) {  // wall
+      bc->sScalar = 0.0;
+    }
+  }
+  if (isField("scalar tau")) {
+    if (bc->id == 1) {
+      bc->sScalar = p_TAU_INLET;
+    } else if (bc->id == 3) {  // wall
+      bc->sScalar = 1e-12;
+    }
+  }
+}
+
+#endif
+
+void userq(double time)
+{
+  RANSktau::updateSourceTerms();
+}
+
+void uservp(double time)
+{
+  RANSktau::updateProperties();
+}
+
+void UDF_LoadKernels(deviceKernelProperties &kernelInfo)
+{
+  kernelInfo.define("p_U_INLET") = P_U_INLET;
+  kernelInfo.define("p_K_INLET") = P_K_INLET;
+  kernelInfo.define("p_TAU_INLET") = P_TAU_INLET;
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
-  // RANSktau requires stress formulation
-  options.setArgs("PROBLEMTYPE EQUATION", std::string("navierStokes+variableViscosity"));
+  dfloat TI;
+  platform->par->extract("casedata", "u_inlet", P_U_INLET);
+  platform->par->extract("casedata", "ti", TI);
+
+  // k = 1.5 * (U * TI)^2
+  P_K_INLET = 1.5 * (P_U_INLET * TI) * (P_U_INLET * TI);
+
+  // tau = 1/omega, omega = k^0.5 / (Cmu^0.25 * l_t), l_t = 0.07 * D
+  dfloat D;
+  platform->par->extract("casedata", "diameter", D);
+  const dfloat l_t = 0.07 * D;
+  const dfloat Cmu = 0.09;
+  const dfloat omega = sqrt(P_K_INLET) / (pow(Cmu, 0.25) * l_t);
+  P_TAU_INLET = 1.0 / omega;
 }
 
 void UDF_Setup()
 {
   nrs->userProperties = &uservp;
   nrs->userSource = &userq;
-  RANSktau::setup(nrs->scalar->nameToIndex["k"]);
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto mesh = nrs->meshV;
+    std::vector<dfloat> U(nrs->fluid->fieldOffsetSum, 0.0);
+    std::vector<dfloat> k(mesh->Nlocal, P_K_INLET);
+    std::vector<dfloat> tau(mesh->Nlocal, P_TAU_INLET);
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      U[n + 0 * nrs->fieldOffset] = P_U_INLET;
+    }
+    nrs->fluid->o_U.copyFrom(U.data(), U.size());
+    nrs->scalar->o_solution("k").copyFrom(k.data(), k.size());
+    nrs->scalar->o_solution("tau").copyFrom(tau.data(), tau.size());
+  }
+
+  RANSktau::setup(nrs->scalar->nameToIndex.find("k")->second);
 }
+
+void UDF_ExecuteStep(double time, int tstep) {}
+```
+
+### RANS with Temperature (turbulent heat transfer)
+
+Add turbulent diffusion to the temperature scalar's diffusion coefficient:
+
+```cpp
+// In uservp, AFTER RANSktau::updateProperties():
+dfloat conduct;
+platform->options.getArgs("SCALAR00 DIFFUSIVITY", conduct);
+const dfloat Pr_t = 0.85;
+// Need a scalarScaledAdd kernel for this:
+// Y[n] = conduct + (1/Pr_t) * mue_t[n]
+scalarScaledAdd(mesh->Nlocal, conduct, 1.0 / Pr_t,
+                RANSktau::o_mue_t(),
+                nrs->scalar->o_diffusionCoeff("temperature"));
+```
+
+Only include the `scalarScaledAdd` OKL kernel when the case has a temperature scalar.
+
+### RANS .par template
+
+```ini
+[GENERAL]
+polynomialOrder = 7
+dt = targetCFL=0.5+initial=1e-3
+timeStepper = tombo2
+scalars = k, tau
+
+[PROBLEMTYPE]
+equation = navierStokes+variableViscosity
+
+[SCALAR K]
+boundaryTypeMap = udfDirichlet, zeroNeumann, udfDirichlet
+residualTol = 1e-08
+
+[SCALAR TAU]
+boundaryTypeMap = udfDirichlet, zeroNeumann, udfDirichlet
+residualTol = 1e-08
+```
 ```
 
 ---
@@ -251,7 +406,7 @@ void UDF_Setup()
 ## Pattern: Time Averaging (tavg)
 
 ```cpp
-#include "plugins/tavg.hpp"
+#include "tavg.hpp"
 
 static std::unique_ptr<tavg> avg;
 
@@ -291,7 +446,7 @@ void UDF_ExecuteStep(double time, int tstep)
 ## Pattern: Low-Mach Variable Density
 
 ```cpp
-#include "plugins/lowMach.hpp"
+#include "lowMach.hpp"
 
 static dfloat P_GAMMA;
 static deviceMemory<dfloat> o_beta, o_kappa;
@@ -320,23 +475,23 @@ void UDF_Setup()
 
 ## Pattern: Custom Initial Conditions
 
-Set IC in `UDF_Setup()` after solvers are initialized:
+Set IC in `UDF_Setup()` after solvers are initialized. Use `fieldOffsetSum` for velocity:
 
 ```cpp
 void UDF_Setup()
 {
   auto mesh = nrs->meshV;
   auto [x, y, z] = mesh->xyzHost();
-  dlong Nlocal = mesh->Nlocal;
-  dlong fieldOffset = nrs->fieldOffset;
 
-  std::vector<dfloat> U(3 * fieldOffset, 0.0);
-  for (dlong n = 0; n < Nlocal; n++) {
-    U[n + 0 * fieldOffset] = 1.0;  // ux
-    U[n + 1 * fieldOffset] = 0.0;  // uy
-    U[n + 2 * fieldOffset] = 0.0;  // uz
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    std::vector<dfloat> U(nrs->fluid->fieldOffsetSum, 0.0);
+    for (dlong n = 0; n < mesh->Nlocal; n++) {
+      U[n + 0 * nrs->fieldOffset] = 1.0;  // ux
+      U[n + 1 * nrs->fieldOffset] = 0.0;  // uy
+      U[n + 2 * nrs->fieldOffset] = 0.0;  // uz
+    }
+    nrs->fluid->o_U.copyFrom(U.data(), U.size());
   }
-  nrs->fluid->o_U.copyFrom(U.data());
 }
 ```
 
