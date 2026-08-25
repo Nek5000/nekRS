@@ -11,3 +11,4 @@ build/
 logfile
 *.dat
 .cache/
+*.code-workspace

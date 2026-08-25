@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <set>
 #include <sstream>
 
@@ -21,8 +22,42 @@ bool setupCalled = false;
 
 occa::kernel samplePairsKernel;
 
+// Runtime state retained across Radiation::step() calls, populated once by
+// Radiation::setup() and reused every RADIATION updateFrequency steps to
+// couple the (fixed) view-factor matrix to the (time-varying) temperature
+// field via a gray-diffuse radiosity solve.
+int P_state = 0;
+std::vector<dfloat> F_state;             // [P][P], rank 0 only
+std::vector<dfloat> patchEmissivity_state; // [P], rank 0 only
+std::vector<dfloat> J_state;              // [P] radiosity, rank 0 only, warm-started
+dfloat stefanBoltzmann_state = (dfloat)5.670374419e-8;
+int updateFrequency_state = 10;
+dfloat radiosityTolerance_state = (dfloat)1e-6;
+int radiosityMaxIters_state = 100;
+
+// Which of this rank's local radiating patches (global patch index p, and
+// the Nfp volume-node indices for that patch face) need a flux scattered
+// back into bc->o_usrwrk each update.
+struct LocalRadiatingPatch {
+  int p;
+  std::vector<dlong> idxVol;
+};
+std::vector<LocalRadiatingPatch> localRadiatingPatches_state;
+
+std::vector<dfloat> parseDoubleList(const std::string &raw)
+{
+  std::vector<dfloat> vals;
+  for (const auto &tok : serializeString(raw, ',')) {
+    if (!tok.empty()) {
+      vals.push_back((dfloat)std::stod(tok));
+    }
+  }
+  return vals;
+}
+
 struct RadiationPatch {
   std::vector<dfloat> coords; // 3*Nfp, laid out coords[3*n+0/1/2]
+  std::vector<dlong> idxVol;  // Nfp volume-node indices (mesh->vmapM), local to this rank
   int boundaryID = 0;
   dfloat refNx = 0, refNy = 0, refNz = 0;
 };
@@ -64,19 +99,28 @@ std::vector<RadiationPatch> gatherLocalPatches(mesh_t *mesh,
       RadiationPatch patch;
       patch.boundaryID = bID;
       patch.coords.resize(3 * mesh->Nfp);
+      patch.idxVol.resize(mesh->Nfp);
 
       for (int n = 0; n < mesh->Nfp; ++n) {
         const dlong idM = mesh->vmapM[e * mesh->Nfaces * mesh->Nfp + f * mesh->Nfp + n];
         patch.coords[3 * n + 0] = x[idM];
         patch.coords[3 * n + 1] = y[idM];
         patch.coords[3 * n + 2] = z[idM];
+        patch.idxVol[n] = idM;
       }
 
       const dlong sid = e * mesh->Nfaces * mesh->Nfp + f * mesh->Nfp + 0;
       mesh->o_sgeo.copyTo(sgeoNode.data(), mesh->Nsgeo, sid * mesh->Nsgeo);
-      patch.refNx = sgeoNode[NXID];
-      patch.refNy = sgeoNode[NYID];
-      patch.refNz = sgeoNode[NZID];
+      // sgeo's normal points OUT of the fluid domain (CFD convention). A
+      // radiating surface's normal must point INTO the enclosure it bounds
+      // (toward whatever it can see), so negate it here -- empirically
+      // confirmed via the radiationPlates case: with the un-negated normal,
+      // cosI/cosJ were always negative for any cross-plate pair (both plates'
+      // normals pointing away from each other), so every sample was rejected
+      // and F_ij came out as exactly 0 for all off-diagonal pairs.
+      patch.refNx = -sgeoNode[NXID];
+      patch.refNy = -sgeoNode[NYID];
+      patch.refNz = -sgeoNode[NZID];
 
       patches.push_back(patch);
       isRadiatingFlag.push_back(radiatingIDs.count(bID) ? 1 : 0);
@@ -103,7 +147,8 @@ GlobalPatches allgatherPatches(const std::vector<RadiationPatch> &local,
                                const std::vector<int> &isRadiatingFlag,
                                const std::vector<int> &isObstructionFlag,
                                int Nfp,
-                               MPI_Comm comm)
+                               MPI_Comm comm,
+                               int &myDispl)
 {
   const int nLocal = static_cast<int>(local.size());
 
@@ -118,7 +163,8 @@ GlobalPatches allgatherPatches(const std::vector<RadiationPatch> &local,
     localRefN[3 * i + 2] = local[i].refNz;
   }
 
-  int nRanks;
+  int rank, nRanks;
+  MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &nRanks);
 
   std::vector<int> counts(nRanks);
@@ -130,6 +176,7 @@ GlobalPatches allgatherPatches(const std::vector<RadiationPatch> &local,
     displs[r] = total;
     total += counts[r];
   }
+  myDispl = displs[rank];
 
   GlobalPatches g;
   g.K = total;
@@ -230,7 +277,10 @@ void Radiation::setup()
             "Radiation::setup called prior to Radiation::buildKernel!");
 
   nrs = dynamic_cast<nrs_t *>(platform->app);
-  auto mesh = nrs->fluid->mesh;
+  // meshV (not fluid->mesh) so this module works whether or not the flow
+  // solver is enabled (FLUID=FALSE leaves nrs->fluid null) -- confirmed via
+  // an empirical probe case that meshV is populated unconditionally.
+  auto mesh = nrs->meshV;
 
   const int rank = platform->comm.mpiRank();
   MPI_Comm comm = platform->comm.mpiComm();
@@ -256,7 +306,8 @@ void Radiation::setup()
   auto localPatches =
       gatherLocalPatches(mesh, participatingIDs, radiatingIDs, obstructionIDs, isRadiatingFlag, isObstructionFlag);
 
-  const auto global = allgatherPatches(localPatches, isRadiatingFlag, isObstructionFlag, mesh->Nfp, comm);
+  int myDispl = 0;
+  const auto global = allgatherPatches(localPatches, isRadiatingFlag, isObstructionFlag, mesh->Nfp, comm, myDispl);
 
   nekrsCheck(global.K == 0,
             comm,
@@ -294,6 +345,84 @@ void Radiation::setup()
     printf("Radiation: %d radiating patches, %d obstruction patches (global)\n",
           P,
           (int)obstructionIndices.size());
+  }
+
+  P_state = P;
+
+  // Map each local patch (this rank's slice of the global, rank-order
+  // concatenated patch list) back to its radiating-patch index p, so the
+  // per-step flux update knows which of bc->o_usrwrk's nodes belong to which
+  // patch. Radiating patches are not necessarily contiguous in p within a
+  // rank's local range (an obstruction-only patch can fall in between), so
+  // this is a lookup, not an offset.
+  std::vector<int> globalKToP(global.K, -1);
+  for (int p = 0; p < P; ++p) {
+    globalKToP[radiatingIndices[p]] = p;
+  }
+  localRadiatingPatches_state.clear();
+  for (int i = 0; i < static_cast<int>(localPatches.size()); ++i) {
+    const int k = myDispl + i;
+    const int p = globalKToP[k];
+    if (p >= 0) {
+      localRadiatingPatches_state.push_back({p, localPatches[i].idxVol});
+    }
+  }
+
+  // Boundary-ID groups (same grouping used for the CSV output below), needed
+  // on every rank -- not just rank 0 -- so the emissivity list can be parsed
+  // and length-validated identically everywhere.
+  std::set<int> groupIDSet;
+  for (int p = 0; p < P; ++p) {
+    groupIDSet.insert(global.boundaryID[radiatingIndices[p]]);
+  }
+  const std::vector<int> groups(groupIDSet.begin(), groupIDSet.end());
+  const int nGroups = static_cast<int>(groups.size());
+
+  std::vector<int> patchGroupIdx(P);
+  for (int p = 0; p < P; ++p) {
+    const int bID = global.boundaryID[radiatingIndices[p]];
+    const int gi = static_cast<int>(std::lower_bound(groups.begin(), groups.end(), bID) - groups.begin());
+    patchGroupIdx[p] = gi;
+  }
+
+  std::string emissivityStr;
+  std::vector<dfloat> emissivity(nGroups, (dfloat)1.0);
+  if (platform->options.getArgs("RADIATION EMISSIVITY", emissivityStr) && !emissivityStr.empty()) {
+    emissivity = parseDoubleList(emissivityStr);
+    nekrsCheck(static_cast<int>(emissivity.size()) != nGroups,
+              comm,
+              EXIT_FAILURE,
+              "[RADIATION] emissivity has %d entries but there are %d radiating boundary-ID groups!\n",
+              static_cast<int>(emissivity.size()),
+              nGroups);
+  }
+
+  platform->options.getArgs("RADIATION STEFAN BOLTZMANN", stefanBoltzmann_state);
+  platform->options.getArgs("RADIATION UPDATE FREQUENCY", updateFrequency_state);
+  platform->options.getArgs("RADIATION RADIOSITY TOLERANCE", radiosityTolerance_state);
+  platform->options.getArgs("RADIATION RADIOSITY MAX ITERS", radiosityMaxIters_state);
+
+  if (rank == 0) {
+    patchEmissivity_state.resize(P);
+    for (int p = 0; p < P; ++p) {
+      patchEmissivity_state[p] = emissivity[patchGroupIdx[p]];
+    }
+  }
+
+  // Radiative flux BC storage: this module owns platform->app->bc->o_usrwrk
+  // for phase 1 (single-purpose radiating cases). A case combining this with
+  // another o_usrwrk-based BC would need a follow-up to share offsets.
+  nekrsCheck(platform->app->bc->o_usrwrk.isInitialized() &&
+                platform->app->bc->o_usrwrk.size() != (size_t)mesh->Nlocal,
+            comm,
+            EXIT_FAILURE,
+            "%s\n",
+            "[RADIATION] platform->app->bc->o_usrwrk is already sized for something else; "
+            "the Radiation module currently requires exclusive use of it.");
+  if (!platform->app->bc->o_usrwrk.isInitialized() || platform->app->bc->o_usrwrk.size() == 0) {
+    platform->app->bc->o_usrwrk.resize(mesh->Nlocal);
+    std::vector<dfloat> zeroFlux(mesh->Nlocal, (dfloat)0);
+    platform->app->bc->o_usrwrk.copyFrom(zeroFlux);
   }
 
   const int Nfp = mesh->Nfp;
@@ -346,11 +475,46 @@ void Radiation::setup()
   MPI_Bcast(&cacheHit, 1, MPI_INT, 0, comm);
 
   if (cacheHit) {
+    // The runtime radiosity coupling (Radiation::step) needs F in memory,
+    // which the cache-hit path otherwise skips computing entirely. Reload it
+    // from the cached patch-level binary matrix instead; if that file isn't
+    // available (writeMatrix was off on the run that created the cache),
+    // fall through and recompute rather than silently leaving F_state empty.
+    int reloadOk = 0;
     if (rank == 0) {
-      printf("Radiation: cache hit, %s already up to date, skipping Monte Carlo pass\n", groupFile.c_str());
+      std::ifstream pf(patchFile, std::ios::binary);
+      if (pf.good()) {
+        int header[2];
+        pf.read(reinterpret_cast<char *>(header), sizeof(header));
+        if (pf.good() && header[0] == P && header[1] == P) {
+          std::vector<double> Fcached((size_t)P * P);
+          pf.read(reinterpret_cast<char *>(Fcached.data()), Fcached.size() * sizeof(double));
+          if (pf.good()) {
+            F_state.assign((size_t)P * P, (dfloat)0);
+            for (size_t idx = 0; idx < Fcached.size(); ++idx) {
+              F_state[idx] = (dfloat)Fcached[idx];
+            }
+            J_state.assign(P, (dfloat)0);
+            reloadOk = 1;
+          }
+        }
+      }
     }
-    setupCalled = true;
-    return;
+    MPI_Bcast(&reloadOk, 1, MPI_INT, 0, comm);
+
+    if (reloadOk) {
+      if (rank == 0) {
+        printf("Radiation: cache hit, %s already up to date, skipping Monte Carlo pass\n", groupFile.c_str());
+      }
+      setupCalled = true;
+      return;
+    }
+
+    if (rank == 0) {
+      printf("Radiation: cache hit but %s is unavailable (writeMatrix was likely off); "
+            "recomputing view factors so the runtime radiosity coupling has a matrix to use\n",
+            patchFile.c_str());
+    }
   }
 
   // ---- radiating patch device arrays ----
@@ -570,19 +734,17 @@ void Radiation::setup()
       }
     }
 
-    std::set<int> groupIDSet;
-    for (int p = 0; p < P; ++p) {
-      groupIDSet.insert(global.boundaryID[radiatingIndices[p]]);
+    // Retained in memory (independent of writeMatrix, which only controls
+    // the on-disk copy) for Radiation::step()'s runtime radiosity coupling.
+    F_state.assign((size_t)P * P, (dfloat)0);
+    for (size_t idx = 0; idx < F.size(); ++idx) {
+      F_state[idx] = (dfloat)F[idx];
     }
-    const std::vector<int> groups(groupIDSet.begin(), groupIDSet.end());
-    const int nGroups = static_cast<int>(groups.size());
+    J_state.assign(P, (dfloat)0);
 
-    std::vector<int> patchGroupIdx(P);
     std::vector<double> groupArea(nGroups, 0.0);
     for (int p = 0; p < P; ++p) {
-      const int bID = global.boundaryID[radiatingIndices[p]];
-      const int gi = static_cast<int>(std::lower_bound(groups.begin(), groups.end(), bID) - groups.begin());
-      patchGroupIdx[p] = gi;
+      const int gi = patchGroupIdx[p];
       groupArea[gi] += areaEstGlobal[p];
     }
 
@@ -596,6 +758,7 @@ void Radiation::setup()
     }
 
     std::ofstream gf(groupFile);
+    gf << std::setprecision(15);
     gf << "g,h,F_gh,A_g\n";
     for (int gi = 0; gi < nGroups; ++gi) {
       for (int gj = 0; gj < nGroups; ++gj) {
@@ -627,4 +790,123 @@ void Radiation::setup()
   }
 
   setupCalled = true;
+}
+
+// Couples the (fixed) view-factor matrix F_state to the (time-varying)
+// temperature field: gathers per-patch average temperature, solves the
+// gray-diffuse radiosity system (warm-started from the previous call) for
+// the net radiative flux leaving each patch, and scatters the result into
+// platform->app->bc->o_usrwrk for the case's udfNeumann to consume. No-op
+// except every RADIATION updateFrequency steps -- the flux from the last
+// update is left in place in between.
+void Radiation::step(double time, int tstep)
+{
+  if (!setupCalled) {
+    return;
+  }
+  if (updateFrequency_state <= 0 || tstep % updateFrequency_state != 0) {
+    return;
+  }
+
+  MPI_Comm comm = platform->comm.mpiComm();
+  const int rank = platform->comm.mpiRank();
+  auto mesh = nrs->meshV;
+  const int P = P_state;
+
+  nekrsCheck(!nrs->scalar || nrs->scalar->nameToIndex.find("temperature") == nrs->scalar->nameToIndex.end(),
+            comm,
+            EXIT_FAILURE,
+            "%s\n",
+            "[RADIATION] step() requires a [TEMPERATURE] scalar field to couple to.");
+
+  // ---- this rank's per-local-patch average temperature ----
+  auto o_T = nrs->scalar->o_solution("temperature");
+  std::vector<dfloat> Thost(mesh->Nlocal);
+  o_T.copyTo(Thost, mesh->Nlocal);
+
+  const int nLocalRad = static_cast<int>(localRadiatingPatches_state.size());
+  std::vector<int> localP(std::max(nLocalRad, 1));
+  std::vector<dfloat> localT(std::max(nLocalRad, 1));
+  for (int i = 0; i < nLocalRad; ++i) {
+    const auto &patch = localRadiatingPatches_state[i];
+    dfloat sum = 0;
+    for (dlong idv : patch.idxVol) {
+      sum += Thost[idv];
+    }
+    localP[i] = patch.p;
+    localT[i] = sum / (dfloat)patch.idxVol.size();
+  }
+
+  // ---- rank 0 collects (patch index, T) pairs from every rank ----
+  int nRanks;
+  MPI_Comm_size(comm, &nRanks);
+  std::vector<int> counts(nRanks), displs(nRanks, 0);
+  MPI_Gather(&nLocalRad, 1, MPI_INT, counts.data(), 1, MPI_INT, 0, comm);
+  if (rank == 0) {
+    int total = 0;
+    for (int r = 0; r < nRanks; ++r) {
+      displs[r] = total;
+      total += counts[r];
+    }
+  }
+
+  std::vector<int> allP(rank == 0 ? P : 0);
+  std::vector<dfloat> allT(rank == 0 ? P : 0);
+  MPI_Gatherv(localP.data(), nLocalRad, MPI_INT, allP.data(), counts.data(), displs.data(), MPI_INT, 0, comm);
+  MPI_Gatherv(localT.data(), nLocalRad, MPI_DFLOAT, allT.data(), counts.data(), displs.data(), MPI_DFLOAT, 0, comm);
+
+  // ---- rank 0: gray-diffuse radiosity solve, warm-started from J_state ----
+  std::vector<dfloat> q(P, (dfloat)0);
+  if (rank == 0) {
+    std::vector<dfloat> T(P, (dfloat)0);
+    for (int i = 0; i < P; ++i) {
+      T[allP[i]] = allT[i];
+    }
+
+    std::vector<dfloat> Eb(P);
+    for (int i = 0; i < P; ++i) {
+      const dfloat Ti2 = T[i] * T[i];
+      Eb[i] = stefanBoltzmann_state * Ti2 * Ti2;
+    }
+
+    for (int iter = 0; iter < radiosityMaxIters_state; ++iter) {
+      dfloat maxDelta = 0;
+      for (int i = 0; i < P; ++i) {
+        dfloat sum = 0;
+        const dfloat *Fi = &F_state[(size_t)i * P];
+        for (int j = 0; j < P; ++j) {
+          sum += Fi[j] * J_state[j];
+        }
+        const dfloat eps = patchEmissivity_state[i];
+        const dfloat Jnew = eps * Eb[i] + (1 - eps) * sum;
+        maxDelta = std::max(maxDelta, (dfloat)std::fabs(Jnew - J_state[i]));
+        J_state[i] = Jnew;
+      }
+      if (maxDelta < radiosityTolerance_state) {
+        break;
+      }
+    }
+
+    // Net radiative flux leaving patch i, W/m^2 (positive: patch i is a net
+    // radiator, e.g. hotter than what it sees).
+    for (int i = 0; i < P; ++i) {
+      dfloat sum = 0;
+      const dfloat *Fi = &F_state[(size_t)i * P];
+      for (int j = 0; j < P; ++j) {
+        sum += Fi[j] * J_state[j];
+      }
+      q[i] = patchEmissivity_state[i] * (Eb[i] - sum);
+    }
+  }
+
+  MPI_Bcast(q.data(), P, MPI_DFLOAT, 0, comm);
+
+  // ---- scatter q back into bc->o_usrwrk at each local patch's nodes ----
+  std::vector<dfloat> fluxHost(mesh->Nlocal, (dfloat)0);
+  for (const auto &patch : localRadiatingPatches_state) {
+    for (dlong idv : patch.idxVol) {
+      fluxHost[idv] = q[patch.p];
+    }
+  }
+  platform->app->bc->o_usrwrk.copyFrom(fluxHost);
 }

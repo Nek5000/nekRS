@@ -136,6 +136,11 @@ static std::vector<std::string> radiationKeys = {
     {"writematrix"},
     {"outputfile"},
     {"cache"},
+    {"emissivity"},
+    {"stefanboltzmann"},
+    {"updatefrequency"},
+    {"radiositytolerance"},
+    {"radiositymaxiters"},
 };
 
 static std::vector<std::string> problemTypeKeys = {
