@@ -118,7 +118,7 @@ function _read_data_write_pdf(inputs, comm)
             # sleep in seconds, minimum is one milisecond = 0.001
             sleep(1)
             continue
-        else if read_status != ADIOS2.step_status_ok
+        elseif read_status != ADIOS2.step_status_ok
             break
         end
 
