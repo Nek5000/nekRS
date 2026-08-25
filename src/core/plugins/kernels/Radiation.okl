@@ -1,0 +1,542 @@
+// Monte Carlo radiative view-factor kernel.
+//
+// One @outer group processes one radiating-patch pair (i,j) (i<=j, including
+// i==j "self" pairs). p_Nq is the mesh's own face nodal grid size (already
+// defined globally by nekRS's mesh kernel properties, same convention as
+// RANSktau.okl/mesh kernels). p_blockSize (also inherited globally) is the
+// number of @inner threads cooperating on a pair: they jointly stage both
+// patches' Nq x Nq nodal grids into shared memory once, then each thread
+// streams a strided subset of the nSamples stratified MC samples for that
+// pair, accumulating a partial raw double-integral and (for i==j pairs only)
+// a partial area estimate, before an in-block reduction writes one entry
+// each to rawIJ[] / areaEst[].
+//
+// NOTE: the helper functions below take @shared-memory pointers as plain
+// `const dfloat *` parameters. This is valid on CUDA/HIP/Serial backends
+// (shared/local memory decays to an ordinary address-space-transparent
+// pointer there) but is a known portability risk on strict OpenCL targets,
+// which require explicit __local address-space qualifiers on function
+// parameters unless the generic address space feature is enabled. Flagged
+// here rather than worked around, since nekRS's primary targets are
+// CUDA/HIP.
+
+#define p_radiationPI 3.14159265358979323846
+
+inline unsigned int radiationWangHash(unsigned int x)
+{
+  x = (x ^ 61u) ^ (x >> 16);
+  x *= 9u;
+  x ^= (x >> 4);
+  x *= 0x27d4eb2du;
+  x ^= (x >> 15);
+  return x;
+}
+
+// Stateless counter-based uniform variate in [0,1), keyed on (seed, i, j, slot).
+// Independent of draw order and thread-safe by construction (no shared RNG state).
+inline dfloat radiationRand(const unsigned int seed, const int i, const int j, const unsigned int slot)
+{
+  unsigned int h = seed;
+  h = radiationWangHash(h ^ (((unsigned int)i) * 0x9e3779b9u));
+  h = radiationWangHash(h ^ (((unsigned int)j) * 0x85ebca6bu));
+  h = radiationWangHash(h ^ (slot * 0xc2b2ae35u));
+  return (dfloat)(h & 0x00FFFFFFu) * ((dfloat)1.0 / (dfloat)0x01000000u);
+}
+
+// Barycentric Lagrange basis value + derivative at t, for the p_Nq GLL nodes
+// (Berrut/Trefethen 2nd form). c[]/cp[] are the value/derivative weights s.t.
+// f(t) = sum_j c[j]*f_j, f'(t) = sum_j cp[j]*f_j.
+inline void radiationBaryDeriv(const dfloat t, const dfloat *nodes, const dfloat *baryW, dfloat *c, dfloat *cp)
+{
+  dfloat d[p_Nq];
+  dfloat S = 0.0;
+  for (int j = 0; j < p_Nq; ++j) {
+    dfloat diff = t - nodes[j];
+    if (diff >= 0 && diff < (dfloat)1e-12) {
+      diff = (dfloat)1e-12;
+    }
+    if (diff < 0 && diff > (dfloat)-1e-12) {
+      diff = (dfloat)-1e-12;
+    }
+    d[j] = baryW[j] / diff;
+    S += d[j];
+  }
+
+  dfloat Sp = 0.0;
+  for (int j = 0; j < p_Nq; ++j) {
+    dfloat diff = t - nodes[j];
+    if (diff >= 0 && diff < (dfloat)1e-12) {
+      diff = (dfloat)1e-12;
+    }
+    if (diff < 0 && diff > (dfloat)-1e-12) {
+      diff = (dfloat)-1e-12;
+    }
+    Sp += -d[j] / diff;
+  }
+
+  for (int j = 0; j < p_Nq; ++j) {
+    dfloat diff = t - nodes[j];
+    if (diff >= 0 && diff < (dfloat)1e-12) {
+      diff = (dfloat)1e-12;
+    }
+    if (diff < 0 && diff > (dfloat)-1e-12) {
+      diff = (dfloat)-1e-12;
+    }
+    c[j] = d[j] / S;
+    cp[j] = c[j] * ((dfloat)-1.0 / diff - Sp / S);
+  }
+}
+
+// Maps reference point (a,b) in [-1,1]^2 through the true (possibly curved)
+// face geometry given by the Nq x Nq nodal grid s_X/s_Y/s_Z (flat, row-major,
+// node n = i*p_Nq+j), via tensor-product barycentric Lagrange interpolation.
+// Returns physical position, un-normalized-then-normalized normal, and dA
+// (the magnitude of the tangent cross product, which already carries the
+// Jacobian of the [-1,1]^2 -> physical map).
+inline void evalFaceLagrange(const dfloat a,
+                             const dfloat b,
+                             const dfloat *s_X,
+                             const dfloat *s_Y,
+                             const dfloat *s_Z,
+                             const dfloat *nodes,
+                             const dfloat *baryW,
+                             dfloat &x,
+                             dfloat &y,
+                             dfloat &z,
+                             dfloat &nx,
+                             dfloat &ny,
+                             dfloat &nz,
+                             dfloat &dA)
+{
+  dfloat cb[p_Nq], cpb[p_Nq];
+  radiationBaryDeriv(b, nodes, baryW, cb, cpb);
+
+  dfloat Yx[p_Nq], Yy[p_Nq], Yz[p_Nq];
+  dfloat Ypx[p_Nq], Ypy[p_Nq], Ypz[p_Nq];
+  for (int i = 0; i < p_Nq; ++i) {
+    dfloat sx = 0.0, sy = 0.0, sz = 0.0;
+    dfloat spx = 0.0, spy = 0.0, spz = 0.0;
+    for (int j = 0; j < p_Nq; ++j) {
+      const dfloat xij = s_X[i * p_Nq + j];
+      const dfloat yij = s_Y[i * p_Nq + j];
+      const dfloat zij = s_Z[i * p_Nq + j];
+      sx += cb[j] * xij;
+      sy += cb[j] * yij;
+      sz += cb[j] * zij;
+      spx += cpb[j] * xij;
+      spy += cpb[j] * yij;
+      spz += cpb[j] * zij;
+    }
+    Yx[i] = sx;
+    Yy[i] = sy;
+    Yz[i] = sz;
+    Ypx[i] = spx;
+    Ypy[i] = spy;
+    Ypz[i] = spz;
+  }
+
+  dfloat ca[p_Nq], cpa[p_Nq];
+  radiationBaryDeriv(a, nodes, baryW, ca, cpa);
+
+  x = 0.0;
+  y = 0.0;
+  z = 0.0;
+  dfloat dxda = 0.0, dyda = 0.0, dzda = 0.0;
+  dfloat dxdb = 0.0, dydb = 0.0, dzdb = 0.0;
+  for (int i = 0; i < p_Nq; ++i) {
+    x += ca[i] * Yx[i];
+    y += ca[i] * Yy[i];
+    z += ca[i] * Yz[i];
+    dxda += cpa[i] * Yx[i];
+    dyda += cpa[i] * Yy[i];
+    dzda += cpa[i] * Yz[i];
+    dxdb += ca[i] * Ypx[i];
+    dydb += ca[i] * Ypy[i];
+    dzdb += ca[i] * Ypz[i];
+  }
+
+  const dfloat cx = dyda * dzdb - dzda * dydb;
+  const dfloat cy = dzda * dxdb - dxda * dzdb;
+  const dfloat cz = dxda * dydb - dyda * dxdb;
+  dA = sqrt(cx * cx + cy * cy + cz * cz);
+  const dfloat invDA = (dA > (dfloat)1e-30) ? ((dfloat)1.0 / dA) : (dfloat)0.0;
+  nx = cx * invDA;
+  ny = cy * invDA;
+  nz = cz * invDA;
+}
+
+// Stackless (fixed local stack) BVH traversal + Moller-Trumbore segment/
+// triangle test between (ox,oy,oz) and (tx,ty,tz). Triangles whose parent
+// patch matches either endpoint patch's global face key are skipped (self-
+// exclusion). Returns 1 if the open segment (eps,1-eps) is blocked.
+inline int radiationOccluded(const dfloat ox,
+                             const dfloat oy,
+                             const dfloat oz,
+                             const dfloat tx,
+                             const dfloat ty,
+                             const dfloat tz,
+                             const int faceKeyI,
+                             const int faceKeyJ,
+                             const dfloat *bvhMin,
+                             const dfloat *bvhMax,
+                             const int *bvhLeft,
+                             const int *bvhRight,
+                             const int *bvhTriStart,
+                             const int *bvhTriCount,
+                             const dfloat *triV0,
+                             const dfloat *triV1,
+                             const dfloat *triV2,
+                             const int *triPatchKey,
+                             const int bvhRoot)
+{
+  const dfloat dx = tx - ox;
+  const dfloat dy = ty - oy;
+  const dfloat dz = tz - oz;
+  const dfloat eps = (dfloat)1e-4;
+
+  int stack[64];
+  int sp = 0;
+  stack[sp++] = bvhRoot;
+
+  while (sp > 0) {
+    const int nodeIdx = stack[--sp];
+    if (nodeIdx < 0) {
+      continue;
+    }
+
+    const dfloat bminx = bvhMin[3 * nodeIdx + 0];
+    const dfloat bminy = bvhMin[3 * nodeIdx + 1];
+    const dfloat bminz = bvhMin[3 * nodeIdx + 2];
+    const dfloat bmaxx = bvhMax[3 * nodeIdx + 0];
+    const dfloat bmaxy = bvhMax[3 * nodeIdx + 1];
+    const dfloat bmaxz = bvhMax[3 * nodeIdx + 2];
+
+    dfloat tmin = (dfloat)0.0;
+    dfloat tmax = (dfloat)1.0;
+    int missed = 0;
+
+    if (fabs(dx) < (dfloat)1e-20) {
+      if (ox < bminx || ox > bmaxx) {
+        missed = 1;
+      }
+    } else {
+      dfloat t0 = (bminx - ox) / dx;
+      dfloat t1 = (bmaxx - ox) / dx;
+      if (t0 > t1) {
+        const dfloat tmp = t0;
+        t0 = t1;
+        t1 = tmp;
+      }
+      tmin = (t0 > tmin) ? t0 : tmin;
+      tmax = (t1 < tmax) ? t1 : tmax;
+      if (tmin > tmax) {
+        missed = 1;
+      }
+    }
+
+    if (!missed) {
+      if (fabs(dy) < (dfloat)1e-20) {
+        if (oy < bminy || oy > bmaxy) {
+          missed = 1;
+        }
+      } else {
+        dfloat t0 = (bminy - oy) / dy;
+        dfloat t1 = (bmaxy - oy) / dy;
+        if (t0 > t1) {
+          const dfloat tmp = t0;
+          t0 = t1;
+          t1 = tmp;
+        }
+        tmin = (t0 > tmin) ? t0 : tmin;
+        tmax = (t1 < tmax) ? t1 : tmax;
+        if (tmin > tmax) {
+          missed = 1;
+        }
+      }
+    }
+
+    if (!missed) {
+      if (fabs(dz) < (dfloat)1e-20) {
+        if (oz < bminz || oz > bmaxz) {
+          missed = 1;
+        }
+      } else {
+        dfloat t0 = (bminz - oz) / dz;
+        dfloat t1 = (bmaxz - oz) / dz;
+        if (t0 > t1) {
+          const dfloat tmp = t0;
+          t0 = t1;
+          t1 = tmp;
+        }
+        tmin = (t0 > tmin) ? t0 : tmin;
+        tmax = (t1 < tmax) ? t1 : tmax;
+        if (tmin > tmax) {
+          missed = 1;
+        }
+      }
+    }
+
+    if (missed) {
+      continue;
+    }
+
+    const int left = bvhLeft[nodeIdx];
+    const int right = bvhRight[nodeIdx];
+
+    if (left < 0 && right < 0) {
+      const int triStart = bvhTriStart[nodeIdx];
+      const int triCount = bvhTriCount[nodeIdx];
+      for (int ti = triStart; ti < triStart + triCount; ++ti) {
+        const int pk = triPatchKey[ti];
+        if (pk == faceKeyI || pk == faceKeyJ) {
+          continue;
+        }
+
+        const dfloat v0x = triV0[3 * ti + 0], v0y = triV0[3 * ti + 1], v0z = triV0[3 * ti + 2];
+        const dfloat v1x = triV1[3 * ti + 0], v1y = triV1[3 * ti + 1], v1z = triV1[3 * ti + 2];
+        const dfloat v2x = triV2[3 * ti + 0], v2y = triV2[3 * ti + 1], v2z = triV2[3 * ti + 2];
+
+        const dfloat e1x = v1x - v0x, e1y = v1y - v0y, e1z = v1z - v0z;
+        const dfloat e2x = v2x - v0x, e2y = v2y - v0y, e2z = v2z - v0z;
+
+        const dfloat px = dy * e2z - dz * e2y;
+        const dfloat py = dz * e2x - dx * e2z;
+        const dfloat pz = dx * e2y - dy * e2x;
+
+        const dfloat det = e1x * px + e1y * py + e1z * pz;
+        if (fabs(det) < (dfloat)1e-20) {
+          continue;
+        }
+        const dfloat invDet = (dfloat)1.0 / det;
+
+        const dfloat tvx = ox - v0x, tvy = oy - v0y, tvz = oz - v0z;
+        const dfloat u = (tvx * px + tvy * py + tvz * pz) * invDet;
+        if (u < 0 || u > 1) {
+          continue;
+        }
+
+        const dfloat qx = tvy * e1z - tvz * e1y;
+        const dfloat qy = tvz * e1x - tvx * e1z;
+        const dfloat qz = tvx * e1y - tvy * e1x;
+
+        const dfloat v = (dx * qx + dy * qy + dz * qz) * invDet;
+        if (v < 0 || u + v > 1) {
+          continue;
+        }
+
+        const dfloat tHit = (e2x * qx + e2y * qy + e2z * qz) * invDet;
+        if (tHit > eps && tHit < (dfloat)1.0 - eps) {
+          return 1;
+        }
+      }
+    } else {
+      if (sp < 62) {
+        if (left >= 0) {
+          stack[sp++] = left;
+        }
+        if (right >= 0) {
+          stack[sp++] = right;
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+@kernel void radiationSamplePairs(const dlong nPairs,
+                                  const dlong nSamples,
+                                  const dlong nStrata,
+                                  const unsigned int seed,
+                                  const dlong nBvhNodes,
+                                  const int bvhRoot,
+                                  @restrict const int *pairI,
+                                  @restrict const int *pairJ,
+                                  @restrict const dfloat *patchX,
+                                  @restrict const dfloat *patchY,
+                                  @restrict const dfloat *patchZ,
+                                  @restrict const dfloat *patchRefNx,
+                                  @restrict const dfloat *patchRefNy,
+                                  @restrict const dfloat *patchRefNz,
+                                  @restrict const int *patchFaceKey,
+                                  @restrict const dfloat *gllzGlobal,
+                                  @restrict const dfloat *baryWGlobal,
+                                  @restrict const dfloat *bvhMin,
+                                  @restrict const dfloat *bvhMax,
+                                  @restrict const int *bvhLeft,
+                                  @restrict const int *bvhRight,
+                                  @restrict const int *bvhTriStart,
+                                  @restrict const int *bvhTriCount,
+                                  @restrict const dfloat *triV0,
+                                  @restrict const dfloat *triV1,
+                                  @restrict const dfloat *triV2,
+                                  @restrict const int *triPatchKey,
+                                  @restrict double *rawIJ,
+                                  @restrict double *areaEst)
+{
+  for (dlong pairIdx = 0; pairIdx < nPairs; ++pairIdx; @outer(0)) {
+
+    @shared dfloat s_Xi[p_Nq * p_Nq];
+    @shared dfloat s_Yi[p_Nq * p_Nq];
+    @shared dfloat s_Zi[p_Nq * p_Nq];
+    @shared dfloat s_Xj[p_Nq * p_Nq];
+    @shared dfloat s_Yj[p_Nq * p_Nq];
+    @shared dfloat s_Zj[p_Nq * p_Nq];
+    @shared dfloat s_gllz[p_Nq];
+    @shared dfloat s_baryW[p_Nq];
+    @shared double s_rawSum[p_blockSize];
+    @shared double s_areaSum[p_blockSize];
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      const int patchI = pairI[pairIdx];
+      const int patchJ = pairJ[pairIdx];
+      const int Nfp = p_Nq * p_Nq;
+
+      for (int n = t; n < Nfp; n += p_blockSize) {
+        s_Xi[n] = patchX[patchI * Nfp + n];
+        s_Yi[n] = patchY[patchI * Nfp + n];
+        s_Zi[n] = patchZ[patchI * Nfp + n];
+        s_Xj[n] = patchX[patchJ * Nfp + n];
+        s_Yj[n] = patchY[patchJ * Nfp + n];
+        s_Zj[n] = patchZ[patchJ * Nfp + n];
+      }
+      if (t < p_Nq) {
+        s_gllz[t] = gllzGlobal[t];
+        s_baryW[t] = baryWGlobal[t];
+      }
+    }
+    @barrier();
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      const int patchI = pairI[pairIdx];
+      const int patchJ = pairJ[pairIdx];
+      const int isDiag = (patchI == patchJ) ? 1 : 0;
+
+      const dfloat refNxI = patchRefNx[patchI];
+      const dfloat refNyI = patchRefNy[patchI];
+      const dfloat refNzI = patchRefNz[patchI];
+      const dfloat refNxJ = patchRefNx[patchJ];
+      const dfloat refNyJ = patchRefNy[patchJ];
+      const dfloat refNzJ = patchRefNz[patchJ];
+
+      const int faceKeyI = patchFaceKey[patchI];
+      const int faceKeyJ = patchFaceKey[patchJ];
+
+      double rawSumLocal = 0.0;
+      double areaSumLocal = 0.0;
+
+      for (dlong k = t; k < nSamples; k += p_blockSize) {
+        const dlong kx = k % nStrata;
+        const dlong ky = (k / nStrata) % nStrata;
+
+        dfloat xi, yi, zi, nxi, nyi, nzi, dAi;
+        dfloat xj, yj, zj, nxj, nyj, nzj, dAj;
+
+        {
+          const dfloat u = radiationRand(seed, patchI, patchJ, (unsigned int)(k * 8 + 0));
+          const dfloat v = radiationRand(seed, patchI, patchJ, (unsigned int)(k * 8 + 1));
+          const dfloat a = (dfloat)-1.0 + (dfloat)2.0 * ((dfloat)kx + u) / (dfloat)nStrata;
+          const dfloat b = (dfloat)-1.0 + (dfloat)2.0 * ((dfloat)ky + v) / (dfloat)nStrata;
+          evalFaceLagrange(a, b, s_Xi, s_Yi, s_Zi, s_gllz, s_baryW, xi, yi, zi, nxi, nyi, nzi, dAi);
+          if (nxi * refNxI + nyi * refNyI + nzi * refNzI < 0) {
+            nxi = -nxi;
+            nyi = -nyi;
+            nzi = -nzi;
+          }
+        }
+
+        {
+          const dfloat u = radiationRand(seed, patchI, patchJ, (unsigned int)(k * 8 + 2));
+          const dfloat v = radiationRand(seed, patchI, patchJ, (unsigned int)(k * 8 + 3));
+          const dfloat a = (dfloat)-1.0 + (dfloat)2.0 * ((dfloat)kx + u) / (dfloat)nStrata;
+          const dfloat b = (dfloat)-1.0 + (dfloat)2.0 * ((dfloat)ky + v) / (dfloat)nStrata;
+          if (isDiag) {
+            evalFaceLagrange(a, b, s_Xi, s_Yi, s_Zi, s_gllz, s_baryW, xj, yj, zj, nxj, nyj, nzj, dAj);
+            if (nxj * refNxI + nyj * refNyI + nzj * refNzI < 0) {
+              nxj = -nxj;
+              nyj = -nyj;
+              nzj = -nzj;
+            }
+          } else {
+            evalFaceLagrange(a, b, s_Xj, s_Yj, s_Zj, s_gllz, s_baryW, xj, yj, zj, nxj, nyj, nzj, dAj);
+            if (nxj * refNxJ + nyj * refNyJ + nzj * refNzJ < 0) {
+              nxj = -nxj;
+              nyj = -nyj;
+              nzj = -nzj;
+            }
+          }
+        }
+
+        areaSumLocal += (double)dAi;
+        if (isDiag) {
+          areaSumLocal += (double)dAj;
+        }
+
+        const dfloat dx = xj - xi;
+        const dfloat dy = yj - yi;
+        const dfloat dz = zj - zi;
+        const dfloat r2 = dx * dx + dy * dy + dz * dz;
+
+        if (r2 > (dfloat)1e-24) {
+          const dfloat invR = (dfloat)1.0 / sqrt(r2);
+          const dfloat cosI = (dx * nxi + dy * nyi + dz * nzi) * invR;
+          const dfloat cosJ = (-dx * nxj - dy * nyj - dz * nzj) * invR;
+
+          if (cosI > 0 && cosJ > 0) {
+            int blocked = 0;
+            if (nBvhNodes > 0) {
+              blocked = radiationOccluded(xi,
+                                          yi,
+                                          zi,
+                                          xj,
+                                          yj,
+                                          zj,
+                                          faceKeyI,
+                                          faceKeyJ,
+                                          bvhMin,
+                                          bvhMax,
+                                          bvhLeft,
+                                          bvhRight,
+                                          bvhTriStart,
+                                          bvhTriCount,
+                                          triV0,
+                                          triV1,
+                                          triV2,
+                                          triPatchKey,
+                                          bvhRoot);
+            }
+            if (!blocked) {
+              const dfloat kern = (cosI * cosJ) / ((dfloat)p_radiationPI * r2);
+              rawSumLocal += (double)(kern * dAi * dAj);
+            }
+          }
+        }
+      }
+
+      s_rawSum[t] = rawSumLocal;
+      s_areaSum[t] = areaSumLocal;
+    }
+    @barrier();
+
+    for (int s = p_blockSize / 2; s > 0; s >>= 1) {
+      for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+        if (t < s) {
+          s_rawSum[t] += s_rawSum[t + s];
+          s_areaSum[t] += s_areaSum[t + s];
+        }
+      }
+      @barrier();
+    }
+
+    for (int t = 0; t < p_blockSize; ++t; @inner(0)) {
+      if (t == 0) {
+        const int patchI = pairI[pairIdx];
+        const int patchJ = pairJ[pairIdx];
+        rawIJ[pairIdx] = s_rawSum[0] * 16.0 / (double)nSamples;
+        if (patchI == patchJ) {
+          areaEst[patchI] = s_areaSum[0] * 4.0 / (2.0 * (double)nSamples);
+        }
+      }
+    }
+  }
+}

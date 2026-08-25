@@ -22,6 +22,8 @@ set(CORE_SOURCES
     src/core/advsub/advectionSubCycling.cpp
     src/core/plugins/tavg.cpp
     src/core/plugins/lpm.cpp
+    src/core/plugins/Radiation.cpp
+    src/core/plugins/RadiationBVH.cpp
     src/core/pointInterpolation/findpts/findpts.cpp
     src/core/pointInterpolation/pointInterpolation.cpp
     src/core/pointInterpolation/registerPointInterpolationKernels.cpp

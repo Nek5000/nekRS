@@ -128,6 +128,16 @@ static std::vector<std::string> neknekKeys = {
     {"multiratetimestepping"},
 };
 
+static std::vector<std::string> radiationKeys = {
+    {"radiatingboundaryids"},
+    {"obstructionboundaryids"},
+    {"nsamples"},
+    {"seed"},
+    {"writematrix"},
+    {"outputfile"},
+    {"cache"},
+};
+
 static std::vector<std::string> problemTypeKeys = {
     {"stressFormulation"},
     {"equation"},
@@ -257,6 +267,7 @@ static std::vector<std::string> validSections = {
     {""},
     {"general"},
     {"neknek"},
+    {"radiation"},
     {"fluid pressure"},
     {"fluid velocity"},
     {"problemtype"},
@@ -277,6 +288,7 @@ void makeStringsLowerCase()
   noSectionKeys = lowerCase(noSectionKeys);
   generalKeys = lowerCase(generalKeys);
   neknekKeys = lowerCase(neknekKeys);
+  radiationKeys = lowerCase(radiationKeys);
   problemTypeKeys = lowerCase(problemTypeKeys);
   commonKeys = lowerCase(commonKeys);
   meshKeys = lowerCase(meshKeys);
@@ -329,6 +341,9 @@ const std::vector<std::string> &getValidKeys(const std::string &section)
   }
   if (section == "neknek") {
     return neknekKeys;
+  }
+  if (section == "radiation") {
+    return radiationKeys;
   }
   if (section == "problemtype") {
     return problemTypeKeys;
@@ -554,6 +569,7 @@ void parseCheckpointing(const int rank, setupAide &options, inipp::Ini *ini, std
 #include "parseMesh.hpp"
 #include "parseProblemType.hpp"
 #include "parseNeknek.hpp"
+#include "parseRadiation.hpp"
 #include "parseFluid.hpp"
 #include "parseElliptic.hpp"
 
@@ -685,6 +701,8 @@ void Par::parse(setupAide &options)
   parseGeneralSection(rank, options, ini);
 
   parseNekNekSection(rank, options, ini);
+
+  parseRadiationSection(rank, options, ini);
 
   parseProblemTypeSection(rank, options, ini);
 
