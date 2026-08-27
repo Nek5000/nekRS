@@ -1,0 +1,31 @@
+tallCavityNu.rea
+-3                     spatial dimension
+1                     number of fields
+#========================================================
+#
+#    Tall cavity, natural convection + radiation-convection
+#    coupling, reproducing Yuan et al. Sec 4.3. Aspect ratio
+#    H/D=20: gap D=1m (x), height H=20m (z), thin depth W=0.25m
+#    (y, front/back = symmetry planes, not physical walls).
+#
+#    Boundary IDs: 1=hot wall (x=0, constant applied heat flux
+#    fh=0.5 W/m^2, MINUS net radiative loss, via udfNeumann),
+#    2=cold wall (x=1, fixed T=100K, udfDirichlet), 3=top (z=20,
+#    "adiabatic" reradiating wall: zero APPLIED flux but still
+#    radiatively active, via udfNeumann), 4=bottom (z=0, same as
+#    top), 5=front/back (y=0,y=0.25, symmetry planes -- not real
+#    walls, not radiating).
+#
+#    Numeric BC labels: an explicit boundaryTypeMap on
+#    [FLUID VELOCITY]/[SCALAR TEMPERATURE] disables nekRS's
+#    CBC-label auto-import of boundary IDs, so genbox needs to
+#    write the IDs directly (see tallCavityNu.usr).
+#
+#========================================================
+#
+Box
+-6 -2 -30          nelx,nely,nelz for Box
+0 1 1               x0 x1 ratio
+0 0.25 1               y0 y1 ratio
+0 20 1               z0 z1 ratio
+1  ,2  ,5  ,5  ,4  ,3     BCs (3 characters each!)

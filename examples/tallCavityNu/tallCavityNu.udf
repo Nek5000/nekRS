@@ -1,0 +1,65 @@
+#include "Radiation.hpp"
+
+#ifdef __okl__
+
+void udfDirichlet(bcData *bc)
+{
+  // bID 2 = cold wall (see tallCavityNu.par comments), fixed T=100K.
+  if (bc->id == 2) {
+    bc->sScalar = 100.0;
+  }
+}
+
+void udfNeumann(bcData *bc)
+{
+  // Radiative-convective coupling: the flux actually entering the
+  // fluid is the externally applied flux minus whatever net flux the
+  // wall is losing to radiation (bc->usrwrk, written by
+  // Radiation::step(), positive = net radiator). bID 1 = hot wall,
+  // applied flux fh=0.5 W/m^2. bID 3,4 = top/bottom, applied flux 0
+  // (adiabatic in the paper's sense: no EXTERNAL flux, but still
+  // radiatively active -- a floating reradiating surface).
+  if (isField("scalar temperature")) {
+    dfloat appliedFlux = 0.0;
+    if (bc->id == 1) {
+      appliedFlux = 0.5;
+    }
+    bc->fluxScalar = appliedFlux - bc->usrwrk[bc->idxVol];
+  }
+}
+
+#endif
+
+// Boussinesq buoyancy source (dimensional): F/rho = g*beta*T, applied
+// to the z-momentum component -- z is the cavity's tall axis and the
+// gravity direction. The Tref term is omitted: a spatially-uniform
+// force is absorbed by the (otherwise-arbitrary) hydrostatic pressure
+// in this fully closed domain (no-slip on all 4 real walls, symmetry
+// -- no through-flow -- on front/back) and does not affect the
+// velocity solution, matching examples/tall_cavity/tall_cavity.udf.
+void userf(double time)
+{
+  auto mesh = nrs->meshV;
+  auto o_zEXT = nrs->fluid->o_EXT + 2 * nrs->fieldOffset;
+  const dfloat g = 9.81;     // m/s^2
+  const dfloat beta = 0.01;  // 1/K (Table III, Yuan et al.)
+  platform->linAlg->axpby(mesh->Nlocal, g * beta, nrs->scalar->o_S, 0.0, o_zEXT);
+}
+
+void UDF_Setup()
+{
+  auto mesh = nrs->meshV;
+  nrs->userSource = &userf;
+  Radiation::setup();
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    std::vector<dfloat> S(mesh->Nlocal, 100.0);
+    nrs->fluid->o_U.copyFrom(U.data(), U.size());
+    nrs->scalar->o_S.copyFrom(S.data(), S.size());
+  }
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  Radiation::step(time, tstep);
+}

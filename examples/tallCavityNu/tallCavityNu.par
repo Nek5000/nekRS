@@ -1,0 +1,55 @@
+[GENERAL]
+polynomialOrder = 6
+stopAt = endTime
+endTime = 2000
+
+dt = targetCFL=2.0 + max=0.5 + initial=0.01
+timeStepper = tombo2
+advectionSubCyclingSteps = 2
+
+checkpointControl = simulationTime
+checkpointInterval = 200
+
+regularization = hpfrt + nModes=1 + scalingCoeff=15
+
+scalars = TEMPERATURE
+
+[FLUID PRESSURE]
+residualTol = 1e-04
+
+[FLUID VELOCITY]
+# raw boundary IDs (see tallCavityNu.box): 1=hot, 2=cold, 3=top,
+# 4=bottom -- all four no-slip. 5=front/back, symmetry plane (this is
+# a thin-slab stand-in for the paper's quasi-2D domain, not a real
+# wall).
+boundaryTypeMap = zeroDirichlet, zeroDirichlet, zeroDirichlet, zeroDirichlet, symy
+rho = 1.0
+viscosity = 1e-5
+residualTol = 1e-06
+
+[SCALAR TEMPERATURE]
+# 1=hot: applied flux fh=0.5 W/m^2 MINUS net radiative loss (real
+# radiative-convective coupling via Radiation::step()'s o_usrwrk,
+# see tallCavityNu.udf). 2=cold: fixed T=100K. 3,4=top/bottom:
+# "adiabatic" (zero APPLIED flux) but still radiatively active --
+# a floating reradiating surface, same udfNeumann mechanism as the
+# hot wall with appliedFlux=0. 5=front/back: plain zero-flux
+# (insulated symmetry plane, no radiative coupling).
+boundaryTypeMap = udfNeumann, udfDirichlet, udfNeumann, udfNeumann, zeroNeumann
+diffusionCoeff = 0.01
+transportCoeff = 1000
+residualTol = 1e-06
+
+[RADIATION]
+# Box interior is convex (no obstructionBoundaryIDs needed, same as
+# tall_cavity). Emissivity=1 for all 4 walls -- reproducing the
+# epsilon=1 case from Fig. 6 first (per user direction: validate the
+# coupling mechanism at one emissivity before attempting the full
+# Fig. 5 sweep).
+radiatingBoundaryIDs = 1,2,3,4
+nSamples = 8192
+seed = 1234
+writeMatrix = true
+cache = true
+emissivity = 1.0,1.0,1.0,1.0
+updateFrequency = 20
