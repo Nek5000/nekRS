@@ -1,0 +1,27 @@
+#include "Radiation.hpp"
+
+#ifdef __okl__
+
+void udfDirichlet(bcData *bc)
+{
+  // Raw boundary IDs (see concentricSpheres.par comments):
+  // 1 = inner sphere (1000 K, hot), 2 = outer sphere (500 K, cold) --
+  // matches Yuan et al. Sec 4.2.
+  if (bc->id == 1) {
+    bc->sScalar = 1000.0;
+  } else {
+    bc->sScalar = 500.0;
+  }
+}
+
+#endif
+
+void UDF_Setup()
+{
+  Radiation::setup();
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  Radiation::step(time, tstep);
+}

@@ -1,0 +1,49 @@
+[GENERAL]
+polynomialOrder = 7
+stopAt = numSteps
+numSteps = 2
+dt = 1e-3
+
+scalars = TEMPERATURE
+
+[FLUID PRESSURE]
+residualTol = 1e-06
+
+[FLUID VELOCITY]
+# raw boundary IDs (see make_mesh.py / concentricSpheres.msh Physical
+# Surfaces): 1=inner sphere (hot), 2=outer sphere (cold) -- no flow of
+# interest here (fixed-temperature radiation diagnostic only).
+boundaryTypeMap = zeroDirichlet, zeroDirichlet
+rho = 1.2
+viscosity = 1.8e-5
+residualTol = 1e-08
+
+[SCALAR TEMPERATURE]
+# 1=inner sphere (1000 K), 2=outer sphere (500 K), matching Yuan et
+# al. Sec 4.2. All Dirichlet, so boundary temperatures are exact from
+# step 1 -- no need to wait for the interior field to equilibrate.
+boundaryTypeMap = udfDirichlet, udfDirichlet
+diffusionCoeff = 0.026
+transportCoeff = 1206
+residualTol = 1e-08
+
+[RADIATION]
+# r_in=0.5 m, r_out=1.0 m (paper doesn't state radii; chosen for a
+# clean A1:A2 = 1:4 ratio). For concentric spheres F_(inner->outer)=1
+# exactly (every ray from the inner sphere hits the outer one, a pure
+# 2-surface enclosure) -- a clean, resolution-independent check on the
+# view-factor row sum.
+radiatingBoundaryIDs = 1,2
+# The outer sphere is concave (self-viewing) and needs occlusion by
+# the inner sphere for its self-view factor F_22 to be correct --
+# radiating surfaces do NOT automatically double as occluders of each
+# other. Both listed here (self-patch exclusion via face key prevents
+# a surface occluding itself, so listing 2 is harmless and future-proofs
+# against a non-convex outer boundary).
+obstructionBoundaryIDs = 1,2
+nSamples = 16384
+seed = 1234
+writeMatrix = true
+cache = true
+emissivity = 0.85,0.85
+updateFrequency = 1
