@@ -909,17 +909,23 @@ void Radiation::step(double time, int tstep)
 
     const int nGroups = static_cast<int>(groups_state.size());
     std::vector<dfloat> groupQSum(nGroups, 0);
+    std::vector<dfloat> groupTSum(nGroups, 0);
     std::vector<int> groupCount(nGroups, 0);
     for (int i = 0; i < P; ++i) {
       const int gi = patchGroupIdx_state[i];
       groupQSum[gi] += q[i];
+      groupTSum[gi] += T[i];
       groupCount[gi]++;
     }
-    printf("Radiation: t=%g step=%d net radiative flux by boundary-ID group (W/m^2, avg over patches):\n",
+    printf("Radiation: t=%g step=%d net radiative flux / avg temperature by boundary-ID group (W/m^2, K, avg over "
+          "patches):\n",
           time,
           tstep);
     for (int gi = 0; gi < nGroups; ++gi) {
-      printf("  bID=%d: %g\n", groups_state[gi], groupCount[gi] ? groupQSum[gi] / groupCount[gi] : (dfloat)0);
+      printf("  bID=%d: %g  %g\n",
+            groups_state[gi],
+            groupCount[gi] ? groupQSum[gi] / groupCount[gi] : (dfloat)0,
+            groupCount[gi] ? groupTSum[gi] / groupCount[gi] : (dfloat)0);
     }
   }
 

@@ -41,15 +41,33 @@ transportCoeff = 1000
 residualTol = 1e-06
 
 [RADIATION]
-# Box interior is convex (no obstructionBoundaryIDs needed, same as
-# tall_cavity). Emissivity=1 for all 4 walls -- reproducing the
-# epsilon=1 case from Fig. 6 first (per user direction: validate the
-# coupling mechanism at one emissivity before attempting the full
-# Fig. 5 sweep).
-radiatingBoundaryIDs = 1,2,3,4
+# Box interior is convex (no obstructionBoundaryIDs needed). 
+# Emissivity=1 for the 4 real walls -- reproducing the epsilon=1 case 
+# from Fig. 6 first (per user direction: validate the coupling 
+# mechanism at one emissivity before attempting the full Fig. 5 sweep).
+#
+# bID 5 (front/back symmetry planes) MUST be included here too, with
+# emissivity 0. First attempt omitted it entirely, which is wrong: the
+# Monte Carlo ray tracer has no notion of "symmetry" -- rays leaving
+# any patch and heading toward an excluded boundary just vanish from
+# the accounting instead of returning energy to the enclosure. With
+# bID=5 excluded, view-factor row sums came out near 0 instead of ~1
+# (confirmed empirically: at t=0, uniform T=100K everywhere, every
+# group reported q~4.3-4.9 W/m^2 instead of ~0, i.e. nearly the full
+# sigma*T^4=5.67 -- almost all "emitted" energy was being lost to the
+# untracked front/back faces, which are actually the LARGEST surfaces
+# in this thin-slab box: 20 m^2 each vs 5 m^2 for hot/cold, 0.25 m^2
+# for top/bottom). Fix, matching the paper's own treatment of
+# artificial/non-physical boundaries in Sec 4.4 (inlet/outlet set to
+# emissivity=0, "a perfectly reflecting (mirror) boundary condition"):
+# include bID=5 geometrically (so the view-factor math closes
+# correctly) but with emissivity=0, so it neither absorbs nor emits
+# net energy (q=0 there always, since q_i=eps_i*(...)=0) and doesn't
+# distort the energy balance among the 4 real walls.
+radiatingBoundaryIDs = 1,2,3,4,5
 nSamples = 8192
 seed = 1234
 writeMatrix = true
 cache = true
-emissivity = 1.0,1.0,1.0,1.0
+emissivity = 1.0,1.0,1.0,1.0,0.0
 updateFrequency = 20
