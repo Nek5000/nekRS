@@ -1,0 +1,24 @@
+tall_cavity.rea
+-3                     spatial dimension
+1                     number of fields
+#========================================================
+#
+#    Tall rectangular-prism cavity: one hot wall (x=0),
+#    one cold wall (x=1, opposite the hot wall), and four
+#    side walls (y=0,y=1,z=0,z=1) held at the mean of the
+#    hot/cold temperatures. All six walls are no-slip.
+#    Aspect ratio (height:width) = 4.
+#
+#    Numeric BC labels (1,2,3) rather than letter codes: an explicit
+#    boundaryTypeMap on [FLUID VELOCITY]/[SCALAR TEMPERATURE] disables
+#    nekRS's CBC-label auto-import of boundary IDs, so genbox needs to
+#    write the IDs directly.
+#
+#========================================================
+#
+Box
+-4 -4 -16          nelx,nely,nelz for Box
+0 0.08 1               x0 x1 ratio
+0 0.08 1               y0 y1 ratio
+0 0.32 1               z0 z1 ratio
+1  ,2  ,3  ,3  ,3  ,3     BCs (3 characters each!)

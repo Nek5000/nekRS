@@ -1,0 +1,29 @@
+#include "Radiation.hpp"
+
+#ifdef __okl__
+
+void udfDirichlet(bcData *bc)
+{
+  // Raw boundary IDs (see radiationPlates.box / .par comments):
+  // 1 = hot plate (1000 K), 2 = cold plate (500 K), 3 = the four side
+  // walls (750 K, the hot/cold mean) -- matches Yuan et al. Sec 4.1.
+  if (bc->id == 1) {
+    bc->sScalar = 1000.0;
+  } else if (bc->id == 2) {
+    bc->sScalar = 500.0;
+  } else {
+    bc->sScalar = 750.0;
+  }
+}
+
+#endif
+
+void UDF_Setup()
+{
+  Radiation::setup();
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  Radiation::step(time, tstep);
+}

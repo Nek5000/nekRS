@@ -35,6 +35,13 @@ int updateFrequency_state = 10;
 dfloat radiosityTolerance_state = (dfloat)1e-6;
 int radiosityMaxIters_state = 100;
 
+// Boundary-ID groups (sorted ascending, matching the CSV output at setup
+// time) and each patch's group index -- kept so Radiation::step() can print
+// a per-group average flux each update, the same grouping used for the
+// setup-time <case>_radiation_viewfactors_groups.csv.
+std::vector<int> groups_state;
+std::vector<int> patchGroupIdx_state; // [P]
+
 // Which of this rank's local radiating patches (global patch index p, and
 // the Nfp volume-node indices for that patch face) need a flux scattered
 // back into bc->o_usrwrk each update.
@@ -384,6 +391,8 @@ void Radiation::setup()
     const int gi = static_cast<int>(std::lower_bound(groups.begin(), groups.end(), bID) - groups.begin());
     patchGroupIdx[p] = gi;
   }
+  groups_state = groups;
+  patchGroupIdx_state = patchGroupIdx;
 
   std::string emissivityStr;
   std::vector<dfloat> emissivity(nGroups, (dfloat)1.0);
@@ -896,6 +905,21 @@ void Radiation::step(double time, int tstep)
         sum += Fi[j] * J_state[j];
       }
       q[i] = patchEmissivity_state[i] * (Eb[i] - sum);
+    }
+
+    const int nGroups = static_cast<int>(groups_state.size());
+    std::vector<dfloat> groupQSum(nGroups, 0);
+    std::vector<int> groupCount(nGroups, 0);
+    for (int i = 0; i < P; ++i) {
+      const int gi = patchGroupIdx_state[i];
+      groupQSum[gi] += q[i];
+      groupCount[gi]++;
+    }
+    printf("Radiation: t=%g step=%d net radiative flux by boundary-ID group (W/m^2, avg over patches):\n",
+          time,
+          tstep);
+    for (int gi = 0; gi < nGroups; ++gi) {
+      printf("  bID=%d: %g\n", groups_state[gi], groupCount[gi] ? groupQSum[gi] / groupCount[gi] : (dfloat)0);
     }
   }
 

@@ -1,0 +1,7 @@
+[GENERAL]
+polynomialOrder = 4
+numSteps = 0
+dt = 1e-3
+
+[MESH]
+file = radiationPlates.re2

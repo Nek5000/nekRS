@@ -1,0 +1,43 @@
+[GENERAL]
+polynomialOrder = 5
+stopAt = numSteps
+numSteps = 2
+dt = 1e-3
+
+scalars = TEMPERATURE
+
+[FLUID PRESSURE]
+residualTol = 1e-06
+
+[FLUID VELOCITY]
+# raw boundary IDs (see radiationPlates.box): 1=hot plate (z=0),
+# 2=cold plate (z=1), 3=the four side walls -- no flow of interest here
+# (fixed-temperature radiation diagnostic only), so a trivial no-slip
+# closure is used everywhere.
+boundaryTypeMap = zeroDirichlet, zeroDirichlet, zeroDirichlet
+rho = 1.2
+viscosity = 1.8e-5
+residualTol = 1e-08
+
+[SCALAR TEMPERATURE]
+# 1=hot (1000 K), 2=cold (500 K), 3=sides (750 K, the hot/cold mean),
+# matching Yuan et al. Sec 4.1 (see radiationPlates.udf for values).
+# All Dirichlet, so boundary temperatures are exact from step 1 --
+# no need to wait for the interior field to equilibrate.
+boundaryTypeMap = udfDirichlet, udfDirichlet, udfDirichlet
+diffusionCoeff = 0.026
+transportCoeff = 1206
+residualTol = 1e-08
+
+[RADIATION]
+# Large plate-width/gap aspect ratio (40) approximates the infinite-
+# parallel-plate limit assumed by the paper's analytical formula
+# (Eq. 11, which has no view-factor term). The 4 side walls are
+# included in the enclosure exchange, as in the paper's setup.
+radiatingBoundaryIDs = 1,2,3
+nSamples = 16384
+seed = 1234
+writeMatrix = true
+cache = true
+emissivity = 0.85,0.85,0.85
+updateFrequency = 1

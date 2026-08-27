@@ -1,0 +1,34 @@
+#include <cstdio>
+
+#ifdef __okl__
+
+#endif
+
+void UDF_Setup()
+{
+  auto mesh = nrs->meshV;
+  auto [x, y, z] = mesh->xyzHost();
+
+  printf("PROBE: Nelements=%d Nfaces=%d Nfp=%d\n", (int)mesh->Nelements, mesh->Nfaces, mesh->Nfp);
+  for (dlong e = 0; e < mesh->Nelements; ++e) {
+    for (int f = 0; f < mesh->Nfaces; ++f) {
+      const int bID = mesh->EToB[f + e * mesh->Nfaces];
+      if (bID <= 0) {
+        continue;
+      }
+      double cx = 0, cy = 0, cz = 0;
+      for (int n = 0; n < mesh->Nfp; ++n) {
+        const dlong idM = mesh->vmapM[e * mesh->Nfaces * mesh->Nfp + f * mesh->Nfp + n];
+        cx += x[idM];
+        cy += y[idM];
+        cz += z[idM];
+      }
+      cx /= mesh->Nfp;
+      cy /= mesh->Nfp;
+      cz /= mesh->Nfp;
+      printf("PROBE e=%d f=%d bID=%d centroid=(%.4f,%.4f,%.4f)\n", (int)e, f, bID, cx, cy, cz);
+    }
+  }
+}
+
+void UDF_ExecuteStep(double time, int tstep) {}

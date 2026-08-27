@@ -1,0 +1,26 @@
+radiationPlates.rea
+-3                     spatial dimension
+1                     number of fields
+#========================================================
+#
+#    Two parallel square plates, large aspect ratio (plate
+#    width / gap = 40) to approximate the infinite-parallel-
+#    plate limit assumed by the paper's analytical formula
+#    (Kirk/Yuan et al., Eq. 11 -- no view-factor term, i.e.
+#    F_12 -> 1). Hot plate at z=0, cold plate at z=1, four
+#    side walls (x=0,x=1,y=0,y=1) at the hot/cold mean.
+#
+#    Numeric BC labels (1,2,3): an explicit boundaryTypeMap on
+#    [FLUID VELOCITY]/[SCALAR TEMPERATURE] disables nekRS's
+#    CBC-label auto-import of boundary IDs, so genbox needs to
+#    write the IDs directly (see tall_cavity.usr for the actual
+#    fix this requires).
+#
+#========================================================
+#
+Box
+-10 -10 -1          nelx,nely,nelz for Box
+0 40 1               x0 x1 ratio
+0 40 1               y0 y1 ratio
+0 1 1               z0 z1 ratio
+3  ,3  ,3  ,3  ,1  ,2     BCs (3 characters each!)

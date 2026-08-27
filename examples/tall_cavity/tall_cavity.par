@@ -1,0 +1,51 @@
+[GENERAL]
+polynomialOrder = 7
+stopAt = endTime
+endTime = 30
+
+dt = targetCFL=2.0 + max=0.01
+timeStepper = tombo2
+advectionSubCyclingSteps = 2
+
+checkpointControl = simulationTime
+checkpointInterval = 5
+
+regularization = hpfrt + nModes=1 + scalingCoeff=15
+
+scalars = TEMPERATURE
+
+[FLUID PRESSURE]
+residualTol = 1e-04
+
+[FLUID VELOCITY]
+# raw boundary IDs (see tall_cavity.box): 1=hot wall, 2=cold wall,
+# 3=the four side walls -- every wall is no-slip, so the same
+# boundaryTypeMap entry (zeroDirichlet) applies to all three.
+boundaryTypeMap = zeroDirichlet, zeroDirichlet, zeroDirichlet
+rho = 1.2                # kg/m^3, air @ ~300 K
+viscosity = 1.8e-5        # Pa*s (dynamic), air @ ~300 K
+residualTol = 1e-06
+
+[SCALAR TEMPERATURE]
+# 1=hot (310 K), 2=cold (290 K), 3=sides (300 K, the hot/cold mean) --
+# all three fixed via udfDirichlet, values set in tall_cavity.udf.
+boundaryTypeMap = udfDirichlet, udfDirichlet, udfDirichlet
+diffusionCoeff = 0.026    # W/(m*K), thermal conductivity of air @ ~300 K
+transportCoeff = 1206     # J/(m^3*K), rho*Cp of air @ ~300 K
+residualTol = 1e-06
+
+[RADIATION]
+# All 6 walls participate in the enclosure radiosity exchange (the box
+# interior is convex, so no obstructionBoundaryIDs are needed). Since
+# every wall's temperature is Dirichlet-fixed, the radiative flux this
+# computes does not feed back into the temperature solve here -- it's a
+# diagnostic of the radiative exchange between the (convectively/
+# conductively unrelated) fixed wall temperatures. See Radiation::step's
+# per-group flux printout.
+radiatingBoundaryIDs = 1,2,3
+nSamples = 8192
+seed = 1234
+writeMatrix = true
+cache = true
+emissivity = 0.9,0.9,0.8
+updateFrequency = 500

@@ -1,0 +1,69 @@
+#include "Radiation.hpp"
+
+#ifdef __okl__
+
+void udfDirichlet(bcData *bc)
+{
+  // Raw boundary IDs (see tall_cavity.box / tall_cavity.par comments):
+  // 1 = hot wall (x=0), 2 = cold wall (x=0.08), 3 = the four side walls,
+  // held at the mean of the hot/cold temperatures.
+  if (bc->id == 1) {
+    bc->sScalar = 310.0;
+  } else if (bc->id == 2) {
+    bc->sScalar = 290.0;
+  } else {
+    bc->sScalar = 300.0;
+  }
+}
+
+#endif
+
+// Boussinesq buoyancy source (dimensional): F/rho = g*beta*(T - Tref),
+// applied to the z-momentum component -- z is the cavity's tall axis and
+// the gravity direction. The Tref term is omitted: a spatially-uniform
+// force is absorbed by the (otherwise-arbitrary) hydrostatic pressure and
+// does not affect the velocity solution, so subtracting a reference
+// temperature here would be cosmetic only (same simplification rbc.udf
+// uses for its own buoyancy source).
+void userf(double time)
+{
+  auto mesh = nrs->meshV;
+  auto o_zEXT = nrs->fluid->o_EXT + 2 * nrs->fieldOffset;
+
+  const dfloat g = 9.81;      // m/s^2
+  const dfloat beta = 1.0 / 300.0; // 1/K, ideal-gas approx at Tref = 300 K
+
+  platform->linAlg->axpby(mesh->Nlocal, g * beta, nrs->scalar->o_S, 0.0, o_zEXT);
+}
+
+void UDF_Setup()
+{
+  auto mesh = nrs->meshV;
+  nrs->userSource = &userf;
+
+  Radiation::setup();
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto [x, y, z] = mesh->xyzHost();
+    std::vector<dfloat> U(mesh->dim * nrs->fieldOffset, 0.0);
+    std::vector<dfloat> S(mesh->Nlocal);
+    // Linear conductive base profile between the hot (x=0) and cold
+    // (x=0.08) walls -- a reasonable starting guess for the eventual
+    // convection cell.
+    for (int n = 0; n < mesh->Nlocal; n++) {
+      S[n] = 310.0 - 250.0 * x[n];
+    }
+    nrs->fluid->o_U.copyFrom(U.data(), U.size());
+    nrs->scalar->o_S.copyFrom(S.data(), S.size());
+  }
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  // All six walls are Dirichlet-fixed (hot/cold/mean), so the radiative
+  // exchange depends only on those fixed temperatures, not on the
+  // evolving flow -- step() here is diagnostic/periodic-report rather
+  // than a feedback boundary condition (see the per-group flux printout
+  // in Radiation::step()).
+  Radiation::step(time, tstep);
+}

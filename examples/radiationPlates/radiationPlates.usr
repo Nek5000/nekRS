@@ -1,0 +1,102 @@
+c-----------------------------------------------------------------------
+c  radiationPlates user-file: genbox never writes numeric boundary IDs
+c  into the .re2 for ordinary (non-periodic) faces -- only the text CBC
+c  label survives. nekRS's automatic CBC->ID import (gen_bcmap) is
+c  disabled the moment any field gets an explicit boundaryTypeMap in
+c  the .par (needed here since velocity and temperature need different
+c  BC types on the same raw IDs), so the IDs have to be assigned by
+c  hand here (same fix as examples/tall_cavity/tall_cavity.usr).
+c-----------------------------------------------------------------------
+      subroutine uservp(ix,iy,iz,eg)
+      integer ix,iy,iz,eg
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      udiff  = 0.0
+      utrans = 0.0
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userf(ix,iy,iz,eg)
+      integer ix,iy,iz,eg
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      ffx = 0.0
+      ffy = 0.0
+      ffz = 0.0
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userq(ix,iy,iz,eg)
+      integer ix,iy,iz,eg
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      qvol   = 0.0
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userbc(ix,iy,iz,iside,eg)
+      integer ix,iy,iz,iside,eg
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      ux   = 0.0
+      uy   = 0.0
+      uz   = 0.0
+      temp = 0.0
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric(ix,iy,iz,eg)
+      integer ix,iy,iz,eg
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+      ux   = 0.0
+      uy   = 0.0
+      uz   = 0.0
+      temp = 0.0
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk()
+      include 'SIZE'
+      include 'TOTAL'
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userqtl
+      call userqtl_scig
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat()
+      include 'SIZE'
+      include 'TOTAL'
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat2()
+      include 'SIZE'
+      include 'TOTAL'
+
+      integer iel, ifc
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. '1  ') boundaryID(ifc,iel) = 1
+         if (cbc(ifc,iel,1) .eq. '2  ') boundaryID(ifc,iel) = 2
+         if (cbc(ifc,iel,1) .eq. '3  ') boundaryID(ifc,iel) = 3
+      enddo
+      enddo
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat3()
+      include 'SIZE'
+      include 'TOTAL'
+      return
+      end
