@@ -33,6 +33,7 @@
 
 enum class SmootherType
 {
+  NONE,
   CHEBYSHEV,
   FOURTH_CHEBYSHEV,
   OPT_FOURTH_CHEBYSHEV,
@@ -67,14 +68,18 @@ public:
   occa::memory o_invDegreeFine;
 
   //smoothing params
-  SmootherType smootherType;
+  // Left uninitialized here (rather than defaulted) on a coarse pMGLevel whenever the coarse
+  // solver is not "SMOOTHER" (e.g. BOOMERAMG), since setupSmoother() -- the only place that
+  // assigns these -- is skipped entirely in that case. Report() still unconditionally reads
+  // smootherType, so an uninitialized value here is read (and branched on) every time.
+  SmootherType smootherType = SmootherType::NONE;
   ChebyshevSmootherType chebySmootherType = ChebyshevSmootherType::NONE;
 
   dfloat lambda1, lambda0;
   dfloat maxEig;
 
-  int DownLegChebyshevDegree;
-  int UpLegChebyshevDegree;
+  int DownLegChebyshevDegree = 0;
+  int UpLegChebyshevDegree = 0;
 
   occa::kernel preFDMKernel;
   occa::kernel fusedFDMKernel;
