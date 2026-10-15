@@ -3,6 +3,7 @@
 #include <map>
 #include <algorithm>
 #include <tuple>
+#include <mutex>
 
 #include "platform.hpp"
 #include "ogs.hpp"
@@ -23,6 +24,17 @@ struct tagData {
 };
 
 orderedMap<std::string, tagData> m_;
+
+// tic()/toc() (and friends) are called concurrently from the main thread and from
+// OpenMP worker threads spawned by things like MGSolver_t::runVcycle() -- m_ is a
+// single process-wide map with no synchronization of its own, so concurrent
+// operator[] calls (even with different tag names, since insertion can trigger
+// rebalancing/rehashing of the shared structure) can race and leave a thread
+// operating on a stale/freed tagData::startTag. Confirmed via AddressSanitizer:
+// heap-use-after-free in occa::gc::ringEntry_t::removeRef(), reached from one
+// thread's tic() call freeing a streamTag while another thread's concurrent tic()
+// call was still using it.
+std::mutex m_mutex_;
 
 const int NEKRS_TIMER_INVALID_KEY = -1;
 const int NEKRS_TIMER_INVALID_METRIC = -2;
@@ -92,6 +104,7 @@ void timer_t::init(MPI_Comm comm, occa::device device, int ifSyncDefault, int en
 
 void timer_t::set(const std::string tag, double time, long long int count)
 {
+  std::lock_guard<std::mutex> lock(m_mutex_);
   m_[tag].startTime = time;
   auto it = m_.find(tag);
 
@@ -114,18 +127,24 @@ void timer_t::disable()
 
 void timer_t::reset()
 {
-  for (auto &it : m_) {
-    it.second.startTime = 0;
-    it.second.hostElapsed = 0;
-    it.second.deviceElapsed = 0;
-    it.second.count = 0;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex_);
+    for (auto &it : m_) {
+      it.second.startTime = 0;
+      it.second.hostElapsed = 0;
+      it.second.deviceElapsed = 0;
+      it.second.count = 0;
+    }
   }
   ogsResetTime();
 }
 
 void timer_t::clear()
 {
-  m_.clear();
+  {
+    std::lock_guard<std::mutex> lock(m_mutex_);
+    m_.clear();
+  }
   ogsResetTime();
 }
 
@@ -148,6 +167,7 @@ void timer_t::reset(const std::string timerName)
                std::back_inserter(filteredTags),
                [&](const std::string &tag) { return tag.find(timerName) == 0; });
 
+  std::lock_guard<std::mutex> lock(m_mutex_);
   for (auto &&tag : filteredTags) {
     std::map<std::string, tagData>::iterator it = m_.find(tag);
     if (it != m_.end()) {
@@ -172,6 +192,7 @@ void timer_t::deviceTic(const std::string tag, int ifSync)
   if (ifSync) {
     sync();
   }
+  std::lock_guard<std::mutex> lock(m_mutex_);
   m_[tag].startTag = device_.tagStream();
 }
 
@@ -180,6 +201,7 @@ void timer_t::deviceToc(const std::string tag)
   if (!enabled) {
     return;
   }
+  std::lock_guard<std::mutex> lock(m_mutex_);
   occa::streamTag stopTag = device_.tagStream();
 
   std::map<std::string, tagData>::iterator it = m_.find(tag);
@@ -202,6 +224,7 @@ void timer_t::hostTic(const std::string tag, int ifSync)
   if (ifSync) {
     sync();
   }
+  std::lock_guard<std::mutex> lock(m_mutex_);
   m_[tag].startTime = MPI_Wtime();
 }
 
@@ -212,6 +235,7 @@ void timer_t::hostToc(const std::string tag)
   }
   double stopTime = MPI_Wtime();
 
+  std::lock_guard<std::mutex> lock(m_mutex_);
   auto it = m_.find(tag);
   nekrsCheck(it == m_.end(), MPI_COMM_SELF, EXIT_FAILURE, "Invalid tag name %s\n", tag.c_str());
 
@@ -227,6 +251,7 @@ void timer_t::tic(const std::string tag, int ifSync)
   if (ifSync) {
     sync();
   }
+  std::lock_guard<std::mutex> lock(m_mutex_);
   m_[tag].startTime = MPI_Wtime();
   m_[tag].startTag = device_.tagStream();
 }
@@ -237,6 +262,8 @@ void timer_t::toc(const std::string tag)
     return;
   }
   auto stopTime = MPI_Wtime();
+
+  std::lock_guard<std::mutex> lock(m_mutex_);
   auto stopTag = device_.tagStream();
 
   auto it = m_.find(tag);
@@ -254,6 +281,7 @@ void timer_t::toc(const std::string tag)
 
 double timer_t::hostElapsed(const std::string tag)
 {
+  std::lock_guard<std::mutex> lock(m_mutex_);
   auto it = m_.find(tag);
   if (it == m_.end()) {
     return NEKRS_TIMER_INVALID_KEY;
@@ -263,6 +291,7 @@ double timer_t::hostElapsed(const std::string tag)
 
 double timer_t::deviceElapsed(const std::string tag)
 {
+  std::lock_guard<std::mutex> lock(m_mutex_);
   auto it = m_.find(tag);
   if (it == m_.end()) {
     return NEKRS_TIMER_INVALID_KEY;
@@ -272,6 +301,7 @@ double timer_t::deviceElapsed(const std::string tag)
 
 long long int timer_t::count(const std::string tag)
 {
+  std::lock_guard<std::mutex> lock(m_mutex_);
   auto it = m_.find(tag);
   if (it == m_.end()) {
     return NEKRS_TIMER_INVALID_KEY;
@@ -284,13 +314,18 @@ double timer_t::query(const std::string tag, const std::string metric)
   int size;
   MPI_Comm_size(comm_, &size);
 
-  auto it = m_.find(tag);
-  if (it == m_.end()) {
-    return NEKRS_TIMER_INVALID_KEY;
+  double hostElapsed, deviceElapsed;
+  long long int count;
+  {
+    std::lock_guard<std::mutex> lock(m_mutex_);
+    auto it = m_.find(tag);
+    if (it == m_.end()) {
+      return NEKRS_TIMER_INVALID_KEY;
+    }
+    hostElapsed = it->second.hostElapsed;
+    deviceElapsed = it->second.deviceElapsed;
+    count = it->second.count;
   }
-  auto hostElapsed = it->second.hostElapsed;
-  auto deviceElapsed = it->second.deviceElapsed;
-  auto count = it->second.count;
 
   double retVal;
 
@@ -549,6 +584,7 @@ void timer_t::print(std::string timerName, long long int DOF)
 
 std::vector<std::string> timer_t::tags()
 {
+  std::lock_guard<std::mutex> lock(m_mutex_);
   std::vector<std::string> entries;
   auto &keys = m_.keys();
   std::copy(keys.begin(), keys.end(), std::back_inserter(entries));
