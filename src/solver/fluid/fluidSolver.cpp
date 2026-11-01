@@ -576,7 +576,7 @@ void fluidSolver_t::setupEllipticSolver()
     // derive from velocity
     auto EToBP = mesh->createEToB([&](int bID) -> int {
       auto bcType = platform->app->bc->typeId(bID, velocityName);
-      if (bID < 1) {
+      if (bcType == bdryBase::bcType_none) {
         return ellipticBcType::NO_OP;
       }
       return platform->app->bc->isOutflow(bcType) ? ellipticBcType::DIRICHLET : ellipticBcType::NEUMANN;
