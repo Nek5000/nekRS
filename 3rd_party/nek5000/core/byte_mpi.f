@@ -22,6 +22,12 @@ C--------------------------------------------------------------------------
       character*1   fname1(132)
       equivalence  (fname1,fname)
 
+C     blank-fill so the bytes past the NUL terminator below are
+C     deterministic rather than uninitialized stack garbage, since the
+C     whole fixed-length buffer (not just the first l+1 bytes) is
+C     passed to MPI_file_open
+      fname = ' '
+
       l = ltrunc(fnamei,len(fnamei))
       if(l+1.gt.len(fname))
      $ call exitti('invalid string length$',l)
